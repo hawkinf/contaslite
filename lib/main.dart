@@ -1,3 +1,8 @@
+import 'package:finance_app/screens/account_types_screen.dart';
+import 'package:finance_app/screens/credit_card_form.dart';
+import 'package:finance_app/screens/bank_accounts_screen.dart';
+import 'package:finance_app/screens/payment_methods_screen.dart';
+import 'package:finance_app/screens/settings_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +19,12 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:window_manager/window_manager.dart';
 import 'widgets/date_calculator_dialog.dart';
+
+import 'package:finance_app/main.dart' as contas_app;
+import 'package:finance_app/services/database_initialization_service.dart' as contas_db;
+import 'package:finance_app/services/prefs_service.dart' as contas_prefs;
+
+import 'contas_bootstrap.dart';
 
 
 // Versão do App
@@ -168,7 +179,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'CalendarPRO',
+      title: 'ContasPRO',
       debugShowCheckedModeBanner: false,
       themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
@@ -268,10 +279,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
   final Map<int, Future<List<Holiday>>> _holidaysCache = {};
   double _horizontalDragDistance = 0;
 
-  // Cache para "Próximo Feriado"
-  ({String name, int daysUntil})? _cachedNextHoliday;
-  DateTime? _cachedNextHolidayDate;
-
   // GlobalKeys para capturar screenshots dos calendários
   final GlobalKey _calendarGridKey = GlobalKey();
   final GlobalKey _annualCalendarKey = GlobalKey();
@@ -289,7 +296,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     _calendarMonth = date.month;
     _initializeCities();
     _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     
     // Inicializar _holidaysFuture antes de qualquer coisa
     _holidaysFuture = _getHolidaysForDisplay(_selectedYear);
@@ -2239,69 +2246,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     }
   }
 
-  /// Calcula o próximo feriado (nacional, bancário ou municipal da cidade selecionada) a partir de hoje e retorna nome + dias restantes
-  Future<({String name, int daysUntil})?> _getNextHoliday() async {
-    try {
-      final today = DateTime.now();
-      final todayDate = DateTime(today.year, today.month, today.day);
-
-      // Verificar se o cache ainda é válido (mesmo dia)
-      if (_cachedNextHoliday != null && _cachedNextHolidayDate != null) {
-        final cachedDate = DateTime(_cachedNextHolidayDate!.year, _cachedNextHolidayDate!.month, _cachedNextHolidayDate!.day);
-        if (cachedDate == todayDate) {
-          // Cache ainda é válido
-          return _cachedNextHoliday;
-        }
-      }
-
-      // Cache inválido ou não existe, recalcular
-      // Buscar feriados do ano atual e adjacentes para garantir que encontramos o próximo
-      final allHolidays = await _getHolidaysForDisplay(DateTime.now().year);
-
-      if (allHolidays.isEmpty) return null;
-
-      // Encontrar o próximo feriado nacional, bancário ou municipal da cidade selecionada
-      Holiday? nextHoliday;
-      int minDaysDiff = 999999;
-
-      for (final holiday in allHolidays) {
-        try {
-          // Filtrar apenas feriados nacionais, bancários ou municipais da cidade selecionada
-          final types = holiday.types;
-          final isNationalOrBancario = types.any((t) => !t.contains('Municipal'));
-          final isMunicipalThisCity = types.any((t) => t.contains('Municipal') && t.contains(_selectedCity.name));
-
-          if (!isNationalOrBancario && !isMunicipalThisCity) continue; // Pular feriados municipais de outras cidades
-
-          final holidayDate = DateTime.parse(holiday.date);
-          final normalizedHolidayDate = DateTime(holidayDate.year, holidayDate.month, holidayDate.day);
-
-          // Calcular dias até este feriado
-          int daysDiff = normalizedHolidayDate.difference(todayDate).inDays;
-
-          // Se é hoje ou no futuro, e é o mais próximo até agora
-          if (daysDiff >= 0 && daysDiff < minDaysDiff) {
-            minDaysDiff = daysDiff;
-            nextHoliday = holiday;
-          }
-        } catch (e) {
-          // Ignorar datas inválidas
-        }
-      }
-
-      if (nextHoliday == null) return null;
-
-      // Atualizar cache
-      final result = (name: nextHoliday.name, daysUntil: minDaysDiff);
-      _cachedNextHoliday = result;
-      _cachedNextHolidayDate = todayDate;
-
-      return result;
-    } catch (e) {
-      debugPrint('Erro ao buscar próximo feriado: $e');
-      return null;
-    }
-  }
 
   Widget _buildCalendarGrid() {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -3348,7 +3292,64 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           SliverAppBar.large(
             expandedHeight: isSmallMobile ? 150 : (isMobile ? 55 : 53),
             pinned: true,
+            centerTitle: true,
             actions: isMobile ? [] : [
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: IconButton(
+                  icon: const Icon(Icons.account_balance),
+                  iconSize: isMobile ? 28 : 24,
+                  tooltip: 'Bancos',
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const BankAccountsScreen(),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: IconButton(
+                  icon: const Icon(Icons.payment),
+                  iconSize: isMobile ? 28 : 24,
+                  tooltip: 'Formas de Pagamento',
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PaymentMethodsScreen(),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: IconButton(
+                  icon: const Icon(Icons.category),
+                  iconSize: isMobile ? 28 : 24,
+                  tooltip: 'Tabelas',
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AccountTypesScreen(),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: IconButton(
+                  icon: const Icon(Icons.credit_card),
+                  iconSize: isMobile ? 28 : 24,
+                  tooltip: 'Novo Cartão',
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CreditCardFormScreen(),
+                    ),
+                  ),
+                ),
+              ),
               Padding(
                 padding: const EdgeInsets.only(right: 8.0),
                 child: IconButton(
@@ -3370,6 +3371,20 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
               Padding(
                 padding: const EdgeInsets.only(right: 8.0),
                 child: IconButton(
+                  icon: const Icon(Icons.settings),
+                  iconSize: isMobile ? 28 : 24,
+                  tooltip: 'Configurações',
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SettingsScreen(),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: IconButton(
                   icon: const Icon(Icons.info_outline),
                   iconSize: isMobile ? 28 : 24,
                   tooltip: 'Sobre',
@@ -3378,155 +3393,29 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              title: FutureBuilder<({String name, int daysUntil})?>(
-                future: _getNextHoliday(),
-                builder: (context, snapshot) {
-                  String nextHolidayText = '';
-                  if (snapshot.hasData && snapshot.data != null) {
-                    final nextHoliday = snapshot.data!;
-                    if (nextHoliday.daysUntil == 0) {
-                      nextHolidayText = '${nextHoliday.name} - Hoje';
-                    } else {
-                      final daysWord = nextHoliday.daysUntil == 1 ? 'dia' : 'dias';
-                      nextHolidayText = '${nextHoliday.name} - Faltam ${nextHoliday.daysUntil} $daysWord';
-                    }
-                  }
-
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: isSmallMobile ? [
-                      // Layout em 2 linhas para telas muito pequenas
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Image.asset(
-                              'assets/logo.png',
-                              height: 22,
-                              fit: BoxFit.contain,
-                            ),
-                            const SizedBox(width: 6),
-                            GestureDetector(
-                              onTap: () => _showCitySelector(),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.25),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.location_on, size: 11, color: Colors.white),
-                                    const SizedBox(width: 3),
-                                    Flexible(
-                                      child: Text(
-                                        _selectedCity.name,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 11,
-                                          color: Colors.white,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (nextHolidayText.isNotEmpty) ...[
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: Colors.amber[600],
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.black.withValues(alpha: 0.6), width: 1.2),
-                            ),
-                            child: Text(
-                              nextHolidayText,
-                              style: const TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.black,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 2,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ] : [
-                      // Layout em 1 linha para telas maiores
-                      Row(
-                        children: [
-                          Image.asset(
-                            'assets/logo.png',
-                            height: 28,
-                            fit: BoxFit.contain,
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.25),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1.2),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.location_on, size: 14, color: Colors.white),
-                                const SizedBox(width: 4),
-                                ConstrainedBox(
-                                  constraints: const BoxConstraints(maxWidth: 140),
-                                  child: Text(
-                                    _selectedCity.name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                      color: Colors.white,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (nextHolidayText.isNotEmpty)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              margin: const EdgeInsets.only(right: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.amber[600],
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.black.withValues(alpha: 0.6), width: 1.2),
-                              ),
-                              child: Text(
-                                nextHolidayText,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.black,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  );
-                },
+              title: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'ContasPRO',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: isSmallMobile ? 18 : 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    'by Aguinaldo Liesack Baptistini',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: isSmallMobile ? 10 : 12,
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
+                  ),
+                ],
               ),
               background: Container(
                 decoration: BoxDecoration(
@@ -3588,6 +3477,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     tabs: const [
                       Tab(text: 'Calendário', icon: Icon(Icons.calendar_month)),
                       Tab(text: 'Resumo', icon: Icon(Icons.list_alt)),
+                      Tab(text: 'Contas', icon: Icon(Icons.receipt_long)),
                     ],
                   ),
                   // TABBARVIEW COM O CONTEÚDO DAS DUAS ABAS
@@ -3706,6 +3596,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                             },
                           ),
                         ),
+                        // ABA 3: CONTAS (pacote ../contas)
+                        const ContasTab(),
                       ],
                     ),
                   ),
@@ -3715,6 +3607,96 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           ),
         ],
       ),
+    );
+  }
+}
+
+class ContasTab extends StatefulWidget {
+  const ContasTab({super.key});
+
+  @override
+  State<ContasTab> createState() => _ContasTabState();
+}
+
+class _ContasTabState extends State<ContasTab> {
+  bool _ready = false;
+  bool _migrationRequired = false;
+  Object? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      await configureContasDatabaseIfNeeded();
+
+      await contas_prefs.PrefsService.init();
+
+      try {
+        await contas_db.DatabaseInitializationService.instance.initializeDatabase();
+      } catch (_) {
+        _migrationRequired = true;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _ready = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _ready = true;
+        _error = e;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: 16),
+            Text('Carregando Contas...', style: Theme.of(context).textTheme.titleMedium),
+          ],
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+              const SizedBox(height: 12),
+              Text(
+                'Erro ao abrir o módulo Contas',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$_error',
+                style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SizedBox.expand(
+      child: contas_app.FinanceApp(migrationRequired: _migrationRequired),
     );
   }
 }

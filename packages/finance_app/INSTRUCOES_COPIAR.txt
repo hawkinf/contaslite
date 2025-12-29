@@ -1,0 +1,114 @@
+# ⚠️ INSTRUÇÕES PARA ATUALIZAR CORRETAMENTE
+
+## 🚨 VOCÊ ESTÁ USANDO O ARQUIVO ANTIGO!
+
+O erro diz:
+```
+lib/screens/account_form_screen.dart(457,34): error: '_categoryList' isn't defined
+```
+
+Mas o arquivo no ZIP JÁ ESTÁ CORRIGIDO!
+
+---
+
+## ✅ COMO COPIAR CORRETAMENTE
+
+### Passo 1: Fechar o App
+```
+Se o app estiver rodando, FECHE completamente!
+```
+
+### Passo 2: Extrair ZIP
+```
+1. Botão direito no contas_otimizado.zip
+2. Extrair aqui
+3. Vai criar pasta: contas_otimizado\
+```
+
+### Passo 3: Copiar Arquivo
+```
+ORIGEM:
+contas_otimizado\lib\screens\account_form_screen.dart
+
+DESTINO:
+C:\flutter\contas_pagar\lib\screens\account_form_screen.dart
+
+⚠️ SUBSTITUIR o arquivo existente!
+```
+
+### Passo 4: Limpar Build
+```cmd
+cd C:\flutter\contas_pagar
+flutter clean
+```
+
+### Passo 5: Executar
+```cmd
+flutter run -d windows
+```
+
+---
+
+## 🔍 COMO VERIFICAR SE COPIOU CERTO
+
+Abra o arquivo:
+```
+C:\flutter\contas_pagar\lib\screens\account_form_screen.dart
+```
+
+Vá na linha 457 e veja:
+
+❌ **ERRADO (arquivo antigo):**
+```dart
+_selectedExpenseCategory = _categoryList.firstWhere(...)
+```
+
+✅ **CORRETO (arquivo novo):**
+```dart
+_selectedExpenseCategory = _expenseCategoriesList.firstWhere(...)
+```
+
+---
+
+## 💡 DICA
+
+Se continuar dando erro após copiar:
+
+```cmd
+cd C:\flutter\contas_pagar
+
+REM Deletar build
+rmdir /s /q build
+
+REM Limpar
+flutter clean
+
+REM Executar
+flutter run -d windows
+```
+
+---
+
+## 📋 CHECKLIST
+
+- [ ] Extraiu o ZIP
+- [ ] Copiou account_form_screen.dart
+- [ ] Substituiu o arquivo
+- [ ] Executou flutter clean
+- [ ] Executou flutter run
+
+---
+
+**SE TIVER DÚVIDA:**
+
+Verifique se o arquivo em:
+```
+C:\flutter\contas_pagar\lib\screens\account_form_screen.dart
+```
+
+Tem na linha 457:
+```dart
+_expenseCategoriesList.firstWhere
+```
+
+Se ainda tiver `_categoryList`, o arquivo NÃO foi copiado!

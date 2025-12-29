@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(flutter clean:*)",
+      "Bash(flutter pub get:*)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nrefactor: Unificar tabelas - remover expense_categories e criar account_descriptions\n\nMudanças principais:\n- Criar modelo AccountDescription para substituir expense_categories global\n- Migração de schema (v1 → v2) com recreate strategy para remover expenseCategoryId\n- Adicionar CRUD methods para AccountDescription em DatabaseHelper\n- Remover todas as referências a ExpenseCategory dos models e screens\n- Implementar UI de gerenciamento de descrições no AccountFormScreen\n  - Dialog interativo para adicionar/editar/deletar descrições por tipo de conta\n  - Validação de duplicatas\n  - Botão no dropdown de tipo de conta para acessar gerenciamento\n- Limpar ícones de categoria do Dashboard e CreditCardScreen\n- Atualizar NewExpenseDialog para não usar categorias\n\nA refatoração unifica o banco de dados em 2 tabelas principais:\n- accounts: tabela principal com todos os lançamentos\n- account_descriptions: subdivisões de contas (1:N com accounts)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: Adicionar seleção de descrições no NewExpenseDialog\n\n- Carrega descrições do tipo de conta automaticamente\n- Dropdown condicional que aparece se houver descrições cadastradas\n- Seleciona a primeira descrição por padrão\n- Usa descrição selecionada na geração da descrição da compra\n- Se não houver descrição selecionada, usa o banco do cartão como fallback\n\nAgora o usuário pode:\n1. Criar descrições no AccountFormScreen\n2. Selecionar uma descrição ao lançar despesa no NewExpenseDialog\n3. A descrição aparece no histórico das contas\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit:*)",
+      "Bash(flutter run:*)",
+      "Bash(flutter logs:*)",
+      "Bash(grep:*)",
+      "Bash(flutter build:*)",
+      "Bash(timeout 5 flutter run:*)",
+      "Bash(find:*)",
+      "Bash(taskkill:*)",
+      "Bash(timeout 10 flutter run:*)",
+      "Bash(dart analyze:*)",
+      "Bash(powershell -NoProfile -Command \"cd ''c:\\flutter\\contas''; Remove-Item -Recurse -Force -Path ''build'' -ErrorAction SilentlyContinue; echo ''Build removido''; flutter pub get | tail -5\")",
+      "Bash(timeout 30 flutter run:*)",
+      "Bash(powershell -NoProfile -Command:*)",
+      "Bash(dart --analyze-main:*)",
+      "Bash(flutter compile kernel:*)",
+      "Bash(pkill:*)",
+      "Bash(tasklist:*)",
+      "Bash(Get-Process)",
+      "Bash(Where-Object {$_Name -match \"contas|flutter|dart\"})",
+      "Bash(Format-Table Name, Id)",
+      "Bash(sqlite3:*)",
+      "Bash(timeout 120 flutter run:*)",
+      "Bash(timeout 150 flutter run:*)",
+      "Bash(timeout 60 flutter run:*)"
+    ]
+  }
+}
