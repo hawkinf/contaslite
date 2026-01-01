@@ -4,6 +4,8 @@ import '../database/db_helper.dart';
 import '../models/bank_account.dart';
 import '../services/bank_service.dart';
 import '../widgets/app_input_decoration.dart';
+import '../services/prefs_service.dart';
+import '../widgets/date_range_app_bar.dart';
 
 class BankAccountsScreen extends StatefulWidget {
   const BankAccountsScreen({super.key});
@@ -243,11 +245,11 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
                               controller: descriptionCtrl,
                               textCapitalization: TextCapitalization.sentences,
                               decoration: buildOutlinedInputDecoration(
-                                label: 'Descricao / Tipo da Conta',
+                                label: 'Descrição / Tipo da Conta',
                                 icon: Icons.badge_outlined,
                               ),
                               validator: (v) => v == null || v.trim().isEmpty
-                                  ? 'Informe a descricao'
+                                  ? 'Informe a descrição'
                                   : null,
                             ),
                             const SizedBox(height: 16),
@@ -417,21 +419,33 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bancos'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.payments),
-            tooltip: 'Lancar pagamento',
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text('Selecione um banco para usar no pagamento.')),
+    return ValueListenableBuilder<DateTimeRange>(
+      valueListenable: PrefsService.dateRangeNotifier,
+      builder: (context, range, _) {
+        return Scaffold(
+      appBar: DateRangeAppBar(
+          title: 'Bancos',
+          range: range,
+          onPrevious: () => PrefsService.shiftDateRange(-1),
+          onNext: () => PrefsService.shiftDateRange(1),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.payments),
+              tooltip: 'Lançar pagamento',
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Selecione um banco para usar no pagamento.'),
+                ),
+              ),
             ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
+            IconButton(
+              icon: const Icon(Icons.add),
+              tooltip: 'Adicionar Banco',
+              onPressed: _openForm,
+            ),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
         label: const Text('Novo Banco'),
         onPressed: _banks.isEmpty && !_loading
@@ -442,22 +456,21 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
                 )
             : () => _openForm(),
       ),
-      body: SafeArea(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _items.isEmpty
-                ? Center(
-                    child: Text(
-                      'Nenhum banco salvo.\nToque em "Novo Banco" para adicionar.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey.shade700),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _items.length,
-                    itemBuilder: (context, index) {
-                      final bank = _items[index];
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _items.isEmpty
+              ? Center(
+                  child: Text(
+                    'Nenhum banco salvo.\nToque em "Novo Banco" para adicionar.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _items.length,
+                  itemBuilder: (context, index) {
+                    final bank = _items[index];
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Card(
@@ -630,6 +643,8 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
                     );
                   },
                 ),
+        );
+      },
     );
   }
 }

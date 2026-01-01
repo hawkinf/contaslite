@@ -6,6 +6,7 @@ import '../models/account.dart';
 import '../models/payment_method.dart';
 import '../services/holiday_service.dart';
 import '../services/prefs_service.dart';
+import '../widgets/date_range_app_bar.dart';
 
 class PayAccountScreen extends StatefulWidget {
   final Account account;
@@ -65,11 +66,17 @@ class _PayAccountScreenState extends State<PayAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Registrar Pagamento'),
-      ),
-      body: SafeArea(
+    return ValueListenableBuilder<DateTimeRange>(
+      valueListenable: PrefsService.dateRangeNotifier,
+      builder: (context, range, _) {
+        return Scaffold(
+      appBar: DateRangeAppBar(
+          title: 'Registrar Pagamento',
+          range: range,
+          onPrevious: () => PrefsService.shiftDateRange(-1),
+          onNext: () => PrefsService.shiftDateRange(1),
+        ),
+        body: SafeArea(
         child: Column(
           children: [
             _buildAccountSummaryCard(),
@@ -111,6 +118,8 @@ class _PayAccountScreenState extends State<PayAccountScreen> {
           ],
         ),
       ),
+        );
+      },
     );
   }
 

@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:brasil_fields/brasil_fields.dart';
@@ -13,12 +14,17 @@ import '../utils/installment_utils.dart';
 import '../widgets/app_input_decoration.dart';
 import '../widgets/new_expense_dialog.dart';
 import '../widgets/payment_dialog.dart';
+import '../widgets/date_range_app_bar.dart';
+import '../widgets/single_day_app_bar.dart';
 import '../utils/card_utils.dart';
 import 'account_form_screen.dart';
+import 'recebimento_form_screen.dart';
 import 'credit_card_form.dart';
 import 'card_expenses_screen.dart';
 import 'account_edit_screen.dart';
 import 'recurrent_account_edit_screen.dart' as rec;
+import 'settings_screen.dart';
+import 'account_types_screen.dart';
 
 class _InstallmentSummary {
   final double totalAmount;
@@ -59,13 +65,16 @@ class _SeriesSummary {
 }
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  final String? typeNameFilter;
+
+  const DashboardScreen({super.key, this.typeNameFilter});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  late final VoidCallback _dateRangeListener;
   // ... (Variáveis de estado mantidas)
   late DateTime _startDate;
   late DateTime _endDate;
@@ -74,20 +83,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<int, String> _typeNames = {};
   bool _isLoading = true;
   double _totalPeriod = 0.0;
+  double _totalForecast = 0.0;
   Map<int, _InstallmentSummary> _installmentSummaries = {};
   Map<int, Map<String, dynamic>> _paymentInfo = {};
   final Map<int, double> _recurrenceParentValues = {}; // Mapeia recurrence ID -> valor previsto
 
+
+  @override
+  void dispose() {
+    PrefsService.dateRangeNotifier.removeListener(_dateRangeListener);
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
+    _dateRangeListener = () {
+      final range = PrefsService.dateRangeNotifier.value;
+      setState(() {
+        if (DateUtils.isSameDay(range.start, range.end)) {
+          _startDate = range.start;
+          _endDate = range.end;
+        } else {
+          _startDate = DateTime(range.start.year, range.start.month, 1);
+          _endDate = DateTime(range.start.year, range.start.month + 1, 0);
+        }
+        _datesInitialized = true;
+      });
+      _loadData();
+    };
+    PrefsService.dateRangeNotifier.addListener(_dateRangeListener);
     _initDates();
   }
 
   Future<void> _initDates() async {
-    final range = await PrefsService.loadDateRange();
-    DateTime start = DateTime(range.start.year, range.start.month, 1);
-    DateTime end = DateTime(range.start.year, range.start.month + 1, 0);
+    final range = PrefsService.dateRangeNotifier.value;
+    DateTime start;
+    DateTime end;
+    if (DateUtils.isSameDay(range.start, range.end)) {
+      start = range.start;
+      end = range.end;
+    } else {
+      start = DateTime(range.start.year, range.start.month, 1);
+      end = DateTime(range.start.year, range.start.month + 1, 0);
+    }
     setState(() {
       _startDate = start;
       _endDate = end;
@@ -99,20 +138,115 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _changeMonth(int offset) {
     DateTime newStart = DateTime(_startDate.year, _startDate.month + offset, 1);
     DateTime newEnd = DateTime(newStart.year, newStart.month + 1, 0);
-    setState(() {
-      _startDate = newStart;
-      _endDate = newEnd;
-    });
     PrefsService.saveDateRange(newStart, newEnd);
-    _loadData();
   }
 
   void _refresh() => _loadData();
+
+  String _formatRangeLabel(DateTime start, DateTime end) {
+    final formatter = DateFormat('dd/MM/yyyy');
+    return '${formatter.format(start)} ate ${formatter.format(end)}';
+  }
+
+  Future<void> _showFilterInfo() async {
+    final rangeLabel = _formatRangeLabel(_startDate, _endDate);
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Filtro'),
+        content: Text('Periodo de $rangeLabel'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Fechar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleAppMenuSelection(String value) async {
+    switch (value) {
+      case 'types':
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AccountTypesScreen()),
+        );
+        break;
+      case 'card':
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const CreditCardFormScreen()),
+        );
+        break;
+      case 'settings':
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const SettingsScreen()),
+        );
+        break;
+    }
+
+    if (!mounted) return;
+    _loadData();
+  }
+
+  Widget _buildAppMenu() {
+    return PopupMenuButton<String>(
+      tooltip: 'Menu',
+      onSelected: _handleAppMenuSelection,
+      itemBuilder: (context) => const [
+        PopupMenuItem(value: 'types', child: Text('Tabelas')),
+        PopupMenuItem(value: 'card', child: Text('Novo cartao')),
+        PopupMenuItem(value: 'settings', child: Text('Preferencias')),
+      ],
+    );
+  }
+
+  List<Widget> _buildAppBarActions({required bool includeFilter}) {
+    final actions = <Widget>[];
+    if (includeFilter) {
+      actions.add(
+        IconButton(
+          icon: const Icon(Icons.filter_alt),
+          tooltip: 'Filtro de periodo',
+          onPressed: _showFilterInfo,
+        ),
+      );
+    }
+    actions.add(_buildAppMenu());
+    return actions;
+  }
 
   bool _hasRecurrenceStarted(Account rec, DateTime current) {
     final hasStartDate = rec.year != null && rec.month != null;
     if (!hasStartDate) return true;
     return rec.year! < current.year || (rec.year == current.year && rec.month! <= current.month);
+  }
+
+  DateTime _resolveEffectiveDate(Account account, DateTime fallbackMonth) {
+    final year = account.year ?? fallbackMonth.year;
+    final month = account.month ?? fallbackMonth.month;
+    int day = account.dueDay;
+    int maxDays = DateUtils.getDaysInMonth(year, month);
+    if (day > maxDays) day = maxDays;
+    DateTime effectiveDate = DateTime(year, month, day);
+    final isWeekend = HolidayService.isWeekend(effectiveDate);
+    final isHoliday = HolidayService.isHoliday(effectiveDate, PrefsService.cityNotifier.value);
+    if (isWeekend || isHoliday) {
+      if (account.payInAdvance) {
+        while (HolidayService.isWeekend(effectiveDate) ||
+            HolidayService.isHoliday(effectiveDate, PrefsService.cityNotifier.value)) {
+          effectiveDate = effectiveDate.subtract(const Duration(days: 1));
+        }
+      } else {
+        while (HolidayService.isWeekend(effectiveDate) ||
+            HolidayService.isHoliday(effectiveDate, PrefsService.cityNotifier.value)) {
+          effectiveDate = effectiveDate.add(const Duration(days: 1));
+        }
+      }
+    }
+    return effectiveDate;
   }
 
   Future<void> _loadData() async {
@@ -124,6 +258,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final types = await DatabaseHelper.instance.readAllTypes();
       final cards = await DatabaseHelper.instance.readAllCards();
       final typeMap = {for (var t in types) t.id!: t.name};
+
+      final typeFilter = widget.typeNameFilter?.trim();
+      Set<int>? allowedTypeIds;
+      if (typeFilter != null && typeFilter.isNotEmpty) {
+        final normalizedFilter = typeFilter.toLowerCase();
+        allowedTypeIds = types
+            .where((t) => t.name.trim().toLowerCase() == normalizedFilter)
+            .map((t) => t.id!)
+            .toSet();
+        if (allowedTypeIds.isEmpty) {
+          allowedTypeIds = {};
+        }
+      }
 
       // Preencher mapa de valores de recorrências pai
       _recurrenceParentValues.clear();
@@ -138,10 +285,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final recurrents = allAccounts
           .where((a) => a.isRecurrent && a.cardBrand == null && a.cardId == null)
           .toList();
-      // Filtrar APENAS lançamentos normais (não instâncias auto-geradas de recorrências)
-      // Instâncias auto-geradas: isRecurrent=false mas recurrenceId!=null (mostradas como "previstas")
+      // Filtrar lançamentos (inclui instâncias de recorrência)
       final normalExpenses = allAccounts
-          .where((a) => a.cardId == null && !a.isRecurrent && a.cardBrand == null && a.recurrenceId == null)
+          .where((a) => a.cardId == null && !a.isRecurrent && a.cardBrand == null)
           .toList();
 
       // Pré-computar índice de lançamentos para busca rápida
@@ -280,9 +426,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
 
+      final filterSingleDay = DateUtils.isSameDay(_startDate, _endDate);
+      if (filterSingleDay) {
+        processedList = processedList
+            .where((account) {
+              final effectiveDate = _resolveEffectiveDate(account, _startDate);
+              return DateUtils.isSameDay(effectiveDate, _startDate);
+            })
+            .toList();
+      }
+
+      if (allowedTypeIds != null) {
+        processedList = processedList
+            .where((account) => allowedTypeIds!.contains(account.typeId))
+            .toList();
+      }
+
       processedList.sort((a, b) => a.dueDay.compareTo(b.dueDay));
       double total = processedList.fold(
           0, (sum, item) => item.isRecurrent ? sum : sum + item.value);
+      double totalForecast = processedList.fold(0, (sum, item) {
+        if (item.cardBrand != null && item.isRecurrent) {
+          final breakdown = CardBreakdown.parse(item.observation);
+          return sum + breakdown.total;
+        }
+        return sum + item.value;
+      });
       final installmentSummaries =
           await _buildInstallmentSummaries(processedList);
 
@@ -301,6 +470,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _displayList = processedList;
           _typeNames = typeMap;
           _totalPeriod = total;
+          _totalForecast = totalForecast;
           _installmentSummaries = installmentSummaries;
           _paymentInfo = paymentInfo;
           _isLoading = false;
@@ -328,93 +498,195 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (!_datesInitialized) {
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       }
+      final media = MediaQuery.of(context);
+      final isCompactHeight = media.size.height < 640;
+      final isCompactWidth = media.size.width < 360;
+      final isCompactFab = isCompactHeight || isCompactWidth;
+      final fabRight = math.max(8.0, math.min(24.0, media.size.width * 0.02));
+      final fabBottom = math.max(16.0, math.min(48.0, media.size.height * 0.08));
       final isDark = Theme.of(context).brightness == Brightness.dark;
       final headerColor = isDark ? Colors.grey.shade900 : Colors.blue.shade50;
-      final totalColor = isDark ? Colors.greenAccent : Colors.blue.shade900;
-      String monthLabel =
-          DateFormat('MMMM yyyy', 'pt_BR').format(_startDate).toUpperCase();
+      final totalColor = _isRecebimentosFilter
+          ? (isDark ? Colors.greenAccent : Colors.green.shade700)
+          : (isDark ? Colors.redAccent : Colors.red.shade700);
+      final totalForecastColor = _isRecebimentosFilter
+          ? (isDark ? Colors.blueAccent : Colors.blue.shade700)
+          : (isDark ? Colors.orangeAccent : Colors.deepOrange.shade700);
+      final totalLabel = _isRecebimentosFilter ? 'TOTAL RECEBIDO' : 'TOTAL PAGO';
+      final totalForecastLabel =
+          _isRecebimentosFilter ? 'TOTAL A RECEBER' : 'TOTAL A PAGAR';
+      final emptyText = _isRecebimentosFilter
+          ? 'Nenhuma conta a receber para este mês.'
+          : 'Nenhuma conta a pagar para este mês.';
+      final appBarBg =
+          _isRecebimentosFilter ? Colors.green.shade700 : Colors.red.shade700;
+      const appBarFg = Colors.white;
+      final isSingleDayFilter = DateUtils.isSameDay(_startDate, _endDate);
+      final PreferredSizeWidget appBarWidget = isSingleDayFilter
+          ? (SingleDayAppBar(
+              date: _startDate,
+              backgroundColor: appBarBg,
+              foregroundColor: appBarFg,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Voltar',
+                onPressed: () {
+                  final monthStart = DateTime(_startDate.year, _startDate.month, 1);
+                  final monthEnd = DateTime(_startDate.year, _startDate.month + 1, 0);
+                  PrefsService.saveDateRange(monthStart, monthEnd);
+                  final targetTab = PrefsService.tabReturnNotifier.value ?? 2;
+                  PrefsService.tabReturnNotifier.value = null;
+                  PrefsService.requestTabChange(targetTab);
+                },
+              ),
+              actions: _buildAppBarActions(includeFilter: false),
+            ) as PreferredSizeWidget)
+          : (DateRangeAppBar(
+              range: DateTimeRange(start: _startDate, end: _endDate),
+              onPrevious: () => _changeMonth(-1),
+              onNext: () => _changeMonth(1),
+              backgroundColor: appBarBg,
+              foregroundColor: appBarFg,
+              actions: _buildAppBarActions(includeFilter: true),
+            ) as PreferredSizeWidget);
+      return Scaffold(
+        appBar: appBarWidget,
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final headerPadding = EdgeInsets.symmetric(
+                vertical: isCompactHeight ? 10 : 16,
+                horizontal: isCompactHeight ? 6 : 8,
+              );
+              final totalFontSize = isCompactHeight ? 22.0 : 28.0;
+              final cardPadding = EdgeInsets.symmetric(
+                horizontal: isCompactHeight ? 16 : 24,
+                vertical: isCompactHeight ? 8 : 12,
+              );
+              final listBottomPadding = isCompactHeight ? 72.0 : 100.0;
 
-        return Scaffold(
-        body: Column(children: [
-        Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-            color: headerColor,
-            child: Column(children: [
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                IconButton(
-                    icon: const Icon(Icons.chevron_left, size: 32),
-                    onPressed: () => _changeMonth(-1)),
-                Text(monthLabel,
-                    style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).textTheme.bodyLarge?.color)),
-                IconButton(
-                    icon: const Icon(Icons.chevron_right, size: 32),
-                    onPressed: () => _changeMonth(1))
-              ]),
-              const SizedBox(height: 10),
-              Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  decoration: BoxDecoration(
-                      color: Theme.of(context).cardColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-                      boxShadow: const [
-                        BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 4,
-                            offset: Offset(0, 2))
-                      ]),
-                  child: Column(children: [
-                    const Text('TOTAL REALIZADO',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            color: Colors.grey)),
-                    Text(UtilBrasilFields.obterReal(_totalPeriod),
-                        style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: totalColor))
-                  ]))
-            ])),
-        Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _displayList.isEmpty
-                    ? const Center(child: Text('Nenhuma conta para este mês.'))
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(0, 0, 0, 100),
-                        itemCount: _displayList.length,
-                        itemBuilder: (context, index) {
-                          try {
-                            return _buildAccountCard(_displayList[index]);
-                          } catch (e) {
-                            debugPrint('❌ Erro ao renderizar card $index: $e');
-                            return Container(
-                              padding: const EdgeInsets.all(12),
-                              margin: const EdgeInsets.all(8),
-                              color: Colors.red.shade50,
-                              child: Text('Erro ao renderizar: $e'),
-                            );
-                          }
-                        })),
-      ]),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'btnAdd',
-        tooltip: 'Novo lançamento',
-        backgroundColor: Colors.blue.shade800,
-        foregroundColor: Colors.white,
-        onPressed: _showQuickActions,
-        child: const Icon(Icons.add),
-      ),
-    );
+              return Column(children: [
+                Container(
+                    padding: headerPadding,
+                    color: headerColor,
+                    child: Row(children: [
+                      Expanded(
+                          child: Container(
+                              padding: cardPadding,
+                              decoration: BoxDecoration(
+                                  color: Theme.of(context).cardColor,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: Colors.grey.withValues(alpha: 0.3)),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                        color: Colors.black12,
+                                        blurRadius: 4,
+                                        offset: Offset(0, 2))
+                                  ]),
+                              child: Column(children: [
+                                Text(totalLabel,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                        color: Colors.grey)),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(UtilBrasilFields.obterReal(_totalPeriod),
+                                      style: TextStyle(
+                                          fontSize: totalFontSize,
+                                          fontWeight: FontWeight.bold,
+                                          color: totalColor)),
+                                )
+                              ]))),
+                      const SizedBox(width: 12),
+                      Expanded(
+                          child: Container(
+                              padding: cardPadding,
+                              decoration: BoxDecoration(
+                                  color: Theme.of(context).cardColor,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: Colors.grey.withValues(alpha: 0.3)),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                        color: Colors.black12,
+                                        blurRadius: 4,
+                                        offset: Offset(0, 2))
+                                  ]),
+                              child: Column(children: [
+                                Text(totalForecastLabel,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                        color: Colors.grey)),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(UtilBrasilFields.obterReal(_totalForecast),
+                                      style: TextStyle(
+                                          fontSize: totalFontSize,
+                                          fontWeight: FontWeight.bold,
+                                          color: totalForecastColor)),
+                                )
+                              ]))),
+                    ])),
+                Expanded(
+                    child: _isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : _displayList.isEmpty
+                            ? Center(child: Text(emptyText))
+                            : ListView.builder(
+                                padding: EdgeInsets.fromLTRB(
+                                    0, 0, 0, listBottomPadding),
+                                itemCount: _displayList.length,
+                                itemBuilder: (context, index) {
+                                  try {
+                                    return _buildAccountCard(_displayList[index]);
+                                  } catch (e) {
+                                    debugPrint(
+                                        '? Erro ao renderizar card $index: $e');
+                                    return Container(
+                                      padding: const EdgeInsets.all(12),
+                                      margin: const EdgeInsets.all(8),
+                                      color: Colors.red.shade50,
+                                      child: Text('Erro ao renderizar: $e'),
+                                    );
+                                  }
+                                })),
+              ]);
+            },
+          ),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        floatingActionButtonAnimator: FloatingActionButtonAnimator.scaling,
+        floatingActionButton: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(right: fabRight, bottom: fabBottom),
+            child: FloatingActionButton(
+              heroTag: 'btnAdd',
+              tooltip: _isRecebimentosFilter ? 'Novo recebimento' : 'Novo lancamento',
+              backgroundColor: Colors.blue.shade800,
+              foregroundColor: Colors.white,
+              onPressed: _isRecebimentosFilter
+                  ? _openRecebimentoForm
+                  : _showQuickActions,
+              mini: isCompactFab,
+              child: const Icon(Icons.add),
+            ),
+          ),
+        ),
+      );
     } catch (e, stackTrace) {
       debugPrint('❌ Erro ao renderizar DashboardScreen: $e');
       debugPrintStack(stackTrace: stackTrace);
       return Scaffold(
+        appBar: DateRangeAppBar(
+          range: DateTimeRange(start: _startDate, end: _endDate),
+          onPrevious: () => _changeMonth(-1),
+          onNext: () => _changeMonth(1),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -498,12 +770,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (isRecurrent) {
         moneyColor = Colors.grey;
       } else {
-        moneyColor = Colors.green.shade700;
+        moneyColor =
+            _isRecebimentosFilter ? Colors.green.shade700 : Colors.red.shade700;
       }
       if (Theme.of(context).brightness == Brightness.dark && !isRecurrent) {
-        moneyColor = Colors.lightGreenAccent;
+        moneyColor = _isRecebimentosFilter ? Colors.lightGreenAccent : Colors.redAccent;
       }
-      if (isAlertDay && !isRecurrent) {
+      if (isAlertDay && !isRecurrent && !_isRecebimentosFilter) {
         moneyColor = Colors.red.shade900;
       }
     }
@@ -769,7 +1042,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   if (isCard) ...[
                     InkWell(
                         onTap: () async {
-                          await rec.Navigator.push(
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) =>
@@ -1086,11 +1359,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final launchedValueController =
         TextEditingController(text: UtilBrasilFields.obterReal(averageValue));
 
-    // Data padrão = próximo mês, mesmo dia do vencimento
-    DateTime nextDate = DateTime(_startDate.year, _startDate.month + 1, rule.dueDay);
-    if (nextDate.month > 12) {
-      nextDate = DateTime(_startDate.year + 1, nextDate.month - 12, rule.dueDay);
-    }
+    // Data padrão = dia filtrado (se houver) ou mês atual no dia do vencimento
+    final useFilteredDay = DateUtils.isSameDay(_startDate, _endDate);
+    DateTime nextDate = useFilteredDay
+        ? _startDate
+        : DateTime(_startDate.year, _startDate.month, rule.dueDay);
 
     var check = HolidayService.adjustDateToBusinessDay(
         nextDate, PrefsService.cityNotifier.value);
@@ -1231,7 +1504,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                 if (mounted) {
                   Navigator.pop(ctx);
-                          rec.ScaffoldMessenger.of(context).showSnackBar(
+                          ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
                           'Parcela lançada: ${UtilBrasilFields.obterReal(finalValue)}'),
@@ -1397,7 +1670,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Widget screenToOpen;
     if (isRecurrentParent || isRecurrentChild) {
       // Abrir tela de edição de recorrentes
-      screenToOpen = RecurrentAccountEditScreen(account: account);
+      screenToOpen = rec.RecurrentAccountEditScreen(account: account);
     } else {
       // Abrir tela normal de edição
       screenToOpen = AccountEditScreen(account: account);
@@ -1681,55 +1954,116 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  bool get _isRecebimentosFilter {
+    final filter = widget.typeNameFilter;
+    if (filter == null) return false;
+    return filter.trim().toLowerCase() == 'recebimentos';
+  }
+
+  Future<void> _openRecebimentoForm() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const RecebimentoFormScreen()),
+    );
+    _refresh();
+  }
+
   void _showQuickActions() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (ctx) => SafeArea(
-        child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-          child: Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 16,
-            runSpacing: 16,
-            children: [
-              _buildQuickAction(
-                icon: Icons.receipt_long,
-                label: 'Lançar Conta',
-                color: Colors.blue.shade600,
-                onTap: () async {
-                  Navigator.pop(ctx);
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const AccountFormScreen()),
-                  );
-                  _refresh();
-                },
+        top: false,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final maxWidth = constraints.maxWidth;
+            final maxHeight = constraints.maxHeight;
+            const spacing = 10.0;
+            const horizontalPadding = 16.0;
+            final verticalPadding = maxHeight < 240 ? 12.0 : 20.0;
+            final bottomOffset = math.max(24.0, maxHeight * 0.08);
+            final availableHeight = math.max(0.0, maxHeight - bottomOffset);
+            final maxTileWidth = math.max(
+              0.0,
+              (maxWidth - (horizontalPadding * 2) - (spacing * 2)) / 3,
+            );
+            final maxTileHeight =
+                math.max(0.0, availableHeight - (verticalPadding * 2));
+            final tileSize =
+                math.min(104.0, math.min(maxTileWidth, maxTileHeight));
+            final iconSize = math.min(28.0, tileSize * 0.35);
+            final fontSize = math.min(12.0, math.max(8.0, tileSize * 0.12));
+            final sheetHeight =
+                math.min(availableHeight, tileSize + (verticalPadding * 2));
+
+            return Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: bottomOffset),
+                child: Container(
+                  height: sheetHeight,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    vertical: verticalPadding,
+                    horizontal: horizontalPadding,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildQuickAction(
+                        icon: Icons.receipt_long,
+                        label: 'Lançar Conta',
+                        color: Colors.blue.shade600,
+                        size: tileSize,
+                        iconSize: iconSize,
+                        fontSize: fontSize,
+                        onTap: () async {
+                          Navigator.pop(ctx);
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const AccountFormScreen()),
+                          );
+                          _refresh();
+                        },
+                      ),
+                      const SizedBox(width: spacing),
+                      _buildQuickAction(
+                        icon: Icons.credit_card,
+                        label: 'Despesa Cartão',
+                        color: Colors.deepPurple.shade500,
+                        size: tileSize,
+                        iconSize: iconSize,
+                        fontSize: fontSize,
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _startCardExpenseFlow();
+                        },
+                      ),
+                      const SizedBox(width: spacing),
+                      _buildQuickAction(
+                        icon: Icons.payments,
+                        label: 'Lançar Pagamento',
+                        color: Colors.green.shade600,
+                        size: tileSize,
+                        iconSize: iconSize,
+                        fontSize: fontSize,
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _showPaymentDialog();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              _buildQuickAction(
-                icon: Icons.credit_card,
-                label: 'Despesa Cartão',
-                color: Colors.deepPurple.shade500,
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _startCardExpenseFlow();
-                },
-              ),
-              _buildQuickAction(
-                icon: Icons.payments,
-                label: 'Lançar Pagamento',
-                color: Colors.green.shade600,
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _showPaymentDialog();
-                },
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -1740,14 +2074,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required String label,
     required Color color,
     required VoidCallback onTap,
+    double size = 110,
+    double iconSize = 30,
+    double fontSize = 13,
   }) {
     final fg = foregroundColorFor(color);
+    final padding = math.max(8.0, size * 0.12);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        width: 110,
-        height: 110,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(16),
@@ -1759,19 +2097,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ),
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(padding),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: fg, size: 30),
+            Icon(icon, color: fg, size: iconSize),
             const SizedBox(height: 8),
             Text(
               label,
               textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: fg,
                 fontWeight: FontWeight.w600,
-                fontSize: 13,
+                fontSize: fontSize,
               ),
             ),
           ],

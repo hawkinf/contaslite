@@ -3,8 +3,11 @@ import '../database/db_helper.dart';
 import '../models/account_category.dart';
 import '../models/account_type.dart';
 import '../widgets/app_input_decoration.dart';
+import '../services/prefs_service.dart';
+import '../widgets/date_range_app_bar.dart';
 import '../services/credit_card_brand_service.dart';
 import '../services/default_account_categories_service.dart';
+import 'recebimentos_table_screen.dart';
 
 class AccountTypesScreen extends StatefulWidget {
   const AccountTypesScreen({super.key});
@@ -31,29 +34,37 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tabelas de Contas'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            tooltip: 'Popular com padrões',
-            onPressed: _populateDefaults,
+    return ValueListenableBuilder<DateTimeRange>(
+      valueListenable: PrefsService.dateRangeNotifier,
+      builder: (context, range, _) {
+        return Scaffold(
+          appBar: DateRangeAppBar(
+            title: 'Tabelas de Contas',
+            range: range,
+            onPrevious: () => PrefsService.shiftDateRange(-1),
+            onNext: () => PrefsService.shiftDateRange(1),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.info_outline),
+                tooltip: 'Popular com padrões',
+                onPressed: _populateDefaults,
+              ),
+            ],
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showTypeDialog(),
-        label: const Text('Novo Item'),
-        icon: const Icon(Icons.add),
-      ),
-      body: SafeArea(
-        child: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : types.isEmpty
-                ? _buildEmptyState()
-                : _buildTable(),
-      ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => _showTypeDialog(),
+            label: const Text('Novo Item'),
+            icon: const Icon(Icons.add),
+          ),
+          body: SafeArea(
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : types.isEmpty
+                    ? _buildEmptyState()
+                    : _buildTable(),
+          ),
+        );
+      },
     );
   }
 
@@ -74,6 +85,25 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          alignment: WrapAlignment.end,
+          children: [
+            FilledButton.icon(
+              onPressed: () => _showTypeDialog(),
+              icon: const Icon(Icons.add),
+              label: const Text('Nova Categoria'),
+            ),
+            FilledButton.icon(
+              onPressed: _populateDefaults,
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('Popular'),
+              style: FilledButton.styleFrom(backgroundColor: Colors.amber.shade700),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
         Card(
           elevation: 2,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -96,7 +126,20 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(icon: const Icon(Icons.edit, color: Colors.blue), tooltip: 'Editar', onPressed: () => _showTypeDialog(typeToEdit: type)),
-                    IconButton(icon: const Icon(Icons.category, color: Colors.purple), tooltip: 'Categorias', onPressed: () => _showCategoriesDialog(type)),
+                    IconButton(
+                      icon: const Icon(Icons.category, color: Colors.purple),
+                      tooltip: 'Categorias',
+                      onPressed: () {
+                        if (type.name.toUpperCase() == 'RECEBIMENTOS') {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => const RecebimentosTableScreen(asDialog: true),
+                          );
+                          return;
+                        }
+                        _showCategoriesDialog(type);
+                      },
+                    ),
                       IconButton(icon: const Icon(Icons.delete, color: Colors.red), tooltip: 'Excluir', onPressed: () => _confirmDelete(type)),
                   ],
                 ),
@@ -551,15 +594,34 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
             ),
             const SizedBox(height: 12),
 
-            ElevatedButton.icon(
-              icon: const Icon(Icons.add),
-              label: const Text('Adicionar'),
-              onPressed: _addCategory,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade700,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: const Text('Adicionar'),
+                    onPressed: _addCategory,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.auto_awesome, size: 18),
+                    label: const Text('Popular'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber.shade600,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                    onPressed: _loadDefaultCategories,
+                  ),
+                ),
+              ],
             ),
 
             const SizedBox(height: 16),
@@ -578,19 +640,6 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
                   onPressed: _isLoadingBrands ? null : _loadBrandsAsCategories,
                 ),
               ),
-                        // Botão para popular com padrões
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.auto_awesome, size: 18),
-                label: const Text('Popular com Padrões'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber.shade600,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: _loadDefaultCategories,
-              ),
-            ),
                         // Lista de categorias
             Flexible(
               child: _categorias.isEmpty

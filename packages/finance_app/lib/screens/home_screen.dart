@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'account_types_screen.dart';
-import 'account_form_screen.dart';
+import '../services/prefs_service.dart';
+import 'credit_card_screen.dart';
+import 'dashboard_screen.dart';
+import 'recebimentos_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,52 +14,41 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  late final VoidCallback _tabRequestListener;
 
   final List<Widget> _screens = [
-    const Center(child: Text('Dashboard (Em Breve)')), 
-    const AccountTypesScreen(),
+    const DashboardScreen(),
+    const RecebimentosScreen(),
+    const CreditCardScreen(),
+    const SettingsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabRequestListener = () {
+      final requested = PrefsService.tabRequestNotifier.value;
+      if (requested == null || requested == _selectedIndex) return;
+      setState(() => _selectedIndex = requested);
+      PrefsService.tabRequestNotifier.value = null;
+    };
+    PrefsService.tabRequestNotifier.addListener(_tabRequestListener);
+  }
+
+  @override
+  void dispose() {
+    PrefsService.tabRequestNotifier.removeListener(_tabRequestListener);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Consultor Financeiro'),
-        centerTitle: true,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.indigo.shade800, Colors.indigo.shade500],
-            ),
-          ),
-        ),
-        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-        actions: [
-            IconButton(
-                icon: const Icon(Icons.add_circle_outline, color: Colors.white),
-                onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountFormScreen()));
-                },
-            )
-        ],
-      ),
-      body: _screens[_selectedIndex],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) => setState(() => _selectedIndex = index),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.list_alt_outlined),
-            selectedIcon: Icon(Icons.list_alt),
-            label: 'Tipos de Conta',
-          ),
-        ],
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _screens,
       ),
     );
   }
 }
+

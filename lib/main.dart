@@ -1,12 +1,17 @@
 import 'package:finance_app/screens/account_types_screen.dart';
-import 'package:finance_app/screens/credit_card_form.dart';
+import 'package:finance_app/screens/credit_card_screen.dart';
 import 'package:finance_app/screens/bank_accounts_screen.dart';
 import 'package:finance_app/screens/payment_methods_screen.dart';
+import 'package:finance_app/screens/recebimentos_table_screen.dart';
+import 'package:finance_app/screens/recebimentos_screen.dart';
 import 'package:finance_app/screens/settings_screen.dart';
+import 'package:finance_app/database/db_helper.dart';
+import 'package:finance_app/services/holiday_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
@@ -48,7 +53,7 @@ void main() async {
   if (GetPlatform.isDesktop) {
     await windowManager.ensureInitialized();
     windowManager.waitUntilReadyToShow().then((_) async {
-      // Cargar tamaño guardado o usar default
+      // Carregar tamanho salvo ou usar padrão
       final prefs = await SharedPreferences.getInstance();
       final savedWidth = prefs.getDouble('windowWidth') ?? 1200;
       final savedHeight = prefs.getDouble('windowHeight') ?? 800;
@@ -60,6 +65,7 @@ void main() async {
   
   await initializeDateFormatting('pt_BR', null); 
   Intl.defaultLocale = 'pt_BR'; 
+  await contas_prefs.PrefsService.init();
   runApp(const MyApp());
 }
 
@@ -156,97 +162,86 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  bool _isDarkMode = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadThemePreference();
-  }
-
-  Future<void> _loadThemePreference() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedDarkMode = prefs.getBool('isDarkMode') ?? false;
-      setState(() {
-        _isDarkMode = savedDarkMode;
-      });
-    } catch (e) {
-      debugPrint('Erro ao carregar tema: $e');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ContasPRO',
-      debugShowCheckedModeBanner: false,
-      themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.light,
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1976D2), brightness: Brightness.light),
-        scaffoldBackgroundColor: Colors.grey[50],
-        cardTheme: const CardThemeData(
-          elevation: 0,
-          color: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            elevation: 0,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: contas_prefs.PrefsService.themeNotifier,
+      builder: (context, themeMode, _) {
+        return MaterialApp(
+          title: 'ContasPRO',
+          debugShowCheckedModeBanner: false,
+          themeMode: themeMode,
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [
+            Locale('pt', 'BR'),
+            Locale('en', 'US'),
+          ],
+          locale: const Locale('pt', 'BR'),
+          theme: ThemeData(
+            useMaterial3: true,
+            brightness: Brightness.light,
+            colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1976D2), brightness: Brightness.light),
+            scaffoldBackgroundColor: Colors.grey[50],
+            cardTheme: const CardThemeData(
+              elevation: 0,
+              color: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            inputDecorationTheme: InputDecorationTheme(
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
           ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1976D2),
-          brightness: Brightness.dark,
-          surface: const Color(0xFF1E1E1E),
-          onSurface: Colors.white,
-        ),
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        cardTheme: const CardThemeData(
-          elevation: 0,
-          color: Color(0xFF1E1E1E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            elevation: 0,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            brightness: Brightness.dark,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF1976D2),
+              brightness: Brightness.dark,
+              surface: const Color(0xFF1E1E1E),
+              onSurface: Colors.white,
+            ),
+            scaffoldBackgroundColor: const Color(0xFF121212),
+            cardTheme: const CardThemeData(
+              elevation: 0,
+              color: Color(0xFF1E1E1E),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            inputDecorationTheme: InputDecorationTheme(
+              filled: true,
+              fillColor: const Color(0xFF2C2C2C),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              labelStyle: const TextStyle(color: Colors.white70),
+            ),
+            textTheme: const TextTheme(
+              titleLarge: TextStyle(color: Colors.white),
+              titleMedium: TextStyle(color: Colors.white),
+              bodyMedium: TextStyle(color: Colors.white70),
+            ),
+            iconTheme: const IconThemeData(color: Colors.white70),
           ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: const Color(0xFF2C2C2C),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          labelStyle: const TextStyle(color: Colors.white70),
-        ),
-        textTheme: const TextTheme(
-          titleLarge: TextStyle(color: Colors.white),
-          titleMedium: TextStyle(color: Colors.white),
-          bodyMedium: TextStyle(color: Colors.white70),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white70),
-      ),
-      home: HolidayScreen(
-        onThemeChanged: (isDark) {
-          setState(() {
-            _isDarkMode = isDark;
-          });
-        },
-      ),
+          home: const HolidayScreen(),
+        );
+      },
     );
   }
 }
@@ -256,10 +251,9 @@ class _MyAppState extends State<MyApp> {
 // =======================================================
 
 class HolidayScreen extends StatefulWidget {
-  final Function(bool) onThemeChanged;
   final DateTime? initialDate;
 
-  const HolidayScreen({super.key, required this.onThemeChanged, this.initialDate});
+  const HolidayScreen({super.key, this.initialDate});
 
   @override
   State<HolidayScreen> createState() => _HolidayScreenState();
@@ -272,12 +266,17 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
   String _calendarType = 'semanal'; // 'semanal', 'mensal', 'anual'
   late CityData _selectedCity;
   late Future<List<Holiday>> _holidaysFuture;
+  late Future<void> _contasInitFuture;
+  late Future<Map<int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount})>>
+      _monthlyTotalsFuture;
   late AnimationController _animationController;
   late TabController _tabController;
   bool _isLoading = false;
   bool _isDarkMode = false;
+  bool _skipNextContasReset = false;
   final Map<int, Future<List<Holiday>>> _holidaysCache = {};
   double _horizontalDragDistance = 0;
+  ({Holiday? holiday, int daysUntil})? _nextHolidayData;
 
   // GlobalKeys para capturar screenshots dos calendários
   final GlobalKey _calendarGridKey = GlobalKey();
@@ -296,11 +295,39 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     _calendarMonth = date.month;
     _initializeCities();
     _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) return;
+      if (_tabController.index == 0) {
+        if (_skipNextContasReset) {
+          _skipNextContasReset = false;
+        } else {
+          _resetContasDateRangeIfSingleDay();
+        }
+      }
+      if (_tabController.index == 3 && mounted) {
+        setState(() {
+          _monthlyTotalsFuture = _loadMonthlyTotals(_calendarMonth, _selectedYear);
+        });
+      }
+    });
+    contas_prefs.PrefsService.tabRequestNotifier.addListener(_handleTabRequest);
     
     // Inicializar _holidaysFuture antes de qualquer coisa
     _holidaysFuture = _getHolidaysForDisplay(_selectedYear);
+    _contasInitFuture = configureContasDatabaseIfNeeded();
+    _monthlyTotalsFuture = _loadMonthlyTotals(_calendarMonth, _selectedYear);
+
+    // Carregar próximo feriado
+    _getNextHoliday().then((data) {
+      if (mounted) {
+        setState(() {
+          _nextHolidayData = data;
+        });
+      }
+    });
     
+    contas_prefs.PrefsService.cityNotifier.addListener(_syncCityFromPrefs);
     _loadPreferences();
     
     // Setup para salvar tamanho da janela periodicamente em desktop
@@ -318,6 +345,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       _calendarMonth = now.month;
       _selectedWeek = now;
       _holidaysFuture = _getHolidaysForDisplay(_selectedYear);
+      _monthlyTotalsFuture = _loadMonthlyTotals(_calendarMonth, _selectedYear);
     });
     _savePreferences();
   }
@@ -370,7 +398,25 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     setState(() {
       _selectedYear += delta;
       _holidaysFuture = _getHolidaysForDisplay(_selectedYear);
+      _monthlyTotalsFuture = _loadMonthlyTotals(_calendarMonth, _selectedYear);
     });
+  }
+
+  void _resetContasDateRangeIfSingleDay() {
+    final range = contas_prefs.PrefsService.dateRangeNotifier.value;
+    if (!DateUtils.isSameDay(range.start, range.end)) return;
+    final monthStart = DateTime(_selectedYear, _calendarMonth, 1);
+    final monthEnd = DateTime(_selectedYear, _calendarMonth + 1, 0);
+    contas_prefs.PrefsService.saveDateRange(monthStart, monthEnd);
+  }
+
+  void _handleTabRequest() {
+    final index = contas_prefs.PrefsService.tabRequestNotifier.value;
+    if (index == null) return;
+    if (index >= 0 && index < _tabController.length) {
+      _tabController.animateTo(index);
+    }
+    contas_prefs.PrefsService.tabRequestNotifier.value = null;
   }
 
   void _changeMonth(int delta) {
@@ -394,6 +440,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       if (yearChanged) {
         _holidaysFuture = _getHolidaysForDisplay(_selectedYear);
       }
+      _monthlyTotalsFuture = _loadMonthlyTotals(_calendarMonth, _selectedYear);
     });
   }
 
@@ -724,27 +771,66 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       CityData(name: 'Varginha', state: 'MG', region: 'Sul de Minas', municipalHolidays: [{'date': '-10-07', 'name': 'Aniversário de Varginha'}]),
     ];
     
+    final allowedCities = HolidayService.regions.values.expand((items) => items).toSet();
+    final allowedNormalized = allowedCities.map(_normalizeCity).toSet();
+    cities.removeWhere((city) => !allowedNormalized.contains(_normalizeCity(city.name)));
     cities.sort((a, b) => a.name.compareTo(b.name));
-    
-    _selectedCity = cities.firstWhere((city) => city.name == 'São José dos Campos', orElse: () => cities.first);
+
+    final preferredCity = contas_prefs.PrefsService.cityNotifier.value;
+    _selectedCity = _findCityByName(preferredCity) ?? cities.first;
+  }
+
+  String _normalizeCity(String text) {
+    return text.toLowerCase().replaceAll(RegExp(r'[^a-z0-9 ]'), '');
+  }
+
+  CityData? _findCityByName(String name) {
+    final target = _normalizeCity(name);
+    for (final city in cities) {
+      if (_normalizeCity(city.name) == target) {
+        return city;
+      }
+    }
+    return null;
+  }
+
+  String _regionForCity(String name) {
+    for (final entry in HolidayService.regions.entries) {
+      if (entry.value.any((city) => _normalizeCity(city) == _normalizeCity(name))) {
+        return entry.key;
+      }
+    }
+    return HolidayService.regions.keys.first;
+  }
+
+  void _syncCityFromPrefs() {
+    if (!mounted) return;
+    final preferredCity = contas_prefs.PrefsService.cityNotifier.value;
+    final match = _findCityByName(preferredCity);
+    if (match == null || match.name == _selectedCity.name) return;
+    setState(() {
+      _selectedCity = match;
+      _holidaysCache.clear();
+      _holidaysFuture = _getHolidaysForDisplay(_selectedYear);
+    });
   }
   
   @override
   void dispose() {
     _animationController.dispose();
     _tabController.dispose();
+    contas_prefs.PrefsService.cityNotifier.removeListener(_syncCityFromPrefs);
+    contas_prefs.PrefsService.tabRequestNotifier.removeListener(_handleTabRequest);
     super.dispose();
   }
 
   Future<void> _loadPreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final savedCityName = prefs.getString('selectedCity');
-      if (savedCityName != null) {
-        final cityIndex = cities.indexWhere((city) => city.name == savedCityName);
-        if (cityIndex != -1) {
-          _selectedCity = cities[cityIndex];
-        }
+      final preferredCity = contas_prefs.PrefsService.cityNotifier.value;
+      final match = _findCityByName(preferredCity);
+      if (match != null) {
+        _selectedCity = match;
       }
       // Sempre usar data atual, não carregar ano anterior
       _selectedYear = DateTime.now().year;
@@ -770,7 +856,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
   Future<void> _savePreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('selectedCity', _selectedCity.name);
       // Não salvar year pois sempre iniciamos com data atual
       await prefs.setBool('isDarkMode', _isDarkMode);
       await prefs.setString('calendarType', _calendarType);
@@ -872,6 +957,28 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     return allHolidays;
   }
 
+  Future<({Holiday? holiday, int daysUntil})> _getNextHoliday() async {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    try {
+      final holidays = await _getHolidaysForDisplay(today.year);
+
+      // Encontrar o próximo feriado após hoje
+      for (final holiday in holidays) {
+        final holidayDate = DateTime.parse(holiday.date);
+        if (holidayDate.isAfter(todayDate)) {
+          final daysUntil = holidayDate.difference(todayDate).inDays;
+          return (holiday: holiday, daysUntil: daysUntil);
+        }
+      }
+
+      return (holiday: null, daysUntil: 0);
+    } catch (e) {
+      debugPrint('Erro ao buscar próximo feriado: $e');
+      return (holiday: null, daysUntil: 0);
+    }
+  }
+
   // --- CALCULADORA DE DATAS ---
   void _showDateCalculator(BuildContext context) {
     showDialog(
@@ -889,358 +996,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
             );
           },
         ),
-      ),
-    );
-  }
-
-  // --- MENU SOBRE (LAYOUT RESTAURADO COM SWITCH ABAIXO DO AUTOR) ---
-  void _showAbout() {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 450),
-          padding: const EdgeInsets.all(32),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Image.asset(
-                    'assets/logo.png',
-                    width: 100,
-                    height: 100,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Icon(
-                          Icons.calendar_month,
-                          size: 50,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                
-                const SizedBox(height: 24),
-                
-                Text(
-                  'CalendarPRO v$appDisplayVersion',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                
-                const SizedBox(height: 8),
-                
-                Text(
-                  'Versão $appVersion (Build $appBuild) - ${_selectedCity.name}',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.grey[600],
-                  ),
-                ),
-                
-                const SizedBox(height: 24),
-                
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.person,
-                        size: 32,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Desenvolvido por',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Aguinaldo Liesack Baptistini',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // === PREFERÊNCIAS (REGIÃO E CIDADE) ===
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.4),
-                      width: 1,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Preferências',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // BOTÃO DE MODO ESCURO (MOVIDO PARA CÁ)
-                Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: SwitchListTile(
-                    title: Text(
-                      'Modo Escuro',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    subtitle: Text(
-                      _isDarkMode ? 'Ativado' : 'Desativado',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    secondary: Icon(
-                      _isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                      color: Theme.of(context).colorScheme.secondary,
-                    ),
-                    value: _isDarkMode,
-                    onChanged: (bool value) {
-                      setState(() {
-                        _isDarkMode = value;
-                      });
-                      _savePreferences();
-                      widget.onThemeChanged(value);
-                      Navigator.pop(context);
-                    },
-                  ),
-                ),
-                
-                const SizedBox(height: 16),
-
-                // Fonte da API
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.api,
-                        size: 32,
-                        color: Theme.of(context).colorScheme.secondary,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Fonte de Dados',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'BrasilAPI',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        apiSource,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 24),
-                
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('FECHAR'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showCitySelector() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 800;
-    final searchController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          // Filtrar cidades baseado no texto de busca
-          final filteredCities = searchController.text.isEmpty
-              ? cities
-              : cities
-                  .where((city) =>
-                      city.name.toLowerCase().contains(searchController.text.toLowerCase()) ||
-                      city.state.toLowerCase().contains(searchController.text.toLowerCase()) ||
-                      city.region.toLowerCase().contains(searchController.text.toLowerCase()))
-                  .toList();
-
-          return Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: isMobile ? 400 : 600,
-                maxHeight: isMobile ? 600 : 500,
-              ),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Título
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Selecionar Cidade',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          searchController.dispose();
-                          Navigator.pop(context);
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // Campo de busca
-                  TextField(
-                    controller: searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Buscar cidade, estado ou região...',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                searchController.clear();
-                                setDialogState(() {});
-                              },
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                    onChanged: (value) {
-                      setDialogState(() {});
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  // Lista de cidades filtrada
-                  Expanded(
-                    child: filteredCities.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.location_off, size: 48, color: Colors.grey[400]),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Nenhuma cidade encontrada',
-                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : ListView.builder(
-                            itemCount: filteredCities.length,
-                            itemBuilder: (context, index) {
-                              final city = filteredCities[index];
-                              final isSelected = city.name == _selectedCity.name;
-                              return ListTile(
-                                leading: Icon(
-                                  Icons.location_on,
-                                  color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey,
-                                ),
-                                title: Text(city.name),
-                                subtitle: Text('${city.state} - ${city.region}'),
-                                trailing: isSelected
-                                    ? Icon(
-                                      Icons.check,
-                                      color: Theme.of(context).colorScheme.primary,
-                                    )
-                                    : null,
-                                selected: isSelected,
-                                onTap: () {
-                                  setState(() {
-                                    _selectedCity = city;
-                                  });
-                                  _savePreferences();
-                                  searchController.dispose();
-                                  Navigator.pop(context);
-                                },
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
       ),
     );
   }
@@ -2006,13 +1761,145 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     return stats;
   }
 
+  void _showCitySelector() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 800;
+    final searchController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final filteredCities = searchController.text.isEmpty
+              ? cities
+              : cities
+                  .where((city) =>
+                      city.name.toLowerCase().contains(searchController.text.toLowerCase()) ||
+                      city.state.toLowerCase().contains(searchController.text.toLowerCase()) ||
+                      city.region.toLowerCase().contains(searchController.text.toLowerCase()))
+                  .toList();
+
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: isMobile ? 400 : 600,
+                maxHeight: isMobile ? 600 : 500,
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Selecionar Cidade',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          searchController.dispose();
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar cidade, estado ou região...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                searchController.clear();
+                                setDialogState(() {});
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    onChanged: (_) => setDialogState(() {}),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: filteredCities.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.location_off, size: 48, color: Colors.grey[400]),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Nenhuma cidade encontrada',
+                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: filteredCities.length,
+                            itemBuilder: (context, index) {
+                              final city = filteredCities[index];
+                              final isSelected = city.name == _selectedCity.name;
+                              return ListTile(
+                                leading: Icon(
+                                  Icons.location_on,
+                                  color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey,
+                                ),
+                                title: Text(city.name),
+                                subtitle: Text('${city.state} - ${city.region}'),
+                                trailing: isSelected
+                                    ? Icon(
+                                        Icons.check,
+                                        color: Theme.of(context).colorScheme.primary,
+                                      )
+                                    : null,
+                                selected: isSelected,
+                                onTap: () {
+                                  setState(() {
+                                    _selectedCity = city;
+                                  });
+                                  contas_prefs.PrefsService.saveLocation(
+                                    _regionForCity(city.name),
+                                    city.name,
+                                  );
+                                  _savePreferences();
+                                  searchController.dispose();
+                                  Navigator.pop(context);
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   // --- RESUMO QUE APARECE NA TELA PRINCIPAL (LIMPO E CORRIGIDO PARA DARK MODE) ---
   Widget _buildMainStatsSummary(HolidayStats stats, double fontSize, {bool isSmallMobile = false}) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Card(
       elevation: 2,
-      // Cor de fundo do card adaptativa
       color: Theme.of(context).cardTheme.color,
       margin: const EdgeInsets.only(top: 24, bottom: 24),
       child: Padding(
@@ -2020,7 +1907,41 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Card clicável para selecionar cidade
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left),
+                    color: Theme.of(context).colorScheme.onPrimary,
+                    tooltip: 'Ano anterior',
+                    onPressed: () => _changeYear(-1),
+                  ),
+                  Text(
+                    '$_selectedYear',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: fontSize + 12,
+                          color: Theme.of(context).colorScheme.onPrimary,
+                          letterSpacing: 1.0,
+                        ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right),
+                    color: Theme.of(context).colorScheme.onPrimary,
+                    tooltip: 'Próximo ano',
+                    onPressed: () => _changeYear(1),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             GestureDetector(
               onTap: () => _showCitySelector(),
               child: Container(
@@ -2067,43 +1988,47 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            Text('RESUMO DO ANO $_selectedYear', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: fontSize + 2, color: Theme.of(context).colorScheme.primary)),
+            const SizedBox(height: 8),
+            Text(
+              'RESUMO DO ANO $_selectedYear',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: fontSize + 2,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
             const Divider(height: 8),
             isSmallMobile
-              ? Column(
-                  children: [
-                    // Primeira linha: Total de Feriados + Dias Úteis
-                    Row(
-                      children: [
-                        Expanded(child: _buildStatBadgeCompact('Total de Feriados', stats.totalFeriadosUnicos, Colors.green, fontSize)),
-                        const SizedBox(width: 8),
-                        Expanded(child: _buildStatBadgeCompact('Dias Úteis', stats.diasUteis, Colors.indigo, fontSize)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    // Segunda linha: Finais de Semana
-                    Row(
-                      children: [
-                        Expanded(child: _buildStatBadgeCompact('Finais de Semana', stats.finaisSemana, Colors.red, fontSize)),
-                      ],
-                    ),
-                  ],
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(child: _buildStatBadge('Total de Feriados', stats.totalFeriadosUnicos, Colors.green, fontSize)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _buildStatBadge('Dias Úteis', stats.diasUteis, Colors.indigo, fontSize)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _buildStatBadge('Finais de Semana', stats.finaisSemana, Colors.red, fontSize)),
-                  ],
-                ),
+                ? Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: _buildStatBadgeCompact('Total de Feriados', stats.totalFeriadosUnicos, Colors.green, fontSize)),
+                          const SizedBox(width: 8),
+                          Expanded(child: _buildStatBadgeCompact('Dias Úteis', stats.diasUteis, Colors.indigo, fontSize)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(child: _buildStatBadgeCompact('Finais de Semana', stats.finaisSemana, Colors.red, fontSize)),
+                        ],
+                      ),
+                    ],
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(child: _buildStatBadge('Total de Feriados', stats.totalFeriadosUnicos, Colors.green, fontSize)),
+                      const SizedBox(width: 8),
+                      Expanded(child: _buildStatBadge('Dias Úteis', stats.diasUteis, Colors.indigo, fontSize)),
+                      const SizedBox(width: 8),
+                      Expanded(child: _buildStatBadge('Finais de Semana', stats.finaisSemana, Colors.red, fontSize)),
+                    ],
+                  ),
             const Divider(height: 8),
-             Text('Por Tipo', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            Text('Por Tipo', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            // Uso de cores dinâmicas para fundo (claro em Light, transparente em Dark) e texto (preto em Light, branco em Dark)
             _buildStatRow(context, 'Nacionais', stats.nacionais, isDark ? Colors.white : Colors.black87, backgroundColor: isDark ? Colors.blue.withValues(alpha: 0.2) : Colors.blue[50]),
             _buildStatRow(context, 'Municipais', stats.municipais, isDark ? Colors.white : Colors.black87, backgroundColor: isDark ? Colors.orange.withValues(alpha: 0.2) : Colors.orange[50]),
             _buildStatRow(context, 'Bancários', stats.bancarios, isDark ? Colors.white : Colors.black87, backgroundColor: isDark ? Colors.teal.withValues(alpha: 0.2) : Colors.teal[50]),
@@ -2113,12 +2038,11 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       ),
     );
   }
-  
+
   Widget _buildStatBadge(String label, int value, Color color, double fontSize) {
     return Stack(
       alignment: Alignment.center,
       children: [
-        // Forma decorativa com borda arredondada estilo "fita"
         Container(
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
           decoration: BoxDecoration(
@@ -2163,7 +2087,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     return Stack(
       alignment: Alignment.center,
       children: [
-        // Forma decorativa com borda arredondada - mais compacta para mobile
         Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
           decoration: BoxDecoration(
@@ -2208,7 +2131,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
   // --- MODIFICADO: _buildStatRow COM CORES DINÂMICAS ---
   Widget _buildStatRow(BuildContext context, String label, int value, Color textColor, {Color? backgroundColor}) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor ?? Colors.transparent,
@@ -2217,22 +2140,28 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
       child: Row(
         children: [
-          Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textColor, fontWeight: FontWeight.w500))),
+          Expanded(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textColor, fontWeight: FontWeight.w500),
+            ),
+          ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
             decoration: BoxDecoration(
-                // Badge de número: Cinza claro no Light, Cinza Escuro no Dark
-                color: isDark ? Colors.grey[800] : Colors.grey[200], 
-                borderRadius: BorderRadius.circular(8)
+              color: isDark ? Colors.grey[800] : Colors.grey[200],
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(value.toString(), style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: textColor)),
+            child: Text(
+              value.toString(),
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: textColor),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // --- MÉTODOS AUXILIARES ---
   String _formatDate(String dateString) {
     final date = DateTime.tryParse(dateString);
     if (date == null) return 'Data inválida';
@@ -2247,12 +2176,162 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
   }
 
 
+  Future<Map<int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount})>>
+      _loadMonthlyTotals(int month, int year) async {
+    try {
+      await _contasInitFuture;
+    } catch (e) {
+      debugPrint('Erro ao inicializar banco de contas: $e');
+    }
+
+    try {
+      final accounts = await DatabaseHelper.instance.readAllAccountsRaw();
+      final types = await DatabaseHelper.instance.readAllTypes();
+      int? recebimentosTypeId;
+      for (final type in types) {
+        if (type.name.trim().toLowerCase() == 'recebimentos') {
+          recebimentosTypeId = type.id;
+          break;
+        }
+      }
+      bool isRecebimento(dynamic acc) =>
+          recebimentosTypeId != null && acc.typeId == recebimentosTypeId;
+      final totalsByDay =
+          <int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount})>{};
+
+      bool hasRecurrenceStarted(dynamic acc) {
+        if (acc.year == null || acc.month == null) return true;
+        if (acc.year < year) return true;
+        return acc.year == year && acc.month <= month;
+      }
+
+      void addPrevisto(int dueDay, double value) {
+        final current = totalsByDay[dueDay] ??
+            (previsto: 0.0, lancado: 0.0, previstoCount: 0, lancadoCount: 0, recebimentos: 0.0, recebimentosCount: 0);
+        totalsByDay[dueDay] = (
+          previsto: current.previsto + value,
+          lancado: current.lancado,
+          previstoCount: current.previstoCount + 1,
+          lancadoCount: current.lancadoCount,
+          recebimentos: current.recebimentos,
+          recebimentosCount: current.recebimentosCount,
+        );
+      }
+
+      void addLancado(int dueDay, double value) {
+        final current = totalsByDay[dueDay] ??
+            (previsto: 0.0, lancado: 0.0, previstoCount: 0, lancadoCount: 0, recebimentos: 0.0, recebimentosCount: 0);
+        totalsByDay[dueDay] = (
+          previsto: current.previsto,
+          lancado: current.lancado + value,
+          previstoCount: current.previstoCount,
+          lancadoCount: current.lancadoCount + 1,
+          recebimentos: current.recebimentos,
+          recebimentosCount: current.recebimentosCount,
+        );
+      }
+
+      void addRecebimento(int dueDay, double value) {
+        final current = totalsByDay[dueDay] ??
+            (previsto: 0.0, lancado: 0.0, previstoCount: 0, lancadoCount: 0, recebimentos: 0.0, recebimentosCount: 0);
+        totalsByDay[dueDay] = (
+          previsto: current.previsto,
+          lancado: current.lancado,
+          previstoCount: current.previstoCount,
+          lancadoCount: current.lancadoCount,
+          recebimentos: current.recebimentos + value,
+          recebimentosCount: current.recebimentosCount + 1,
+        );
+      }
+
+      final contasAccounts =
+          accounts.where((acc) => acc.cardId == null && !isRecebimento(acc)).toList();
+
+      final monthAccounts =
+          contasAccounts.where((acc) => acc.month == month && acc.year == year).toList();
+
+      final monthRecebimentos = accounts
+          .where((acc) =>
+              acc.month == month &&
+              acc.year == year &&
+              acc.cardId == null &&
+              isRecebimento(acc))
+          .toList();
+
+      final childrenByRecurrence = <int, List<dynamic>>{};
+      for (final acc in monthAccounts) {
+        final recurrenceId = acc.recurrenceId;
+        if (recurrenceId == null) continue;
+        childrenByRecurrence.putIfAbsent(recurrenceId, () => []).add(acc);
+      }
+
+      for (final acc in monthAccounts) {
+        if (acc.isRecurrent) continue;
+        if (acc.recurrenceId != null) continue;
+        addLancado(acc.dueDay, acc.value);
+      }
+
+      for (final entry in childrenByRecurrence.entries) {
+        final list = entry.value;
+        list.sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
+        final selected = list.first;
+        addLancado(selected.dueDay, selected.value);
+      }
+
+      for (final acc in accounts) {
+        if (!acc.isRecurrent) continue;
+        if (isRecebimento(acc)) continue;
+        if (acc.recurrenceId != null) continue;
+        if (acc.cardId != null) continue;
+        if (!hasRecurrenceStarted(acc)) continue;
+        final recurrenceId = acc.id;
+        if (recurrenceId == null) continue;
+        if (childrenByRecurrence.containsKey(recurrenceId)) continue;
+        addPrevisto(acc.dueDay, acc.value);
+      }
+
+      final recebimentosByRecurrence = <int, List<dynamic>>{};
+      for (final acc in monthRecebimentos) {
+        final recurrenceId = acc.recurrenceId;
+        if (recurrenceId == null) continue;
+        recebimentosByRecurrence.putIfAbsent(recurrenceId, () => []).add(acc);
+      }
+
+      for (final acc in monthRecebimentos) {
+        if (acc.isRecurrent) continue;
+        if (acc.recurrenceId != null) continue;
+        addRecebimento(acc.dueDay, acc.value);
+      }
+
+      for (final entry in recebimentosByRecurrence.entries) {
+        final list = entry.value;
+        list.sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
+        final selected = list.first;
+        addRecebimento(selected.dueDay, selected.value);
+      }
+
+      return totalsByDay;
+    } catch (e) {
+      debugPrint('Erro ao carregar totais por dia: $e');
+      return {};
+    }
+  }
+
+  void _openAccountsForDay(int day, int month, int year) {
+    final date = DateTime(year, month, day);
+    _skipNextContasReset = true;
+    contas_prefs.PrefsService.setTabReturnIndex(_tabController.index);
+    contas_prefs.PrefsService.saveDateRange(date, date);
+    _tabController.animateTo(0);
+  }
+
   Widget _buildCalendarGrid() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 800;
     final isSmallMobile = screenWidth < 600;
     final double fontSize = isMobile ? 11.0 : 13.0;
     final double headerFontSize = isMobile ? 13.0 : 15.0;
+    final moneyFormat = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     
     final now = DateTime(_selectedYear, _calendarMonth, 1);
     final firstDayOfWeek = now.weekday % 7; // 0=domingo, 1=segunda, ..., 6=sábado
@@ -2333,7 +2412,12 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           debugPrint('Carregando feriados...');
         }
         
-        return GestureDetector(
+        return FutureBuilder<
+            Map<int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount})>>(
+          future: _monthlyTotalsFuture,
+          builder: (context, totalsSnapshot) {
+            final totalsByDay = totalsSnapshot.data ?? {};
+            return GestureDetector(
           behavior: HitTestBehavior.opaque,
           onHorizontalDragStart: (_) => _horizontalDragDistance = 0,
           onHorizontalDragUpdate: (details) {
@@ -2429,15 +2513,46 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     children: [
                       Align(
                         alignment: Alignment.center,
-                        child: Text(
-                          '$monthName $_selectedYear',
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.blue,
-                            letterSpacing: 1.2,
-                          ),
-                          textAlign: TextAlign.center,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              onPressed: () => _changeMonth(-1),
+                              tooltip: 'Mì anterior',
+                              splashRadius: 18,
+                              icon: const Text(
+                                '<',
+                                style: TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '$monthName $_selectedYear',
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.blue,
+                                letterSpacing: 1.2,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            IconButton(
+                              onPressed: () => _changeMonth(1),
+                              tooltip: 'Pr│imo mì',
+                              splashRadius: 18,
+                              icon: const Text(
+                                '>',
+                                style: TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       Align(
@@ -2546,6 +2661,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 final holidayKey = '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
                                 final isHoliday = holidayDays.contains(holidayKey);
                                 final holidayName = isHoliday ? holidayNames[holidayKey] : null;
+                                final dailyTotals = isCurrentMonth ? totalsByDay[day] : null;
+                                final previsto = dailyTotals?.previsto ?? 0.0;
+                                final lancado = dailyTotals?.lancado ?? 0.0;
+                                final recebimentos = dailyTotals?.recebimentos ?? 0.0;
+                                final previstoCount = dailyTotals?.previstoCount ?? 0;
+                                final lancadoCount = dailyTotals?.lancadoCount ?? 0;
+                                final recebimentosCount = dailyTotals?.recebimentosCount ?? 0;
                                 
                                 Color bgColor = Colors.white;
                                 Color textColor = Theme.of(context).colorScheme.onSurface;
@@ -2573,61 +2695,142 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 
                                 return Tooltip(
                                   message: holidayName ?? '',
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: bgColor.withValues(alpha: opacity),
-                                      border: Border.all(
-                                        color: Colors.black,
-                                        width: 2.0,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8.0),
-                                    ),
-                                    padding: EdgeInsets.all(1.0),
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Stack(
-                                          alignment: Alignment.center,
-                                          children: [
-                                            if (todayHighlightColor != null)
-                                              Container(
-                                                width: isSmallMobile ? 36 : 66,
-                                                height: isSmallMobile ? 36 : 66,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: todayHighlightColor,
-                                                  border: Border.all(color: Colors.black, width: 3),
-                                                ),
-                                              ),
-                                            Text(
-                                              day.toString(),
-                                              style: TextStyle(fontSize: fontSize * (isSmallMobile ? 1.4 : 1.7), fontWeight: FontWeight.w900, color: textColor),
-                                            ),
-                                          ],
+                                  child: GestureDetector(
+                                    onTap: () => _openAccountsForDay(day, month, year),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: bgColor.withValues(alpha: opacity),
+                                        border: Border.all(
+                                          color: Colors.black,
+                                          width: 2.0,
                                         ),
-                                        if (isToday)
-                                          Padding(
-                                            padding: const EdgeInsets.only(top: 4),
-                                            child: Text(
-                                              'HOJE',
-                                              style: TextStyle(fontSize: fontSize * 0.9, fontWeight: FontWeight.w700, color: Colors.black),
-                                            ),
+                                        borderRadius: BorderRadius.circular(8.0),
+                                      ),
+                                      padding: EdgeInsets.all(1.0),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Stack(
+                                            alignment: Alignment.center,
+                                            children: [
+                                              if (todayHighlightColor != null)
+                                                Container(
+                                                  width: isSmallMobile ? 36 : 66,
+                                                  height: isSmallMobile ? 36 : 66,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: todayHighlightColor,
+                                                    border: Border.all(color: Colors.black, width: 3),
+                                                  ),
+                                                ),
+                                              Text(
+                                                day.toString(),
+                                                style: TextStyle(fontSize: fontSize * (isSmallMobile ? 1.4 : 1.7), fontWeight: FontWeight.w900, color: textColor),
+                                              ),
+                                            ],
                                           ),
-                                        if (isHoliday && holidayName != null)
-                                          Flexible(
-                                            child: Padding(
-                                              padding: const EdgeInsets.only(top: 0.0),
+                                          if (isToday)
+                                            Padding(
+                                              padding: const EdgeInsets.only(top: 4),
                                               child: Text(
-                                                holidayName,
+                                                'HOJE',
+                                                style: TextStyle(fontSize: fontSize * 0.9, fontWeight: FontWeight.w700, color: Colors.black),
+                                              ),
+                                            ),
+                                          if (previsto > 0)
+                                            Padding(
+                                              padding: EdgeInsets.only(top: isSmallMobile ? 2 : 4),
+                                              child: Text.rich(
+                                                TextSpan(
+                                                  children: [
+                                                    TextSpan(
+                                                      text: '($previstoCount) ',
+                                                      style: TextStyle(
+                                                        color: Colors.blue.shade700,
+                                                        fontWeight: FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                    TextSpan(text: moneyFormat.format(previsto)),
+                                                  ],
+                                                ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                                 textAlign: TextAlign.center,
-                                                style: TextStyle(fontSize: fontSize * (isSmallMobile ? 0.75 : 0.85), fontWeight: FontWeight.w600, color: textColor),
+                                                style: TextStyle(
+                                                  fontSize: fontSize * (isSmallMobile ? 1.2 : 1.4),
+                                                  fontWeight: FontWeight.w700,
+                                                  color: textColor,
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                      ],
+                                          if (lancado > 0)
+                                            Padding(
+                                              padding: EdgeInsets.only(top: isSmallMobile ? 1 : 2),
+                                              child: Text.rich(
+                                                TextSpan(
+                                                  children: [
+                                                    TextSpan(
+                                                      text: '($lancadoCount) ',
+                                                      style: TextStyle(
+                                                        color: Colors.red.shade700,
+                                                        fontWeight: FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                    TextSpan(text: moneyFormat.format(lancado)),
+                                                  ],
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  fontSize: fontSize * (isSmallMobile ? 1.2 : 1.4),
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.red.shade700,
+                                                ),
+                                              ),
+                                            ),
+                                          if (recebimentos > 0)
+                                            Padding(
+                                              padding: EdgeInsets.only(top: isSmallMobile ? 1 : 2),
+                                              child: Text.rich(
+                                                TextSpan(
+                                                  children: [
+                                                    TextSpan(
+                                                      text: '($recebimentosCount) ',
+                                                      style: TextStyle(
+                                                        color: Colors.blue.shade700,
+                                                        fontWeight: FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                    TextSpan(text: moneyFormat.format(recebimentos)),
+                                                  ],
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  fontSize: fontSize * (isSmallMobile ? 1.2 : 1.4),
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.blue.shade700,
+                                                ),
+                                              ),
+                                            ),
+                                          if (isHoliday && holidayName != null)
+                                            Flexible(
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(top: 0.0),
+                                                child: Text(
+                                                  holidayName,
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(fontSize: fontSize * (isSmallMobile ? 0.75 : 0.85), fontWeight: FontWeight.w600, color: textColor),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 );
@@ -2636,70 +2839,14 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                           ],
                         ),
                       ),
-                      if (!isSmallMobile)
-                        Positioned(
-                          left: 12,
-                          top: 0,
-                          bottom: 0,
-                          child: Center(
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: BoxConstraints.tightFor(width: isSmallMobile ? 48 : 56, height: isSmallMobile ? 48 : 56),
-                              iconSize: 30,
-                              splashRadius: 30,
-                              icon: Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Theme.of(context).colorScheme.primary,
-                                  border: Border.all(color: Colors.black, width: 2),
-                                ),
-                                alignment: Alignment.center,
-                                child: Icon(
-                                  Icons.arrow_back_ios_new,
-                                  size: 24,
-                                  color: Colors.white,
-                                  weight: 700,
-                                ),
-                              ),
-                              onPressed: () => _changeMonth(-1),
-                            ),
-                          ),
-                        ),
-                      if (!isSmallMobile)
-                        Positioned(
-                          right: 12,
-                          top: 0,
-                          bottom: 0,
-                          child: Center(
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: BoxConstraints.tightFor(width: isSmallMobile ? 48 : 56, height: isSmallMobile ? 48 : 56),
-                              iconSize: 30,
-                              splashRadius: 30,
-                              icon: Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Theme.of(context).colorScheme.primary,
-                                  border: Border.all(color: Colors.black, width: 2),
-                                ),
-                                alignment: Alignment.center,
-                                child: Icon(
-                                  Icons.arrow_forward_ios,
-                                  size: 24,
-                                  color: Colors.white,
-                                  weight: 700,
-                                ),
-                              ),
-                              onPressed: () => _changeMonth(1),
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                 ),
               ],
             ),
           ),
+        );
+          },
         );
       },
     );
@@ -2982,41 +3129,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           }
         }
 
-        Widget buildYearNavButton({required bool isNext}) {
-          final double arrowDiameter = isSmallMobile ? 32.0 : 36.0;
-          return GestureDetector(
-            onTap: () => _changeYear(isNext ? 1 : -1),
-            child: Container(
-              width: arrowDiameter,
-              height: arrowDiameter,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Color(0xFF0D47A1), Color(0xFF1E88E5)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-                boxShadow: [
-                  BoxShadow(color: Colors.black26, offset: Offset(0, 3), blurRadius: 6),
-                ],
-              ),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white70, width: 2.2),
-                ),
-                child: Center(
-                  child: Icon(
-                    isNext ? Icons.arrow_forward_ios : Icons.arrow_back_ios_new,
-                    size: 20,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          );
-        }
-        
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
           onHorizontalDragStart: (_) => _horizontalDragDistance = 0,
@@ -3038,159 +3150,172 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
               padding: EdgeInsets.all(isSmallMobile ? 8 : 16),
                 child: Column(
                 children: [
-                  // CABEÇALHO COM CONTROLES DO ANO E TIPO DE CALENDÁRIO
+                  // CABECALHO COM CONTROLES DO ANO E TIPO DE CALENDARIO
                   if (isSmallMobile)
-                    SizedBox(
-                      height: 60,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          buildYearNavButton(isNext: false),
-                          const SizedBox(width: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              gradient: const LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [Color(0xFF0D47A1), Color(0xFF2196F3)],
-                              ),
-                              boxShadow: const [
-                                BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
-                              ],
-                              border: Border.all(color: Colors.white70, width: 2),
+                    Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.chevron_left),
+                              onPressed: () => _changeYear(-1),
+                              tooltip: 'Ano anterior',
+                              iconSize: 28,
                             ),
-                            child: Text(
+                            Text(
                               '$_selectedYear',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 20,
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.blue,
                                 letterSpacing: 1.2,
-                                color: Colors.white,
                               ),
+                              textAlign: TextAlign.center,
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          buildYearNavButton(isNext: true),
-                          const SizedBox(width: 12),
-                          SizedBox(
-                            width: 90,
-                            height: 32,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: Theme.of(context).colorScheme.outline,
-                                  width: 2,
+                            IconButton(
+                              icon: const Icon(Icons.chevron_right),
+                              onPressed: () => _changeYear(1),
+                              tooltip: 'Proximo ano',
+                              iconSize: 28,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _buildTodayButton(),
+                            const SizedBox(width: 12),
+                            SizedBox(
+                              width: 100,
+                              height: 32,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: Theme.of(context).colorScheme.outline,
+                                    width: 2,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: DropdownButton<String>(
-                                value: _calendarType,
-                                isExpanded: true,
-                                underline: const SizedBox(),
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                                style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
-                                items: const [
-                                  DropdownMenuItem<String>(value: 'semanal', child: Text('Semanal')),
-                                  DropdownMenuItem<String>(value: 'mensal', child: Text('Mensal')),
-                                  DropdownMenuItem<String>(value: 'anual', child: Text('Anual')),
-                                ],
-                                onChanged: (type) {
-                                  if (type != null) {
-                                    setState(() {
-                                      _calendarType = type;
-                                    });
-                                    _savePreferences();
-                                  }
-                                },
+                                child: DropdownButton<String>(
+                                  value: _calendarType,
+                                  isExpanded: true,
+                                  underline: const SizedBox(),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
+                                  items: const [
+                                    DropdownMenuItem<String>(value: 'semanal', child: Text('Semanal')),
+                                    DropdownMenuItem<String>(value: 'mensal', child: Text('Mensal')),
+                                    DropdownMenuItem<String>(value: 'anual', child: Text('Anual')),
+                                  ],
+                                  onChanged: (type) {
+                                    if (type != null) {
+                                      setState(() {
+                                        _calendarType = type;
+                                      });
+                                      _savePreferences();
+                                    }
+                                  },
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
                     )
                   else
                     SizedBox(
                       height: 72,
-                      child: Row(
+                      child: Stack(
+                        alignment: Alignment.center,
                         children: [
-                          Expanded(
+                          Align(
+                            alignment: Alignment.center,
                             child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                buildYearNavButton(isNext: false),
-                                const SizedBox(width: 14),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(14),
-                                    gradient: const LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [Color(0xFF0D47A1), Color(0xFF2196F3)],
-                                    ),
-                                    boxShadow: const [
-                                      BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
-                                    ],
-                                    border: Border.all(color: Colors.white70, width: 2),
-                                  ),
-                                  child: Text(
-                                    '$_selectedYear',
-                                    style: const TextStyle(
-                                      fontSize: 30,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 1.2,
-                                      color: Colors.white,
+                                IconButton(
+                                  onPressed: () => _changeYear(-1),
+                                  tooltip: 'Ano anterior',
+                                  splashRadius: 18,
+                                  icon: const Text(
+                                    '<',
+                                    style: TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.blue,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(width: 14),
-                                buildYearNavButton(isNext: true),
+                                Text(
+                                  '$_selectedYear',
+                                  style: TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.blue,
+                                    letterSpacing: 1.2,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                IconButton(
+                                  onPressed: () => _changeYear(1),
+                                  tooltip: 'Proximo ano',
+                                  splashRadius: 18,
+                                  icon: const Text(
+                                    '>',
+                                    style: TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _buildTodayButton(),
-                              const SizedBox(width: 8),
-                              SizedBox(
-                                width: 130,
-                                height: 32,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: Theme.of(context).colorScheme.outline,
-                                      width: 2,
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildTodayButton(),
+                                const SizedBox(width: 8),
+                                SizedBox(
+                                  width: 120,
+                                  height: 32,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: Theme.of(context).colorScheme.outline,
+                                        width: 2,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: DropdownButton<String>(
-                                    value: _calendarType,
-                                    isExpanded: true,
-                                    underline: const SizedBox(),
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
-                                    items: const [
-                                      DropdownMenuItem<String>(value: 'semanal', child: Text('Semanal')),
-                                      DropdownMenuItem<String>(value: 'mensal', child: Text('Mensal')),
-                                      DropdownMenuItem<String>(value: 'anual', child: Text('Anual')),
-                                    ],
-                                    onChanged: (type) {
-                                      if (type != null) {
-                                        setState(() {
-                                          _calendarType = type;
-                                        });
-                                        _savePreferences();
-                                      }
-                                    },
+                                    child: DropdownButton<String>(
+                                      value: _calendarType,
+                                      isExpanded: true,
+                                      underline: const SizedBox(),
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
+                                      items: const [
+                                        DropdownMenuItem<String>(value: 'semanal', child: Text('Semanal')),
+                                        DropdownMenuItem<String>(value: 'mensal', child: Text('Mensal')),
+                                        DropdownMenuItem<String>(value: 'anual', child: Text('Anual')),
+                                      ],
+                                      onChanged: (type) {
+                                        if (type != null) {
+                                          setState(() {
+                                            _calendarType = type;
+                                          });
+                                          _savePreferences();
+                                        }
+                                      },
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -3293,131 +3418,122 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
             expandedHeight: isSmallMobile ? 150 : (isMobile ? 55 : 53),
             pinned: true,
             centerTitle: true,
-            actions: isMobile ? [] : [
-              Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: IconButton(
-                  icon: const Icon(Icons.account_balance),
-                  iconSize: isMobile ? 28 : 24,
-                  tooltip: 'Bancos',
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const BankAccountsScreen(),
+            actions: isSmallMobile
+                ? []
+                : [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: IconButton(
+                        icon: const Icon(Icons.print),
+                        iconSize: isMobile ? 28 : 24,
+                        tooltip: 'Imprimir Relatório',
+                        onPressed: () => _printReport(),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: IconButton(
-                  icon: const Icon(Icons.payment),
-                  iconSize: isMobile ? 28 : 24,
-                  tooltip: 'Formas de Pagamento',
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const PaymentMethodsScreen(),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: IconButton(
+                        icon: const Icon(Icons.calculate),
+                        iconSize: isMobile ? 28 : 24,
+                        tooltip: 'Calcular Datas',
+                        onPressed: () => _showDateCalculator(context),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: IconButton(
-                  icon: const Icon(Icons.category),
-                  iconSize: isMobile ? 28 : 24,
-                  tooltip: 'Tabelas',
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const AccountTypesScreen(),
+
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: IconButton(
+                        icon: const Icon(Icons.table_chart),
+                        iconSize: isMobile ? 28 : 24,
+                        tooltip: 'Tabelas',
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const TablesScreen(),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: IconButton(
-                  icon: const Icon(Icons.credit_card),
-                  iconSize: isMobile ? 28 : 24,
-                  tooltip: 'Novo Cartão',
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const CreditCardFormScreen(),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: IconButton(
+                        icon: const Icon(Icons.settings),
+                        iconSize: isMobile ? 28 : 24,
+                        tooltip: 'Preferências',
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SettingsScreen(),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: IconButton(
-                  icon: const Icon(Icons.print),
-                  iconSize: isMobile ? 28 : 24,
-                  tooltip: 'Imprimir Relatório',
-                  onPressed: () => _printReport(),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: IconButton(
-                  icon: const Icon(Icons.calculate),
-                  iconSize: isMobile ? 28 : 24,
-                  tooltip: 'Calcular Datas',
-                  onPressed: () => _showDateCalculator(context),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: IconButton(
-                  icon: const Icon(Icons.settings),
-                  iconSize: isMobile ? 28 : 24,
-                  tooltip: 'Configurações',
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const SettingsScreen(),
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: IconButton(
-                  icon: const Icon(Icons.info_outline),
-                  iconSize: isMobile ? 28 : 24,
-                  tooltip: 'Sobre',
-                  onPressed: _showAbout,
-                ),
-              ),
-            ],
+                  ],
             flexibleSpace: FlexibleSpaceBar(
-              title: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    'ContasPRO',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: isSmallMobile ? 18 : 20,
-                      color: Colors.white,
-                    ),
+              title: ValueListenableBuilder<DateTimeRange>(
+              valueListenable: contas_prefs.PrefsService.dateRangeNotifier,
+              builder: (context, range, _) {
+                final titleFontSize = isSmallMobile ? 18.0 : 22.0;
+                final settings = context.dependOnInheritedWidgetOfExactType<FlexibleSpaceBarSettings>();
+                final bool isCollapsed = settings != null && settings.currentExtent <= (settings.minExtent + 12);
+                return SizedBox(
+                  width: double.infinity,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 2),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'ContasPRO',
+                                textAlign: TextAlign.left,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: titleFontSize,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                'by Aguinaldo Liesack Baptistini',
+                                textAlign: TextAlign.left,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: isSmallMobile ? 10 : 12,
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                ),
+                              ),
+                              if (!isCollapsed && _nextHolidayData?.holiday != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    'Próximo feriado: ${_nextHolidayData!.holiday!.name} em ${_nextHolidayData!.daysUntil} dia${_nextHolidayData!.daysUntil == 1 ? '' : 's'}',
+                                    textAlign: TextAlign.left,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: isSmallMobile ? 9 : 11,
+                                      color: Colors.yellow.shade200,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    'by Aguinaldo Liesack Baptistini',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: isSmallMobile ? 10 : 12,
-                      color: Colors.white.withValues(alpha: 0.9),
-                    ),
-                  ),
-                ],
-              ),
-              background: Container(
+                );
+              },
+            ),
+            background: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -3453,12 +3569,30 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                       color: Colors.white,
                       onPressed: () => _showDateCalculator(context),
                     ),
+
                     IconButton(
-                      icon: const Icon(Icons.info_outline),
+                      icon: const Icon(Icons.table_chart),
                       iconSize: 24,
-                      tooltip: 'Sobre',
+                      tooltip: 'Tabelas',
                       color: Colors.white,
-                      onPressed: _showAbout,
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const TablesScreen(),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.settings),
+                      iconSize: 24,
+                      tooltip: 'Preferências',
+                      color: Colors.white,
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SettingsScreen(),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -3475,9 +3609,11 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     controller: _tabController,
                     dividerColor: Colors.transparent,
                     tabs: const [
+                      Tab(text: 'Contas a Pagar', icon: Icon(Icons.receipt_long)),
+                      Tab(text: 'Contas a Receber', icon: Icon(Icons.savings)),
+                      Tab(text: 'Cartőes', icon: Icon(Icons.credit_card)),
                       Tab(text: 'Calendário', icon: Icon(Icons.calendar_month)),
-                      Tab(text: 'Resumo', icon: Icon(Icons.list_alt)),
-                      Tab(text: 'Contas', icon: Icon(Icons.receipt_long)),
+                      Tab(text: 'Feriados', icon: Icon(Icons.list_alt)),
                     ],
                   ),
                   // TABBARVIEW COM O CONTEÚDO DAS DUAS ABAS
@@ -3486,13 +3622,19 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     child: TabBarView(
                       controller: _tabController,
                       children: [
-                        // ABA 1: CALENDÁRIO
+                        // ABA 1: CONTAS (pacote ../contas)
+                        const ContasTab(),
+                        // ABA 2: RECEBIMENTOS
+                        const RecebimentosTab(),
+                        // ABA 3: CARTÕES
+                        const CreditCardScreen(),
+                        // ABA 4: CALENDARIO
                         SingleChildScrollView(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              // CALENDÁRIO CONFORME TIPO SELECIONADO
+                              // CALENDARIO CONFORME TIPO SELECIONADO
                               if (_calendarType == 'mensal')
                                 RepaintBoundary(
                                   key: _calendarGridKey,
@@ -3508,30 +3650,79 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                             ],
                           ),
                         ),
-                        // ABA 2: RESUMO DE FERIADOS
+                        // ABA 5: FERIADOS
                         SingleChildScrollView(
                           child: FutureBuilder<List<Holiday>>(
                             future: _holidaysFuture,
                             builder: (context, snapshot) {
                               if (snapshot.connectionState == ConnectionState.waiting) {
-                                return Center(child: Padding(padding: const EdgeInsets.all(40.0), child: Column(children: [CircularProgressIndicator(color: Theme.of(context).colorScheme.primary), const SizedBox(height: 16), Text('Carregando feriados...', style: TextStyle(color: Colors.grey[600], fontSize: fontSize))])));
+                                return Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(40.0),
+                                    child: Column(
+                                      children: [
+                                        CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'Carregando feriados...',
+                                          style: TextStyle(color: Colors.grey[600], fontSize: fontSize),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
                               } else if (snapshot.hasError) {
-                                return Center(child: Padding(padding: const EdgeInsets.all(40.0), child: Column(children: [Icon(Icons.error_outline, size: 48, color: Colors.red[300]), const SizedBox(height: 16), Text('Erro ao carregar feriados', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: fontSize), textAlign: TextAlign.center), const SizedBox(height: 8), Text('${snapshot.error}', style: TextStyle(color: Colors.grey[600], fontSize: fontSize - 4), textAlign: TextAlign.center)])));
+                                return Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(40.0),
+                                    child: Column(
+                                      children: [
+                                        Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'Erro ao carregar feriados',
+                                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: fontSize),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          '${snapshot.error}',
+                                          style: TextStyle(color: Colors.grey[600], fontSize: fontSize - 4),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
                               } else if (snapshot.hasData) {
                                 final holidays = snapshot.data!;
-                                if (holidays.isEmpty) return Center(child: Padding(padding: const EdgeInsets.all(40.0), child: Column(children: [Icon(Icons.event_busy, size: 48, color: Colors.grey[400]), const SizedBox(height: 16), Text('Nenhum feriado encontrado', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: fontSize))])));
+                                if (holidays.isEmpty) {
+                                  return Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(40.0),
+                                      child: Column(
+                                        children: [
+                                          Icon(Icons.event_busy, size: 48, color: Colors.grey[400]),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            'Nenhum feriado encontrado',
+                                            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: fontSize),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }
 
-                                // Filtra apenas feriados do ano selecionado
                                 final holidaysCurrentYear = holidays.where((h) {
                                   try {
                                     final year = DateTime.parse(h.date).year;
                                     return year == _selectedYear;
-                                  } catch (e) {
+                                  } catch (_) {
                                     return false;
                                   }
                                 }).toList();
 
-                                // Deduplica feriados por data
                                 final Map<String, Holiday> uniqueHolidaysMap = {};
                                 for (var holiday in holidaysCurrentYear) {
                                   if (!uniqueHolidaysMap.containsKey(holiday.date)) {
@@ -3545,8 +3736,22 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _buildMainStatsSummary(stats, fontSize, isSmallMobile: isSmallMobile), // ESTATISTICAS NA TELA PRINCIPAL (LIMPO E COLORIDO)
-                                    Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: Row(children: [Icon(Icons.event_note, color: Theme.of(context).colorScheme.primary, size: isMobile ? 28 : 24), const SizedBox(width: 8), Expanded(child: Text('Lista de Feriados de $_selectedYear', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: fontSize + 4)))])),
+                                    _buildMainStatsSummary(stats, fontSize, isSmallMobile: isSmallMobile),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.event_note, color: Theme.of(context).colorScheme.primary, size: isMobile ? 28 : 24),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              'Lista de Feriados de $_selectedYear',
+                                              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: fontSize + 4),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                     SizedBox(height: isMobile ? 16 : 12),
                                     ListView.builder(
                                       shrinkWrap: true,
@@ -3556,32 +3761,129 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                         final holiday = uniqueHolidays[index];
                                         final formattedDate = _formatDate(holiday.date);
                                         bool isWeekend = false;
-                                        try { isWeekend = (DateFormat('yyyy-MM-dd').parse(holiday.date).weekday == DateTime.saturday || DateFormat('yyyy-MM-dd').parse(holiday.date).weekday == DateTime.sunday); } catch (e) {
+                                        try {
+                                          final parsed = DateFormat('yyyy-MM-dd').parse(holiday.date);
+                                          isWeekend = parsed.weekday == DateTime.saturday || parsed.weekday == DateTime.sunday;
+                                        } catch (_) {
                                           // Ignorar erro na análise de fim de semana
                                         }
+
                                         return Card(
                                           elevation: 1,
                                           color: null,
                                           margin: EdgeInsets.only(bottom: isMobile ? 12 : 8),
                                           child: InkWell(
                                             borderRadius: BorderRadius.circular(16),
-                                            onTap: () { HapticFeedback.lightImpact(); },
+                                            onTap: () => HapticFeedback.lightImpact(),
                                             child: Padding(
                                               padding: EdgeInsets.all(isMobile ? 18 : 16),
                                               child: Row(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
-                                                  Column(children: holiday.types.map((type) {
-                                                    Color typeColor = Colors.grey;
-                                                    if (type.contains('Bancário')) typeColor = Colors.teal;
-                                                    if (type.contains('Nacional')) typeColor = Colors.blue;
-                                                    if (type.contains('Estadual')) typeColor = Colors.purple;
-                                                    if (type.contains('Municipal')) typeColor = Colors.orange;
-                                                    return Container(margin: const EdgeInsets.only(bottom: 8), padding: EdgeInsets.all(isMobile ? 14 : 12), decoration: BoxDecoration(color: isWeekend ? Colors.red[100] : typeColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)), child: Icon(Icons.event, color: isWeekend ? Colors.red : typeColor, size: isMobile ? 28 : 24));
-                                                  }).toList()),
+                                                  Column(
+                                                    children: holiday.types.map((type) {
+                                                      Color typeColor = Colors.grey;
+                                                      if (type.contains('Bancário')) typeColor = Colors.teal;
+                                                      if (type.contains('Nacional')) typeColor = Colors.blue;
+                                                      if (type.contains('Estadual')) typeColor = Colors.purple;
+                                                      if (type.contains('Municipal')) typeColor = Colors.orange;
+                                                      return Container(
+                                                        margin: const EdgeInsets.only(bottom: 8),
+                                                        padding: EdgeInsets.all(isMobile ? 14 : 12),
+                                                        decoration: BoxDecoration(
+                                                          color: isWeekend ? Colors.red[100] : typeColor.withValues(alpha: 0.15),
+                                                          borderRadius: BorderRadius.circular(12),
+                                                        ),
+                                                        child: Icon(Icons.event, color: isWeekend ? Colors.red : typeColor, size: isMobile ? 28 : 24),
+                                                      );
+                                                    }).toList(),
+                                                  ),
                                                   SizedBox(width: isMobile ? 18 : 16),
-                                                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(holiday.name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: isMobile ? fontSize + 2 : fontSize)), SizedBox(height: isMobile ? 6 : 4), Text(formattedDate, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[700], fontSize: isMobile ? fontSize : fontSize - 2)), SizedBox(height: isMobile ? 6 : 4), Wrap(spacing: 6, runSpacing: 6, children: holiday.types.map((type) { Color typeColor = Colors.grey; if (type.contains('Bancário')) typeColor = Colors.teal; if (type.contains('Nacional')) typeColor = Colors.blue; if (type.contains('Estadual')) typeColor = Colors.purple; if (type.contains('Municipal')) typeColor = Colors.orange; return Container(padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 8, vertical: isMobile ? 6 : 4), decoration: BoxDecoration(color: isWeekend ? Colors.red[50] : typeColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)), child: Text(type, style: TextStyle(fontSize: isMobile ? 13 : 11, color: isWeekend ? Colors.red : typeColor, fontWeight: FontWeight.w600))); }).toList()), if (holiday.specialNote != null) ...[SizedBox(height: isMobile ? 8 : 6), Container(padding: EdgeInsets.all(isMobile ? 10 : 8), decoration: BoxDecoration(color: isWeekend ? Colors.red[50] : Colors.amber.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: isWeekend ? Colors.red[200]! : Colors.amber.withValues(alpha: 0.3), width: 1)), child: Row(children: [Icon(Icons.access_time, size: isMobile ? 18 : 16, color: isWeekend ? Colors.red : Colors.amber[800]), SizedBox(width: isMobile ? 8 : 6), Expanded(child: Text(holiday.specialNote!, style: TextStyle(fontSize: isMobile ? 13 : 11, color: isWeekend ? Colors.red[900] : Colors.amber[900], fontWeight: FontWeight.w500))) ]))]])),
-                                                  if (isWeekend) Container(padding: EdgeInsets.all(isMobile ? 10 : 8), decoration: BoxDecoration(color: Colors.red[50], shape: BoxShape.circle), child: Icon(Icons.weekend, color: Colors.red, size: isMobile ? 24 : 20)),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(
+                                                          holiday.name,
+                                                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                                                fontWeight: FontWeight.bold,
+                                                                fontSize: isMobile ? fontSize + 2 : fontSize,
+                                                              ),
+                                                        ),
+                                                        SizedBox(height: isMobile ? 6 : 4),
+                                                        Text(
+                                                          formattedDate,
+                                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                                                color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[400] : Colors.grey[700],
+                                                                fontSize: isMobile ? fontSize : fontSize - 2,
+                                                              ),
+                                                        ),
+                                                        SizedBox(height: isMobile ? 6 : 4),
+                                                        Wrap(
+                                                          spacing: 6,
+                                                          runSpacing: 6,
+                                                          children: holiday.types.map((type) {
+                                                            Color typeColor = Colors.grey;
+                                                            if (type.contains('Bancário')) typeColor = Colors.teal;
+                                                            if (type.contains('Nacional')) typeColor = Colors.blue;
+                                                            if (type.contains('Estadual')) typeColor = Colors.purple;
+                                                            if (type.contains('Municipal')) typeColor = Colors.orange;
+                                                            return Container(
+                                                              padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 8, vertical: isMobile ? 6 : 4),
+                                                              decoration: BoxDecoration(
+                                                                color: isWeekend ? Colors.red[50] : typeColor.withValues(alpha: 0.1),
+                                                                borderRadius: BorderRadius.circular(6),
+                                                              ),
+                                                              child: Text(
+                                                                type,
+                                                                style: TextStyle(
+                                                                  fontSize: isMobile ? 13 : 11,
+                                                                  color: isWeekend ? Colors.red : typeColor,
+                                                                  fontWeight: FontWeight.w600,
+                                                                ),
+                                                              ),
+                                                            );
+                                                          }).toList(),
+                                                        ),
+                                                        if (holiday.specialNote != null) ...[
+                                                          SizedBox(height: isMobile ? 8 : 6),
+                                                          Container(
+                                                            padding: EdgeInsets.all(isMobile ? 10 : 8),
+                                                            decoration: BoxDecoration(
+                                                              color: isWeekend ? Colors.red[50] : Colors.amber.withValues(alpha: 0.1),
+                                                              borderRadius: BorderRadius.circular(8),
+                                                              border: Border.all(
+                                                                color: isWeekend ? Colors.red[200]! : Colors.amber.withValues(alpha: 0.3),
+                                                                width: 1,
+                                                              ),
+                                                            ),
+                                                            child: Row(
+                                                              children: [
+                                                                Icon(Icons.access_time, size: isMobile ? 18 : 16, color: isWeekend ? Colors.red : Colors.amber[800]),
+                                                                SizedBox(width: isMobile ? 8 : 6),
+                                                                Expanded(
+                                                                  child: Text(
+                                                                    holiday.specialNote!,
+                                                                    style: TextStyle(
+                                                                      fontSize: isMobile ? 13 : 11,
+                                                                      color: isWeekend ? Colors.red[900] : Colors.amber[900],
+                                                                      fontWeight: FontWeight.w500,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  if (isWeekend)
+                                                    Container(
+                                                      padding: EdgeInsets.all(isMobile ? 10 : 8),
+                                                      decoration: BoxDecoration(color: Colors.red[50], shape: BoxShape.circle),
+                                                      child: Icon(Icons.weekend, color: Colors.red, size: isMobile ? 24 : 20),
+                                                    ),
                                                 ],
                                               ),
                                             ),
@@ -3596,9 +3898,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                             },
                           ),
                         ),
-                        // ABA 3: CONTAS (pacote ../contas)
-                        const ContasTab(),
-                      ],
+],
                     ),
                   ),
                 ],
@@ -3634,6 +3934,7 @@ class _ContasTabState extends State<ContasTab> {
       await configureContasDatabaseIfNeeded();
 
       await contas_prefs.PrefsService.init();
+      contas_prefs.PrefsService.setEmbeddedMode(false);
 
       try {
         await contas_db.DatabaseInitializationService.instance.initializeDatabase();
@@ -3699,6 +4000,100 @@ class _ContasTabState extends State<ContasTab> {
       child: contas_app.FinanceApp(migrationRequired: _migrationRequired),
     );
   }
+}
+
+
+
+class RecebimentosTab extends StatelessWidget {
+  const RecebimentosTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const RecebimentosScreen();
+  }
+}
+
+class TablesScreen extends StatelessWidget {
+  const TablesScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      _TableShortcut(
+        title: 'Tipos de Conta',
+        subtitle: 'Categorias para contas',
+        icon: Icons.category,
+        builder: () => const AccountTypesScreen(),
+      ),
+      _TableShortcut(
+        title: 'Contas Bancarias',
+        subtitle: 'Bancos e contas',
+        icon: Icons.account_balance,
+        builder: () => const BankAccountsScreen(),
+      ),
+      _TableShortcut(
+        title: 'Formas de Pagamento',
+        subtitle: 'Cartao, boleto, etc.',
+        icon: Icons.payments,
+        builder: () => const PaymentMethodsScreen(),
+      ),
+      _TableShortcut(
+        title: 'Tabela de Recebimentos',
+        subtitle: 'Categorias de recebimentos',
+        icon: Icons.savings,
+        builder: () => const RecebimentosTableScreen(),
+      ),
+    ];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Tabelas'),
+      ),
+      body: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Theme.of(context)
+                  .colorScheme
+                  .primary
+                  .withValues(alpha: 0.12),
+              child: Icon(
+                item.icon,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            title: Text(item.title),
+            subtitle: Text(item.subtitle),
+            trailing: const Icon(Icons.chevron_right),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            tileColor: Theme.of(context).cardColor,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => item.builder()),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _TableShortcut {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Widget Function() builder;
+
+  const _TableShortcut({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.builder,
+  });
 }
 
 // === FIM DO ARQUIVO ===

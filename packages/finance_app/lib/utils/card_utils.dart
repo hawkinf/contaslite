@@ -1,4 +1,4 @@
-// Utilitários para processamento de cartões de crédito
+/* Utilities for credit card processing */
 
 class CardBreakdown {
   final double total;

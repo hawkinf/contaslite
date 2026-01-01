@@ -9,6 +9,7 @@ import '../utils/color_contrast.dart';
 import '../utils/installment_utils.dart';
 import '../widgets/new_expense_dialog.dart';
 import 'card_expense_edit_screen.dart';
+import '../widgets/date_range_app_bar.dart';
 
 class CardExpensesScreen extends StatefulWidget {
   final Account card; 
@@ -149,9 +150,19 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     Color bgColor = (widget.card.cardColor != null) ? Color(widget.card.cardColor!) : Colors.purple.shade700;
     final fgColor = foregroundColorFor(bgColor);
 
-    return Scaffold(
-      appBar: AppBar(title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(widget.card.description, style: TextStyle(fontSize: 16, color: fgColor)), Text('DETALHAMENTO', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w300, color: fgColor))]), backgroundColor: bgColor, iconTheme: IconThemeData(color: fgColor)),
-      floatingActionButton: FloatingActionButton.extended(
+    return ValueListenableBuilder<DateTimeRange>(
+      valueListenable: PrefsService.dateRangeNotifier,
+      builder: (context, range, _) {
+        return Scaffold(
+      appBar: DateRangeAppBar(
+          title: widget.card.description,
+          range: range,
+          onPrevious: () => PrefsService.shiftDateRange(-1),
+          onNext: () => PrefsService.shiftDateRange(1),
+          backgroundColor: bgColor,
+          foregroundColor: fgColor,
+        ),
+        floatingActionButton: FloatingActionButton.extended(
         heroTag: 'fabNewCardExpense',
         onPressed: _openNewExpense,
         backgroundColor: Colors.deepPurple,
@@ -255,6 +266,8 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
           Expanded(child: _isLoading ? const Center(child: CircularProgressIndicator()) : _expenses.isEmpty ? const Center(child: Text('Nenhuma despesa nesta fatura.')) : ListView.builder(padding: const EdgeInsets.all(8), itemCount: _expenses.length, itemBuilder: (context, index) { return _buildExpenseItem(_expenses[index]); })),
         ],
       ),
+        );
+      },
     );
   }
 

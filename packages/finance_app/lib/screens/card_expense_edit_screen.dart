@@ -8,6 +8,8 @@ import '../models/account_category.dart';
 import '../utils/color_contrast.dart';
 import '../utils/installment_utils.dart';
 import '../widgets/app_input_decoration.dart';
+import '../services/prefs_service.dart';
+import '../widgets/date_range_app_bar.dart';
 
 class CardExpenseEditScreen extends StatefulWidget {
   final Account expense;
@@ -199,13 +201,19 @@ class _CardExpenseEditScreenState extends State<CardExpenseEditScreen> {
     Color bgColor = (widget.card.cardColor != null) ? Color(widget.card.cardColor!) : Colors.purple.shade700;
     final fgColor = foregroundColorFor(bgColor);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Editar Despesa'),
-        backgroundColor: bgColor,
-        foregroundColor: fgColor,
-      ),
-      body: SingleChildScrollView(
+    return ValueListenableBuilder<DateTimeRange>(
+      valueListenable: PrefsService.dateRangeNotifier,
+      builder: (context, range, _) {
+        return Scaffold(
+      appBar: DateRangeAppBar(
+          title: 'Editar Despesa',
+          range: range,
+          onPrevious: () => PrefsService.shiftDateRange(-1),
+          onNext: () => PrefsService.shiftDateRange(1),
+          backgroundColor: bgColor,
+          foregroundColor: fgColor,
+        ),
+        body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
@@ -342,6 +350,8 @@ class _CardExpenseEditScreenState extends State<CardExpenseEditScreen> {
           label: Text(_isSaving ? 'SALVANDO...' : 'SALVAR ALTERAÇÕES'),
         ),
       ),
+        );
+      },
     );
   }
 }

@@ -13,7 +13,7 @@ import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
 import '../utils/color_contrast.dart';
 import 'account_types_screen.dart';
-import 'settings_screen.dart';
+import 'recebimentos_table_screen.dart';
 import '../widgets/app_input_decoration.dart';
 import '../utils/installment_utils.dart';
 
@@ -46,7 +46,19 @@ class InstallmentDraft {
 
 class AccountFormScreen extends StatefulWidget {
   final Account? accountToEdit;
-  const AccountFormScreen({super.key, this.accountToEdit});
+  final String? typeNameFilter;
+  final bool lockTypeSelection;
+  final bool useInstallmentDropdown;
+  final bool isRecebimento;
+
+  const AccountFormScreen({
+    super.key,
+    this.accountToEdit,
+    this.typeNameFilter,
+    this.lockTypeSelection = false,
+    this.useInstallmentDropdown = false,
+    this.isRecebimento = false,
+  });
 
   @override
   State<AccountFormScreen> createState() => _AccountFormScreenState();
@@ -104,6 +116,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   AccountCategory? _selectedCategory;
   List<AccountType> _typesList = [];
   List<AccountCategory> _categorias = [];
+  List<AccountCategory> _parentCategorias = [];
+  AccountCategory? _selectedParentCategoria;
+  static const String _recebimentosChildSeparator = '||';
 
   List<InstallmentDraft> _installments = [];
   int _recurrentDay = 10;
@@ -111,6 +126,41 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   int _recurrentStartYear = 0; // Ano de início da recorrência
   bool _payInAdvance = false;
   bool _isSaving = false;
+
+  String get _typeLabel =>
+      widget.isRecebimento ? 'Tipo de Recebimento' : 'Tipo da Conta';
+  String get _baseDateLabel => widget.isRecebimento
+      ? 'Data Base do Recebimento'
+      : 'Dia Base do Vencimento';
+  String get _descriptionLabel => widget.isRecebimento
+      ? 'Descricao do Recebimento'
+      : 'Descricao (Ex: TV Nova, Aluguel)';
+  String get _typeSelectMessage => widget.isRecebimento
+      ? 'Selecione um tipo de recebimento primeiro'
+      : 'Selecione um tipo de conta primeiro';
+  String get _typeSelectErrorMessage => widget.isRecebimento
+      ? 'Selecione um tipo de recebimento'
+      : 'Selecione um tipo';
+  String get _missingTypesMessage => widget.isRecebimento
+      ? 'Cadastre Tipos de Recebimento Primeiro!'
+      : 'Cadastre Tipos Primeiro!';
+
+  String _saveButtonLabel() {
+    if (_entryMode == 0) {
+      final noun = widget.isRecebimento ? 'RECEBIMENTO' : 'CONTA';
+      return 'LANCAR ${_installments.length} $noun(S)';
+    }
+    return 'SALVAR RECORRENCIA';
+  }
+
+  bool _isRecebimentosChild(AccountCategory category) {
+    return category.categoria.contains(_recebimentosChildSeparator);
+  }
+
+  String _childDisplayName(String raw) {
+    if (!raw.contains(_recebimentosChildSeparator)) return raw;
+    return raw.split(_recebimentosChildSeparator).last.trim();
+  }
 
   @override
   void initState() {
@@ -289,6 +339,8 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     if (_selectedType?.id == null) {
       setState(() {
         _categorias = [];
+        _parentCategorias = [];
+        _selectedParentCategoria = null;
       });
       return;
     }
@@ -296,17 +348,64 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     final categorias =
         await DatabaseHelper.instance.readAccountCategories(_selectedType!.id!);
 
+    if (!widget.isRecebimento) {
+      setState(() {
+        _categorias = categorias;
+      });
+      return;
+    }
+
+    final parents = <AccountCategory>[];
+    final children = <AccountCategory>[];
+    for (final cat in categorias) {
+      if (_isRecebimentosChild(cat)) {
+        children.add(cat);
+      } else {
+        parents.add(cat);
+      }
+    }
+    parents.sort((a, b) => a.categoria.compareTo(b.categoria));
+
+    AccountCategory? selectedParent = _selectedParentCategoria;
+    if (selectedParent == null && parents.isNotEmpty) {
+      selectedParent = parents.first;
+    } else if (selectedParent != null &&
+        !parents.any((p) => p.id == selectedParent!.id)) {
+      selectedParent = parents.isNotEmpty ? parents.first : null;
+    }
+
+    final filteredChildren = selectedParent == null
+        ? <AccountCategory>[]
+        : children
+            .where((child) =>
+                child.categoria.startsWith(
+                    '${selectedParent!.categoria}$_recebimentosChildSeparator'))
+            .toList()
+          ..sort((a, b) => a.categoria.compareTo(b.categoria));
+
     setState(() {
-      _categorias = categorias;
+      _parentCategorias = parents;
+      _selectedParentCategoria = selectedParent;
+      _categorias = filteredChildren;
+      if (_selectedCategory != null &&
+          !_categorias.any((c) => c.id == _selectedCategory!.id)) {
+        _selectedCategory = null;
+      }
     });
   }
 
   Future<void> _showCategoriesDialog() async {
+    if (widget.isRecebimento) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const RecebimentosTableScreen()),
+      );
+      await _loadCategories();
+      return;
+    }
     if (_selectedType?.id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Selecione um tipo de conta primeiro'),
-            backgroundColor: Colors.orange),
+        SnackBar(content: Text(_typeSelectMessage), backgroundColor: Colors.orange),
       );
       return;
     }
@@ -327,23 +426,38 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   Future<void> _loadInitialData() async {
     final types = await DatabaseHelper.instance.readAllTypes();
 
-    final filteredTypes =
+    final baseTypes =
         types.where((t) => !t.name.toLowerCase().contains('cart')).toList();
+
+    final typeFilter = widget.typeNameFilter?.trim();
+    var filteredTypes = baseTypes;
+    if (typeFilter != null && typeFilter.isNotEmpty) {
+      final normalizedFilter = typeFilter.toLowerCase();
+      filteredTypes = baseTypes
+          .where((t) => t.name.trim().toLowerCase() == normalizedFilter)
+          .toList();
+    }
 
     setState(() {
       _typesList = filteredTypes;
 
-      // INICIALIZAÇÃO SEGURA DE VALORES
+      AccountType? resolvedType;
       if (widget.accountToEdit != null) {
         try {
-          _selectedType = filteredTypes
+          resolvedType = filteredTypes
               .firstWhere((t) => t.id == widget.accountToEdit!.typeId);
         } catch (_) {
-          _selectedType = filteredTypes.isNotEmpty ? filteredTypes.first : null;
+          resolvedType = filteredTypes.isNotEmpty ? filteredTypes.first : null;
         }
       } else if (filteredTypes.isNotEmpty) {
-        _selectedType = filteredTypes.first;
+        resolvedType = filteredTypes.first;
       }
+
+      if (typeFilter != null && typeFilter.isNotEmpty) {
+        resolvedType = filteredTypes.isNotEmpty ? filteredTypes.first : null;
+      }
+
+      _selectedType = resolvedType;
     });
     await _loadCategories();
   }
@@ -573,13 +687,68 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           padding: const EdgeInsets.all(16),
           color: Colors.orange.shade50,
           child: Row(
-            children: const [
-              Icon(Icons.warning, color: Colors.orange),
-              SizedBox(width: 8),
-              Text("Cadastre Tipos Primeiro!")
+            children: [
+              const Icon(Icons.warning, color: Colors.orange),
+              const SizedBox(width: 8),
+              Text(_missingTypesMessage),
             ],
           ),
         ),
+      );
+    }
+    if (widget.isRecebimento) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildFieldWithIcon(
+            icon: Icons.account_balance_wallet,
+            label: _typeLabel,
+            child: DropdownButtonFormField<AccountCategory>(
+              value: _selectedParentCategoria,
+              decoration: buildOutlinedInputDecoration(
+                label: _typeLabel,
+                icon: Icons.account_balance_wallet,
+              ),
+              items: _parentCategorias
+                  .map((cat) =>
+                      DropdownMenuItem(value: cat, child: Text(cat.categoria)))
+                  .toList(),
+              onChanged: (val) {
+                setState(() {
+                  _selectedParentCategoria = val;
+                  _selectedCategory = null;
+                  _categorias = [];
+                });
+                _loadCategories();
+              },
+              validator: (val) => val == null ? _typeSelectErrorMessage : null,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Gerenciar Categorias',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          FilledButton.icon(
+            icon: const Icon(Icons.category),
+            label: const Text('Acessar Categorias'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.blue.shade700,
+            ),
+            onPressed: _showCategoriesDialog,
+          ),
+        ],
       );
     }
     return Column(
@@ -587,18 +756,18 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       children: [
         _buildFieldWithIcon(
           icon: Icons.account_balance_wallet,
-          label: 'Tipo da Conta',
+          label: _typeLabel,
           child: DropdownButtonFormField<AccountType>(
             value: _selectedType,
             decoration: buildOutlinedInputDecoration(
-              label: 'Tipo da Conta',
+              label: _typeLabel,
               icon: Icons.account_balance_wallet,
             ),
             items: _typesList
                 .map((t) => DropdownMenuItem(value: t, child: Text(t.name)))
                 .toList(),
-            onChanged: (val) => _onTypeChanged(val),
-            validator: (val) => val == null ? 'Selecione um tipo' : null,
+            onChanged: widget.lockTypeSelection ? null : (val) => _onTypeChanged(val),
+            validator: (val) => val == null ? _typeSelectErrorMessage : null,
           ),
         ),
         const SizedBox(height: 12),
@@ -704,18 +873,77 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     );
   }
 
+  int _currentInstallmentQty() {
+    final value = int.tryParse(_installmentsQtyController.text);
+    if (value != null && value > 0) {
+      return value;
+    }
+    return 1;
+  }
+
+  Widget _buildInstallmentTypeDisplay() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _entryMode == 1 ? Icons.repeat : Icons.credit_card,
+            color: _entryMode == 1 ? Colors.green : Colors.blue,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            _entryMode == 1 ? 'Recorrente' : 'A vista',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: _entryMode == 1 ? Colors.green : Colors.blue,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInstallmentDropdown() {
+    final currentQty = _currentInstallmentQty();
+    return DropdownButtonFormField<int>(
+      value: currentQty,
+      decoration: buildOutlinedInputDecoration(
+        label: 'Tipo',
+        icon: Icons.repeat,
+      ),
+      items: List.generate(12, (index) {
+        final qty = index + 1;
+        return DropdownMenuItem(
+          value: qty,
+          child: Text(qty == 1 ? 'A vista' : '${qty}x'),
+        );
+      }),
+      onChanged: (val) {
+        final qty = val ?? 1;
+        _installmentsQtyController.text = qty.toString();
+        _updateInstallments();
+      },
+    );
+  }
+
   Widget _buildAvulsaMode() {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       // 1. INPUT DE DATA COM SELETOR DE CALENDÁRIO
       _buildFieldWithIcon(
         icon: Icons.calendar_month,
-        label: 'Dia Base do Vencimento',
+        label: _baseDateLabel,
         child: TextFormField(
           controller: _dateController,
           keyboardType: TextInputType.number,
           inputFormatters: [_dateMaskFormatter],
           decoration: buildOutlinedInputDecoration(
-            label: 'Dia Base do Vencimento',
+            label: _baseDateLabel,
             icon: Icons.calendar_month,
             hintText: "dd/mm/aa",
             suffixIcon: IconButton(
@@ -780,31 +1008,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           child: _buildFieldWithIcon(
             icon: Icons.repeat,
             label: 'Tipo',
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    _entryMode == 1 ? Icons.repeat : Icons.credit_card,
-                    color: _entryMode == 1 ? Colors.green : Colors.blue,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _entryMode == 1 ? 'Recorrente' : 'À Vista',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: _entryMode == 1 ? Colors.green : Colors.blue,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            child: widget.useInstallmentDropdown
+                ? _buildInstallmentDropdown()
+                : _buildInstallmentTypeDisplay(),
           ),
         ),
       ]),
@@ -1187,47 +1393,25 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-        widget.accountToEdit != null ? "Editar Lançamento" : "Lançar Conta"),
-        backgroundColor: Colors.blue.shade800,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-              icon: const Icon(Icons.category),
-              tooltip: "Tabelas de Contas",
-              onPressed: () {
-                Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const AccountTypesScreen()))
-                    .then((_) => _loadInitialData());
-              }),
-          IconButton(
-              icon: const Icon(Icons.settings),
-              tooltip: "Configurações",
-              onPressed: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const SettingsScreen()));
-              }),
-        ],
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Card com seleção de cor
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
+    return ValueListenableBuilder<DateTimeRange>(
+      valueListenable: PrefsService.dateRangeNotifier,
+      builder: (context, range, _) {
+        return Scaffold(
+          appBar: null,
+          body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Card com seleção de cor
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
                       final bool stackVertical = constraints.maxWidth < 640;
@@ -1295,7 +1479,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                                 items: _categorias
                                     .map((cat) => DropdownMenuItem(
                                           value: cat,
-                                          child: Text(cat.categoria),
+                                          child: Text(widget.isRecebimento
+                                              ? _childDisplayName(cat.categoria)
+                                              : cat.categoria),
                                         ))
                                     .toList(),
                                 onChanged: (val) {
@@ -1311,12 +1497,12 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                         ),
                       _buildFieldWithIcon(
                         icon: Icons.description_outlined,
-                        label: 'Descrição (Ex: TV Nova, Aluguel)',
+                        label: _descriptionLabel,
                         child: TextFormField(
                           controller: _descController,
                           textCapitalization: TextCapitalization.sentences,
                           decoration: buildOutlinedInputDecoration(
-                            label: 'Descrição (Ex: TV Nova, Aluguel)',
+                            label: _descriptionLabel,
                             icon: Icons.description_outlined,
                           ),
                           validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
@@ -1372,11 +1558,39 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           ),
         ),
       ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(16),
+        color: Theme.of(context).cardColor,
+        child: FilledButton.icon(
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            backgroundColor: Colors.blue.shade800,
+            disabledBackgroundColor: Colors.blue.shade800.withOpacity(0.6),
+          ),
+          onPressed: _isSaving ? null : _saveAccount,
+          icon: _isSaving
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2))
+              : const Icon(Icons.save),
+          label: Text(_isSaving ? "SALVANDO..." : _saveButtonLabel()),
+        ),
+      ),
+        );
+      },
     );
   }
 
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
+
+    if (widget.lockTypeSelection ||
+        (widget.typeNameFilter != null &&
+            widget.typeNameFilter!.trim().isNotEmpty)) {
+      return;
+    }
 
     // Carregar tipo preferido
     final typeId = prefs.getInt('last_account_type_id');
@@ -1390,7 +1604,457 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     setState(() {});
   }
 
-  // Removido bloco duplicado/solto e garantida estrutura correta.
+  // --- LÓGICAS DE SALVAMENTO ---
+  Future<void> _saveAccount() async {
+    if (_isSaving) return;
+    if (_entryMode == 0 && _installments.isEmpty) _updateInstallments();
+
+    // Validação inicial para campos no modo Recorrente Fixa
+    if (!_formKey.currentState!.validate() || _selectedType == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Preencha todos os campos obrigatórios."),
+          backgroundColor: Colors.red));
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    // Salvar preferências
+    final prefs = await SharedPreferences.getInstance();
+    if (!widget.lockTypeSelection &&
+        (widget.typeNameFilter == null ||
+            widget.typeNameFilter!.trim().isEmpty) &&
+        _selectedType != null) {
+      await prefs.setInt('last_account_type_id', _selectedType!.id!);
+    }
+
+    try {
+      // MODO EDIÇÃO - Se accountToEdit não é null, fazer UPDATE
+      if (widget.accountToEdit != null) {
+        final acc = widget.accountToEdit!;
+
+        if (_entryMode == 1) {
+          // Editar recorrente
+          double updateVal = UtilBrasilFields.converterMoedaParaDouble(
+              _recurrentValueController.text);
+          debugPrint('🔍 EDIÇÃO RECORRÊNCIA:');
+          debugPrint('  Controller text: "${_recurrentValueController.text}"');
+          debugPrint('  Valor convertido: $updateVal');
+
+          // Valor anterior (usar _editingAccount que pode ser pai, não acc que pode ser filha)
+          double previousValue = _editingAccount?.value ?? acc.value;
+          debugPrint('  Valor anterior: $previousValue');
+
+          // Verificar se houve mudança significativa de valor
+          int? option;
+          if ((updateVal - previousValue).abs() > 0.01) {
+            // HOUVE MUDANÇA - perguntar
+            debugPrint('  ⚠️  VALOR ALTERADO de $previousValue para $updateVal');
+
+            if (!mounted) return;
+            final changeOption = await showDialog<int>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Confirmar Mudança de Valor'),
+                content: RichText(
+                  text: TextSpan(
+                    text: 'O valor de ',
+                    children: [
+                      TextSpan(
+                        text: UtilBrasilFields.obterReal(previousValue),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, color: Colors.red),
+                      ),
+                      const TextSpan(text: ' foi alterado para '),
+                      TextSpan(
+                        text: UtilBrasilFields.obterReal(updateVal),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, color: Colors.green),
+                      ),
+                      const TextSpan(text: '.\n\nEssa alteração será somente para essa conta ou para essa e para todas as futuras?'),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, 0),
+                    child: const Text('Cancelar'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, 1),
+                    child: const Text('Somente essa'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(ctx, 2),
+                    child: const Text('Essa e as futuras'),
+                  ),
+                ],
+              ),
+            );
+
+            if (!mounted) return;
+            option = changeOption;
+          } else {
+            // SEM MUDANÇA - atualizar normalmente (apenas a conta)
+            debugPrint('  ✓ Sem mudança significativa de valor');
+            option = 1; // Apenas esta conta
+          }
+
+          if (option == null || option == 0) {
+            setState(() => _isSaving = false);
+            return;
+          }
+
+          // Usar _editingAccount se for disponível (pode ser a recorrência pai), senão usar acc (original)
+          final accountToUpdate = _editingAccount ?? acc;
+
+          // Criar Account atualizada
+          final updated = Account(
+            id: accountToUpdate.id,
+            typeId: _selectedType!.id!,
+            description: _descController.text,
+            value: updateVal,
+            dueDay: _recurrentDay,
+            isRecurrent: true,
+            payInAdvance: _payInAdvance,
+            month: null,
+            year: null,
+            observation: _observationController.text,
+            cardColor: _selectedColor,
+          );
+
+          if (option == 1) {
+            // Apenas esta conta (comportamento atual)
+            debugPrint('  Account.value antes de atualizar: ${updated.value}');
+            await DatabaseHelper.instance.updateAccount(updated);
+            debugPrint('  Account atualizada com id: ${updated.id}');
+          } else if (option == 2) {
+            // Esta e daqui pra frente - APENAS ATUALIZA, NÃO CRIA
+
+            // 1. Atualizar o pai (definição da recorrência)
+            debugPrint('  Account.value antes de atualizar: ${updated.value}');
+            await DatabaseHelper.instance.updateAccount(updated);
+            debugPrint('  Account atualizada com id: ${updated.id}');
+
+            // 2. Buscar e atualizar parcelas futuras
+            final allAccounts =
+                await DatabaseHelper.instance.readAllAccountsRaw();
+            final currentMonth = DateTime.now().month;
+            final currentYear = DateTime.now().year;
+
+            // Determinar o ID da recorrência (pai)
+            final recurrenceId = accountToUpdate.isRecurrent
+                ? accountToUpdate.id
+                : accountToUpdate.recurrenceId;
+
+            if (recurrenceId == null) {
+              debugPrint('  ⚠️ Recorrência sem ID pai. Nenhuma parcela futura a atualizar.');
+            } else {
+              var futureAccounts = allAccounts.where((a) {
+                if (a.recurrenceId != recurrenceId) return false;
+
+                final accDate = DateTime(a.year ?? 0, a.month ?? 0, 1);
+                final today = DateTime(currentYear, currentMonth, 1);
+                return accDate.isAtSameMomentAs(today) || accDate.isAfter(today);
+              }).toList();
+
+              debugPrint(
+                  '  🔄 Atualizando ${futureAccounts.length} parcelas futuras (recurrence_id=$recurrenceId)');
+
+              final duplicatesToRemove = <Account>[];
+              final groupedByPeriod = <String, List<Account>>{};
+              for (final future in futureAccounts) {
+                if (future.month == null || future.year == null) continue;
+                final key = '${future.year}-${future.month}-${future.dueDay}';
+                groupedByPeriod.putIfAbsent(key, () => []).add(future);
+              }
+
+              groupedByPeriod.forEach((key, list) {
+                if (list.length > 1) {
+                  list.sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
+                  duplicatesToRemove.addAll(list.skip(1));
+                }
+              });
+
+              if (duplicatesToRemove.isNotEmpty) {
+                debugPrint(
+                    '  ⚠️ Removendo ${duplicatesToRemove.length} parcelas duplicadas futuras');
+                for (final dup in duplicatesToRemove) {
+                  if (dup.id != null) {
+                    await DatabaseHelper.instance.deleteAccount(dup.id!);
+                  }
+                }
+                final duplicateIds = duplicatesToRemove
+                    .map((d) => d.id)
+                    .whereType<int>()
+                    .toSet();
+                futureAccounts = futureAccounts
+                    .where((a) => !duplicateIds.contains(a.id))
+                    .toList();
+              }
+
+              for (final future in futureAccounts) {
+                final updatedFuture = future.copyWith(
+                  typeId: _selectedType!.id!,
+                  description: _descController.text,
+                  value: updateVal,
+                  dueDay: _recurrentDay,
+                  observation: _observationController.text,
+                  cardColor: _selectedColor,
+                );
+                await DatabaseHelper.instance.updateAccount(updatedFuture);
+                debugPrint(
+                    '  ✓ Atualizada: ${future.description} (${future.month}/${future.year})');
+              }
+
+              debugPrint(
+                  '  ✅ ${futureAccounts.length} parcelas futuras atualizadas (SEM criar novas)');
+            }
+          }
+        } else {
+          // Editar avulsa/parcelada - Extract date from form
+          DateTime editDate = DateTime.now();
+          try {
+            editDate = UtilData.obterDateTime(_dateController.text);
+          } catch (e) {
+            editDate = DateTime(acc.year ?? DateTime.now().year,
+                acc.month ?? DateTime.now().month, acc.dueDay);
+          }
+
+          final updated = Account(
+            id: acc.id,
+            typeId: _selectedType!.id!,
+            description: _descController.text,
+            value: UtilBrasilFields.converterMoedaParaDouble(
+                _totalValueController.text),
+            dueDay: editDate.day,
+            month: editDate.month,
+            year: editDate.year,
+            isRecurrent: false,
+            payInAdvance: _payInAdvance,
+            observation: _observationController.text,
+            cardColor: _selectedColor,
+          );
+          await DatabaseHelper.instance.updateAccount(updated);
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text("Conta atualizada com sucesso!"),
+              backgroundColor: Colors.green));
+          Navigator.pop(context, true);
+        }
+        return;
+      }
+
+      // MODO CRIAÇÃO - Criar novo
+      if (_entryMode == 1) {
+        // Modo Recorrente Fixa
+        if (_recurrentValueController.text.isEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text("Valor médio é obrigatório para recorrências."),
+                backgroundColor: Colors.red));
+          }
+          setState(() => _isSaving = false);
+          return;
+        }
+
+        final parsedStartYear =
+            int.tryParse(_recurrentStartYearController.text.trim());
+        if (parsedStartYear != null) {
+          _recurrentStartYear = parsedStartYear;
+        }
+
+        final startYear = _recurrentStartYear;
+        final startMonthIndex = _recurrentStartMonth; // 0-based
+        if (startYear < 2000 || startYear > 2100) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text("Informe um ano de início válido (>= 2000)."),
+                backgroundColor: Colors.red));
+          }
+          setState(() => _isSaving = false);
+          return;
+        }
+  final startMonth = startMonthIndex + 1; // converter para 1-12
+  final earliestAllowed = DateTime(startYear, startMonth, 1);
+
+  debugPrint('  → Configuração de início: mês=$startMonth ano=$startYear');
+
+        double val = UtilBrasilFields.converterMoedaParaDouble(
+            _recurrentValueController.text);
+        debugPrint('🔍 SALVAMENTO RECORRÊNCIA:');
+        debugPrint('  Controller text: "${_recurrentValueController.text}"');
+        debugPrint('  Valor convertido: $val');
+        final acc = Account(
+            typeId: _selectedType!.id!,
+            description: _descController.text,
+            value: val,
+            dueDay: _recurrentDay,
+            isRecurrent: true,
+            payInAdvance: _payInAdvance,
+            month: startMonth,
+            year: startYear,
+            observation: _observationController.text,
+            cardColor: _selectedColor);
+        debugPrint('  Account.value antes de salvar: ${acc.value}');
+        
+        // 1. Criar a conta recorrente pai - somente se estouro validado
+        int? parentId = await DatabaseHelper.instance.createAccount(acc);
+        debugPrint('  Account salva com id: $parentId');
+
+        // 2. Gerar instâncias mensais futuras da recorrência
+        // ignore: unnecessary_null_comparison
+        if (parentId != null) {
+          debugPrint('  Gerando instâncias mensais futuras da recorrência...');
+
+          int createdCount = 0;
+
+          int daysInMonth(int year, int month) => DateTime(year, month + 1, 0).day;
+
+          for (int i = 0; i < 12; i++) {
+            final totalMonths = (startMonth - 1) + i;
+            final targetYear = startYear + (totalMonths ~/ 12);
+            final targetMonth = (totalMonths % 12) + 1;
+
+            if (targetYear < startYear ||
+                (targetYear == startYear && targetMonth < startMonth)) {
+              debugPrint(
+                  '  ⚠️ Ignorando instância $targetMonth/$targetYear por estar antes do início configurado $startMonth/$startYear.');
+              continue;
+            }
+
+            final referenceDate = DateTime(targetYear, targetMonth, 1);
+            final maxDay = daysInMonth(targetYear, targetMonth);
+            final dueDay = _recurrentDay.clamp(1, maxDay).toInt();
+            final rawDueDate = DateTime(targetYear, targetMonth, dueDay);
+            final adjustmentResult = HolidayService.adjustDateToBusinessDay(
+              rawDueDate,
+              'Brasília'
+            );
+            final adjustedDate = adjustmentResult.date;
+            final adjustedDay = adjustedDate.day;
+            final adjustedMonth = adjustedDate.month;
+            final adjustedYear = adjustedDate.year;
+
+            if (adjustedDate.isBefore(earliestAllowed)) {
+              debugPrint(
+                  '  ⚠️ Ignorando instância retroativa $adjustedMonth/$adjustedYear (antes do início configurado $startMonth/$startYear).');
+              continue;
+            }
+
+            final plannedMonth = referenceDate.month;
+            final plannedYear = referenceDate.year;
+            debugPrint(
+                '  → Instância planejada: $plannedMonth/$plannedYear (ajustada para $adjustedDay/$adjustedMonth/$adjustedYear)');
+
+            final monthlyAccount = Account(
+              typeId: _selectedType!.id!,
+              description: _descController.text,
+              value: val,
+              dueDay: adjustedDate.day,
+              month: adjustedDate.month,
+              year: adjustedDate.year,
+              isRecurrent: false,
+              payInAdvance: _payInAdvance,
+              recurrenceId: parentId,
+              observation: _observationController.text,
+              cardColor: _selectedColor,
+            );
+
+            await DatabaseHelper.instance.createAccount(monthlyAccount);
+            debugPrint('  ✓ Instância criada: ${adjustedDate.month}/${adjustedDate.year}');
+            createdCount++;
+          }
+
+          debugPrint('  ✅ $createdCount instâncias mensais criadas com sucesso');
+        }
+      } else {
+        // Modo Avulsa / Parcelada
+        if (_installments.isEmpty) _updateInstallments();
+
+        // VALIDAÇÃO CRÍTICA: Se ainda estiver vazia, não salvar
+        if (_installments.isEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text(
+                    "Erro: Não foi possível gerar parcelas. Verifique se data e valor estão preenchidos."),
+                backgroundColor: Colors.red));
+          }
+          setState(() => _isSaving = false);
+          return;
+        }
+
+        // Se for assinatura, criar como recorrente
+        if (_installmentsQtyController.text == "-1") {
+          double val = UtilBrasilFields.converterMoedaParaDouble(
+              _totalValueController.text);
+          try {
+            DateTime dt = UtilData.obterDateTime(_dateController.text);
+            final acc = Account(
+              typeId: _selectedType!.id!,
+              description: _descController.text + " (Assinatura)",
+              value: val,
+              dueDay: dt.day,
+              month: dt.month,
+              year: dt.year,
+              isRecurrent: true,
+              payInAdvance: _payInAdvance,
+              observation: _observationController.text,
+              cardColor: _selectedColor,
+            );
+            await DatabaseHelper.instance.createAccount(acc);
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                    content: Text("Erro na data: $e"),
+                    backgroundColor: Colors.red),
+              );
+            }
+            setState(() => _isSaving = false);
+            return;
+          }
+        } else {
+          int totalItems = _installments.length;
+          final baseDescription = cleanInstallmentDescription(_descController.text.trim());
+          for (var item in _installments) {
+            final acc = Account(
+              typeId: _selectedType!.id!,
+              description: baseDescription,
+              value: item.value,
+              dueDay: item.adjustedDate.day,
+              month: item.adjustedDate.month,
+              year: item.adjustedDate.year,
+              isRecurrent: false,
+              payInAdvance: _payInAdvance,
+              observation: _observationController.text,
+              cardColor: _selectedColor,
+              installmentIndex: item.index,
+              installmentTotal: totalItems,
+            );
+            await DatabaseHelper.instance.createAccount(acc);
+          }
+        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Contas lançadas com sucesso!"),
+            backgroundColor: Colors.green));
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text("Erro ao salvar: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
 
   @override
   void dispose() {

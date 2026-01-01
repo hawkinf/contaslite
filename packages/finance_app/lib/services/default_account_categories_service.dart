@@ -13,6 +13,76 @@ class DefaultAccountCategoriesService {
       DefaultAccountCategoriesService._();
   DefaultAccountCategoriesService._();
 
+  static const String recebimentosName = 'Recebimentos';
+  static const String recebimentosChildSeparator = '||';
+
+  static const Map<String, List<String>> recebimentosChildDefaults = {
+    'Salário / Pró-Labore': [
+      'Salário mensal',
+      'Adiantamento salarial',
+      '13º salário',
+      'Férias',
+      'Abono de férias',
+      'Bônus',
+      'PLR',
+      'Pró-labore',
+    ],
+    'Trabalho Autônomo': [
+      'Freelance',
+      'Consultorias',
+      'Serviços eventuais',
+      'Diárias',
+      'Comissões',
+      'Honorários',
+      'Bicos',
+    ],
+    'Rendas de Aluguel': [
+      'Residencial',
+      'Comercial',
+      'Garagem',
+      'Arrendamento',
+      'Equipamentos',
+    ],
+    'Rendimentos Financeiros': [
+      'Poupança',
+      'CDB / RDB',
+      'Tesouro Direto',
+      'Fundos',
+      'Dividendos',
+      'Juros',
+      'Ações',
+      'Criptomoedas',
+    ],
+    'Aposentadoria / Benefícios': [
+      'INSS',
+      'Pensão',
+      'Auxílios',
+      'Previdência privada',
+    ],
+    'Reembolsos': [
+      'Trabalho',
+      'Médico',
+      'Viagem',
+      'Devoluções',
+      'Ajustes',
+    ],
+    'Presentes / Doações': [
+      'Presentes',
+      'Ajuda familiar',
+      'Doações',
+      'Mesada',
+      'Herança',
+      'Premiações',
+    ],
+    'Outras Receitas': [
+      'Venda de bens',
+      'Indenizações',
+      'Restituições',
+      'Ganhos eventuais',
+      'Ajustes positivos',
+    ],
+  };
+
   static const List<Map<String, dynamic>> defaultCategories = [
     {
       'category': 'Cartões de Crédito',
@@ -114,6 +184,19 @@ class DefaultAccountCategoriesService {
         'Outros',
       ],
     },
+    {
+      'category': recebimentosName,
+      'subcategories': [
+        'Salário / Pró-Labore',
+        'Trabalho Autônomo',
+        'Rendas de Aluguel',
+        'Rendimentos Financeiros',
+        'Aposentadoria / Benefícios',
+        'Reembolsos',
+        'Presentes / Doações',
+        'Outras Receitas',
+      ],
+    },
   ];
 
   List<DefaultAccountCategory> getDefaultCategories() {
@@ -133,5 +216,9 @@ class DefaultAccountCategoriesService {
           List<String>.from(item['subcategories'] as List<dynamic>);
     }
     return map;
+  }
+
+  String buildRecebimentosChildName(String parent, String child) {
+    return '$parent$recebimentosChildSeparator$child';
   }
 }

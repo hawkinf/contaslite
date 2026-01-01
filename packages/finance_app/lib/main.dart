@@ -8,7 +8,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'services/prefs_service.dart';
 import 'services/database_initialization_service.dart';
 import 'services/backup_service.dart';
-import 'screens/dashboard_screen.dart';
+import 'screens/home_screen.dart';
 import 'screens/database_migration_screen.dart';
 
 void main() async {
@@ -131,7 +131,7 @@ class _FinanceAppState extends State<FinanceApp> with WidgetsBindingObserver {
 
           home: widget.migrationRequired
               ? const DatabaseMigrationScreen()
-              : const DashboardScreen(),
+              : const HomeScreen(),
         );
       },
     );

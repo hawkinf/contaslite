@@ -7,6 +7,8 @@ import '../models/account_category.dart';
 import '../models/account.dart';
 import '../utils/color_contrast.dart';
 import '../widgets/app_input_decoration.dart';
+import '../services/prefs_service.dart';
+import '../widgets/date_range_app_bar.dart';
 
 class CreditCardFormScreen extends StatefulWidget {
   final Account? cardToEdit;
@@ -55,7 +57,12 @@ class _CreditCardFormScreenState extends State<CreditCardFormScreen> {
       _bestBuyDay = widget.cardToEdit!.bestBuyDay;
       _selectedBrand = widget.cardToEdit!.cardBrand;
       _payInAdvance = widget.cardToEdit!.payInAdvance;
-      if (widget.cardToEdit!.cardColor != null) _selectedColor = widget.cardToEdit!.cardColor!;
+      if (widget.cardToEdit!.cardColor != null) {
+        _selectedColor = widget.cardToEdit!.cardColor!;
+        if (_colors.every((color) => color.value != _selectedColor)) {
+          _colors.insert(0, Color(_selectedColor));
+        }
+      }
     } else {
       _calculateBestDay(_dueDay);
     }
@@ -133,20 +140,19 @@ class _CreditCardFormScreenState extends State<CreditCardFormScreen> {
   Widget build(BuildContext context) {
     final fgColor = foregroundColorFor(Color(_selectedColor));
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.credit_card, color: fgColor),
-            const SizedBox(width: 8),
-            Text(widget.cardToEdit == null ? 'Novo Cartão' : 'Editar Cartão', style: TextStyle(color: fgColor)),
-          ],
+    return ValueListenableBuilder<DateTimeRange>(
+      valueListenable: PrefsService.dateRangeNotifier,
+      builder: (context, range, _) {
+        return Scaffold(
+      appBar: DateRangeAppBar(
+          title: widget.cardToEdit != null ? 'Editar Cartão' : 'Novo Cartão',
+          range: range,
+          onPrevious: () => PrefsService.shiftDateRange(-1),
+          onNext: () => PrefsService.shiftDateRange(1),
+          backgroundColor: Colors.deepPurple.shade700,
+          foregroundColor: Colors.white,
         ),
-        backgroundColor: Color(_selectedColor),
-        iconTheme: IconThemeData(color: fgColor),
-      ),
-      body: SingleChildScrollView(
+        body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
@@ -159,7 +165,7 @@ class _CreditCardFormScreenState extends State<CreditCardFormScreen> {
                 spacing: 12, runSpacing: 12, alignment: WrapAlignment.center,
                 children: _colors.map((color) => InkWell(
                   onTap: () => setState(() => _selectedColor = color.value),
-                  child: Container(
+                    child: Container(
                     width: 45, height: 45,
                     decoration: BoxDecoration(
                       color: color, shape: BoxShape.circle,
@@ -168,10 +174,18 @@ class _CreditCardFormScreenState extends State<CreditCardFormScreen> {
                           : Border.all(color: Colors.grey.shade400),
                       boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)]
                     ),
-                    child: _selectedColor == color.value
-                        ? Icon(Icons.check, color: foregroundColorFor(color))
-                        : null
-                  ),
+                      child: _selectedColor == color.value
+                          ? Center(
+                              child: Text(
+                                'Aa',
+                                style: TextStyle(
+                                  color: foregroundColorFor(color),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            )
+                          : null
+                    ),
                 )).toList()
               ),
               
@@ -283,6 +297,8 @@ class _CreditCardFormScreenState extends State<CreditCardFormScreen> {
           ),
         ),
       ),
+        );
+      },
     );
   }
 

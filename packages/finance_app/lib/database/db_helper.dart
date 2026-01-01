@@ -362,7 +362,7 @@ class DatabaseHelper {
       try {
         await db.execute('ALTER TABLE banks ADD COLUMN color INTEGER');
       } catch (_) {
-        // coluna j  existe
+        // coluna já existe
       }
       await db.execute('UPDATE banks SET color = 0 WHERE color IS NULL');
     }

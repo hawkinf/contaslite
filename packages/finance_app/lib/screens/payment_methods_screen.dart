@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../database/db_helper.dart';
 import '../models/payment_method.dart';
 import '../widgets/app_input_decoration.dart';
+import '../services/prefs_service.dart';
+import '../widgets/date_range_app_bar.dart';
 
 class PaymentMethodsScreen extends StatefulWidget {
   const PaymentMethodsScreen({super.key});
@@ -183,12 +185,17 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Formas de Pagamento'),
-        elevation: 0,
-      ),
-      floatingActionButton: FloatingActionButton.extended(
+    return ValueListenableBuilder<DateTimeRange>(
+      valueListenable: PrefsService.dateRangeNotifier,
+      builder: (context, range, _) {
+        return Scaffold(
+      appBar: DateRangeAppBar(
+          title: 'Formas de Pagamento',
+          range: range,
+          onPrevious: () => PrefsService.shiftDateRange(-1),
+          onNext: () => PrefsService.shiftDateRange(1),
+        ),
+        floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showPaymentMethodDialog(),
         label: const Text('Novo Item'),
         icon: const Icon(Icons.add),
@@ -316,6 +323,8 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           );
         },
       ),
+        );
+      },
     );
   }
 }

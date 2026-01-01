@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:brasil_fields/brasil_fields.dart';
-import 'package:intl/intl.dart';
 import '../database/db_helper.dart';
+import '../services/prefs_service.dart';
 import '../models/account.dart';
 import 'account_form_screen.dart';
+import '../widgets/date_range_app_bar.dart';
 
 class ManageAccountsScreen extends StatefulWidget {
   const ManageAccountsScreen({super.key});
@@ -20,8 +21,8 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
             description: 'Supermercado',
             value: 150.00,
             dueDay: 5,
-            month: _selectedMonth,
-            year: _selectedYear,
+            month: _startDate.month,
+            year: _startDate.year,
             typeId: 1,
             observation: 'Cartão Crédito',
             isRecurrent: false,
@@ -33,7 +34,7 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
           try {
             await DatabaseHelper.instance.createAccount(account);
             addedCount++;
-          } catch (e) {}
+          } catch (e) {} // ignore: empty_catches
         }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -220,9 +221,10 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
     }
   // Todas as funções auxiliares já estão corretamente declaradas como métodos da classe.
   // Removido qualquer função local duplicada.
-  // Filtros (Default: Mês Atual)
-  int _selectedMonth = DateTime.now().month;
-  int _selectedYear = DateTime.now().year;
+    late DateTime _startDate;
+  late DateTime _endDate;
+  bool _datesInitialized = false;
+  late final VoidCallback _dateRangeListener;
 
   List<Account> _accounts = [];
   Map<int, String> _typeNames = {};
@@ -231,15 +233,41 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
   Map<int, Map<String, dynamic>> _paymentInfo = {};
 
   @override
+  void dispose() {
+    PrefsService.dateRangeNotifier.removeListener(_dateRangeListener);
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
+    _dateRangeListener = () {
+      final range = PrefsService.dateRangeNotifier.value;
+      setState(() {
+        _startDate = DateTime(range.start.year, range.start.month, 1);
+        _endDate = DateTime(range.start.year, range.start.month + 1, 0);
+        _datesInitialized = true;
+      });
+      _loadData();
+    };
+    PrefsService.dateRangeNotifier.addListener(_dateRangeListener);
+    _initDates();
+  }
+
+  Future<void> _initDates() async {
+    final range = PrefsService.dateRangeNotifier.value;
+    setState(() {
+      _startDate = DateTime(range.start.year, range.start.month, 1);
+      _endDate = DateTime(range.start.year, range.start.month + 1, 0);
+      _datesInitialized = true;
+    });
     _loadData();
   }
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     
-    final rawAccounts = await DatabaseHelper.instance.readAccountsByDate(_selectedMonth, _selectedYear);
+    final rawAccounts = await DatabaseHelper.instance.readAccountsByDate(_startDate.month, _startDate.year);
     final types = await DatabaseHelper.instance.readAllTypes();
     final typeMap = {for (var t in types) t.id!: t.name};
 
@@ -289,16 +317,25 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Cores baseadas no tema
+    if (!_datesInitialized) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final headerColor = isDark ? Colors.grey.shade900 : Colors.blue.shade50;
     final totalColor = isDark ? Colors.greenAccent : Colors.blue.shade900;
+    final media = MediaQuery.of(context);
+    final isCompact = media.size.height < 640 || media.size.width < 360;
+    final headerPadding = isCompact ? 10.0 : 16.0;
+    final totalFontSize = isCompact ? 20.0 : 24.0;
+    final totalLabelFontSize = isCompact ? 12.0 : 14.0;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Gerenciar Lançamentos'),
-        backgroundColor: Colors.blue.shade800,
-        foregroundColor: Colors.white,
+      appBar: DateRangeAppBar(
+        title: 'Gerenciar Lançamentos',
+        range: DateTimeRange(start: _startDate, end: _endDate),
+        onPrevious: () => PrefsService.shiftDateRange(-1),
+        onNext: () => PrefsService.shiftDateRange(1),
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline),
@@ -310,102 +347,70 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // --- CABEÇALHO DE FILTRO E TOTAL ---
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(headerPadding),
               color: headerColor,
               child: Column(
                 children: [
-                  // Linha dos Seletores (Fonte Maior)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      DropdownButton<int>(
-                        value: _selectedMonth,
-                        dropdownColor: Theme.of(context).cardColor,
-                        style: TextStyle(
-                          fontSize: 20, // Fonte Maior
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).textTheme.bodyLarge?.color
-                        ),
-                        items: List.generate(12, (index) => DropdownMenuItem(
-                          value: index + 1,
-                          child: Text(DateFormat('MMMM', 'pt_BR').format(DateTime(2024, index + 1, 1)).toUpperCase()),
-                        )),
-                        onChanged: (val) {
-                            setState(() => _selectedMonth = val!);
-                            _loadData(); 
-                        },
-                      ),
-                      const SizedBox(width: 20),
-                      DropdownButton<int>(
-                        value: _selectedYear,
-                        dropdownColor: Theme.of(context).cardColor,
-                         style: TextStyle(
-                          fontSize: 20, // Fonte Maior
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).textTheme.bodyLarge?.color
-                        ),
-                        items: List.generate(10, (index) => DropdownMenuItem(
-                          value: 2024 + index,
-                          child: Text('${2024 + index}'),
-                        )),
-                        onChanged: (val) {
-                            setState(() => _selectedYear = val!);
-                            _loadData(); 
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  // Linha do Total
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isCompact ? 12 : 16,
+                      vertical: isCompact ? 6 : 8,
+                    ),
                     decoration: BoxDecoration(
                       color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.withOpacity(0.3))
+                      border: Border.all(color: Colors.grey.withOpacity(0.3)),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('TOTAL DO MÊS: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                        Text(
-                          UtilBrasilFields.obterReal(_totalMonth),
-                          style: TextStyle(
-                            fontSize: 24, // Valor do Total bem grande
-                            fontWeight: FontWeight.bold,
-                            color: totalColor
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'TOTAL DO MÊS: ',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: totalLabelFontSize,
+                            ),
                           ),
-                        ),
-                      ],
+                          Text(
+                            UtilBrasilFields.obterReal(_totalMonth),
+                            style: TextStyle(
+                              fontSize: totalFontSize,
+                              fontWeight: FontWeight.bold,
+                              color: totalColor,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-
-            // --- LISTA DE CONTAS ---
             Expanded(
-              child: _isLoading 
-                ? const Center(child: CircularProgressIndicator()) 
-                : _accounts.isEmpty 
-                  ? const Center(child: Text('Nenhum lançamento encontrado.'))
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(8),
-                      itemCount: _accounts.length,
-                      itemBuilder: (context, index) {
-                        final acc = _accounts[index];
-                        return _buildAccountCard(acc);
-                      },
-                    ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _accounts.isEmpty
+                      ? const Center(
+                          child: Text('Nenhum lançamento encontrado.'),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(8),
+                          itemCount: _accounts.length,
+                          itemBuilder: (context, index) {
+                            final acc = _accounts[index];
+                            return _buildAccountCard(acc);
+                          },
+                        ),
             ),
           ],
         ),
       ),
     );
+  }
 
-  // ...existing code...
 
 }
 // ignore_for_file: deprecated_member_use
