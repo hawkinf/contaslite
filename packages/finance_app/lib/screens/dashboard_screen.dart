@@ -226,8 +226,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final cards = await DatabaseHelper.instance.readAllCards();
       final typeMap = {for (var t in types) t.id!: t.name};
 
+      debugPrint('📋 Tipos no banco: ${types.map((t) => '${t.name}(id: ${t.id})').join(', ')}');
+      debugPrint('📋 Total de contas: ${allAccounts.length}');
+
       final typeFilter = widget.typeNameFilter?.trim();
       final excludeTypeFilter = widget.excludeTypeNameFilter?.trim();
+
+      if (typeFilter != null) {
+        debugPrint('🎯 typeNameFilter recebido: "$typeFilter"');
+      }
+      if (excludeTypeFilter != null) {
+        debugPrint('🎯 excludeTypeNameFilter recebido: "$excludeTypeFilter"');
+      }
 
       Set<int>? allowedTypeIds;
       Set<int>? excludedTypeIds;
@@ -251,6 +261,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             .where((t) => t.name.trim().toLowerCase() == normalizedFilter)
             .map((t) => t.id!)
             .toSet();
+        debugPrint('🔍 Filtro de exclusão aplicado: $excludeTypeFilter → IDs: $excludedTypeIds');
+      }
+
+      if (allowedTypeIds != null) {
+        debugPrint('🔍 Filtro de inclusão aplicado: $typeFilter → IDs: $allowedTypeIds');
       }
 
       // Preencher mapa de valores de recorrências pai
@@ -430,20 +445,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
             .toList();
       }
 
+      debugPrint('📊 Antes de filtros: ${processedList.length} contas');
+      debugPrint('   Tipos: ${processedList.map((a) => '(id: ${a.id}, typeId: ${a.typeId})').join(', ')}');
+
       // Aplicar filtro de inclusão (se especificado)
       if (allowedTypeIds != null) {
+        final beforeFilter = processedList.length;
         processedList = processedList
             .where((account) => allowedTypeIds!.contains(account.typeId))
             .toList();
+        debugPrint('✓ Filtro de inclusão: $beforeFilter → ${processedList.length} contas');
       }
 
       // Aplicar filtro de exclusão (se especificado)
       if (excludedTypeIds != null && excludedTypeIds.isNotEmpty) {
+        final beforeFilter = processedList.length;
         processedList = processedList
             .where((account) => !excludedTypeIds!.contains(account.typeId))
             .toList();
+        debugPrint('✓ Filtro de exclusão: $beforeFilter → ${processedList.length} contas');
       }
 
+      debugPrint('📊 Depois de filtros: ${processedList.length} contas');
       processedList.sort((a, b) => a.dueDay.compareTo(b.dueDay));
       double total = processedList.fold(
           0, (sum, item) => item.isRecurrent ? sum : sum + item.value);

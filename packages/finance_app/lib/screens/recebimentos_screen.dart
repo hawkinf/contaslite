@@ -6,12 +6,6 @@ class RecebimentosScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Navigator(
-      onGenerateRoute: (settings) {
-        return MaterialPageRoute(
-          builder: (_) => const DashboardScreen(typeNameFilter: 'Recebimentos'),
-        );
-      },
-    );
+    return const DashboardScreen(typeNameFilter: 'Recebimentos');
   }
 }
