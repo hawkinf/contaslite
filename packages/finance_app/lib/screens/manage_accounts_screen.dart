@@ -294,16 +294,23 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
     // CÁLCULO DO TOTAL
     double total = filteredList.fold(0, (sum, item) => sum + item.value);
 
-    // Carregar informações de pagamento
+    // Carregar informações de pagamento em paralelo
     final paymentInfo = <int, Map<String, dynamic>>{};
-    for (var account in filteredList) {
-      if (account.cardBrand == null && account.id != null) {
-        // Apenas contas principais
-        final info = await DatabaseHelper.instance.getAccountPaymentInfo(account.id!);
+
+    final accountsToLoad = filteredList
+        .where((account) => account.cardBrand == null && account.id != null)
+        .map((account) => account.id!)
+        .toList();
+
+    if (accountsToLoad.isNotEmpty) {
+      final paymentQueries = accountsToLoad.map((accountId) async {
+        final info = await DatabaseHelper.instance.getAccountPaymentInfo(accountId);
         if (info != null) {
-          paymentInfo[account.id!] = info;
+          paymentInfo[accountId] = info;
         }
-      }
+      }).toList();
+
+      await Future.wait(paymentQueries);
     }
 
     setState(() {

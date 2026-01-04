@@ -91,14 +91,23 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     List<Account> subscriptions = recurringRes.map((e) => Account.fromMap(e)).toList();
 
     List<Account> displayList = [...expenses];
+
+    // Criar set de recurrenceIds para busca O(1) em vez de O(n)
+    final launchedRecurrenceIds = <int?>{};
+    for (var exp in expenses) {
+      if (exp.recurrenceId != null) {
+        launchedRecurrenceIds.add(exp.recurrenceId);
+      }
+    }
+
     for (var sub in subscriptions) {
-      bool alreadyLaunched = expenses.any((e) => e.recurrenceId == sub.id);
+      bool alreadyLaunched = launchedRecurrenceIds.contains(sub.id);
       if (!alreadyLaunched) {
         bool show = true;
         if (sub.year != null && sub.month != null) {
            int subStart = sub.year! * 12 + sub.month!;
            int currentView = _currentYear * 12 + _currentMonth;
-           if (currentView < subStart) show = false; 
+           if (currentView < subStart) show = false;
         }
         if (show) {
           displayList.add(Account(id: sub.id, typeId: sub.typeId, description: sub.description, value: sub.value, dueDay: widget.card.dueDay, month: _currentMonth, year: _currentYear, isRecurrent: true, payInAdvance: sub.payInAdvance, cardId: sub.cardId, observation: sub.observation, recurrenceId: sub.id, purchaseDate: sub.purchaseDate, creationDate: sub.creationDate));
