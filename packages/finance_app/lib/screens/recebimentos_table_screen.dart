@@ -93,26 +93,32 @@ class _RecebimentosTableScreenState extends State<RecebimentosTableScreen> {
     }
 
     int addedCount = 0;
+
+    // Carregar todas as categorias existentes uma única vez
+    final existingCategories = await DatabaseHelper.instance.readAccountCategories(typeId);
+    final existingCategoryNames = {for (final cat in existingCategories) cat.categoria.toUpperCase()};
+
+    // Construir lista de categorias a criar
+    final categoriesToCreate = <AccountCategory>[];
+
     for (final parent in _recebimentosDefaults.keys) {
-      final existsParent =
-          await DatabaseHelper.instance.checkAccountCategoryExists(typeId, parent);
-      if (!existsParent) {
-        final categoria = AccountCategory(accountId: typeId, categoria: parent);
-        await DatabaseHelper.instance.createAccountCategory(categoria);
+      if (!existingCategoryNames.contains(parent.toUpperCase())) {
+        categoriesToCreate.add(AccountCategory(accountId: typeId, categoria: parent));
         addedCount++;
       }
 
       for (final child in _recebimentosDefaults[parent]!) {
         final fullName = _fullChildName(parent, child);
-        final existsChild = await DatabaseHelper.instance
-            .checkAccountCategoryExists(typeId, fullName);
-        if (!existsChild) {
-          final categoria =
-              AccountCategory(accountId: typeId, categoria: fullName);
-          await DatabaseHelper.instance.createAccountCategory(categoria);
+        if (!existingCategoryNames.contains(fullName.toUpperCase())) {
+          categoriesToCreate.add(AccountCategory(accountId: typeId, categoria: fullName));
           addedCount++;
         }
       }
+    }
+
+    // Criar todas as categorias
+    for (final categoria in categoriesToCreate) {
+      await DatabaseHelper.instance.createAccountCategory(categoria);
     }
 
     if (!mounted) return;

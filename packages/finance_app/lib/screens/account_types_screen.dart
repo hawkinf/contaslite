@@ -279,12 +279,23 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
     ];
 
     int addedCount = 0;
+
+    // Carregar todos os tipos existentes uma única vez (em vez de verificar um por um)
+    final existingTypes = await DatabaseHelper.instance.readAllTypes();
+    final existingTypeNames = {for (final type in existingTypes) type.name.toUpperCase()};
+
+    // Criar lista de tipos que não existem
+    final typesToCreate = <AccountType>[];
     for (final typeName in defaultTypes) {
-      final exists = await DatabaseHelper.instance.checkAccountTypeExists(typeName);
-      if (!exists) {
-        await DatabaseHelper.instance.createType(AccountType(name: typeName));
+      if (!existingTypeNames.contains(typeName.toUpperCase())) {
+        typesToCreate.add(AccountType(name: typeName));
         addedCount++;
       }
+    }
+
+    // Criar todos de uma vez (se houver implementação de batch) ou usar loop mais rápido
+    for (final type in typesToCreate) {
+      await DatabaseHelper.instance.createType(type);
     }
 
     if (mounted) {
