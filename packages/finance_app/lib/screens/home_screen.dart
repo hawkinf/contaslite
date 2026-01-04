@@ -50,9 +50,65 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _screens,
+      body: Column(
+        children: [
+          // Fixed Navigation Bar
+          Container(
+            color: const Color(0xFF4A6FA5),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+            child: Row(
+              children: [
+                _buildNavButton(0, 'Contas a Pagar', Icons.assignment),
+                const SizedBox(width: 48),
+                _buildNavButton(1, 'Contas a Receber', Icons.account_balance_wallet),
+                const SizedBox(width: 48),
+                _buildNavButton(2, 'Cartões', Icons.credit_card),
+                const SizedBox(width: 48),
+                _buildNavButton(3, 'Preferências', Icons.settings),
+              ],
+            ),
+          ),
+          // Content Area
+          Expanded(
+            child: IndexedStack(
+              index: _selectedIndex,
+              children: _screens,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavButton(int index, String label, IconData icon) {
+    final isSelected = _selectedIndex == index;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedIndex = index),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            color: isSelected ? Colors.white : Colors.white70,
+            size: 24,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.white70,
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          const SizedBox(height: 4),
+          if (isSelected)
+            Container(
+              height: 2,
+              width: 40,
+              color: Colors.white,
+            ),
+        ],
       ),
     );
   }
