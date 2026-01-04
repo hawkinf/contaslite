@@ -11,18 +11,28 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late final List<String> _cities;
+  late List<String> _cities;
   late String _selectedCity;
   bool _isDark = PrefsService.themeNotifier.value == ThemeMode.dark;
+  bool _citiesInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _cities = HolidayService.regions.values.expand((items) => items).toSet().toList()
-      ..sort();
     _selectedCity = PrefsService.cityNotifier.value;
-    if (!_cities.contains(_selectedCity) && _cities.isNotEmpty) {
-      _selectedCity = _cities.first;
+    // Lazy initialize cities on first use
+    _initializeCities();
+  }
+
+  void _initializeCities() {
+    if (!_citiesInitialized) {
+      _cities = HolidayService.regions.values.expand((items) => items).toSet().toList()
+        ..sort();
+      _citiesInitialized = true;
+
+      if (!_cities.contains(_selectedCity) && _cities.isNotEmpty) {
+        _selectedCity = _cities.first;
+      }
     }
   }
 
