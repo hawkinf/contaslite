@@ -293,7 +293,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     _selectedWeek = date;
     _selectedYear = date.year;
     _calendarMonth = date.month;
-    _initializeCities();
+    // Lazy initialize cities to avoid blocking initState()
+    // This is deferred to after first frame to keep UI responsive
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _initializeCities();
+      }
+    });
     _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
     _tabController = TabController(length: 5, vsync: this);
     _tabController.addListener(() {
