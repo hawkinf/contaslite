@@ -1,0 +1,150 @@
+================================================================================
+                    RESUMO DO SISTEMA DE DEBUG
+================================================================================
+
+PROBLEMA IDENTIFICADO:
+  ❌ App trava/entra em loop infinito ao clicar no botão Preferences (engrenagem)
+
+SOLUÇÃO IMPLEMENTADA:
+  ✅ Infraestrutura de logging detalhado para rastrear congelamento
+
+================================================================================
+                    ARQUIVOS COM LOGS ADICIONADOS
+================================================================================
+
+1️⃣  lib/main.dart
+   ├─ 🚀 main() - iniciando app...
+   ├─ 🚀 main() - WidgetsFlutterBinding inicializado
+   ├─ 🚀 main() - inicializando formatação de data...
+   ├─ 🚀 main() - inicializando PrefsService...
+   └─ 🚀 main() - executando app...
+
+2️⃣  packages/finance_app/lib/services/prefs_service.dart
+   ├─ 🔧 PrefsService: init() - iniciando...
+   ├─ 🔧 PrefsService: init() - carregando tema...
+   ├─ 🔧 PrefsService: init() - carregando localização...
+   ├─ 🔧 PrefsService: init() - carregando intervalo de datas...
+   ├─ 🔧 PrefsService: init() - carregando configurações de proteção de banco...
+   └─ 🔧 PrefsService: init() - concluído com sucesso
+
+3️⃣  packages/finance_app/lib/screens/home_screen.dart
+   ├─ 🏠 HomeScreen.initState() - iniciando...
+   ├─ 🏠 HomeScreen.initState() - criando lista de telas...
+   ├─ 🏠 HomeScreen.initState() - lista de telas criada
+   ├─ 🏠 HomeScreen.initState() - criando listener...
+   └─ 🏠 HomeScreen.initState() - concluído
+
+4️⃣  packages/finance_app/lib/screens/settings_screen.dart
+   ├─ 🔧 SettingsScreen.initState() - iniciando...
+   ├─ 🔧 SettingsScreen.initState() - acessando cityNotifier
+   ├─ 🔧 SettingsScreen.initState() - cityNotifier OK: {cidade}
+   ├─ 🔧 SettingsScreen.initState() - acessando themeNotifier
+   ├─ 🔧 SettingsScreen.initState() - themeNotifier OK: {true/false}
+   └─ 🔧 SettingsScreen.initState() - concluído com sucesso
+
+================================================================================
+                    COMO USAR OS LOGS DE DEBUG
+================================================================================
+
+📋 OPÇÃO 1: Command Line (Recomendado)
+   1. Abra PowerShell/Terminal na pasta do projeto
+   2. Execute: flutter run -v
+   3. Aguarde o app carregar completamente
+   4. Clique no botão Preferences (engrenagem)
+   5. Se congelar, pressione Ctrl+C imediatamente
+   6. Os logs mostrarão exatamente onde parou
+
+📋 OPÇÃO 2: Salvar em Arquivo (Para Análise Posterior)
+   1. Execute: flutter run -v > debug_output.txt 2>&1
+   2. Clique em Preferences
+   3. Pressione Ctrl+C quando congelar
+   4. Abra debug_output.txt e procure pelos últimos logs com 🔧, 🏠, 🚀
+
+📋 OPÇÃO 3: Android Studio / VS Code
+   1. Pressione View → Debug Console
+   2. Execute o app com Run ou Debug
+   3. Procure pelos logs que começam com 🔧, 🏠, 🚀
+
+================================================================================
+                    O QUE PROCURAR NOS LOGS
+================================================================================
+
+✅ SE NÃO CONGELAR:
+   Você verá uma sequência completa:
+   🚀 main() - ...
+   🔧 PrefsService: init() - ... [completo]
+   🏠 HomeScreen.initState() - ... [completo]
+   🔧 SettingsScreen.initState() - ... [completo]
+
+❌ SE CONGELAR:
+   Os logs param em um ponto específico. Exemplos:
+
+   a) Para em: 🏠 HomeScreen.initState() - lista de telas criada
+      → Problema está criando SettingsScreen
+
+   b) Para em: 🔧 SettingsScreen.initState() - acessando cityNotifier
+      → Problema está acessando PrefsService.cityNotifier.value
+
+   c) Para em: 🔧 SettingsScreen.initState() - acessando themeNotifier
+      → Problema está acessando PrefsService.themeNotifier.value
+
+================================================================================
+                    PRÓXIMOS PASSOS
+================================================================================
+
+1. Execute o app com os logs ativados
+2. Clique no botão Preferences
+3. Se congelar, copie os ÚLTIMOS 50 LINHAS dos logs
+4. Cole aqui ou salve em um arquivo para análise
+
+Os logs dirão exatamente:
+   ✓ Qual é a última função que foi executada com sucesso
+   ✓ Qual é a próxima função que tentou executar mas travou
+   ✓ Isso nos dará a pista exata do que está causando o problema
+
+================================================================================
+                    ESTRUTURA DE LOGS ESPERADA
+================================================================================
+
+INÍCIO DA EXECUÇÃO (ao abrir o app):
+┌─────────────────────────────────────────────────────────────┐
+│ 🚀 main() - iniciando app...                               │
+│ 🚀 main() - WidgetsFlutterBinding inicializado              │
+│ 🚀 main() - inicializando formatação de data...             │
+│ 🚀 main() - inicializando PrefsService...                   │
+│   🔧 PrefsService: init() - iniciando...                    │
+│   🔧 PrefsService: init() - carregando tema...              │
+│   🔧 PrefsService: init() - tema carregado: light           │
+│   🔧 PrefsService: init() - carregando localização...       │
+│   🔧 PrefsService: init() - localização carregada: ...      │
+│   🔧 PrefsService: init() - concluído com sucesso           │
+│ 🚀 main() - executando app...                               │
+│ 🏠 HomeScreen.initState() - iniciando...                    │
+│ 🏠 HomeScreen.initState() - criando lista de telas...       │
+│ 🏠 HomeScreen.initState() - lista de telas criada           │
+│ 🏠 HomeScreen.initState() - criando listener...             │
+│ 🏠 HomeScreen.initState() - concluído                       │
+└─────────────────────────────────────────────────────────────┘
+
+QUANDO CLICA EM PREFERENCES (se não congelar):
+┌─────────────────────────────────────────────────────────────┐
+│ 🔧 SettingsScreen.initState() - iniciando...               │
+│ 🔧 SettingsScreen.initState() - acessando cityNotifier     │
+│ 🔧 SettingsScreen.initState() - cityNotifier OK: ...       │
+│ 🔧 SettingsScreen.initState() - acessando themeNotifier    │
+│ 🔧 SettingsScreen.initState() - themeNotifier OK: false    │
+│ 🔧 SettingsScreen.initState() - concluído com sucesso      │
+│ [Tela de Preferences aparece na tela]                      │
+└─────────────────────────────────────────────────────────────┘
+
+================================================================================
+                    ARQUIVO DE AJUDA
+================================================================================
+
+Para instruções completas, veja: DEBUG_GUIDE.md
+
+================================================================================
+Criado em: 2026-01-04 às 00:00 UTC-3
+Versão do App: 1.50.0
+Status: Sistema de debug ativo e pronto para coleta de dados
+================================================================================
