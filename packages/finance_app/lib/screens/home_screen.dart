@@ -16,7 +16,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   late final VoidCallback _tabRequestListener;
 
-  final List<Widget> _screens = [
+  // Lazy-load screens to avoid initializing all screens on startup
+  late final List<Widget> _screens = [
     const DashboardScreen(),
     const RecebimentosScreen(),
     const CreditCardScreen(),

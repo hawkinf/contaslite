@@ -13,13 +13,15 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late List<String> _cities;
   late String _selectedCity;
-  bool _isDark = PrefsService.themeNotifier.value == ThemeMode.dark;
+  late bool _isDark;
   bool _citiesInitialized = false;
 
   @override
   void initState() {
     super.initState();
+    // Initialize from notifiers in initState to avoid blocking during widget construction
     _selectedCity = PrefsService.cityNotifier.value;
+    _isDark = PrefsService.themeNotifier.value == ThemeMode.dark;
     // Lazy initialize cities to avoid blocking during navigation
     // Will be initialized on first use (when needed for display)
   }
