@@ -303,25 +303,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
         current = current.add(const Duration(days: 1));
       }
 
-      // Processar cartões: fazer queries apenas uma vez
+      // Processar cartões: executar queries em paralelo com Future.wait
       final db = await DatabaseHelper.instance.database;
       final cardExpensesByCardId = <int, List<Account>>{};
       final cardSubscriptionsByCardId = <int, List<Account>>{};
 
+      // Coletar todas as futures de queries
+      final cardQueries = <Future<void>>[];
+
       for (var card in cards) {
         if (card.id == null) continue;
 
-        // Query única para despesas do cartão
-        final expenses = await DatabaseHelper.instance.getCardExpensesForMonth(
-            card.id!, _startDate.month, _startDate.year);
-        cardExpensesByCardId[card.id!] = expenses;
+        // Executar queries em paralelo
+        cardQueries.add(
+          Future(() async {
+            // Query para despesas do cartão
+            final expenses = await DatabaseHelper.instance.getCardExpensesForMonth(
+                card.id!, _startDate.month, _startDate.year);
+            cardExpensesByCardId[card.id!] = expenses;
 
-        // Query única para subscrições do cartão
-        final recurringRes = await db.query('accounts',
-            where: 'cardId = ? AND isRecurrent = 1',
-            whereArgs: [card.id]);
-        cardSubscriptionsByCardId[card.id!] =
-            recurringRes.map((e) => Account.fromMap(e)).toList();
+            // Query para subscrições do cartão
+            final recurringRes = await db.query('accounts',
+                where: 'cardId = ? AND isRecurrent = 1',
+                whereArgs: [card.id]);
+            cardSubscriptionsByCardId[card.id!] =
+                recurringRes.map((e) => Account.fromMap(e)).toList();
+          })
+        );
+      }
+
+      // Executar todas as queries em paralelo
+      if (cardQueries.isNotEmpty) {
+        await Future.wait(cardQueries);
       }
 
       // Processar faturas dos cartões
@@ -417,7 +430,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final installmentSummaries =
           await _buildInstallmentSummaries(processedList);
 
-      // Carregar informações de pagamento
+      // Carregar informações de pagamento de forma assíncrona não-bloqueante
       final paymentIds = processedList
           .where((account) => account.id != null)
           .map((account) => account.id!)
