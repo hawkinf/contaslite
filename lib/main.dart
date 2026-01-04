@@ -45,17 +45,6 @@ String get appDisplayVersion {
   return appVersion;
 }
 
-// Helper function to create routes without Hero animations
-PageRoute<T> _createNoHeroRoute<T>(WidgetBuilder builder) {
-  return PageRouteBuilder<T>(
-    pageBuilder: (context, animation, secondaryAnimation) => builder(context),
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      // No animation transition
-      return child;
-    },
-  );
-}
-
 // === INICIALIZAÇÃO E LOCALE ===
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -3465,7 +3454,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                         tooltip: 'Tabelas',
                         onPressed: () => Navigator.push(
                           context,
-                          _createNoHeroRoute((_) => const TablesScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const TablesScreen(),
+                          ),
                         ),
                       ),
                     ),
@@ -3477,7 +3468,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                         tooltip: 'Preferências',
                         onPressed: () => Navigator.push(
                           context,
-                          _createNoHeroRoute((_) => const SettingsScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const SettingsScreen(),
+                          ),
                         ),
                       ),
                     ),
@@ -3590,7 +3583,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                       color: Colors.white,
                       onPressed: () => Navigator.push(
                         context,
-                        _createNoHeroRoute((_) => const TablesScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const TablesScreen(),
+                        ),
                       ),
                     ),
                     IconButton(
@@ -3600,7 +3595,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                       color: Colors.white,
                       onPressed: () => Navigator.push(
                         context,
-                        _createNoHeroRoute((_) => const SettingsScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => const SettingsScreen(),
+                        ),
                       ),
                     ),
                   ],
@@ -4082,7 +4079,7 @@ class TablesScreen extends StatelessWidget {
             tileColor: Theme.of(context).cardColor,
             onTap: () => Navigator.push(
               context,
-              _createNoHeroRoute((_) => item.builder()),
+              MaterialPageRoute(builder: (_) => item.builder()),
             ),
           );
         },

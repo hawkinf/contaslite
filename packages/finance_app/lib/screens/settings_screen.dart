@@ -315,9 +315,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () => Navigator.push(
               context,
-              PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) => const DatabaseScreen(),
-                transitionsBuilder: (context, animation, secondaryAnimation, child) => child,
+              MaterialPageRoute(
+                builder: (_) => const DatabaseScreen(),
               ),
             ),
           ),
