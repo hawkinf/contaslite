@@ -20,8 +20,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _selectedCity = PrefsService.cityNotifier.value;
-    // Lazy initialize cities on first use
-    _initializeCities();
+    // Lazy initialize cities to avoid blocking during navigation
+    // Will be initialized on first use (when needed for display)
   }
 
   void _initializeCities() {
@@ -36,6 +36,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  // Ensure cities are initialized before use
+  void _ensureCitiesInitialized() {
+    if (!_citiesInitialized) {
+      _initializeCities();
+    }
+  }
+
   String _regionForCity(String city) {
     for (final entry in HolidayService.regions.entries) {
       if (entry.value.contains(city)) {
@@ -46,6 +53,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showCitySelector() {
+    _ensureCitiesInitialized();
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 800;
     final searchController = TextEditingController();
