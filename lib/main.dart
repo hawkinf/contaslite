@@ -3456,6 +3456,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                           context,
                           MaterialPageRoute(
                             builder: (_) => const TablesScreen(),
+                            fullscreenDialog: true,
                           ),
                         ),
                       ),
@@ -3470,6 +3471,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                           context,
                           MaterialPageRoute(
                             builder: (_) => const SettingsScreen(),
+                            fullscreenDialog: true,
                           ),
                         ),
                       ),
@@ -3585,6 +3587,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                         context,
                         MaterialPageRoute(
                           builder: (_) => const TablesScreen(),
+                          fullscreenDialog: true,
                         ),
                       ),
                     ),
@@ -3597,6 +3600,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                         context,
                         MaterialPageRoute(
                           builder: (_) => const SettingsScreen(),
+                          fullscreenDialog: true,
                         ),
                       ),
                     ),
@@ -4079,7 +4083,10 @@ class TablesScreen extends StatelessWidget {
             tileColor: Theme.of(context).cardColor,
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => item.builder()),
+              MaterialPageRoute(
+                builder: (_) => item.builder(),
+                fullscreenDialog: true,
+              ),
             ),
           );
         },

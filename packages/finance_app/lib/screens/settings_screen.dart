@@ -317,6 +317,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               context,
               MaterialPageRoute(
                 builder: (_) => const DatabaseScreen(),
+                fullscreenDialog: true,
               ),
             ),
           ),
