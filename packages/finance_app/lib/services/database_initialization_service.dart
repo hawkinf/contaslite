@@ -4,6 +4,7 @@ import '../models/account_type.dart';
 import '../models/account_category.dart';
 import '../models/payment_method.dart';
 import 'default_account_categories_service.dart';
+import 'database_protection_service.dart';
 
 class DatabaseInitializationService {
   static final DatabaseInitializationService instance =
@@ -33,6 +34,26 @@ class DatabaseInitializationService {
       methodCount = await db.countPaymentMethods(onlyActive: false);
       if (typeCount > 0 && methodCount > 0) {
         debugPrint('[DB INIT] Banco de dados inicializado com sucesso!');
+      }
+
+      // Validar integridade do banco
+      debugPrint('[DB INIT] Validando integridade do banco de dados...');
+      try {
+        final integrityResult =
+            await DatabaseProtectionService.instance.validateIntegrity();
+        if (integrityResult.isValid) {
+          debugPrint('✓ [DB INIT] Integridade do banco: OK');
+        } else {
+          debugPrint('⚠️ [DB INIT] AVISO: Banco com problemas detectados');
+          for (final error in integrityResult.errors) {
+            debugPrint('  ❌ $error');
+          }
+          for (final warning in integrityResult.warnings) {
+            debugPrint('  ⚠️ $warning');
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ [DB INIT] Erro ao validar integridade: $e');
       }
 
       final elapsedMs = stopwatch.elapsedMilliseconds;

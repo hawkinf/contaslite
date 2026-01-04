@@ -8,6 +8,7 @@ import '../models/account_category.dart';
 import '../models/bank_account.dart';
 import '../models/payment_method.dart';
 import '../models/payment.dart';
+import '../services/database_protection_service.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -37,7 +38,7 @@ class DatabaseHelper {
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
-    
+
     // Garantir que o diretório existe
     final directory = Directory(dbPath);
     if (!await directory.exists()) {
@@ -48,7 +49,34 @@ class DatabaseHelper {
       path,
       version: 9,
       onCreate: _createDB,
-      onUpgrade: _upgradeDB,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        // Criar backup automático antes de qualquer migração
+        debugPrint('📦 Criando backup automático antes da migração v$oldVersion→v$newVersion...');
+        try {
+          final backupReason = 'pre_migration_v$oldVersion' 'to$newVersion';
+          await DatabaseProtectionService.instance.createBackup(backupReason);
+          debugPrint('✓ Backup automático criado com sucesso');
+        } catch (e) {
+          debugPrint('⚠️ Erro ao criar backup automático: $e');
+          // Continua a migração mesmo se falhar o backup
+        }
+
+        // Executar migração
+        await _upgradeDB(db, oldVersion, newVersion);
+
+        // Validar integridade após migração
+        try {
+          final result = await DatabaseProtectionService.instance.validateIntegrity();
+          if (!result.isValid) {
+            debugPrint('❌ AVISO: Banco de dados pode estar corrompido após migração');
+            debugPrint('Erros: ${result.errors.join(", ")}');
+          } else {
+            debugPrint('✓ Validação de integridade OK após migração');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Erro ao validar integridade após migração: $e');
+        }
+      },
       onConfigure: _onConfigure,
     );
   }
