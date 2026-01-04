@@ -1899,7 +1899,8 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             observation: _observationController.text,
             cardColor: _selectedColor);
         debugPrint('  Account.value antes de salvar: ${acc.value}');
-        
+        debugPrint('  Account.typeId: ${acc.typeId} (tipo: ${_selectedType!.name})');
+
         // 1. Criar a conta recorrente pai - somente se estouro validado
         int? parentId = await DatabaseHelper.instance.createAccount(acc);
         debugPrint('  Account salva com id: $parentId');

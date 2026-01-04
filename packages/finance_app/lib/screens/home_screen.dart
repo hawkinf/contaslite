@@ -23,9 +23,13 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _screens = [
-      const DashboardScreen(),
+      // Primeira aba: Contas a Pagar (exclui Recebimentos)
+      const DashboardScreen(excludeTypeNameFilter: 'Recebimentos'),
+      // Segunda aba: Contas a Receber
       const RecebimentosScreen(),
+      // Terceira aba: Cartões
       const CreditCardScreen(),
+      // Quarta aba: Preferências
       const SettingsScreen(),
     ];
     _tabRequestListener = () {

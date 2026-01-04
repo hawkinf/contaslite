@@ -64,8 +64,13 @@ class _SeriesSummary {
 
 class DashboardScreen extends StatefulWidget {
   final String? typeNameFilter;
+  final String? excludeTypeNameFilter;
 
-  const DashboardScreen({super.key, this.typeNameFilter});
+  const DashboardScreen({
+    super.key,
+    this.typeNameFilter,
+    this.excludeTypeNameFilter,
+  });
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -222,7 +227,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final typeMap = {for (var t in types) t.id!: t.name};
 
       final typeFilter = widget.typeNameFilter?.trim();
+      final excludeTypeFilter = widget.excludeTypeNameFilter?.trim();
+
       Set<int>? allowedTypeIds;
+      Set<int>? excludedTypeIds;
+
+      // Filtro de inclusão (mostrar apenas tipos específicos)
       if (typeFilter != null && typeFilter.isNotEmpty) {
         final normalizedFilter = typeFilter.toLowerCase();
         allowedTypeIds = types
@@ -232,6 +242,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (allowedTypeIds.isEmpty) {
           allowedTypeIds = {};
         }
+      }
+
+      // Filtro de exclusão (esconder tipos específicos)
+      if (excludeTypeFilter != null && excludeTypeFilter.isNotEmpty) {
+        final normalizedFilter = excludeTypeFilter.toLowerCase();
+        excludedTypeIds = types
+            .where((t) => t.name.trim().toLowerCase() == normalizedFilter)
+            .map((t) => t.id!)
+            .toSet();
       }
 
       // Preencher mapa de valores de recorrências pai
@@ -411,9 +430,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
             .toList();
       }
 
+      // Aplicar filtro de inclusão (se especificado)
       if (allowedTypeIds != null) {
         processedList = processedList
             .where((account) => allowedTypeIds!.contains(account.typeId))
+            .toList();
+      }
+
+      // Aplicar filtro de exclusão (se especificado)
+      if (excludedTypeIds != null && excludedTypeIds.isNotEmpty) {
+        processedList = processedList
+            .where((account) => !excludedTypeIds!.contains(account.typeId))
             .toList();
       }
 
