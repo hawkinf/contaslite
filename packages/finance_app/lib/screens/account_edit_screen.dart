@@ -47,6 +47,7 @@ class _AccountEditScreenState extends State<AccountEditScreen> {
     _valueController = TextEditingController();
     _dateController = TextEditingController();
     _installmentsQtyController = TextEditingController();
+    _observationController = TextEditingController();
   }
 
   @override
