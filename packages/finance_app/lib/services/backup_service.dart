@@ -11,12 +11,13 @@ class BackupService {
   Future<void> createBackup() async {
     try {
       debugPrint('💾 Iniciando backup do banco de dados...');
-      
+
       // Obter caminho do banco de dados
       final db = await DatabaseHelper.instance.database;
       final dbPath = db.path;
-      
-      if (!File(dbPath).existsSync()) {
+
+      final sourceFile = File(dbPath);
+      if (!await sourceFile.exists()) {
         debugPrint('❌ Arquivo do banco de dados não encontrado: $dbPath');
         return;
       }
@@ -26,9 +27,9 @@ class BackupService {
         path.dirname(dbPath),
         'backups'
       ));
-      
-      if (!backupDir.existsSync()) {
-        backupDir.createSync(recursive: true);
+
+      if (!await backupDir.exists()) {
+        await backupDir.create(recursive: true);
         debugPrint('📁 Diretório de backups criado: ${backupDir.path}');
       }
 
@@ -38,14 +39,13 @@ class BackupService {
       final backupPath = path.join(backupDir.path, backupFileName);
 
       // Copiar arquivo do banco de dados
-      final sourceFile = File(dbPath);
       final backupFile = await sourceFile.copy(backupPath);
-      
+
       debugPrint('✅ Backup criado com sucesso: ${backupFile.path}');
-      
+
       // Limpar backups antigos (manter apenas os últimos 10)
       await _cleanOldBackups(backupDir);
-      
+
     } catch (e) {
       debugPrint('❌ Erro ao criar backup: $e');
     }
@@ -53,20 +53,31 @@ class BackupService {
 
   Future<void> _cleanOldBackups(Directory backupDir) async {
     try {
-      final files = backupDir
-          .listSync()
-          .whereType<File>()
-          .where((f) => f.path.endsWith('.db'))
-          .toList();
+      final files = <File>[];
+
+      // Usar list() assíncrono em vez de listSync()
+      await for (final entity in backupDir.list()) {
+        if (entity is File && entity.path.endsWith('.db')) {
+          files.add(entity);
+        }
+      }
 
       // Ordenar por data de modificação (mais recentes primeiro)
-      files.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+      // Construir lista com timestamps para evitar múltiplas chamadas a stat()
+      final filesWithDates = <(File file, DateTime modified)>[];
+      for (final file in files) {
+        final stat = await file.stat();
+        filesWithDates.add((file, stat.modified));
+      }
+
+      // Ordenar por data (mais recentes primeiro)
+      filesWithDates.sort((a, b) => b.$2.compareTo(a.$2));
 
       // Deletar backups antigos (manter apenas os últimos 10)
-      if (files.length > 10) {
-        for (int i = 10; i < files.length; i++) {
-          files[i].deleteSync();
-          debugPrint('🗑️  Backup antigo removido: ${path.basename(files[i].path)}');
+      if (filesWithDates.length > 10) {
+        for (int i = 10; i < filesWithDates.length; i++) {
+          await filesWithDates[i].$1.delete();
+          debugPrint('🗑️  Backup antigo removido: ${path.basename(filesWithDates[i].$1.path)}');
         }
       }
     } catch (e) {
@@ -83,12 +94,22 @@ class BackupService {
         'backups'
       ));
 
-      if (backupDir.existsSync()) {
-        return backupDir
-            .listSync()
-            .where((f) => f.path.endsWith('.db'))
-            .toList()
-              ..sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+      if (await backupDir.exists()) {
+        final files = <(FileSystemEntity file, DateTime modified)>[];
+
+        // Usar list() assíncrono em vez de listSync()
+        await for (final entity in backupDir.list()) {
+          if (entity is File && entity.path.endsWith('.db')) {
+            final stat = await entity.stat();
+            files.add((entity, stat.modified));
+          }
+        }
+
+        // Ordenar por data (mais recentes primeiro)
+        files.sort((a, b) => b.$2.compareTo(a.$2));
+
+        // Retornar apenas os arquivos
+        return files.map((f) => f.$1).toList();
       }
       return [];
     } catch (e) {
