@@ -3452,10 +3452,10 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                         icon: const Icon(Icons.table_chart),
                         iconSize: isMobile ? 28 : 24,
                         tooltip: 'Tabelas',
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const TablesScreen(),
+                        onPressed: () => showDialog(
+                          context: context,
+                          builder: (context) => Dialog(
+                            child: const TablesScreen(),
                           ),
                         ),
                       ),
@@ -3466,10 +3466,10 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                         icon: const Icon(Icons.settings),
                         iconSize: isMobile ? 28 : 24,
                         tooltip: 'Preferências',
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SettingsScreen(),
+                        onPressed: () => showDialog(
+                          context: context,
+                          builder: (context) => Dialog(
+                            child: const SettingsScreen(),
                           ),
                         ),
                       ),
@@ -3581,10 +3581,10 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                       iconSize: 24,
                       tooltip: 'Tabelas',
                       color: Colors.white,
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const TablesScreen(),
+                      onPressed: () => showDialog(
+                        context: context,
+                        builder: (context) => Dialog(
+                          child: const TablesScreen(),
                         ),
                       ),
                     ),
@@ -3593,10 +3593,10 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                       iconSize: 24,
                       tooltip: 'Preferências',
                       color: Colors.white,
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const SettingsScreen(),
+                      onPressed: () => showDialog(
+                        context: context,
+                        builder: (context) => Dialog(
+                          child: const SettingsScreen(),
                         ),
                       ),
                     ),
@@ -4051,39 +4051,66 @@ class TablesScreen extends StatelessWidget {
       ),
     ];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tabelas'),
-      ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: items.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          final item = items[index];
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Theme.of(context)
-                  .colorScheme
-                  .primary
-                  .withValues(alpha: 0.12),
-              child: Icon(
-                item.icon,
-                color: Theme.of(context).colorScheme.primary,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Dialog header with title and close button
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: Theme.of(context).dividerColor,
               ),
             ),
-            title: Text(item.title),
-            subtitle: Text(item.subtitle),
-            trailing: const Icon(Icons.chevron_right),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            tileColor: Theme.of(context).cardColor,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => item.builder()),
-            ),
-          );
-        },
-      ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Tabelas',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        ),
+        // Dialog content
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: items.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final item = items[index];
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.12),
+                  child: Icon(
+                    item.icon,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                title: Text(item.title),
+                subtitle: Text(item.subtitle),
+                trailing: const Icon(Icons.chevron_right),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                tileColor: Theme.of(context).cardColor,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => item.builder()),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

@@ -22,8 +22,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Initialize from notifiers in initState to avoid blocking during widget construction
     _selectedCity = PrefsService.cityNotifier.value;
     _isDark = PrefsService.themeNotifier.value == ThemeMode.dark;
-    // Lazy initialize cities to avoid blocking during navigation
-    // Will be initialized on first use (when needed for display)
+    // Initialize cities immediately to avoid late initialization errors
+    _initializeCities();
   }
 
   void _initializeCities() {
@@ -188,13 +188,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Preferências'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Dialog header with title and close button
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: Theme.of(context).dividerColor,
+              ),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Preferências',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        ),
+        // Dialog content
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
           Center(
             child: Column(
               children: [
@@ -313,15 +338,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Banco de dados'),
             subtitle: const Text('Backup, restauração e manutenção'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const DatabaseScreen(),
+            onTap: () => showDialog(
+              context: context,
+              builder: (context) => const Dialog(
+                child: DatabaseScreen(),
               ),
             ),
           ),
         ],
-      ),
+          ),
+        ),
+      ],
     );
   }
 }
