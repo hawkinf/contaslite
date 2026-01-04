@@ -13,6 +13,9 @@ class PrefsService {
   static final ValueNotifier<int?> tabReturnNotifier = ValueNotifier(null);
   static bool _embeddedMode = false;
 
+  // Debug
+  static final bool _debugEnabled = true;
+
   // Database Protection Settings
   static bool autoBackupEnabled = true;
   static int integrityCheckIntervalDays = 7;
@@ -25,7 +28,11 @@ class PrefsService {
     _embeddedMode = value;
   }
 
-
+  static void _log(String message) {
+    if (_debugEnabled) {
+      debugPrint('🔧 PrefsService: $message');
+    }
+  }
 
   static DateTimeRange _defaultDateRange() {
     final now = DateTime.now();
@@ -35,13 +42,17 @@ class PrefsService {
   }
 
   static Future<void> init() async {
+    _log('init() - iniciando...');
     final prefs = await SharedPreferences.getInstance();
 
     // Tema
+    _log('init() - carregando tema...');
     final isDark = prefs.getBool('isDark') ?? false;
     themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
+    _log('init() - tema carregado: ${isDark ? "dark" : "light"}');
 
     // Localização
+    _log('init() - carregando localização...');
     String savedRegion = prefs.getString('region') ?? 'Vale do Paraíba';
     if (!HolidayService.regions.containsKey(savedRegion)) {
       savedRegion = 'Vale do Paraíba';
@@ -54,11 +65,15 @@ class PrefsService {
       savedCity = cities.isNotEmpty ? cities.first : 'São José dos Campos';
     }
     cityNotifier.value = savedCity;
+    _log('init() - localização carregada: $savedCity, $savedRegion');
 
+    _log('init() - carregando intervalo de datas...');
     final range = await loadDateRange();
     dateRangeNotifier.value = DateTimeRange(start: range.start, end: range.end);
+    _log('init() - intervalo de datas carregado');
 
     // Database Protection Settings
+    _log('init() - carregando configurações de proteção de banco...');
     autoBackupEnabled = prefs.getBool('db_auto_backup_enabled') ?? true;
     integrityCheckIntervalDays = prefs.getInt('db_integrity_check_interval') ?? 7;
     backupRetentionCount = prefs.getInt('db_backup_retention_count') ?? 5;
@@ -71,6 +86,7 @@ class PrefsService {
         lastIntegrityCheck = null;
       }
     }
+    _log('init() - concluído com sucesso');
   }
 
   static Future<void> saveTheme(bool isDark) async {

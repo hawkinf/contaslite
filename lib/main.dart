@@ -47,25 +47,32 @@ String get appDisplayVersion {
 
 // === INICIALIZAÇÃO E LOCALE ===
 void main() async {
+  debugPrint('🚀 main() - iniciando app...');
   WidgetsFlutterBinding.ensureInitialized();
-  
+  debugPrint('🚀 main() - WidgetsFlutterBinding inicializado');
+
   // Inicializar window_manager para desktop
   if (GetPlatform.isDesktop) {
+    debugPrint('🚀 main() - plataforma desktop detectada, inicializando window_manager...');
     await windowManager.ensureInitialized();
     windowManager.waitUntilReadyToShow().then((_) async {
       // Carregar tamanho salvo ou usar padrão
       final prefs = await SharedPreferences.getInstance();
       final savedWidth = prefs.getDouble('windowWidth') ?? 1200;
       final savedHeight = prefs.getDouble('windowHeight') ?? 800;
-      
+
       await windowManager.setSize(Size(savedWidth, savedHeight));
       await windowManager.show();
+      debugPrint('🚀 main() - window_manager pronto');
     });
   }
-  
-  await initializeDateFormatting('pt_BR', null); 
-  Intl.defaultLocale = 'pt_BR'; 
+
+  debugPrint('🚀 main() - inicializando formatação de data...');
+  await initializeDateFormatting('pt_BR', null);
+  Intl.defaultLocale = 'pt_BR';
+  debugPrint('🚀 main() - inicializando PrefsService...');
   await contas_prefs.PrefsService.init();
+  debugPrint('🚀 main() - executando app...');
   runApp(const MyApp());
 }
 

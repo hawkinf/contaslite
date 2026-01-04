@@ -19,11 +19,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize from notifiers in initState to avoid blocking during widget construction
-    _selectedCity = PrefsService.cityNotifier.value;
-    _isDark = PrefsService.themeNotifier.value == ThemeMode.dark;
-    // Lazy initialize cities to avoid blocking during navigation
-    // Will be initialized on first use (when needed for display)
+    debugPrint('🔧 SettingsScreen.initState() - iniciando...');
+
+    try {
+      debugPrint('🔧 SettingsScreen.initState() - acessando cityNotifier');
+      _selectedCity = PrefsService.cityNotifier.value;
+      debugPrint('🔧 SettingsScreen.initState() - cityNotifier OK: $_selectedCity');
+
+      debugPrint('🔧 SettingsScreen.initState() - acessando themeNotifier');
+      _isDark = PrefsService.themeNotifier.value == ThemeMode.dark;
+      debugPrint('🔧 SettingsScreen.initState() - themeNotifier OK: $_isDark');
+
+      debugPrint('🔧 SettingsScreen.initState() - concluído com sucesso');
+    } catch (e) {
+      debugPrint('❌ SettingsScreen.initState() - ERRO: $e');
+      rethrow;
+    }
   }
 
   void _initializeCities() {

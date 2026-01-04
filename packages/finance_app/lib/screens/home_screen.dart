@@ -17,16 +17,23 @@ class _HomeScreenState extends State<HomeScreen> {
   late final VoidCallback _tabRequestListener;
 
   // Lazy-load screens to avoid initializing all screens on startup
-  late final List<Widget> _screens = [
-    const DashboardScreen(),
-    const RecebimentosScreen(),
-    const CreditCardScreen(),
-    const SettingsScreen(),
-  ];
+  late final List<Widget> _screens;
 
   @override
   void initState() {
+    debugPrint('🏠 HomeScreen.initState() - iniciando...');
     super.initState();
+
+    debugPrint('🏠 HomeScreen.initState() - criando lista de telas...');
+    _screens = [
+      const DashboardScreen(),
+      const RecebimentosScreen(),
+      const CreditCardScreen(),
+      const SettingsScreen(),
+    ];
+    debugPrint('🏠 HomeScreen.initState() - lista de telas criada');
+
+    debugPrint('🏠 HomeScreen.initState() - criando listener...');
     _tabRequestListener = () {
       final requested = PrefsService.tabRequestNotifier.value;
       if (requested == null || requested == _selectedIndex) return;
@@ -34,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
       PrefsService.tabRequestNotifier.value = null;
     };
     PrefsService.tabRequestNotifier.addListener(_tabRequestListener);
+    debugPrint('🏠 HomeScreen.initState() - concluído');
   }
 
   @override
