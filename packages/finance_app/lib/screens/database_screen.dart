@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import '../database/db_helper.dart';
 import '../services/database_initialization_service.dart';
 import '../widgets/app_input_decoration.dart';
+import '../widgets/database_backups_section.dart';
 
 class DatabaseScreen extends StatefulWidget {
   const DatabaseScreen({super.key});
@@ -127,6 +128,10 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: _showRecreateTablesDialog,
           ),
+          const SizedBox(height: 20),
+          const Divider(thickness: 2),
+          const SizedBox(height: 10),
+          const DatabaseBackupsSection(),
           const SizedBox(height: 20),
           const Divider(thickness: 2),
           const SizedBox(height: 10),

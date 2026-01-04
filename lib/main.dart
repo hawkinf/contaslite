@@ -1015,7 +1015,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     }
   }
 
-  void _printReport() async {
+  Future<void> _printReport() async {
     try {
       // Capturar screenshot do calendário mensal se aplicável
       Uint8List? calendarScreenshot;

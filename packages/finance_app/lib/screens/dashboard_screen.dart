@@ -23,8 +23,6 @@ import 'credit_card_form.dart';
 import 'card_expenses_screen.dart';
 import 'account_edit_screen.dart';
 import 'recurrent_account_edit_screen.dart' as rec;
-import 'settings_screen.dart';
-import 'account_types_screen.dart';
 
 class _InstallmentSummary {
   final double totalAmount;
@@ -149,6 +147,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _showFilterInfo() async {
+    if (!_datesInitialized) {
+      return;
+    }
     final rangeLabel = _formatRangeLabel(_startDate, _endDate);
     await showDialog<void>(
       context: context,
@@ -165,44 +166,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Future<void> _handleAppMenuSelection(String value) async {
-    switch (value) {
-      case 'types':
-        await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AccountTypesScreen()),
-        );
-        break;
-      case 'card':
-        await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const CreditCardFormScreen()),
-        );
-        break;
-      case 'settings':
-        await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const SettingsScreen()),
-        );
-        break;
-    }
-
-    if (!mounted) return;
-    _loadData();
-  }
-
-  Widget _buildAppMenu() {
-    return PopupMenuButton<String>(
-      tooltip: 'Menu',
-      onSelected: _handleAppMenuSelection,
-      itemBuilder: (context) => const [
-        PopupMenuItem(value: 'types', child: Text('Tabelas')),
-        PopupMenuItem(value: 'card', child: Text('Novo cartao')),
-        PopupMenuItem(value: 'settings', child: Text('Preferencias')),
-      ],
-    );
-  }
-
   List<Widget> _buildAppBarActions({required bool includeFilter}) {
     final actions = <Widget>[];
     if (includeFilter) {
@@ -214,7 +177,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       );
     }
-    actions.add(_buildAppMenu());
     return actions;
   }
 

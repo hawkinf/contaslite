@@ -22,6 +22,18 @@ class DatabaseHelper {
     return _database!;
   }
 
+  Future<void> closeDatabase() async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
+  }
+
+  Future<void> reopenDatabase() async {
+    await closeDatabase();
+    _database = await _initDB(_dbName);
+  }
+
   Future<Database> _initDB(String filePath) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);

@@ -13,6 +13,12 @@ class PrefsService {
   static final ValueNotifier<int?> tabReturnNotifier = ValueNotifier(null);
   static bool _embeddedMode = false;
 
+  // Database Protection Settings
+  static bool autoBackupEnabled = true;
+  static int integrityCheckIntervalDays = 7;
+  static DateTime? lastIntegrityCheck;
+  static int backupRetentionCount = 5;
+
   static bool get embeddedMode => _embeddedMode;
 
   static void setEmbeddedMode(bool value) {
@@ -30,7 +36,7 @@ class PrefsService {
 
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Tema
     final isDark = prefs.getBool('isDark') ?? false;
     themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
@@ -51,6 +57,20 @@ class PrefsService {
 
     final range = await loadDateRange();
     dateRangeNotifier.value = DateTimeRange(start: range.start, end: range.end);
+
+    // Database Protection Settings
+    autoBackupEnabled = prefs.getBool('db_auto_backup_enabled') ?? true;
+    integrityCheckIntervalDays = prefs.getInt('db_integrity_check_interval') ?? 7;
+    backupRetentionCount = prefs.getInt('db_backup_retention_count') ?? 5;
+
+    final lastCheckStr = prefs.getString('db_last_integrity_check');
+    if (lastCheckStr != null) {
+      try {
+        lastIntegrityCheck = DateTime.parse(lastCheckStr);
+      } catch (e) {
+        lastIntegrityCheck = null;
+      }
+    }
   }
 
   static Future<void> saveTheme(bool isDark) async {
@@ -106,5 +126,40 @@ static Future<void> saveDateRange(DateTime start, DateTime end) async {
     if (endStr != null) end = DateTime.parse(endStr);
 
     return (start: start, end: end);
+  }
+
+  // --- DATABASE PROTECTION SETTINGS ---
+
+  static Future<void> saveAutoBackupEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('db_auto_backup_enabled', enabled);
+    autoBackupEnabled = enabled;
+  }
+
+  static Future<void> saveIntegrityCheckInterval(int days) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('db_integrity_check_interval', days);
+    integrityCheckIntervalDays = days;
+  }
+
+  static Future<void> saveBackupRetentionCount(int count) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('db_backup_retention_count', count);
+    backupRetentionCount = count;
+  }
+
+  static Future<void> saveLastIntegrityCheck(DateTime dateTime) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('db_last_integrity_check', dateTime.toIso8601String());
+    lastIntegrityCheck = dateTime;
+  }
+
+  static bool shouldPerformIntegrityCheck() {
+    if (lastIntegrityCheck == null) return true;
+
+    final now = DateTime.now();
+    final difference = now.difference(lastIntegrityCheck!).inDays;
+
+    return difference >= integrityCheckIntervalDays;
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import '../database/db_helper.dart';
+import 'database_protection_service.dart';
 
 class DatabaseMigrationService {
   static final DatabaseMigrationService instance =
@@ -48,6 +49,20 @@ class DatabaseMigrationService {
 
       // Validar integridade dos dados
       await _validateDataIntegrity(db);
+
+      // Validação de integridade com DatabaseProtectionService
+      migrationStatus.value = MigrationStatus.loading(
+        message: 'Verificando integridade do banco...',
+        progress: 0.9,
+      );
+
+      final integrityResult =
+          await DatabaseProtectionService.instance.validateIntegrity();
+
+      if (!integrityResult.isValid) {
+        debugPrint('⚠️ Aviso: ${integrityResult.summary}');
+        debugPrint(integrityResult.toString());
+      }
 
       migrationStatus.value = MigrationStatus.loading(
         message: 'Finalizando...',
