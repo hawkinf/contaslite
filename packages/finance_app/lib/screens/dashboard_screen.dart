@@ -688,7 +688,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Padding(
             padding: EdgeInsets.only(right: fabRight, bottom: fabBottom),
             child: FloatingActionButton(
-              heroTag: 'btnAdd',
+              heroTag: null,
               tooltip: _isRecebimentosFilter ? 'Novo recebimento' : 'Novo lancamento',
               backgroundColor: Colors.blue.shade800,
               foregroundColor: Colors.white,
