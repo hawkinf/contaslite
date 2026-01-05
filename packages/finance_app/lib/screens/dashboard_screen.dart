@@ -2051,13 +2051,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Navigator.pop(ctx);
                           await showDialog(
                             context: context,
-                            builder: (_) => const Dialog(
-                              insetPadding: EdgeInsets.all(16),
-                              constraints: BoxConstraints(
-                                maxWidth: 600,
-                                maxHeight: 850,
+                            builder: (_) => Dialog(
+                              insetPadding: const EdgeInsets.all(16),
+                              constraints: const BoxConstraints(
+                                maxWidth: 700,
+                                maxHeight: double.infinity,
                               ),
-                              child: AccountFormScreen(),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxHeight: 900),
+                                child: const AccountFormScreen(),
+                              ),
                             ),
                           );
                           _refresh();
