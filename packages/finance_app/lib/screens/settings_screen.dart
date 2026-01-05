@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/holiday_service.dart';
 import '../services/prefs_service.dart';
-import 'database_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -338,12 +337,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Banco de dados'),
             subtitle: const Text('Backup, restauração e manutenção'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () => showDialog(
-              context: context,
-              builder: (context) => const Dialog(
-                child: DatabaseScreen(),
-              ),
-            ),
+            onTap: () => PrefsService.tabRequestNotifier.value = 6,
           ),
         ],
           ),
