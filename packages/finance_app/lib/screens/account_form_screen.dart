@@ -1396,15 +1396,19 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     return ValueListenableBuilder<DateTimeRange>(
       valueListenable: PrefsService.dateRangeNotifier,
       builder: (context, range, _) {
-        return Scaffold(
-          appBar: null,
-          body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 650),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
               // Card com seleção de cor
               Card(
                 elevation: 2,
@@ -1554,30 +1558,32 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               ),
 
               const SizedBox(height: 40),
-            ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
-        color: Theme.of(context).cardColor,
-        child: FilledButton.icon(
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            backgroundColor: Colors.blue.shade800,
-            disabledBackgroundColor: Colors.blue.shade800.withOpacity(0.6),
-          ),
-          onPressed: _isSaving ? null : _saveAccount,
-          icon: _isSaving
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                      color: Colors.white, strokeWidth: 2))
-              : const Icon(Icons.save),
-          label: Text(_isSaving ? "SALVANDO..." : _saveButtonLabel()),
-        ),
-      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Theme.of(context).cardColor,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: Colors.blue.shade800,
+                  disabledBackgroundColor: Colors.blue.shade800.withOpacity(0.6),
+                ),
+                onPressed: _isSaving ? null : _saveAccount,
+                icon: _isSaving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2))
+                    : const Icon(Icons.save),
+                label: Text(_isSaving ? "SALVANDO..." : _saveButtonLabel()),
+              ),
+            ),
+          ],
         );
       },
     );

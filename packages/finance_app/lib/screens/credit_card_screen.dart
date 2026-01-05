@@ -60,7 +60,7 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
               backgroundColor: Colors.purple.shade700,
               foregroundColor: Colors.white,
               onPressed: () async {
-                await Navigator.push(context, MaterialPageRoute(builder: (_) => const CreditCardFormScreen()));
+                await showDialog(context: context, builder: (_) => const CreditCardFormScreen());
                 _loadCards();
               },
               child: const Icon(Icons.add),
@@ -269,9 +269,9 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
     return GestureDetector(
       onTap: _openExpenses,
       onDoubleTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => CreditCardFormScreen(cardToEdit: widget.card)),
+        showDialog(
+          context: context,
+          builder: (_) => CreditCardFormScreen(cardToEdit: widget.card),
         ).then((_) => widget.onUpdateNeeded());
       },
       child: Card(
@@ -285,7 +285,7 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
           Row(children: [
             IconButton(icon: Icon(Icons.list_alt, color: fgColor, size: 24), tooltip: 'Ver Despesas', onPressed: _openExpenses), 
             ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: fgColor, foregroundColor: bgColor, padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0), minimumSize: const Size(30, 30), tapTargetSize: MaterialTapTargetSize.shrinkWrap), onPressed: _showNewExpenseDialog, child: const Icon(Icons.add_shopping_cart, size: 18)), 
-            PopupMenuButton<String>(icon: Icon(Icons.more_vert, color: fgColor.withOpacity(0.8)), onSelected: (val) { if (val == 'edit') { Navigator.push(context, MaterialPageRoute(builder: (_) => CreditCardFormScreen(cardToEdit: widget.card))).then((_) => widget.onUpdateNeeded()); } else if (val == 'delete') { _confirmDelete(); } }, itemBuilder: (context) => [const PopupMenuItem(value: 'edit', child: Text('Editar Cartão')), const PopupMenuItem(value: 'delete', child: Text('Excluir Cartão', style: TextStyle(color: Colors.red)))])
+            PopupMenuButton<String>(icon: Icon(Icons.more_vert, color: fgColor.withOpacity(0.8)), onSelected: (val) { if (val == 'edit') { showDialog(context: context, builder: (_) => CreditCardFormScreen(cardToEdit: widget.card)).then((_) => widget.onUpdateNeeded()); } else if (val == 'delete') { _confirmDelete(); } }, itemBuilder: (context) => [const PopupMenuItem(value: 'edit', child: Text('Editar Cartão')), const PopupMenuItem(value: 'delete', child: Text('Excluir Cartão', style: TextStyle(color: Colors.red)))])
           ])
       ])]))
       ),

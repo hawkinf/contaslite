@@ -10,7 +10,8 @@
       "Bash(flutter analyze:*)",
       "Bash(grep:*)",
       "Bash(find:*)",
-      "Bash(flutter clean:*)"
+      "Bash(flutter clean:*)",
+      "Bash(timeout 15 flutter run:*)"
     ]
   }
 }

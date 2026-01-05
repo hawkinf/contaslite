@@ -1986,9 +1986,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _openRecebimentoForm() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const RecebimentoFormScreen()),
+    await showDialog(
+      context: context,
+      builder: (_) => const RecebimentoFormScreen(),
     );
     _refresh();
   }
@@ -1997,7 +1997,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      isScrollControlled: true,
+      isScrollControlled: false,
       builder: (ctx) => SafeArea(
         top: false,
         child: LayoutBuilder(

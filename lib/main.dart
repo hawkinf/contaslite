@@ -59,6 +59,9 @@ void main() async {
       final savedHeight = prefs.getDouble('windowHeight') ?? 800;
 
       await windowManager.setSize(Size(savedWidth, savedHeight));
+      await windowManager.setResizable(true);
+      await windowManager.setMaximizable(true);
+      await windowManager.setMinimumSize(const Size(800, 600));
       await windowManager.show();
     });
   }

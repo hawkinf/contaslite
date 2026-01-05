@@ -10,14 +10,31 @@ import '../widgets/app_input_decoration.dart';
 import '../services/prefs_service.dart';
 import '../widgets/date_range_app_bar.dart';
 
-class CreditCardFormScreen extends StatefulWidget {
+class _CreditCardForm extends StatefulWidget {
   final Account? cardToEdit;
-  const CreditCardFormScreen({super.key, this.cardToEdit});
+  const _CreditCardForm({this.cardToEdit});
   @override
-  State<CreditCardFormScreen> createState() => _CreditCardFormScreenState();
+  State<_CreditCardForm> createState() => _CreditCardFormScreenState();
 }
 
-class _CreditCardFormScreenState extends State<CreditCardFormScreen> {
+class CreditCardFormScreen extends StatelessWidget {
+  final Account? cardToEdit;
+  const CreditCardFormScreen({super.key, this.cardToEdit});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints(
+        maxWidth: 600,
+        maxHeight: 800,
+      ),
+      child: _CreditCardForm(cardToEdit: cardToEdit),
+    );
+  }
+}
+
+class _CreditCardFormScreenState extends State<_CreditCardForm> {
   final _formKey = GlobalKey<FormState>();
   final _bankController = TextEditingController();
   final _limitController = TextEditingController();
