@@ -187,38 +187,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Dialog header with title and close button
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: Theme.of(context).dividerColor,
-              ),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Preferências',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-        ),
-        // Dialog content
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Preferências'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
           Center(
             child: Column(
               children: [
@@ -340,9 +317,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () => PrefsService.tabRequestNotifier.value = 6,
           ),
         ],
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
