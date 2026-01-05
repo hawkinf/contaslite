@@ -182,6 +182,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       );
     }
+    actions.add(
+      IconButton(
+        icon: const Icon(Icons.table_chart),
+        tooltip: 'Tabelas',
+        onPressed: () => PrefsService.tabRequestNotifier.value = 6,
+      ),
+    );
     return actions;
   }
 

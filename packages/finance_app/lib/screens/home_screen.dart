@@ -57,43 +57,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('ContasPRO'),
-            Text(
-              'by Aguinaldo Liesack Baptistini',
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.normal),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF4A6FA5),
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.print),
-            onPressed: () {},
-            tooltip: 'Imprimir',
-          ),
-          IconButton(
-            icon: const Icon(Icons.table_chart),
-            onPressed: () => setState(() => _selectedIndex = 7),
-            tooltip: 'Tabelas',
-          ),
-          IconButton(
-            icon: const Icon(Icons.home),
-            onPressed: () => setState(() => _selectedIndex = 6),
-            tooltip: 'Gerenciamento de Banco de Dados',
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {},
-            tooltip: 'Configurações',
-          ),
-        ],
-      ),
       body: IndexedStack(
         index: _selectedIndex,
         children: _screens,
