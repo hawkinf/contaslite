@@ -2058,8 +2058,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 maxHeight: double.infinity,
                               ),
                               child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxHeight: 900),
-                                child: const AccountFormScreen(),
+                                constraints: const BoxConstraints(maxHeight: 950),
+                                child: const SingleChildScrollView(
+                                  child: AccountFormScreen(),
+                                ),
                               ),
                             ),
                           );
