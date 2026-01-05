@@ -619,6 +619,32 @@ class DatabaseHelper {
     return maps.map((json) => Account.fromMap(json)).toList();
   }
 
+  /// Busca uma conta específica por ID
+  Future<Account?> getAccountById(int? id) async {
+    if (id == null) return null;
+    final db = await database;
+    final maps = await db.query(
+      'accounts',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (maps.isEmpty) return null;
+    return Account.fromMap(maps.first);
+  }
+
+  /// Busca apenas as contas filhas de uma recorrência pai
+  Future<List<Account>> getAccountsByRecurrenceId(int recurrenceId) async {
+    final db = await database;
+    final maps = await db.query(
+      'accounts',
+      where: 'recurrence_id = ? AND month IS NOT NULL AND year IS NOT NULL',
+      whereArgs: [recurrenceId],
+      orderBy: 'year ASC, month ASC, dueDay ASC',
+    );
+    return maps.map((json) => Account.fromMap(json)).toList();
+  }
+
   Future<List<Account>> readAllCards() async {
     final db = await database;
     final maps = await db.query(

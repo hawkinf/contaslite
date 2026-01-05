@@ -126,6 +126,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   int _recurrentStartYear = 0; // Ano de início da recorrência
   bool _payInAdvance = false;
   bool _isSaving = false;
+  bool _isLoadingData = true; // Indica se está carregando dados iniciais
 
   String get _typeLabel =>
       widget.isRecebimento ? 'Tipo de Recebimento' : 'Tipo da Conta';
@@ -215,24 +216,16 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         final parentId = acc.recurrenceId;
         debugPrint(
             '🔄 Parcela filha detectada, carregando recorrência pai (id=$parentId)...');
-        
+
         // Carregar o pai no postFrameCallback para garantir que setState funcione
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           try {
-            final allAccounts =
-                await DatabaseHelper.instance.readAllAccountsRaw();
-            final parent =
-                allAccounts.firstWhere((a) => a.id == parentId, orElse: () => acc);
-            if (parent.isRecurrent && parent.id == parentId && mounted) {
-              final children = allAccounts
-                  .where((a) => a.recurrenceId == parentId && a.month != null && a.year != null)
-                  .toList();
+            // Buscar apenas o pai (não TODAS as contas)
+            final parent = await DatabaseHelper.instance.getAccountById(parentId);
+            if (parent != null && parent.isRecurrent && mounted && parentId != null) {
+              // Buscar apenas as filhas desta recorrência
+              final children = await DatabaseHelper.instance.getAccountsByRecurrenceId(parentId);
               if (children.isNotEmpty) {
-                children.sort((a, b) {
-                  final dateA = DateTime(a.year!, a.month!, a.dueDay);
-                  final dateB = DateTime(b.year!, b.month!, b.dueDay);
-                  return dateA.compareTo(dateB);
-                });
                 final first = children.first;
                 _recurrentStartMonth = (first.month ?? DateTime.now().month) - 1;
                 _recurrentStartYear = first.year ?? DateTime.now().year;
@@ -269,17 +262,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       } else if (acc.isRecurrent) {
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           try {
-            final allAccounts =
-                await DatabaseHelper.instance.readAllAccountsRaw();
-            final children = allAccounts
-                .where((a) => a.recurrenceId == acc.id && a.month != null && a.year != null)
-                .toList();
+            // Buscar apenas as filhas desta recorrência
+            final children = await DatabaseHelper.instance.getAccountsByRecurrenceId(acc.id!);
             if (children.isNotEmpty && mounted) {
-              children.sort((a, b) {
-                final dateA = DateTime(a.year!, a.month!, a.dueDay);
-                final dateB = DateTime(b.year!, b.month!, b.dueDay);
-                return dateA.compareTo(dateB);
-              });
               final first = children.first;
               setState(() {
                 _recurrentStartMonth = (first.month ?? DateTime.now().month) - 1;
@@ -328,10 +313,17 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     } else {
       _setInitialDate();
     }
-    _loadInitialData();
-    _loadPreferences();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+
+    // Carregar dados após a tela ser renderizada (não bloqueia a UI)
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadInitialData();
+      _loadPreferences();
       _onMainDateChanged(_dateController.text);
+      if (mounted) {
+        setState(() {
+          _isLoadingData = false;
+        });
+      }
     });
   }
 
@@ -1393,6 +1385,23 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Se está carregando dados iniciais, mostrar loading indicator
+    if (_isLoadingData) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+              'Carregando formulário...',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+        ),
+      );
+    }
+
     return ValueListenableBuilder<DateTimeRange>(
       valueListenable: PrefsService.dateRangeNotifier,
       builder: (context, range, _) {
@@ -1400,7 +1409,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 650),
+              constraints: const BoxConstraints(maxHeight: 850),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Form(
@@ -1743,8 +1752,6 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             debugPrint('  Account atualizada com id: ${updated.id}');
 
             // 2. Buscar e atualizar parcelas futuras
-            final allAccounts =
-                await DatabaseHelper.instance.readAllAccountsRaw();
             final currentMonth = DateTime.now().month;
             final currentYear = DateTime.now().year;
 
@@ -1756,9 +1763,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             if (recurrenceId == null) {
               debugPrint('  ⚠️ Recorrência sem ID pai. Nenhuma parcela futura a atualizar.');
             } else {
-              var futureAccounts = allAccounts.where((a) {
-                if (a.recurrenceId != recurrenceId) return false;
-
+              // Buscar apenas as filhas desta recorrência (não TODAS as contas)
+              final children = await DatabaseHelper.instance.getAccountsByRecurrenceId(recurrenceId);
+              var futureAccounts = children.where((a) {
                 final accDate = DateTime(a.year ?? 0, a.month ?? 0, 1);
                 final today = DateTime(currentYear, currentMonth, 1);
                 return accDate.isAtSameMomentAs(today) || accDate.isAfter(today);
