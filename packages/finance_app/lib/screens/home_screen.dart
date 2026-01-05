@@ -4,6 +4,7 @@ import 'credit_card_screen.dart';
 import 'dashboard_screen.dart';
 import 'recebimentos_screen.dart';
 import 'settings_screen.dart';
+import 'database_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -31,6 +32,12 @@ class _HomeScreenState extends State<HomeScreen> {
       const CreditCardScreen(),
       // Quarta aba: Preferências
       const SettingsScreen(),
+      // Quinta aba: Calendário (placeholder)
+      const SizedBox.shrink(),
+      // Sexta aba: Feriados (placeholder)
+      const SizedBox.shrink(),
+      // Sétima aba: Tabelas (Database)
+      const DatabaseScreen(),
     ];
     _tabRequestListener = () {
       final requested = PrefsService.tabRequestNotifier.value;
@@ -50,12 +57,46 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('ContasPRO'),
+            Text(
+              'by Aguinaldo Liesack Baptistini',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.normal),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF4A6FA5),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.print),
+            onPressed: () {},
+            tooltip: 'Imprimir',
+          ),
+          IconButton(
+            icon: const Icon(Icons.table_chart),
+            onPressed: () => setState(() => _selectedIndex = 7),
+            tooltip: 'Tabelas',
+          ),
+          IconButton(
+            icon: const Icon(Icons.home),
+            onPressed: () => setState(() => _selectedIndex = 6),
+            tooltip: 'Gerenciamento de Banco de Dados',
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {},
+            tooltip: 'Configurações',
+          ),
+        ],
+      ),
       body: IndexedStack(
         index: _selectedIndex,
-        children: _screens + [
-          const SizedBox.shrink(), // Placeholder for Calendário
-          const SizedBox.shrink(), // Placeholder for Feriados
-        ],
+        children: _screens,
       ),
     );
   }
