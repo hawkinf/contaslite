@@ -318,7 +318,10 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _loadInitialData();
       await _loadPreferences();
-      _onMainDateChanged(_dateController.text);
+      // Only update installments if editing an existing account with values
+      if (widget.accountToEdit != null && _totalValueController.text.isNotEmpty) {
+        _onMainDateChanged(_dateController.text);
+      }
       if (mounted) {
         setState(() {
           _isLoadingData = false;
@@ -1607,10 +1610,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       return;
     }
 
-    // Carregar tipo preferido
+    // Carregar tipo preferido (usando _typesList já carregado em _loadInitialData)
     final typeId = prefs.getInt('last_account_type_id');
-    if (typeId != null) {
-      await _loadInitialData();
+    if (typeId != null && _typesList.isNotEmpty) {
       _selectedType = _typesList.firstWhere((t) => t.id == typeId,
           orElse: () => _typesList.first);
       await _loadCategories();
