@@ -317,7 +317,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     // Carregar dados após a tela ser renderizada (não bloqueia a UI)
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _loadInitialData();
-      _loadPreferences();
+      await _loadPreferences();
       _onMainDateChanged(_dateController.text);
       if (mounted) {
         setState(() {
