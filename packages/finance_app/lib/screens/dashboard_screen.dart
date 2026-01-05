@@ -2049,10 +2049,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         fontSize: fontSize,
                         onTap: () async {
                           Navigator.pop(ctx);
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const AccountFormScreen()),
+                          await showDialog(
+                            context: context,
+                            builder: (_) => const Dialog(
+                              insetPadding: EdgeInsets.all(16),
+                              constraints: BoxConstraints(
+                                maxWidth: 600,
+                                maxHeight: 850,
+                              ),
+                              child: AccountFormScreen(),
+                            ),
                           );
                           _refresh();
                         },
