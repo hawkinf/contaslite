@@ -301,7 +301,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       }
     });
     _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) return;
       if (_tabController.index == 0) {
@@ -3449,20 +3449,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     Padding(
                       padding: const EdgeInsets.only(right: 8.0),
                       child: IconButton(
-                        icon: const Icon(Icons.table_chart),
-                        iconSize: isMobile ? 28 : 24,
-                        tooltip: 'Tabelas',
-                        onPressed: () => showDialog(
-                          context: context,
-                          builder: (context) => Dialog(
-                            child: const TablesScreen(),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: IconButton(
                         icon: const Icon(Icons.settings),
                         iconSize: isMobile ? 28 : 24,
                         tooltip: 'Preferências',
@@ -3577,18 +3563,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     ),
 
                     IconButton(
-                      icon: const Icon(Icons.table_chart),
-                      iconSize: 24,
-                      tooltip: 'Tabelas',
-                      color: Colors.white,
-                      onPressed: () => showDialog(
-                        context: context,
-                        builder: (context) => Dialog(
-                          child: const TablesScreen(),
-                        ),
-                      ),
-                    ),
-                    IconButton(
                       icon: const Icon(Icons.settings),
                       iconSize: 24,
                       tooltip: 'Preferências',
@@ -3620,6 +3594,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                       Tab(text: 'Cartőes', icon: Icon(Icons.credit_card)),
                       Tab(text: 'Calendário', icon: Icon(Icons.calendar_month)),
                       Tab(text: 'Feriados', icon: Icon(Icons.list_alt)),
+                      Tab(text: 'Tabelas', icon: Icon(Icons.table_chart)),
                     ],
                   ),
                   // TABBARVIEW COM O CONTEÚDO DAS DUAS ABAS
@@ -3904,6 +3879,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                             },
                           ),
                         ),
+                        // ABA 6: TABELAS
+                        const TablesScreen(),
 ],
                     ),
                   ),
@@ -4051,66 +4028,41 @@ class TablesScreen extends StatelessWidget {
       ),
     ];
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Dialog header with title and close button
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: Theme.of(context).dividerColor,
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Tabelas'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+      ),
+      body: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Theme.of(context)
+                  .colorScheme
+                  .primary
+                  .withValues(alpha: 0.12),
+              child: Icon(
+                item.icon,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Tabelas',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-        ),
-        // Dialog content
-        Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: items.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final item = items[index];
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.12),
-                  child: Icon(
-                    item.icon,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                title: Text(item.title),
-                subtitle: Text(item.subtitle),
-                trailing: const Icon(Icons.chevron_right),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                tileColor: Theme.of(context).cardColor,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => item.builder()),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+            title: Text(item.title),
+            subtitle: Text(item.subtitle),
+            trailing: const Icon(Icons.chevron_right),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            tileColor: Theme.of(context).cardColor,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => item.builder()),
+            ),
+          );
+        },
+      ),
     );
   }
 }
