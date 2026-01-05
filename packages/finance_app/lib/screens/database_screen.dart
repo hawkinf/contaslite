@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import '../database/db_helper.dart';
 import '../services/database_initialization_service.dart';
+import '../services/pdf_export_service.dart';
 import '../widgets/app_input_decoration.dart';
 import '../widgets/database_backups_section.dart';
 
@@ -117,6 +118,16 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
             subtitle: const Text('Verifica quantos registros existem'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: _showTableStatusDialog,
+          ),
+          const SizedBox(height: 10),
+          ListTile(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            tileColor: Colors.purple.shade50,
+            leading: const Icon(Icons.picture_as_pdf, color: Colors.purple, size: 30),
+            title: const Text('Exportar para PDF'),
+            subtitle: const Text('Gera relatório com todos os dados das tabelas'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: _exportDataToPdf,
           ),
           const SizedBox(height: 10),
           ListTile(
@@ -572,6 +583,28 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
       }
     } finally {
       if (mounted) setState(() => _isProcessingBackup = false);
+    }
+  }
+
+  Future<void> _exportDataToPdf() async {
+    try {
+      await PdfExportService.instance.exportAllDataToPdf();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('PDF gerado e compartilhado com sucesso!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao gerar PDF: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
