@@ -47,124 +47,139 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
 
         return Dialog(
           insetPadding: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Stack(
-            children: [
-              Container(
-                width: 360,
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isEditing ? 'Editar Forma de Pagamento' : 'Nova Forma de Pagamento',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+          backgroundColor: Colors.transparent,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
-                const SizedBox(height: 24),
-                TextField(
-                  controller: nameController,
-                  decoration: buildOutlinedInputDecoration(
-                    label: 'Nome',
-                    icon: Icons.payment,
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isEditing ? 'Editar Forma de Pagamento' : 'Nova Forma de Pagamento',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        TextField(
+                          controller: nameController,
+                          decoration: buildOutlinedInputDecoration(
+                            label: 'Nome',
+                            icon: Icons.payment,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: typeController,
+                          onChanged: (value) {
+                            // Se o nome está vazio, preencher com o tipo
+                            if (nameController.text.isEmpty && value.isNotEmpty) {
+                              nameController.text = value;
+                            }
+                          },
+                          decoration: buildOutlinedInputDecoration(
+                            label: 'Tipo (ex: CASH, PIX, BANK_DEBIT)',
+                            icon: Icons.category,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Cancelar'),
+                            ),
+                            const SizedBox(width: 8),
+                            FilledButton(
+                              onPressed: () async {
+                                final name = nameController.text.trim();
+                                final type = typeController.text.trim();
+
+                                if (name.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Nome é obrigatório')),
+                                  );
+                                  return;
+                                }
+
+                                if (type.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Tipo é obrigatório')),
+                                  );
+                                  return;
+                                }
+
+                                // Verificar duplicidade
+                                final exists = await DatabaseHelper.instance
+                                    .checkPaymentMethodExists(name, excludeId: method?.id);
+                                if (!context.mounted) return;
+
+                                if (exists) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Já existe uma forma de pagamento com este nome')),
+                                  );
+                                  return;
+                                }
+
+                                // Salvar
+                                if (isEditing) {
+                                  await DatabaseHelper.instance.updatePaymentMethod(
+                                    method.copyWith(
+                                      name: name,
+                                      type: type,
+                                    ),
+                                  );
+                                } else {
+                                  await DatabaseHelper.instance.createPaymentMethod(
+                                    PaymentMethod(
+                                      name: name,
+                                      type: type,
+                                      iconCode: 0xe25a, // Ícone padrão
+                                      requiresBank: false,
+                                      isActive: true,
+                                    ),
+                                  );
+                                }
+
+                                if (!context.mounted) return;
+                                Navigator.pop(context);
+                                _refresh();
+                              },
+                              child: Text(isEditing ? 'Salvar' : 'Criar'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: typeController,
-                  onChanged: (value) {
-                    // Se o nome está vazio, preencher com o tipo
-                    if (nameController.text.isEmpty && value.isNotEmpty) {
-                      nameController.text = value;
-                    }
-                  },
-                  decoration: buildOutlinedInputDecoration(
-                    label: 'Tipo (ex: CASH, PIX, BANK_DEBIT)',
-                    icon: Icons.category,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: DialogCloseButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancelar'),
                     ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: () async {
-                        final name = nameController.text.trim();
-                        final type = typeController.text.trim();
-
-                        if (name.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Nome é obrigatório')),
-                          );
-                          return;
-                        }
-
-                        if (type.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Tipo é obrigatório')),
-                          );
-                          return;
-                        }
-
-                        // Verificar duplicidade
-                        final exists = await DatabaseHelper.instance
-                            .checkPaymentMethodExists(name, excludeId: method?.id);
-                        if (!context.mounted) return;
-
-                        if (exists) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Já existe uma forma de pagamento com este nome')),
-                          );
-                          return;
-                        }
-
-                        // Salvar
-                        if (isEditing) {
-                          await DatabaseHelper.instance.updatePaymentMethod(
-                            method.copyWith(
-                              name: name,
-                              type: type,
-                            ),
-                          );
-                        } else {
-                          await DatabaseHelper.instance.createPaymentMethod(
-                            PaymentMethod(
-                              name: name,
-                              type: type,
-                              iconCode: 0xe25a, // Ícone padrão
-                              requiresBank: false,
-                              isActive: true,
-                            ),
-                          );
-                        }
-
-                        if (!context.mounted) return;
-                        Navigator.pop(context);
-                        _refresh();
-                      },
-                      child: Text(isEditing ? 'Salvar' : 'Criar'),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-              ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: DialogCloseButton(
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ),
-            ],
           ),
         );
       },

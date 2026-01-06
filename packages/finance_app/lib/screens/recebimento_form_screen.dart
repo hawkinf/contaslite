@@ -17,26 +17,44 @@ class RecebimentoFormScreen extends StatelessWidget {
 
     return Dialog(
       insetPadding: EdgeInsets.zero,
-      constraints: BoxConstraints(
-        maxWidth: maxWidth,
-        maxHeight: maxHeight,
-      ),
-      child: Stack(
-        children: [
-          const AccountFormScreen(
-            typeNameFilter: 'Recebimentos',
-            lockTypeSelection: true,
-            useInstallmentDropdown: true,
-            isRecebimento: true,
+      backgroundColor: Colors.transparent,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: maxWidth,
+            maxHeight: maxHeight,
           ),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: DialogCloseButton(
-              onPressed: () => Navigator.pop(context),
-            ),
+          child: Stack(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: const AccountFormScreen(
+                  typeNameFilter: 'Recebimentos',
+                  lockTypeSelection: true,
+                  useInstallmentDropdown: true,
+                  isRecebimento: true,
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: DialogCloseButton(
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

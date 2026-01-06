@@ -2054,26 +2054,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             context: context,
                             builder: (_) => Dialog(
                               insetPadding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                maxWidth: 700,
-                                maxHeight: double.infinity,
-                              ),
-                              child: Stack(
-                                children: [
-                                  ConstrainedBox(
-                                    constraints: const BoxConstraints(maxHeight: 950),
-                                    child: const SingleChildScrollView(
-                                      child: AccountFormScreen(),
-                                    ),
+                              backgroundColor: Colors.transparent,
+                              child: Center(
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 700,
+                                    maxHeight: 950,
                                   ),
-                                  Positioned(
-                                    top: 8,
-                                    right: 8,
-                                    child: DialogCloseButton(
-                                      onPressed: () => Navigator.pop(context),
-                                    ),
+                                  child: Stack(
+                                    children: [
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(16),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.3),
+                                              blurRadius: 16,
+                                              offset: const Offset(0, 8),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const SingleChildScrollView(
+                                          child: AccountFormScreen(),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 8,
+                                        right: 8,
+                                        child: DialogCloseButton(
+                                          onPressed: () => Navigator.pop(context),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
                           );
