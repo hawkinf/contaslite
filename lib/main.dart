@@ -7,6 +7,7 @@ import 'package:finance_app/screens/recebimentos_screen.dart';
 import 'package:finance_app/screens/settings_screen.dart';
 import 'package:finance_app/database/db_helper.dart';
 import 'package:finance_app/services/holiday_service.dart';
+import 'package:finance_app/services/database_protection_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -51,24 +52,56 @@ void main() async {
 
   // Inicializar window_manager para desktop
   if (GetPlatform.isDesktop) {
-    await windowManager.ensureInitialized();
-    windowManager.waitUntilReadyToShow().then((_) async {
-      // Carregar tamanho salvo ou usar padrão
-      final prefs = await SharedPreferences.getInstance();
-      final savedWidth = prefs.getDouble('windowWidth') ?? 1200;
-      final savedHeight = prefs.getDouble('windowHeight') ?? 800;
+    try {
+      await windowManager.ensureInitialized();
 
-      await windowManager.setSize(Size(savedWidth, savedHeight));
-      await windowManager.setResizable(true);
-      await windowManager.setMaximizable(true);
-      await windowManager.setMinimumSize(const Size(800, 600));
-      await windowManager.show();
-    });
+      // Usar timeout para evitar travamento
+      await windowManager.waitUntilReadyToShow().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () async {
+          debugPrint('⚠️ waitUntilReadyToShow timeout, mostrando janela mesmo assim');
+          return;
+        },
+      ).then((_) async {
+        try {
+          // Carregar tamanho salvo ou usar padrão
+          final prefs = await SharedPreferences.getInstance();
+          final savedWidth = prefs.getDouble('windowWidth') ?? 1200;
+          final savedHeight = prefs.getDouble('windowHeight') ?? 800;
+
+          await windowManager.setSize(Size(savedWidth, savedHeight));
+          await windowManager.setResizable(true);
+          await windowManager.setMaximizable(true);
+          await windowManager.setMinimumSize(const Size(800, 600));
+          await windowManager.show();
+          debugPrint('✅ Janela inicializada e mostrada com sucesso');
+        } catch (e) {
+          debugPrint('❌ Erro ao configurar janela: $e');
+          try {
+            await windowManager.show();
+          } catch (e2) {
+            debugPrint('❌ Erro ao mostrar janela: $e2');
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint('❌ Erro ao inicializar window_manager: $e');
+    }
   }
 
   await initializeDateFormatting('pt_BR', null);
   Intl.defaultLocale = 'pt_BR';
   await contas_prefs.PrefsService.init();
+
+  // Criar backup automático ao iniciar a app
+  try {
+    debugPrint('💾 Iniciando backup automático do banco de dados...');
+    await DatabaseProtectionService.instance.createBackup('app_startup');
+    debugPrint('✅ Backup automático concluído com sucesso');
+  } catch (e) {
+    debugPrint('❌ Erro ao criar backup automático: $e');
+  }
+
   runApp(const MyApp());
 }
 
