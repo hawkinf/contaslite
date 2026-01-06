@@ -20,11 +20,24 @@ class RecebimentoFormScreen extends StatelessWidget {
         maxWidth: maxWidth,
         maxHeight: maxHeight,
       ),
-      child: const AccountFormScreen(
-        typeNameFilter: 'Recebimentos',
-        lockTypeSelection: true,
-        useInstallmentDropdown: true,
-        isRecebimento: true,
+      child: Stack(
+        children: [
+          const AccountFormScreen(
+            typeNameFilter: 'Recebimentos',
+            lockTypeSelection: true,
+            useInstallmentDropdown: true,
+            isRecebimento: true,
+          ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: IconButton(
+              icon: const Icon(Icons.close, size: 28),
+              onPressed: () => Navigator.pop(context),
+              tooltip: 'Fechar',
+            ),
+          ),
+        ],
       ),
     );
   }
