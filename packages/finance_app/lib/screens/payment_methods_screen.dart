@@ -46,6 +46,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
         }
 
         return Dialog(
+          insetPadding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Stack(
             children: [

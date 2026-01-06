@@ -2053,7 +2053,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           await showDialog(
                             context: context,
                             builder: (_) => Dialog(
-                              insetPadding: const EdgeInsets.all(16),
+                              insetPadding: EdgeInsets.zero,
                               constraints: const BoxConstraints(
                                 maxWidth: 700,
                                 maxHeight: double.infinity,

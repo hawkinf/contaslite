@@ -16,7 +16,7 @@ class RecebimentoFormScreen extends StatelessWidget {
     final maxHeight = (availableHeight * 0.85).clamp(400.0, 900.0);
 
     return Dialog(
-      insetPadding: const EdgeInsets.all(16),
+      insetPadding: EdgeInsets.zero,
       constraints: BoxConstraints(
         maxWidth: maxWidth,
         maxHeight: maxHeight,
