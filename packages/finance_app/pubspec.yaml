@@ -28,6 +28,9 @@ dependencies:
   shared_preferences: ^2.2.0
   file_picker: ^10.3.8
 
+  # Conectividade (para SQLite offline + PostgreSQL online)
+  connectivity_plus: ^5.0.0
+
   # Segurança e Criptografia
   crypto: ^3.0.3
 
