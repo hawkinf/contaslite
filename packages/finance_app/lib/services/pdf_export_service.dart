@@ -134,7 +134,7 @@ class PdfExportService {
                           ),
                         ],
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
                 if (accounts.length > 50)
@@ -195,7 +195,7 @@ class PdfExportService {
                           ),
                         ],
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
               ],
@@ -257,7 +257,7 @@ class PdfExportService {
                           ),
                         ],
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
               ],
@@ -334,7 +334,7 @@ class PdfExportService {
                           ),
                         ],
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
               ],

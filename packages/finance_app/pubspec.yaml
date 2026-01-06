@@ -31,6 +31,10 @@ dependencies:
   # Segurança e Criptografia
   crypto: ^3.0.3
 
+  # Exportação PDF
+  pdf: ^3.11.0
+  printing: ^5.12.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
