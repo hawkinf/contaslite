@@ -148,10 +148,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
   String _saveButtonLabel() {
     if (_entryMode == 0) {
-      final noun = widget.isRecebimento ? 'RECEBIMENTO' : 'CONTA';
-      return 'Gravar ${_installments.length} $noun(S)';
+      return 'Gravar';
     }
-    return 'SALVAR RECORRENCIA';
+    return 'Gravar';
   }
 
   bool _isRecebimentosChild(AccountCategory category) {

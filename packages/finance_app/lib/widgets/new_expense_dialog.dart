@@ -460,7 +460,7 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
               padding: const EdgeInsets.symmetric(vertical: 16),
             ),
             icon: const Icon(Icons.check_circle_outline),
-            label: const Text('Lançar despesa'),
+            label: const Text('Gravar'),
           ),
         ),
       ),

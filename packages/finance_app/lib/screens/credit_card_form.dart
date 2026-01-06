@@ -316,7 +316,7 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
                 style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), backgroundColor: Color(_selectedColor), foregroundColor: fgColor),
                 onPressed: _saveCard,
                 icon: const Icon(Icons.save),
-                label: const Text('SALVAR CARTÃO'),
+                label: const Text('Gravar'),
               ),
             ],
           ),

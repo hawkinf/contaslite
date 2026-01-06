@@ -1471,7 +1471,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: const Text('Cancelar')),
           FilledButton.icon(
             icon: const Icon(Icons.check),
-            label: const Text('LANÇAR'),
+            label: const Text('Gravar'),
             onPressed: () async {
               if (launchedValueController.text.isEmpty) {
                 ScaffoldMessenger.of(ctx).showSnackBar(
@@ -1606,7 +1606,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: const Text('Cancelar')),
           FilledButton.icon(
             icon: const Icon(Icons.check),
-            label: const Text('LANÇAR'),
+            label: const Text('Gravar'),
             onPressed: () async {
               if (valueController.text.isEmpty) return;
               DateTime finalDate = UtilData.obterDateTime(dateController.text);

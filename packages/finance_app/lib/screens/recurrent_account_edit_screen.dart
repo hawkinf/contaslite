@@ -672,7 +672,7 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
                         ),
                       )
                     : const Icon(Icons.save),
-                label: Text(_isSaving ? 'SALVANDO...' : 'SALVAR'),
+                label: Text(_isSaving ? 'Gravando...' : 'Gravar'),
               ),
             ),
           ),

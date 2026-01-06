@@ -347,7 +347,7 @@ class _CardExpenseEditScreenState extends State<CardExpenseEditScreen> {
           ),
           onPressed: _isSaving ? null : _saveExpense,
           icon: _isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.save),
-          label: Text(_isSaving ? 'SALVANDO...' : 'SALVAR ALTERAÇÕES'),
+          label: Text(_isSaving ? 'Gravando...' : 'Gravar'),
         ),
       ),
         );

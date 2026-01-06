@@ -735,7 +735,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
           child: FilledButton.icon(
             onPressed: _savePayment,
             icon: const Icon(Icons.check_circle_outline),
-            label: const Text('Registrar Pagamento'),
+            label: const Text('Gravar'),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 12),
               backgroundColor: Colors.green.shade600,
