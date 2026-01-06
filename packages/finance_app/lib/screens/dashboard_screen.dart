@@ -17,6 +17,7 @@ import '../widgets/payment_dialog.dart';
 import '../widgets/date_range_app_bar.dart';
 import '../widgets/single_day_app_bar.dart';
 import '../utils/card_utils.dart';
+import '../widgets/dialog_close_button.dart';
 import 'account_form_screen.dart';
 import 'recebimento_form_screen.dart';
 import 'credit_card_form.dart';
@@ -2057,11 +2058,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 maxWidth: 700,
                                 maxHeight: double.infinity,
                               ),
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxHeight: 950),
-                                child: const SingleChildScrollView(
-                                  child: AccountFormScreen(),
-                                ),
+                              child: Stack(
+                                children: [
+                                  ConstrainedBox(
+                                    constraints: const BoxConstraints(maxHeight: 950),
+                                    child: const SingleChildScrollView(
+                                      child: AccountFormScreen(),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: DialogCloseButton(
+                                      onPressed: () => Navigator.pop(context),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           );
