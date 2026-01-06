@@ -11,6 +11,12 @@ class HolidaysScreen extends StatefulWidget {
 class _HolidaysScreenState extends State<HolidaysScreen> {
   late int _selectedYear;
 
+  static const _sectionTitleStyle = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.bold,
+    color: Colors.indigo,
+  );
+
   @override
   void initState() {
     super.initState();
@@ -95,11 +101,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           // Resumo por Dia da Semana
           Text(
             'Resumo do Ano $_selectedYear',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.indigo,
-            ),
+            style: _sectionTitleStyle,
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -120,11 +122,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           // Lista de Feriados
           Text(
             'Lista de Feriados de $_selectedYear',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.indigo,
-            ),
+            style: _sectionTitleStyle,
           ),
           const SizedBox(height: 12),
           Card(
