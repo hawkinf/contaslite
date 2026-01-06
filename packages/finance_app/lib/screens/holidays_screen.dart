@@ -33,80 +33,51 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           // Seletor de Ano
-          Card(
-            elevation: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Selecione o Ano',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            setState(() => _selectedYear--);
-                          },
-                          icon: const Icon(Icons.chevron_left),
-                          label: const Text('Anterior'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.blue.shade200),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          child: Text(
-                            _selectedYear.toString(),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade900,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            setState(() => _selectedYear++);
-                          },
-                          icon: const Icon(Icons.chevron_right),
-                          label: const Text('Próximo'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left, size: 32),
+                onPressed: () {
+                  setState(() => _selectedYear--);
+                },
               ),
-            ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade700,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _selectedYear.toString(),
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right, size: 32),
+                onPressed: () {
+                  setState(() => _selectedYear++);
+                },
+              ),
+            ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
 
-          // Resumo por Dia da Semana
+          // Resumo por Dia da Semana - GRANDE E DESTACADO
           Text(
-            'Resumo do Ano $_selectedYear',
+            'Quantos feriados caem em cada dia',
             style: _sectionTitleStyle,
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 12,
+            runSpacing: 12,
+            alignment: WrapAlignment.center,
             children: [
               _buildDayChip('Seg', stats['Segunda'] ?? 0, Colors.blue),
               _buildDayChip('Ter', stats['Terça'] ?? 0, Colors.cyan),
@@ -117,14 +88,15 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
               _buildDayChip('Dom', stats['Domingo'] ?? 0, Colors.purple),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
 
           // Lista de Feriados
           Text(
             'Lista de Feriados de $_selectedYear',
             style: _sectionTitleStyle,
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -149,30 +121,31 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
 
   Widget _buildDayChip(String label, int count, Color color) {
     return Container(
+      width: 70,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color, width: 2),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.all(12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             label,
             style: TextStyle(
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.bold,
               color: Colors.grey.shade700,
-              fontSize: 12,
+              fontSize: 13,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             count.toString(),
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: color,
-              fontSize: 18,
+              fontSize: 28,
             ),
           ),
         ],
