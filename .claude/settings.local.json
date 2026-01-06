@@ -18,7 +18,8 @@
       "Bash(timeout 180 flutter run:*)",
       "Bash(taskkill:*)",
       "Bash(wmic process where name=\"contaslite.exe\" delete)",
-      "Bash(timeout 60 flutter pub global run devtools:*)"
+      "Bash(timeout 60 flutter pub global run devtools:*)",
+      "Bash(dir:*)"
     ]
   }
 }

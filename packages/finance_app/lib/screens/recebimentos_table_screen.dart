@@ -337,12 +337,18 @@ class _RecebimentosTableScreenState extends State<RecebimentosTableScreen> {
           );
 
     if (widget.asDialog) {
+      final screenSize = MediaQuery.of(context).size;
+      final viewInsets = MediaQuery.of(context).viewInsets;
+      final maxWidth = (screenSize.width * 0.9).clamp(280.0, 520.0);
+      final availableHeight = screenSize.height - viewInsets.bottom;
+      final maxHeight = (availableHeight * 0.8).clamp(300.0, 900.0);
+
       return Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         backgroundColor: const Color(0xFFF5F5F5),
         child: Container(
-          width: 520,
-          constraints: const BoxConstraints(maxHeight: 700),
+          width: maxWidth,
+          constraints: BoxConstraints(maxHeight: maxHeight),
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -589,12 +595,18 @@ class _RecebimentosChildrenDialogState
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final viewInsets = MediaQuery.of(context).viewInsets;
+    final maxWidth = (screenSize.width * 0.9).clamp(280.0, 420.0);
+    final availableHeight = screenSize.height - viewInsets.bottom;
+    final maxHeight = (availableHeight * 0.75).clamp(250.0, 800.0);
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       backgroundColor: const Color(0xFFF5F5F5),
       child: Container(
-        width: 420,
-        constraints: const BoxConstraints(maxHeight: 600),
+        width: maxWidth,
+        constraints: BoxConstraints(maxHeight: maxHeight),
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,

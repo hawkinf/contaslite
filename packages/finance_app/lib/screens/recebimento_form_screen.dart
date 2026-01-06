@@ -6,13 +6,21 @@ class RecebimentoFormScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Dialog(
-      insetPadding: EdgeInsets.all(16),
+    final screenSize = MediaQuery.of(context).size;
+    final viewInsets = MediaQuery.of(context).viewInsets;
+
+    // Calcular dimensões responsivas
+    final maxWidth = (screenSize.width * 0.9).clamp(280.0, 600.0);
+    final availableHeight = screenSize.height - viewInsets.bottom;
+    final maxHeight = (availableHeight * 0.85).clamp(400.0, 900.0);
+
+    return Dialog(
+      insetPadding: const EdgeInsets.all(16),
       constraints: BoxConstraints(
-        maxWidth: 600,
-        maxHeight: 800,
+        maxWidth: maxWidth,
+        maxHeight: maxHeight,
       ),
-      child: AccountFormScreen(
+      child: const AccountFormScreen(
         typeNameFilter: 'Recebimentos',
         lockTypeSelection: true,
         useInstallmentDropdown: true,

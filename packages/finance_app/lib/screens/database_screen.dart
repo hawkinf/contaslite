@@ -45,7 +45,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
             tileColor: Colors.blue.shade50,
             leading: const Icon(Icons.upload_file, color: Colors.blue, size: 30),
             title: const Text('Exportar Banco de Dados'),
-            subtitle: const Text('Gera um arquivo .db para backup manual'),
+            subtitle: const Text('Gera um arquivo .db para backup manual', maxLines: 2, overflow: TextOverflow.ellipsis),
             trailing: _isProcessingBackup
                 ? const SizedBox(
                     height: 20,
@@ -62,7 +62,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
             tileColor: Colors.green.shade50,
             leading: const Icon(Icons.download, color: Colors.green, size: 30),
             title: const Text('Importar Banco de Dados'),
-            subtitle: const Text('Substitui os dados atuais por um backup'),
+            subtitle: const Text('Substitui os dados atuais por um backup', maxLines: 2, overflow: TextOverflow.ellipsis),
             trailing: _isProcessingBackup
                 ? const SizedBox(
                     height: 20,
@@ -78,7 +78,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
             tileColor: Colors.teal.shade50,
             leading: const Icon(Icons.folder_open, color: Colors.teal, size: 30),
             title: const Text('Mostrar caminho do banco'),
-            subtitle: const Text('Exibe a localização do arquivo .db'),
+            subtitle: const Text('Exibe a localização do arquivo .db', maxLines: 2, overflow: TextOverflow.ellipsis),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: _showDatabasePath,
           ),
@@ -89,7 +89,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
             tileColor: Colors.orange.shade50,
             leading: const Icon(Icons.build_circle, color: Colors.orange, size: 30),
             title: const Text('Reparar Banco de Dados'),
-            subtitle: const Text('Executa checagem de integridade e reorganiza o arquivo'),
+            subtitle: const Text('Executa checagem de integridade e reorganiza o arquivo', maxLines: 2, overflow: TextOverflow.ellipsis),
             trailing: _isRepairing
                 ? const SizedBox(
                     height: 20,
@@ -116,7 +116,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
             tileColor: Colors.indigo.shade50,
             leading: const Icon(Icons.info_outline, color: Colors.indigo, size: 30),
             title: const Text('Status das Tabelas'),
-            subtitle: const Text('Verifica quantos registros existem'),
+            subtitle: const Text('Verifica quantos registros existem', maxLines: 2, overflow: TextOverflow.ellipsis),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: _showTableStatusDialog,
           ),
@@ -126,7 +126,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
             tileColor: Colors.green.shade50,
             leading: const Icon(Icons.explore, color: Colors.green, size: 30),
             title: const Text('Explorador de Dados'),
-            subtitle: const Text('Navegue e visualize todos os registros do banco'),
+            subtitle: const Text('Navegue e visualize todos os registros do banco', maxLines: 2, overflow: TextOverflow.ellipsis),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
               Navigator.push(
@@ -141,7 +141,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
             tileColor: Colors.purple.shade50,
             leading: const Icon(Icons.picture_as_pdf, color: Colors.purple, size: 30),
             title: const Text('Exportar para PDF'),
-            subtitle: const Text('Gera relatório com todos os dados das tabelas'),
+            subtitle: const Text('Gera relatório com todos os dados das tabelas', maxLines: 2, overflow: TextOverflow.ellipsis),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: _exportDataToPdf,
           ),

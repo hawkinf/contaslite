@@ -1408,11 +1408,17 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     return ValueListenableBuilder<DateTimeRange>(
       valueListenable: PrefsService.dateRangeNotifier,
       builder: (context, range, _) {
+        // Calcular altura máxima responsiva
+        final screenHeight = MediaQuery.of(context).size.height;
+        final viewInsets = MediaQuery.of(context).viewInsets;
+        final availableHeight = screenHeight - viewInsets.bottom;
+        final maxFormHeight = availableHeight * 0.75; // Use 75% of available height
+
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 850),
+              constraints: BoxConstraints(maxHeight: maxFormHeight.clamp(300.0, 900.0)),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Form(
