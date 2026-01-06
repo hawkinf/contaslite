@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'holiday_service.dart';
+import '../models/database_config.dart';
 
 class PrefsService {
   static final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
@@ -159,5 +160,65 @@ static Future<void> saveDateRange(DateTime start, DateTime end) async {
     final difference = now.difference(lastIntegrityCheck!).inDays;
 
     return difference >= integrityCheckIntervalDays;
+  }
+
+  // PostgreSQL Database Configuration
+  static Future<DatabaseConfig> loadDatabaseConfig() async {
+    final prefs = await SharedPreferences.getInstance();
+    final configJson = prefs.getString('db_config');
+
+    if (configJson == null) {
+      // Retornar configuração padrão vazia
+      return DatabaseConfig(
+        host: '',
+        port: 5432,
+        database: '',
+        username: '',
+        password: '',
+        enabled: false,
+      );
+    }
+
+    try {
+      // Decodificar JSON
+      final List<dynamic> decoded = Uri.decodeComponent(configJson)
+          .split('|')
+          .asMap()
+          .entries
+          .map((e) => e.value)
+          .toList();
+
+      return DatabaseConfig.fromJson({
+        'host': decoded[0],
+        'port': int.tryParse(decoded[1] ?? '5432') ?? 5432,
+        'database': decoded[2],
+        'username': decoded[3],
+        'password': decoded[4],
+        'enabled': decoded.length > 5 ? decoded[5] == 'true' : false,
+      });
+    } catch (e) {
+      // Se houver erro ao decodificar, retornar configuração vazia
+      return DatabaseConfig(
+        host: '',
+        port: 5432,
+        database: '',
+        username: '',
+        password: '',
+        enabled: false,
+      );
+    }
+  }
+
+  static Future<void> saveDatabaseConfig(DatabaseConfig config) async {
+    final prefs = await SharedPreferences.getInstance();
+    // Usar formato simples para compatibilidade
+    final configString =
+        '${config.host}|${config.port}|${config.database}|${config.username}|${config.password}|${config.enabled}';
+    await prefs.setString('db_config', configString);
+  }
+
+  static Future<void> clearDatabaseConfig() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('db_config');
   }
 }
