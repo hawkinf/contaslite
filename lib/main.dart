@@ -142,6 +142,8 @@ class HolidayStats {
   int quartas = 0;
   int quintas = 0;
   int sextas = 0;
+  int sabados = 0;
+  int domingos = 0;
   int diasUteis = 0;
   int finaisSemana = 0;
   int totalFeriadosUnicos = 0;
@@ -1756,7 +1758,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           case DateTime.wednesday: stats.quartas++; stats.diasUteis++; break;
           case DateTime.thursday: stats.quintas++; stats.diasUteis++; break;
           case DateTime.friday: stats.sextas++; stats.diasUteis++; break;
-          case DateTime.saturday: case DateTime.sunday: stats.finaisSemana++; break;
+          case DateTime.saturday: stats.sabados++; stats.finaisSemana++; break;
+          case DateTime.sunday: stats.domingos++; stats.finaisSemana++; break;
         }
       } catch (e) {
         // Tratamento de erro na análise de feriado
@@ -2068,8 +2071,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                 _buildDayChip('Qua', stats.quartas, Colors.green, fontSize),
                 _buildDayChip('Qui', stats.quintas, Colors.amber, fontSize),
                 _buildDayChip('Sex', stats.sextas, Colors.orange, fontSize),
-                _buildDayChip('Sab', 0, Colors.red, fontSize),
-                _buildDayChip('Dom', 0, Colors.purple, fontSize),
+                _buildDayChip('Sab', stats.sabados, Colors.red, fontSize),
+                _buildDayChip('Dom', stats.domingos, Colors.purple, fontSize),
               ],
             ),
           ],
