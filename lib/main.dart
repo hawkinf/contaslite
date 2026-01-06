@@ -2044,6 +2044,74 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     );
   }
 
+  Widget _buildWeekdayStatsChips(HolidayStats stats, double fontSize) {
+    return Card(
+      elevation: 1,
+      margin: const EdgeInsets.symmetric(vertical: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Feriados por Dia da Semana',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
+              children: [
+                _buildDayChip('Seg', stats.segundas, Colors.blue, fontSize),
+                _buildDayChip('Ter', stats.tercas, Colors.cyan, fontSize),
+                _buildDayChip('Qua', stats.quartas, Colors.green, fontSize),
+                _buildDayChip('Qui', stats.quintas, Colors.amber, fontSize),
+                _buildDayChip('Sex', stats.sextas, Colors.orange, fontSize),
+                _buildDayChip('Sab', 0, Colors.red, fontSize),
+                _buildDayChip('Dom', 0, Colors.purple, fontSize),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDayChip(String label, int count, Color color, double fontSize) {
+    return Container(
+      width: 70,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color, width: 2),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade700,
+              fontSize: fontSize - 1,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            count.toString(),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: color,
+              fontSize: fontSize + 8,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatBadge(String label, int value, Color color, double fontSize) {
     return Stack(
       alignment: Alignment.center,
@@ -3717,6 +3785,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     _buildMainStatsSummary(stats, fontSize, isSmallMobile: isSmallMobile),
+                                    _buildWeekdayStatsChips(stats, fontSize),
                                     Padding(
                                       padding: const EdgeInsets.symmetric(horizontal: 4),
                                       child: Row(
