@@ -10,6 +10,7 @@ class PostgreSQLConfig {
   final String database;
   final String username;
   final String password;
+  final String? apiUrl; // URL customizada da API (opcional)
 
   PostgreSQLConfig({
     required this.host,
@@ -17,12 +18,15 @@ class PostgreSQLConfig {
     required this.database,
     required this.username,
     required this.password,
+    this.apiUrl,
   });
 
   String get connectionString =>
       'postgresql://$username:$password@$host:$port/$database';
 
-  String get apiUrl => 'http://$host:8080'; // Assumindo API REST na porta 8080
+  // Se apiUrl foi fornecida, usa ela; senão, constrói a partir do host
+  String get apiBaseUrl =>
+      apiUrl ?? 'http://$host:8080';
 }
 
 /// Implementação PostgreSQL para operações online
@@ -235,7 +239,7 @@ class PostgreSQLImpl implements DatabaseInterface {
   Future<bool> isConnected() async {
     try {
       final response = await _httpClient
-          .get(Uri.parse('${_config.apiUrl}/health'))
+          .get(Uri.parse('${_config.apiBaseUrl}/health'))
           .timeout(const Duration(seconds: 5));
 
       return response.statusCode == 200;
@@ -250,7 +254,7 @@ class PostgreSQLImpl implements DatabaseInterface {
     Map<String, dynamic> body,
   ) async {
     try {
-      final uri = Uri.parse('${_config.apiUrl}/api/$endpoint');
+      final uri = Uri.parse('${_config.apiBaseUrl}/api/$endpoint');
       final response = await _httpClient
           .post(
             uri,

@@ -16,6 +16,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
   late TextEditingController _databaseController;
   late TextEditingController _usernameController;
   late TextEditingController _passwordController;
+  late TextEditingController _apiUrlController;
 
   bool _isEnabled = false;
   bool _isLoading = true;
@@ -32,6 +33,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
     _databaseController = TextEditingController();
     _usernameController = TextEditingController();
     _passwordController = TextEditingController();
+    _apiUrlController = TextEditingController();
 
     _loadConfig();
   }
@@ -45,6 +47,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
         _databaseController.text = config.database;
         _usernameController.text = config.username;
         _passwordController.text = config.password;
+        _apiUrlController.text = config.apiUrl ?? '';
         _isEnabled = config.enabled;
         _isLoading = false;
       });
@@ -74,6 +77,9 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
         username: _usernameController.text.trim(),
         password: _passwordController.text,
         enabled: _isEnabled,
+        apiUrl: _apiUrlController.text.trim().isEmpty
+            ? null
+            : _apiUrlController.text.trim(),
       );
 
       await PrefsService.saveDatabaseConfig(config);
@@ -113,6 +119,9 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
         database: _databaseController.text.trim(),
         username: _usernameController.text.trim(),
         password: _passwordController.text,
+        apiUrl: _apiUrlController.text.trim().isEmpty
+            ? null
+            : _apiUrlController.text.trim(),
       );
 
       final testPostgres = PostgreSQLImpl();
@@ -191,6 +200,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
                   _databaseController.clear();
                   _usernameController.clear();
                   _passwordController.clear();
+                  _apiUrlController.clear();
                   _isEnabled = false;
                   _testMessage = null;
                 });
@@ -227,6 +237,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
     _databaseController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
+    _apiUrlController.dispose();
     super.dispose();
   }
 
@@ -407,6 +418,23 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
                 ),
                 obscureText: !_showPassword,
                 enabled: !_isTesting,
+              ),
+              const SizedBox(height: 16),
+
+              // API URL (Optional)
+              TextField(
+                controller: _apiUrlController,
+                decoration: InputDecoration(
+                  labelText: 'URL da API (Opcional)',
+                  hintText: 'https://contaslite.hawk.com.br/api',
+                  prefixIcon: const Icon(Icons.cloud_queue),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  helperText: 'Deixe em branco para usar host:8080',
+                ),
+                enabled: !_isTesting,
+                keyboardType: TextInputType.url,
               ),
               const SizedBox(height: 24),
 

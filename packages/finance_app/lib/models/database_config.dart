@@ -6,6 +6,7 @@ class DatabaseConfig {
   final String username;
   final String password;
   final bool enabled; // Se PostgreSQL está habilitado
+  final String? apiUrl; // URL customizada da API (opcional)
 
   DatabaseConfig({
     required this.host,
@@ -14,6 +15,7 @@ class DatabaseConfig {
     required this.username,
     required this.password,
     this.enabled = false,
+    this.apiUrl,
   });
 
   /// Converte para JSON para armazenar em SharedPreferences
@@ -24,6 +26,7 @@ class DatabaseConfig {
     'username': username,
     'password': password,
     'enabled': enabled,
+    'apiUrl': apiUrl,
   };
 
   /// Cria a partir de JSON
@@ -34,6 +37,7 @@ class DatabaseConfig {
     username: json['username'] as String? ?? '',
     password: json['password'] as String? ?? '',
     enabled: json['enabled'] as bool? ?? false,
+    apiUrl: json['apiUrl'] as String?,
   );
 
   /// Cria uma cópia com campos alterados
@@ -44,6 +48,7 @@ class DatabaseConfig {
     String? username,
     String? password,
     bool? enabled,
+    String? apiUrl,
   }) => DatabaseConfig(
     host: host ?? this.host,
     port: port ?? this.port,
@@ -51,6 +56,7 @@ class DatabaseConfig {
     username: username ?? this.username,
     password: password ?? this.password,
     enabled: enabled ?? this.enabled,
+    apiUrl: apiUrl ?? this.apiUrl,
   );
 
   /// Verifica se as configurações estão preenchidas
@@ -77,7 +83,8 @@ class DatabaseConfig {
     database == other.database &&
     username == other.username &&
     password == other.password &&
-    enabled == other.enabled;
+    enabled == other.enabled &&
+    apiUrl == other.apiUrl;
 
   @override
   int get hashCode =>
@@ -86,5 +93,6 @@ class DatabaseConfig {
     database.hashCode ^
     username.hashCode ^
     password.hashCode ^
-    enabled.hashCode;
+    enabled.hashCode ^
+    apiUrl.hashCode;
 }
