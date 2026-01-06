@@ -5,6 +5,7 @@ import 'dashboard_screen.dart';
 import 'recebimentos_screen.dart';
 import 'settings_screen.dart';
 import 'database_screen.dart';
+import 'holidays_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -34,8 +35,8 @@ class _HomeScreenState extends State<HomeScreen> {
       const SettingsScreen(),
       // Quinta aba: Calendário (placeholder)
       const SizedBox.shrink(),
-      // Sexta aba: Feriados (placeholder)
-      const SizedBox.shrink(),
+      // Sexta aba: Feriados
+      const HolidaysScreen(),
       // Sétima aba: Tabelas (Database)
       const DatabaseScreen(),
     ];
