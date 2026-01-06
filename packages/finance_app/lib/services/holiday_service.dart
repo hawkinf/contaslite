@@ -66,6 +66,150 @@ class HolidayService {
     return date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
   }
 
+  /// Retorna o nome do dia da semana em português
+  static String getDayName(int weekday) {
+    const days = [
+      '',
+      'Segunda',
+      'Terça',
+      'Quarta',
+      'Quinta',
+      'Sexta',
+      'Sábado',
+      'Domingo',
+    ];
+    return days[weekday];
+  }
+
+  /// Retorna o nome do mês em português
+  static String getMonthName(int month) {
+    const months = [
+      '',
+      'Janeiro',
+      'Fevereiro',
+      'Março',
+      'Abril',
+      'Maio',
+      'Junho',
+      'Julho',
+      'Agosto',
+      'Setembro',
+      'Outubro',
+      'Novembro',
+      'Dezembro',
+    ];
+    return months[month];
+  }
+
+  /// Retorna uma lista com estatísticas de feriados por dia da semana
+  static Map<String, int> getHolidaysByWeekday(int year) {
+    final stats = {
+      'Segunda': 0,
+      'Terça': 0,
+      'Quarta': 0,
+      'Quinta': 0,
+      'Sexta': 0,
+      'Sábado': 0,
+      'Domingo': 0,
+    };
+
+    // Feriados federais fixos
+    final fixedHolidays = [
+      (day: 1, month: 1),    // Ano Novo
+      (day: 21, month: 4),   // Tiradentes
+      (day: 1, month: 5),    // Dia do Trabalho
+      (day: 7, month: 9),    // Independência
+      (day: 12, month: 10),  // Nossa Senhora Aparecida
+      (day: 2, month: 11),   // Finados
+      (day: 15, month: 11),  // Proclamação da República
+      (day: 25, month: 12),  // Natal
+    ];
+
+    for (var holiday in fixedHolidays) {
+      final date = DateTime(year, holiday.month, holiday.day);
+      final dayName = getDayName(date.weekday);
+      stats[dayName] = (stats[dayName] ?? 0) + 1;
+    }
+
+    return stats;
+  }
+
+  /// Retorna uma lista formatada com detalhes dos feriados por dia da semana
+  static List<String> getHolidayDetailsFormatted(int year) {
+    final holidays = [
+      (day: 1, month: 1, name: 'Ano Novo'),
+      (day: 21, month: 4, name: 'Tiradentes'),
+      (day: 1, month: 5, name: 'Dia do Trabalho'),
+      (day: 7, month: 9, name: 'Independência'),
+      (day: 12, month: 10, name: 'Nossa Senhora Aparecida'),
+      (day: 2, month: 11, name: 'Finados'),
+      (day: 15, month: 11, name: 'Proclamação da República'),
+      (day: 25, month: 12, name: 'Natal'),
+    ];
+
+    final details = <String>[];
+    for (var holiday in holidays) {
+      final date = DateTime(year, holiday.month, holiday.day);
+      final dayName = getDayName(date.weekday);
+      final monthName = getMonthName(holiday.month);
+      details.add(
+        '${holiday.name}: $dayName, ${holiday.day} de $monthName',
+      );
+    }
+
+    return details;
+  }
+
+  /// Retorna um resumo dos feriados por dia da semana
+  static String getHolidaySummary(int year) {
+    final stats = getHolidaysByWeekday(year);
+    final buffer = StringBuffer();
+    buffer.writeln('Feriados Nacionais em $year:');
+    buffer.writeln('');
+
+    stats.forEach((day, count) {
+      buffer.writeln('$day: $count feriado${count > 1 ? 's' : ''}');
+    });
+
+    return buffer.toString();
+  }
+
+  /// Retorna um resumo detalhado dos feriados
+  static String getDetailedHolidaySummary(int year) {
+    final buffer = StringBuffer();
+    buffer.writeln('═══════════════════════════════════════');
+    buffer.writeln('   FERIADOS NACIONAIS - $year');
+    buffer.writeln('═══════════════════════════════════════');
+    buffer.writeln('');
+
+    final details = getHolidayDetailsFormatted(year);
+    for (var detail in details) {
+      buffer.writeln('✓ $detail');
+    }
+
+    buffer.writeln('');
+    buffer.writeln('Resumo por dia da semana:');
+    buffer.writeln('');
+
+    final stats = getHolidaysByWeekday(year);
+    stats.forEach((day, count) {
+      buffer.writeln('  $day: $count feriado${count > 1 ? 's' : ''}');
+    });
+
+    return buffer.toString();
+  }
+
+  /// Retorna um resumo completo com a distribuição por dia
+  static Map<String, dynamic> getHolidayAnalysis(int year) {
+    return {
+      'year': year,
+      'summary': getHolidaySummary(year),
+      'detailed_summary': getDetailedHolidaySummary(year),
+      'by_weekday': getHolidaysByWeekday(year),
+      'details': getHolidayDetailsFormatted(year),
+    };
+  }
+
   /// Retorna um objeto com a data ajustada e a mensagem de aviso (se houver).
   static ({DateTime date, String? warning}) adjustDateToBusinessDay(
     DateTime originalDate,

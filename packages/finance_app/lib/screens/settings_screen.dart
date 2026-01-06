@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/holiday_service.dart';
 import '../services/prefs_service.dart';
 import 'database_screen.dart';
+import 'holidays_stats_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -310,10 +311,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
           ListTile(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            tileColor: Colors.amber.shade50,
+            leading: const Icon(Icons.event, color: Colors.amber, size: 30),
+            title: const Text('Estatísticas de Feriados'),
+            subtitle: const Text('Análise de feriados por dia da semana', maxLines: 2, overflow: TextOverflow.ellipsis),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const HolidaysStatsScreen()),
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+          ListTile(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             tileColor: Colors.blueGrey.shade50,
             leading: const Icon(Icons.storage, color: Colors.blueGrey, size: 30),
             title: const Text('Banco de dados'),
-            subtitle: const Text('Backup, restauração e manutenção'),
+            subtitle: const Text('Backup, restauração e manutenção', maxLines: 2, overflow: TextOverflow.ellipsis),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
               Navigator.push(
