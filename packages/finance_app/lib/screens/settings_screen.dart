@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/holiday_service.dart';
 import '../services/prefs_service.dart';
 import 'database_screen.dart';
+import 'database_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -320,6 +321,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const DatabaseScreen()),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          ListTile(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            tileColor: Colors.cyan.shade50,
+            leading: const Icon(Icons.cloud, color: Colors.cyan, size: 30),
+            title: const Text('PostgreSQL'),
+            subtitle: const Text('Configurar conexão online com servidor', maxLines: 2, overflow: TextOverflow.ellipsis),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const DatabaseSettingsScreen()),
               );
             },
           ),
