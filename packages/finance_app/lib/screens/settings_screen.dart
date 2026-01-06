@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../services/holiday_service.dart';
 import '../services/prefs_service.dart';
 import 'database_screen.dart';
-import 'holidays_stats_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -53,6 +52,154 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     }
     return HolidayService.regions.keys.first;
+  }
+
+  Widget _buildHolidaysList() {
+    final currentYear = DateTime.now().year;
+    final details = HolidayService.getHolidayDetailsFormatted(currentYear);
+    final stats = HolidayService.getHolidaysByWeekday(currentYear);
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Resumo por dia da semana
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Resumo - $currentYear',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildDayChip('Seg', stats['Segunda'] ?? 0, Colors.blue),
+                    _buildDayChip('Ter', stats['Terça'] ?? 0, Colors.cyan),
+                    _buildDayChip('Qua', stats['Quarta'] ?? 0, Colors.green),
+                    _buildDayChip('Qui', stats['Quinta'] ?? 0, Colors.amber),
+                    _buildDayChip('Sex', stats['Sexta'] ?? 0, Colors.orange),
+                    _buildDayChip('Sab', stats['Sábado'] ?? 0, Colors.red),
+                    _buildDayChip('Dom', stats['Domingo'] ?? 0, Colors.purple),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 24),
+          // Lista de feriados
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Feriados Detalhados',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                for (int i = 0; i < details.length; i++) ...[
+                  _buildHolidayItem(details[i]),
+                  if (i < details.length - 1)
+                    const Divider(
+                      height: 16,
+                      color: Colors.grey,
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDayChip(String label, int count, Color color) {
+    return Chip(
+      backgroundColor: color.withValues(alpha: 0.1),
+      label: RichText(
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: label,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+                fontSize: 12,
+              ),
+            ),
+            TextSpan(
+              text: ': $count',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: color,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHolidayItem(String detail) {
+    // Extrai informações do detalhe (formato: "Nome: Dia, data")
+    final parts = detail.split(': ');
+    if (parts.length < 2) return Text(detail);
+
+    final name = parts[0];
+    final dateInfo = parts[1];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: 20,
+            decoration: BoxDecoration(
+              color: Colors.indigo,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  dateInfo,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showCitySelector() {
@@ -309,21 +456,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          ListTile(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            tileColor: Colors.amber.shade50,
-            leading: const Icon(Icons.event, color: Colors.amber, size: 30),
-            title: const Text('Estatísticas de Feriados'),
-            subtitle: const Text('Análise de feriados por dia da semana', maxLines: 2, overflow: TextOverflow.ellipsis),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const HolidaysStatsScreen()),
-              );
-            },
+          // Seção de Feriados Nacionais
+          const Text(
+            'Feriados Nacionais',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.indigo,
+            ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
+          Card(
+            elevation: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: _buildHolidaysList(),
+            ),
+          ),
+          const SizedBox(height: 24),
           ListTile(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             tileColor: Colors.blueGrey.shade50,
