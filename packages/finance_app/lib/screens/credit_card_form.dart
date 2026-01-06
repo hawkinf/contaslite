@@ -9,6 +9,7 @@ import '../utils/color_contrast.dart';
 import '../widgets/app_input_decoration.dart';
 import '../services/prefs_service.dart';
 import '../widgets/date_range_app_bar.dart';
+import '../widgets/dialog_close_button.dart';
 
 class _CreditCardForm extends StatefulWidget {
   final Account? cardToEdit;
@@ -174,6 +175,14 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
           onNext: () => PrefsService.shiftDateRange(1),
           backgroundColor: Colors.deepPurple.shade700,
           foregroundColor: Colors.white,
+          actions: [
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: DialogCloseButton(
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
         ),
         body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),

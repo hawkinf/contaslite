@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'account_form_screen.dart';
+import '../widgets/dialog_close_button.dart';
 
 class RecebimentoFormScreen extends StatelessWidget {
   const RecebimentoFormScreen({super.key});
@@ -31,10 +32,8 @@ class RecebimentoFormScreen extends StatelessWidget {
           Positioned(
             top: 8,
             right: 8,
-            child: IconButton(
-              icon: const Icon(Icons.close, size: 28),
+            child: DialogCloseButton(
               onPressed: () => Navigator.pop(context),
-              tooltip: 'Fechar',
             ),
           ),
         ],

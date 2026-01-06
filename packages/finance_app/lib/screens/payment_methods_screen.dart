@@ -4,6 +4,7 @@ import '../models/payment_method.dart';
 import '../widgets/app_input_decoration.dart';
 import '../services/prefs_service.dart';
 import '../widgets/date_range_app_bar.dart';
+import '../widgets/dialog_close_button.dart';
 
 class PaymentMethodsScreen extends StatefulWidget {
   const PaymentMethodsScreen({super.key});
@@ -46,20 +47,22 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
 
         return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Container(
-            width: 360,
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isEditing ? 'Editar Forma de Pagamento' : 'Nova Forma de Pagamento',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+          child: Stack(
+            children: [
+              Container(
+                width: 360,
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isEditing ? 'Editar Forma de Pagamento' : 'Nova Forma de Pagamento',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                 const SizedBox(height: 24),
                 TextField(
                   controller: nameController,
@@ -152,6 +155,15 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                 ),
               ],
             ),
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: DialogCloseButton(
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ],
           ),
         );
       },

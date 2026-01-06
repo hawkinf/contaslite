@@ -9,6 +9,7 @@ import '../models/payment_method.dart';
 import '../services/holiday_service.dart';
 import '../services/prefs_service.dart';
 import 'app_input_decoration.dart';
+import 'dialog_close_button.dart';
 
 enum PaymentAccountType { regular, creditCard }
 
@@ -505,7 +506,17 @@ class _PaymentDialogState extends State<PaymentDialog> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Lançar Pagamento')),
+        appBar: AppBar(
+          title: const Text('Lançar Pagamento'),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: DialogCloseButton(
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -514,6 +525,14 @@ class _PaymentDialogState extends State<PaymentDialog> {
       appBar: AppBar(
         title: const Text('Lançar Pagamento'),
         elevation: 0,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: DialogCloseButton(
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),

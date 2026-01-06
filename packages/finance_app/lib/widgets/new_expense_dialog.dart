@@ -10,6 +10,7 @@ import '../services/prefs_service.dart';
 import '../utils/color_contrast.dart';
 import '../utils/installment_utils.dart';
 import 'app_input_decoration.dart';
+import 'dialog_close_button.dart';
 
 class NewExpenseDialog extends StatefulWidget {
   final Account card;
@@ -255,6 +256,14 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nova despesa no cartão'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: DialogCloseButton(
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: ListView(
