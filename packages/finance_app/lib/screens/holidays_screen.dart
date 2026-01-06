@@ -68,7 +68,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           const SizedBox(height: 32),
 
           // Resumo por Dia da Semana - GRANDE E DESTACADO
-          Text(
+          const Text(
             'Quantos feriados caem em cada dia',
             style: _sectionTitleStyle,
             textAlign: TextAlign.center,
