@@ -341,13 +341,19 @@ class _CardExpenseEditScreenState extends State<CardExpenseEditScreen> {
         color: Theme.of(context).cardColor,
         child: FilledButton.icon(
           style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            backgroundColor: bgColor,
-            disabledBackgroundColor: bgColor.withValues(alpha: 0.6),
+            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
+            backgroundColor: Colors.green.shade600,
+            disabledBackgroundColor: Colors.green.shade600.withValues(alpha: 0.6),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
           onPressed: _isSaving ? null : _saveExpense,
-          icon: _isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.save),
-          label: Text(_isSaving ? 'Gravando...' : 'Gravar'),
+          icon: _isSaving ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)) : const Icon(Icons.check_circle, size: 24),
+          label: Text(
+            _isSaving ? 'Gravando...' : 'Gravar',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
         ),
       ),
         );

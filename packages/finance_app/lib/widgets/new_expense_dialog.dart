@@ -457,10 +457,17 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
           child: FilledButton.icon(
             onPressed: _launchExpense,
             style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
+              backgroundColor: Colors.green.shade600,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            icon: const Icon(Icons.check_circle_outline),
-            label: const Text('Gravar'),
+            icon: const Icon(Icons.check_circle, size: 24),
+            label: const Text(
+              'Gravar',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
           ),
         ),
       ),

@@ -1585,19 +1585,25 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               color: Theme.of(context).cardColor,
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.blue.shade800,
-                  disabledBackgroundColor: Colors.blue.shade800.withOpacity(0.6),
+                  padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
+                  backgroundColor: Colors.green.shade600,
+                  disabledBackgroundColor: Colors.green.shade600.withOpacity(0.6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 onPressed: _isSaving ? null : _saveAccount,
                 icon: _isSaving
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 24,
+                        height: 24,
                         child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.save),
-                label: Text(_isSaving ? "SALVANDO..." : _saveButtonLabel()),
+                            color: Colors.white, strokeWidth: 2.5))
+                    : const Icon(Icons.check_circle, size: 24),
+                label: Text(
+                  _isSaving ? "Gravando..." : _saveButtonLabel(),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ],

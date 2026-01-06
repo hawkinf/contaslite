@@ -734,11 +734,17 @@ class _PaymentDialogState extends State<PaymentDialog> {
           padding: const EdgeInsets.all(16),
           child: FilledButton.icon(
             onPressed: _savePayment,
-            icon: const Icon(Icons.check_circle_outline),
-            label: const Text('Gravar'),
+            icon: const Icon(Icons.check_circle, size: 24),
+            label: const Text(
+              'Gravar',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
               backgroundColor: Colors.green.shade600,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ),

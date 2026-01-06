@@ -163,8 +163,6 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
 
   @override
   Widget build(BuildContext context) {
-    final fgColor = foregroundColorFor(Color(_selectedColor));
-
     return ValueListenableBuilder<DateTimeRange>(
       valueListenable: PrefsService.dateRangeNotifier,
       builder: (context, range, _) {
@@ -313,10 +311,19 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
               const SizedBox(height: 40),
               
               FilledButton.icon(
-                style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), backgroundColor: Color(_selectedColor), foregroundColor: fgColor),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
+                  backgroundColor: Colors.green.shade600,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 onPressed: _saveCard,
-                icon: const Icon(Icons.save),
-                label: const Text('Gravar'),
+                icon: const Icon(Icons.check_circle, size: 24),
+                label: const Text(
+                  'Gravar',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
               ),
             ],
           ),
