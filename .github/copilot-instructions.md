@@ -1,29 +1,32 @@
 # Copilot instructions
 
-## Architecture overview
-- The entry flow in [lib/main.dart](lib/main.dart) is the single place that configures sqflite FFI on desktop, initializes `PrefsService`, primes pt_BR formatting, runs `DatabaseInitializationService`, and shows either `HomeScreen` or the migration fallback (`lib/screens/database_migration_screen.dart`). It also watches the app lifecycle so `BackupService` runs before the process detaches.
-- `HomeScreen` relies on the `IndexedStack` defined in [lib/screens/home_screen.dart](lib/screens/home_screen.dart) to keep every tab alive; it lazy-loads the seven tabs and listens to `PrefsService.tabRequestNotifier` when code needs to jump to Database (index 6) or any other screen.
+## Visão geral da arquitetura
+- O fluxo de entrada em lib/main.dart inicializa o tamanho da janela (desktop), o locale/formatação e renderiza a UI principal de feriados/calendário com abas embutidas do módulo financeiro.
+- O módulo financeiro fica dentro de packages/finance_app e sua camada de abas mantém as telas de finanças vivas por meio de um IndexedStack; PrefsService.tabRequestNotifier dirige as trocas programáticas de aba.
 
-## Services and data flow
-- [lib/services/prefs_service.dart](lib/services/prefs_service.dart) is the single source of truth for theme, region/city selection, date range, tab requests, and database protection preferences; every setter must persist to `SharedPreferences` and update the related `ValueNotifier` (e.g., `themeNotifier`, `cityNotifier`, `dateRangeNotifier`, `tabRequestNotifier`, `autoBackupEnabled`).
-- [lib/database/db_helper.dart](lib/database/db_helper.dart) defines `finance_v62.db`, configures PRAGMAs, creates indexes, and houses all `_upgradeDB` logic; new schema changes must be appended there and the migration path should call `[lib/services/database_protection_service.dart](lib/services/database_protection_service.dart)` so a checksum backup happens before the destructive upgrade.
-- After `DatabaseInitializationService` populates the basic schema, it pulls default categories and subcategories from `[lib/services/default_account_categories_service.dart](lib/services/default_account_categories_service.dart)` and the standard payment methods defined in `populatePaymentMethods`; this is the core source for seeded data so reuse it when adding new defaults.
-- `[lib/services/database_migration_service.dart](lib/services/database_migration_service.dart)` wraps the sqflite onUpgrade with a `MigrationStatus` `ValueNotifier`; the UI consumes it inside `[lib/screens/database_migration_screen.dart](lib/screens/database_migration_screen.dart)` so any long-running upgrade should update that notifier before/after validation.
+## Serviços e fluxo de dados
+- PrefsService (packages/finance_app/lib/services/prefs_service.dart) é a fonte única de verdade para tema, seleção de região/cidade, intervalo de datas, solicitações de aba e preferências de proteção do banco; cada setter deve persistir no SharedPreferences e publicar atualizações pelo ValueNotifier associado (themeNotifier, cityNotifier, dateRangeNotifier, tabRequestNotifier, autoBackupEnabled).
+- DatabaseHelper (packages/finance_app/lib/database/db_helper.dart) declara finance_v62.db, configura os PRAGMAs, cria índices e mantém todos os caminhos de migração. Anexe mudanças de esquema ali e chame DatabaseProtectionService antes de executar migrações destrutivas para preservar uma cópia com checksum.
+- DatabaseInitializationService injeta dados seed (categorias/subcategorias padrão e métodos de pagamento) a partir de default_account_categories_service.dart e o helper de métodos de pagamento depois que o esquema estiver pronto; reutilize esses helpers ao introduzir novos valores padrão.
+- DatabaseMigrationService embrulha onUpgrade do sqflite e expõe um MigrationStatus ValueNotifier. DatabaseMigrationScreen observa esse notifier, então processos longos devem atualizá-lo antes e depois de validações pesadas.
 
-## UI and integration patterns
-- `[lib/screens/settings_screen.dart](lib/screens/settings_screen.dart)` feels for `PrefsService.cityNotifier` and `themeNotifier` in `initState`, uses `HolidayService.regions` (`lib/services/holiday_service.dart`) to populate and sort the city list, and saves selections via `PrefsService.saveLocation`; the city dialog keeps its own search state so reuse that pattern when building modal pickers.
-- `SettingsScreen` toggles `PrefsService.tabRequestNotifier` to `6` when the user taps "Banco de dados" so the home tab controller opens `[lib/screens/database_screen.dart](lib/screens/database_screen.dart)`; piggyback on the same notifier when you need programmatic tab switches.
-- Logging across services intentionally uses emoji-prefixed messages (🚀 for app lifecycle, 🔧 for services, 🏠 for screens, etc.) because the debug workflow in `[DEBUG_GUIDE.md](DEBUG_GUIDE.md)` and `[DEBUG_SUMMARY.txt](DEBUG_SUMMARY.txt)` expects those markers; new debug prints should follow that style so the freeze tracker can identify progress.
+## Padrões de UI e integração
+- SettingsScreen (packages/finance_app/lib/screens/settings_screen.dart) lê PrefsService.cityNotifier e themeNotifier em initState, usa HolidayService.regions (services/holiday_service.dart) para ordenar as cidades e salva as escolhas com PrefsService.saveLocation; o diálogo de cidades mantém estado local de busca, um bom padrão para outros seletores modais.
+- Ao tocar em “Banco de dados”, SettingsScreen define PrefsService.tabRequestNotifier para 6 para que o controlador de abas da HomeScreen abra a aba de banco; qualquer outro código que precise navegar por abas programaticamente deve atualizar esse mesmo notifier.
+- Os logs entre serviços usam prefixos com emoji (🚀 para ciclo de vida, 🔧 para serviços, 🏠 para telas, etc.). DEBUG_GUIDE.md e DEBUG_SUMMARY.txt dependem desses marcadores, então mantenha a convenção ao adicionar diagnósticos para que o rastreador de congelamentos consiga interpretá-los.
 
-## Backup, protection, and recovery
-- `[lib/services/backup_service.dart](lib/services/backup_service.dart)` is called on app detach (`AppLifecycleState.detached`) and uses `DatabaseHelper` to copy the live DB, keep the ten newest files, and allow manual restoration; use the same helpers when exposing backups elsewhere.
-- `[lib/services/database_protection_service.dart](lib/services/database_protection_service.dart)` writes backups to `ContasLite/Backups`, calculates SHA-256, tracks metadata JSON, rotates to five copies, and performs integrity checks (PRAGMA integrity_check, foreign_key_check, orphan detection) before migrations; hook into that service before any destructive operation in `db_helper` or `DatabaseMigrationService`.
-- `BackupService`, `DatabaseProtectionService`, and `DatabaseHelper` all expect the `finance_v62.db` name in the application documents folder, so avoid renaming the file without updating every reference.
+## Backup, proteção e recuperação
+- BackupService (packages/finance_app/lib/services/backup_service.dart) roda em AppLifecycleState.detached e copia o banco ativo, mantém os dez backups mais recentes e permite restaurações manuais; reaproveite seus helpers sempre que expor backups em outro lugar.
+- DatabaseProtectionService grava backups em ContasLite/Backups, calcula SHA-256, registra metadados em JSON, roda uma rotação até cinco cópias e faz verificações de integridade (PRAGMA integrity_check, foreign_key_check, detecção de órfãos) antes de migrações; invoque-o antes de qualquer mudança destrutiva em db_helper ou DatabaseMigrationService.
+- BackupService, DatabaseProtectionService e DatabaseHelper esperam o nome finance_v62.db na pasta de documentos do app, então evite renomeá-lo a menos que todas as referências sejam atualizadas.
 
-## Workflows and debugging
-- To reproduce the Preferences freeze, follow the steps in `[DEBUG_GUIDE.md](DEBUG_GUIDE.md)` and `[INSTRUÇÕES_DEBUG.md](INSTRUÇÕES_DEBUG.md)`: run `flutter run -v | Tee-Object -FilePath debug_logs.txt` (PowerShell) or `flutter run -v > debug_logs.txt 2>&1` (cmd), wait for the emoji-rich logs, click the gear, and stop with `Ctrl+C`; the last 50 lines will show exactly whether the hang stops at `HomeScreen.initState` or `SettingsScreen.initState` as summarized in `[DEBUG_SUMMARY.txt](DEBUG_SUMMARY.txt)`.
-- Keep `flutter analyze` and `flutter test` (runs `test/widget_test.dart` plus `holiday_loading_test.dart`) in your routine before committing changes; the project honors `analysis_options.yaml` so fix lints that are surfaced there.
-- When adding diagnostics, reuse the emoji prefixes (`🚀`, `🔧`, `🗂️`, etc.) because automated triage scripts expect those keywords to locate the log point noted in the debug guides.
+## Fluxos de trabalho e depuração
+- Para reproduzir o congelamento de Preferências, siga DEBUG_GUIDE.md: execute flutter run -v | Tee-Object -FilePath debug_logs.txt (PowerShell) ou flutter run -v > debug_logs.txt 2>&1 (cmd), espere os logs ricos em emoji, toque na engrenagem e pare com Ctrl+C. As últimas 50 linhas indicarão se o travamento ocorre em HomeScreen.initState ou SettingsScreen.initState, conforme mostrado em DEBUG_SUMMARY.txt.
+- Mantenha flutter analyze e flutter test (que roda test/widget_test.dart e holiday_loading_test.dart) na rotina pré-commit porque analysis_options.yaml aplica lintes mais rigorosos.
+- Continue usando prefixos com emoji (🚀, 🔧, 🗂️) em novos diagnósticos para que scripts de triagem automática localizem pontos importantes de log, como descrito nos guias de depuração.
 
-## Feedback request
-- Please let me know if any area above is unclear or missing context so I can iterate on these instructions.
+## Pedido de retorno
+- Avise-me se alguma parte acima estiver confusa ou faltar contexto para que eu possa atualizar essas instruções.
+
+
+

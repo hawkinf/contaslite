@@ -8,6 +8,7 @@ import '../services/database_initialization_service.dart';
 import '../services/pdf_export_service.dart';
 import '../widgets/app_input_decoration.dart';
 import '../widgets/database_backups_section.dart';
+import 'data_explorer_screen.dart';
 
 class DatabaseScreen extends StatefulWidget {
   const DatabaseScreen({super.key});
@@ -118,6 +119,21 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
             subtitle: const Text('Verifica quantos registros existem'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: _showTableStatusDialog,
+          ),
+          const SizedBox(height: 10),
+          ListTile(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            tileColor: Colors.green.shade50,
+            leading: const Icon(Icons.explore, color: Colors.green, size: 30),
+            title: const Text('Explorador de Dados'),
+            subtitle: const Text('Navegue e visualize todos os registros do banco'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const DataExplorerScreen()),
+              );
+            },
           ),
           const SizedBox(height: 10),
           ListTile(
