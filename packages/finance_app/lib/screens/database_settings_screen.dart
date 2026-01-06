@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/database_config.dart';
 import '../services/prefs_service.dart';
+import '../database/postgresql_impl.dart';
 
 class DatabaseSettingsScreen extends StatefulWidget {
   const DatabaseSettingsScreen({super.key});
@@ -105,22 +106,45 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
     });
 
     try {
-      // TODO: Implementar teste de conexão real
-      // Por enquanto, apenas simular um teste bem-sucedido
-      await Future.delayed(const Duration(seconds: 2));
+      // Create a temporary PostgreSQL implementation to test the connection
+      final config = PostgreSQLConfig(
+        host: _hostController.text.trim(),
+        port: int.parse(_portController.text),
+        database: _databaseController.text.trim(),
+        username: _usernameController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      final testPostgres = PostgreSQLImpl();
+      testPostgres.configure(config);
+      await testPostgres.initialize();
+
+      // Test the connection
+      final isConnected = await testPostgres.isConnected();
+      await testPostgres.close();
+
+      if (!mounted) return;
 
       setState(() {
-        _testSuccess = true;
-        _testMessage = '✅ Conexão bem-sucedida!';
+        _testSuccess = isConnected;
+        _testMessage = isConnected
+            ? '✅ Conexão com PostgreSQL bem-sucedida!'
+            : '❌ Servidor não respondeu. Verifique host, porta e credenciais.';
         _isTesting = false;
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Teste de conexão bem-sucedido!')),
+          SnackBar(
+            content: Text(isConnected
+                ? '✅ Conexão estabelecida com sucesso!'
+                : '❌ Falha ao conectar ao servidor PostgreSQL'),
+          ),
         );
       }
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _testSuccess = false;
         _testMessage = '❌ Erro: $e';
