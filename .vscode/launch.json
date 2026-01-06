@@ -17,6 +17,15 @@
       "program": "lib/main.dart",
       "deviceId": "windows",
       "flutterMode": "release"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "📸 Project Snapshots (30 min intervals)",
+      "program": "${workspaceFolder}/.vscode/snapshot.js",
+      "skipFiles": ["<node_internals>/**"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
     }
   ]
 }

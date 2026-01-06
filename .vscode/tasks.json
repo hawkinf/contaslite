@@ -1,0 +1,52 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "📸 Start Project Snapshots",
+      "type": "shell",
+      "command": "node",
+      "args": [".vscode/snapshot.js"],
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": {
+          "regexp": "^.*$",
+          "file": 1,
+          "location": 2,
+          "message": 3
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*Project Snapshot Service Iniciado.*$",
+          "endsPattern": "^.*Próximo snapshot em.*$"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "close": false
+      }
+    },
+    {
+      "label": "📋 List All Snapshots",
+      "type": "shell",
+      "command": "node",
+      "args": [".vscode/snapshot.js", "list"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🗑️ Cleanup Old Snapshots",
+      "type": "shell",
+      "command": "node",
+      "args": [".vscode/snapshot.js", "cleanup"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
