@@ -95,7 +95,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           // Resumo por Dia da Semana
           Text(
             'Resumo do Ano $_selectedYear',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Colors.indigo,
@@ -120,7 +120,7 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
           // Lista de Feriados
           Text(
             'Lista de Feriados de $_selectedYear',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Colors.indigo,
