@@ -952,32 +952,33 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       const SizedBox(height: 20),
 
       // 2. VALOR TOTAL / TIPO (AVULSA OU RECORRENTE)
-      Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _buildFieldWithIcon(
-          icon: Icons.attach_money,
-          label: 'Valor Total (R\$)',
-          child: TextFormField(
-            controller: _totalValueController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              CentavosInputFormatter(moeda: true),
-            ],
-            decoration: buildOutlinedInputDecoration(
-              label: 'Valor Total (R\$)',
-              icon: Icons.attach_money,
-            ),
-            onChanged: (val) => _updateInstallments(),
+      _buildFieldWithIcon(
+        icon: Icons.attach_money,
+        label: 'Valor Total (R\$)',
+        child: TextFormField(
+          controller: _totalValueController,
+          keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            CentavosInputFormatter(moeda: true),
+          ],
+          decoration: buildOutlinedInputDecoration(
+            label: 'Valor Total (R\$)',
+            icon: Icons.attach_money,
           ),
+          onChanged: (val) => _updateInstallments(),
         ),
-        const SizedBox(height: 20),
-        if (widget.useInstallmentDropdown)
-          _buildFieldWithIcon(
-            icon: Icons.repeat,
-            label: 'Forma de Recebimento',
-            child: _buildInstallmentDropdown(),
-          ),
-      ]),
+      ),
+
+      const SizedBox(height: 20),
+
+      // 2b. FORMA DE RECEBIMENTO (apenas para Recebimentos)
+      if (widget.useInstallmentDropdown)
+        _buildFieldWithIcon(
+          icon: Icons.repeat,
+          label: 'Forma de Recebimento',
+          child: _buildInstallmentDropdown(),
+        ),
 
       const SizedBox(height: 20),
 
