@@ -31,7 +31,8 @@ $excludePatterns = @(
     ".flutter-plugins-dependencies",
     ".packages",
     "pubspec.lock",
-    ".vscode"
+    ".vscode",
+    ".snapshots"
 )
 
 # Copiar projeto
