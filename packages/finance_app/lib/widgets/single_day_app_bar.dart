@@ -85,6 +85,7 @@ class SingleDayAppBar extends StatelessWidget implements PreferredSizeWidget {
       foregroundColor: foregroundColor,
       leading: leading,
       title: Column(
+        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
@@ -93,9 +94,14 @@ class SingleDayAppBar extends StatelessWidget implements PreferredSizeWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
+          const SizedBox(height: 2),
           Text(
             holidayText,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: Colors.white70,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
