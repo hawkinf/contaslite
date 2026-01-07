@@ -17,172 +17,203 @@ class DatabaseScreen extends StatefulWidget {
   State<DatabaseScreen> createState() => _DatabaseScreenState();
 }
 
-class _DatabaseScreenState extends State<DatabaseScreen> {
+class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStateMixin {
+  late TabController _tabController;
   bool _isProcessingBackup = false;
   bool _isRepairing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildBackupTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        ListTile(
+          enabled: !_isProcessingBackup,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          tileColor: Colors.blue.shade50,
+          leading: const Icon(Icons.upload_file, color: Colors.blue, size: 30),
+          title: const Text('Exportar Banco de Dados'),
+          subtitle: const Text('Gera um arquivo .db para backup manual', maxLines: 2, overflow: TextOverflow.ellipsis),
+          trailing: _isProcessingBackup
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: _exportDatabase,
+        ),
+        const SizedBox(height: 10),
+        ListTile(
+          enabled: !_isProcessingBackup,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          tileColor: Colors.green.shade50,
+          leading: const Icon(Icons.download, color: Colors.green, size: 30),
+          title: const Text('Importar Banco de Dados'),
+          subtitle: const Text('Substitui os dados atuais por um backup', maxLines: 2, overflow: TextOverflow.ellipsis),
+          trailing: _isProcessingBackup
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: _importDatabase,
+        ),
+        const SizedBox(height: 10),
+        ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          tileColor: Colors.teal.shade50,
+          leading: const Icon(Icons.folder_open, color: Colors.teal, size: 30),
+          title: const Text('Mostrar caminho do banco'),
+          subtitle: const Text('Exibe a localização do arquivo .db', maxLines: 2, overflow: TextOverflow.ellipsis),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: _showDatabasePath,
+        ),
+        const SizedBox(height: 10),
+        ListTile(
+          enabled: !_isRepairing,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          tileColor: Colors.orange.shade50,
+          leading: const Icon(Icons.build_circle, color: Colors.orange, size: 30),
+          title: const Text('Reparar Banco de Dados'),
+          subtitle: const Text('Executa checagem de integridade e reorganiza o arquivo', maxLines: 2, overflow: TextOverflow.ellipsis),
+          trailing: _isRepairing
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: _repairDatabase,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildManagementTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          tileColor: Colors.indigo.shade50,
+          leading: const Icon(Icons.info_outline, color: Colors.indigo, size: 30),
+          title: const Text('Status das Tabelas'),
+          subtitle: const Text('Verifica quantos registros existem', maxLines: 2, overflow: TextOverflow.ellipsis),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: _showTableStatusDialog,
+        ),
+        const SizedBox(height: 10),
+        ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          tileColor: Colors.green.shade50,
+          leading: const Icon(Icons.explore, color: Colors.green, size: 30),
+          title: const Text('Explorador de Dados'),
+          subtitle: const Text('Navegue e visualize todos os registros do banco', maxLines: 2, overflow: TextOverflow.ellipsis),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DataExplorerScreen()),
+            );
+          },
+        ),
+        const SizedBox(height: 10),
+        ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          tileColor: Colors.purple.shade50,
+          leading: const Icon(Icons.picture_as_pdf, color: Colors.purple, size: 30),
+          title: const Text('Exportar para PDF'),
+          subtitle: const Text('Gera relatório com todos os dados das tabelas', maxLines: 2, overflow: TextOverflow.ellipsis),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: _exportDataToPdf,
+        ),
+        const SizedBox(height: 10),
+        ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          tileColor: Colors.amber.shade50,
+          leading: const Icon(Icons.refresh, color: Colors.amber, size: 30),
+          title: const Text('Recriar Tabelas Padrão'),
+          subtitle: const Text('Apaga e recria categorias e formas de pagamento'),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: _showRecreateTablesDialog,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAutomaticBackupsTab() {
+    return const SingleChildScrollView(
+      child: DatabaseBackupsSection(),
+    );
+  }
+
+  Widget _buildDangerZoneTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          tileColor: Colors.red.shade50,
+          leading: const Icon(Icons.delete_forever, color: Colors.red, size: 30),
+          title: const Text(
+            'Apagar Todo o Banco de Dados',
+            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+          ),
+          subtitle: const Text('Essa ação é irreversível.'),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: _showWipeDatabaseDialog,
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Banco de dados'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(
+              icon: Icon(Icons.backup),
+              text: 'Backup/Restauração',
+            ),
+            Tab(
+              icon: Icon(Icons.table_chart),
+              text: 'Gerenciamento',
+            ),
+            Tab(
+              icon: Icon(Icons.schedule),
+              text: 'Backups Automáticos',
+            ),
+            Tab(
+              icon: Icon(Icons.warning),
+              text: 'Opção Crítica',
+            ),
+          ],
+        ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          const Text(
-            'Backup e Restauração',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.indigo,
-            ),
-          ),
-          const SizedBox(height: 10),
-          ListTile(
-            enabled: !_isProcessingBackup,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            tileColor: Colors.blue.shade50,
-            leading: const Icon(Icons.upload_file, color: Colors.blue, size: 30),
-            title: const Text('Exportar Banco de Dados'),
-            subtitle: const Text('Gera um arquivo .db para backup manual', maxLines: 2, overflow: TextOverflow.ellipsis),
-            trailing: _isProcessingBackup
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: _exportDatabase,
-          ),
-          const SizedBox(height: 10),
-          ListTile(
-            enabled: !_isProcessingBackup,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            tileColor: Colors.green.shade50,
-            leading: const Icon(Icons.download, color: Colors.green, size: 30),
-            title: const Text('Importar Banco de Dados'),
-            subtitle: const Text('Substitui os dados atuais por um backup', maxLines: 2, overflow: TextOverflow.ellipsis),
-            trailing: _isProcessingBackup
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: _importDatabase,
-          ),
-          const SizedBox(height: 10),
-          ListTile(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            tileColor: Colors.teal.shade50,
-            leading: const Icon(Icons.folder_open, color: Colors.teal, size: 30),
-            title: const Text('Mostrar caminho do banco'),
-            subtitle: const Text('Exibe a localização do arquivo .db', maxLines: 2, overflow: TextOverflow.ellipsis),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: _showDatabasePath,
-          ),
-          const SizedBox(height: 24),
-          ListTile(
-            enabled: !_isRepairing,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            tileColor: Colors.orange.shade50,
-            leading: const Icon(Icons.build_circle, color: Colors.orange, size: 30),
-            title: const Text('Reparar Banco de Dados'),
-            subtitle: const Text('Executa checagem de integridade e reorganiza o arquivo', maxLines: 2, overflow: TextOverflow.ellipsis),
-            trailing: _isRepairing
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: _repairDatabase,
-          ),
-          const SizedBox(height: 20),
-          const Divider(thickness: 2),
-          const SizedBox(height: 10),
-          const Text(
-            'Gerenciamento de Tabelas',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.indigo,
-            ),
-          ),
-          const SizedBox(height: 10),
-          ListTile(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            tileColor: Colors.indigo.shade50,
-            leading: const Icon(Icons.info_outline, color: Colors.indigo, size: 30),
-            title: const Text('Status das Tabelas'),
-            subtitle: const Text('Verifica quantos registros existem', maxLines: 2, overflow: TextOverflow.ellipsis),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: _showTableStatusDialog,
-          ),
-          const SizedBox(height: 10),
-          ListTile(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            tileColor: Colors.green.shade50,
-            leading: const Icon(Icons.explore, color: Colors.green, size: 30),
-            title: const Text('Explorador de Dados'),
-            subtitle: const Text('Navegue e visualize todos os registros do banco', maxLines: 2, overflow: TextOverflow.ellipsis),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const DataExplorerScreen()),
-              );
-            },
-          ),
-          const SizedBox(height: 10),
-          ListTile(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            tileColor: Colors.purple.shade50,
-            leading: const Icon(Icons.picture_as_pdf, color: Colors.purple, size: 30),
-            title: const Text('Exportar para PDF'),
-            subtitle: const Text('Gera relatório com todos os dados das tabelas', maxLines: 2, overflow: TextOverflow.ellipsis),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: _exportDataToPdf,
-          ),
-          const SizedBox(height: 10),
-          ListTile(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            tileColor: Colors.amber.shade50,
-            leading: const Icon(Icons.refresh, color: Colors.amber, size: 30),
-            title: const Text('Recriar Tabelas Padrão'),
-            subtitle: const Text('Apaga e recria categorias e formas de pagamento'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: _showRecreateTablesDialog,
-          ),
-          const SizedBox(height: 20),
-          const Divider(thickness: 2),
-          const SizedBox(height: 10),
-          const DatabaseBackupsSection(),
-          const SizedBox(height: 20),
-          const Divider(thickness: 2),
-          const SizedBox(height: 10),
-          const Text(
-            'Zona de Perigo',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.red,
-            ),
-          ),
-          const SizedBox(height: 10),
-          ListTile(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            tileColor: Colors.red.shade50,
-            leading: const Icon(Icons.delete_forever, color: Colors.red, size: 30),
-            title: const Text(
-              'Apagar Todo o Banco de Dados',
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-            ),
-            subtitle: const Text('Essa ação é irreversível.'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: _showWipeDatabaseDialog,
-          ),
+          _buildBackupTab(),
+          _buildManagementTab(),
+          _buildAutomaticBackupsTab(),
+          _buildDangerZoneTab(),
         ],
       ),
     );
