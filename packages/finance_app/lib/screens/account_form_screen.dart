@@ -972,11 +972,11 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
       const SizedBox(height: 20),
 
-      // 2b. FORMA DE RECEBIMENTO (apenas para Recebimentos)
-      if (widget.useInstallmentDropdown)
+      // 2b. FORMA DE PAGAMENTO/RECEBIMENTO
+      if (widget.useInstallmentDropdown || _entryMode == 0)
         _buildFieldWithIcon(
           icon: Icons.repeat,
-          label: 'Forma de Recebimento',
+          label: widget.isRecebimento ? 'Forma de Recebimento' : 'Forma de Pagamento',
           child: _buildInstallmentDropdown(),
         ),
 
