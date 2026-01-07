@@ -1,6 +1,6 @@
 [
   {
-    "key": "ctrl+alt+b",
+    "key": "alt+s",
     "command": "workbench.action.tasks.runTask",
     "args": "📸 Create Quick Snapshot",
     "when": "!inDebugMode"

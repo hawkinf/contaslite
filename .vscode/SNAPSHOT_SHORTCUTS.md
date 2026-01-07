@@ -3,7 +3,7 @@
 ## Como Usar
 
 ### Método 1: Atalho de Teclado (Mais Rápido)
-Pressione **`Ctrl+Alt+B`** para criar um snapshot instantaneamente!
+Pressione **`Alt+S`** para criar um snapshot instantaneamente!
 
 ### Método 2: Comando da Paleta
 1. Pressione **`Ctrl+Shift+P`** para abrir a Paleta de Comandos
@@ -28,14 +28,14 @@ Pressione **`Ctrl+Alt+B`** para criar um snapshot instantaneamente!
 
 A configuração está em `.vscode/tasks.json` e `.vscode/keybindings.json`
 
-**Atalho Principal:** `Ctrl+Alt+B` → Cria snapshot
+**Atalho Principal:** `Alt+S` → Cria snapshot
 
 Se você quiser mudar o atalho, edite `.vscode/keybindings.json` e altere a `key`.
 
 ## Exemplo de Uso Rápido
 
 ```
-Ctrl+Alt+B  →  [Abre o terminal]  →  [Snapshot criado]  →  [Mostra resumo]
+Alt+S  →  [Abre o terminal]  →  [Snapshot criado]  →  [Mostra resumo]
 ```
 
 Tudo acontece em segundos! ⚡
