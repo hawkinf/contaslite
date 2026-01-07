@@ -5,6 +5,7 @@ import 'package:finance_app/services/holiday_service.dart';
 
 class SingleDayAppBar extends StatelessWidget implements PreferredSizeWidget {
   final DateTime date;
+  final String? city;
   final List<Widget>? actions;
   final Widget? leading;
   final bool? centerTitle;
@@ -16,6 +17,7 @@ class SingleDayAppBar extends StatelessWidget implements PreferredSizeWidget {
   const SingleDayAppBar({
     super.key,
     required this.date,
+    this.city,
     this.actions,
     this.leading,
     this.centerTitle,
@@ -29,57 +31,32 @@ class SingleDayAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize =>
       PrefsService.embeddedMode ? Size.zero : Size.fromHeight(toolbarHeight ?? 80);
 
+  // Retorna o nome do feriado para uma data específica
+  String _getHolidayName(DateTime date) {
+    if (date.day == 1 && date.month == 1) return 'Ano Novo';
+    if (date.day == 21 && date.month == 4) return 'Tiradentes';
+    if (date.day == 1 && date.month == 5) return 'Dia do Trabalho';
+    if (date.day == 7 && date.month == 9) return 'Independência';
+    if (date.day == 12 && date.month == 10) return 'Nossa Senhora Aparecida';
+    if (date.day == 2 && date.month == 11) return 'Finados';
+    if (date.day == 15 && date.month == 11) return 'Proclamação da República';
+    if (date.day == 25 && date.month == 12) return 'Natal';
+    if (city == 'São José dos Campos' && date.day == 27 && date.month == 7) return 'Dia de São José';
+    if (city == 'Taubaté' && date.day == 5 && date.month == 12) return 'Dia de Taubaté';
+    return 'Feriado';
+  }
+
   // Calcula o próximo feriado a partir da data atual
-  String _getNextHolidayInfo(DateTime currentDate) {
-    try {
-      final city = PrefsService.cityNotifier.value;
-
-      // Procurar pelo próximo feriado nos próximos 365 dias
-      for (int i = 0; i < 365; i++) {
-        final checkDate = currentDate.add(Duration(days: i));
-        if (HolidayService.isHoliday(checkDate, city)) {
-          final daysUntil = i;
-
-          // Obter nome do feriado (meses fixos)
-          String holidayName = '';
-          if (checkDate.day == 1 && checkDate.month == 1) {
-            holidayName = 'Ano Novo';
-          } else if (checkDate.day == 21 && checkDate.month == 4) {
-            holidayName = 'Tiradentes';
-          } else if (checkDate.day == 1 && checkDate.month == 5) {
-            holidayName = 'Dia do Trabalho';
-          } else if (checkDate.day == 7 && checkDate.month == 9) {
-            holidayName = 'Independência';
-          } else if (checkDate.day == 12 && checkDate.month == 10) {
-            holidayName = 'Nossa Senhora Aparecida';
-          } else if (checkDate.day == 2 && checkDate.month == 11) {
-            holidayName = 'Finados';
-          } else if (checkDate.day == 15 && checkDate.month == 11) {
-            holidayName = 'Proclamação da República';
-          } else if (checkDate.day == 25 && checkDate.month == 12) {
-            holidayName = 'Natal';
-          } else if (city == 'São José dos Campos' && checkDate.day == 27 && checkDate.month == 7) {
-            holidayName = 'Fundação de SJC';
-          } else if (city == 'Taubaté' && checkDate.day == 5 && checkDate.month == 12) {
-            holidayName = 'Fundação de Taubaté';
-          }
-
-          if (holidayName.isEmpty) return '';
-
-          if (daysUntil == 0) {
-            return '🎉 Hoje: $holidayName';
-          } else if (daysUntil == 1) {
-            return '⏰ Amanhã: $holidayName';
-          } else {
-            return '📅 $holidayName em $daysUntil dias';
-          }
-        }
+  ({DateTime date, String name, int daysUntil}) _getNextHoliday(DateTime from) {
+    DateTime current = from;
+    // Procura no máximo 365 dias
+    for (int i = 0; i < 365; i++) {
+      current = current.add(const Duration(days: 1));
+      if (HolidayService.isHoliday(current, city ?? '')) {
+        return (date: current, name: _getHolidayName(current), daysUntil: i + 1);
       }
-
-      return '';
-    } catch (e) {
-      return '';
     }
+    return (date: DateTime(2099), name: 'Sem feriado próximo', daysUntil: 365);
   }
 
   @override
@@ -96,7 +73,10 @@ class SingleDayAppBar extends StatelessWidget implements PreferredSizeWidget {
     final style = titleStyle ??
         const TextStyle(fontSize: 18, fontWeight: FontWeight.bold);
 
-    final nextHolidayInfo = _getNextHolidayInfo(date);
+    final nextHoliday = _getNextHoliday(date);
+    final holidayText = nextHoliday.daysUntil == 1
+        ? '${nextHoliday.name} (amanhã)'
+        : '${nextHoliday.name} (${nextHoliday.daysUntil} dias)';
 
     return AppBar(
       centerTitle: centerTitle ?? true,
@@ -105,7 +85,6 @@ class SingleDayAppBar extends StatelessWidget implements PreferredSizeWidget {
       foregroundColor: foregroundColor,
       leading: leading,
       title: Column(
-        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
@@ -114,18 +93,12 @@ class SingleDayAppBar extends StatelessWidget implements PreferredSizeWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          if (nextHolidayInfo.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              nextHolidayInfo,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+          Text(
+            holidayText,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
       actions: actions,

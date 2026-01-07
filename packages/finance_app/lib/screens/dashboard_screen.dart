@@ -551,6 +551,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final PreferredSizeWidget appBarWidget = isSingleDayFilter
           ? (SingleDayAppBar(
               date: _startDate,
+              city: PrefsService.cityNotifier.value,
               backgroundColor: appBarBg,
               foregroundColor: appBarFg,
               leading: IconButton(

@@ -20,7 +20,9 @@
       "Bash(wmic process where name=\"contaslite.exe\" delete)",
       "Bash(timeout 60 flutter pub global run devtools:*)",
       "Bash(dir:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(node .vscode/snapshot.js:*)",
+      "Bash(timeout 60 node:*)"
     ]
   }
 }
