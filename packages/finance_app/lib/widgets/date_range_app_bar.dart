@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:finance_app/services/prefs_service.dart';
-import 'package:finance_app/services/holiday_service.dart';
 
 class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
   final DateTimeRange range;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final String? title;
-  final String? city;
   final List<Widget>? actions;
   final Widget? leading;
   final bool? centerTitle;
@@ -24,7 +22,6 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.onPrevious,
     required this.onNext,
     this.title,
-    this.city,
     this.actions,
     this.leading,
     this.centerTitle,
@@ -42,31 +39,6 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
           : Size.fromHeight(
               toolbarHeight ?? (title == null ? 64 : 76),
             );
-
-  String _getHolidayName(DateTime date) {
-    if (date.day == 1 && date.month == 1) return 'Ano Novo';
-    if (date.day == 21 && date.month == 4) return 'Tiradentes';
-    if (date.day == 1 && date.month == 5) return 'Dia do Trabalho';
-    if (date.day == 7 && date.month == 9) return 'Independência';
-    if (date.day == 12 && date.month == 10) return 'Nossa Senhora Aparecida';
-    if (date.day == 2 && date.month == 11) return 'Finados';
-    if (date.day == 15 && date.month == 11) return 'Proclamação da República';
-    if (date.day == 25 && date.month == 12) return 'Natal';
-    if (city == 'São José dos Campos' && date.day == 27 && date.month == 7) return 'Dia de São José';
-    if (city == 'Taubaté' && date.day == 5 && date.month == 12) return 'Dia de Taubaté';
-    return 'Feriado';
-  }
-
-  ({DateTime date, String name, int daysUntil}) _getNextHoliday(DateTime from) {
-    DateTime current = from;
-    for (int i = 0; i < 365; i++) {
-      current = current.add(const Duration(days: 1));
-      if (HolidayService.isHoliday(current, city ?? '')) {
-        return (date: current, name: _getHolidayName(current), daysUntil: i + 1);
-      }
-    }
-    return (date: DateTime(2099), name: 'Sem feriado próximo', daysUntil: 365);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,12 +71,6 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
     final defaultMonthStyle = monthStyle ??
         const TextStyle(fontSize: 24, fontWeight: FontWeight.bold);
 
-    final nextHoliday = _getNextHoliday(range.start);
-    final daysText = nextHoliday.daysUntil == 1
-        ? 'Falta 1 dia'
-        : 'Faltam ${nextHoliday.daysUntil} dias';
-    final holidayLabel = '${nextHoliday.name} - $daysText';
-
     return AppBar(
       centerTitle: centerTitle ?? true,
       toolbarHeight: preferredSize.height,
@@ -113,7 +79,6 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
       leading: leading,
       title: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
         children: [
           if (title != null)
             Text(
@@ -145,24 +110,6 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
                 tooltip: 'Próximo mês',
               ),
             ],
-          ),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.amber.shade400,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              holidayLabel,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
           ),
         ],
       ),
