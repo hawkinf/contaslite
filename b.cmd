@@ -1,9 +1,9 @@
 @echo off
 REM Script para tirar snapshot automático do projeto
 REM Executa o script PowerShell sem pedir confirmação
-REM Uso: snapshot.cmd (Clique duplo para executar)
+REM Uso: b.cmd (Clique duplo para executar)
 
-powershell -ExecutionPolicy Bypass -NoProfile -File "%~dp0snapshot.ps1" && (
+powershell -ExecutionPolicy Bypass -NoProfile -File "%~dp0b.ps1" && (
     echo.
     echo [OK] Snapshot criado com sucesso!
     timeout /t 2 /nobreak
