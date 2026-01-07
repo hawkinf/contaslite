@@ -331,16 +331,20 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
   Future<void> _loadCategories() async {
     if (_selectedType?.id == null) {
-      setState(() {
-        _categorias = [];
-        _parentCategorias = [];
-        _selectedParentCategoria = null;
-      });
+      if (mounted) {
+        setState(() {
+          _categorias = [];
+          _parentCategorias = [];
+          _selectedParentCategoria = null;
+        });
+      }
       return;
     }
 
     final categorias =
         await DatabaseHelper.instance.readAccountCategories(_selectedType!.id!);
+
+    if (!mounted) return;
 
     if (!widget.isRecebimento) {
       setState(() {
@@ -425,12 +429,22 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
     final typeFilter = widget.typeNameFilter?.trim();
     var filteredTypes = baseTypes;
+
+    // Se não for recebimento, excluir "Recebimentos" do dropdown
+    if (!widget.isRecebimento) {
+      filteredTypes = baseTypes
+          .where((t) => !t.name.toLowerCase().contains('recebimento'))
+          .toList();
+    }
+
     if (typeFilter != null && typeFilter.isNotEmpty) {
       final normalizedFilter = typeFilter.toLowerCase();
       filteredTypes = baseTypes
           .where((t) => t.name.trim().toLowerCase() == normalizedFilter)
           .toList();
     }
+
+    if (!mounted) return;
 
     setState(() {
       _typesList = filteredTypes;
