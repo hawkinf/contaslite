@@ -127,6 +127,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   bool _payInAdvance = false;
   bool _isSaving = false;
   bool _isLoadingData = true; // Indica se está carregando dados iniciais
+  bool _isDisposed = false; // Flag para evitar operações após dispose
 
   String get _typeLabel =>
       widget.isRecebimento ? 'Tipo de Recebimento' : 'Tipo da Conta';
@@ -383,28 +384,33 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             .toList()
           ..sort((a, b) => a.categoria.compareTo(b.categoria));
 
-    setState(() {
-      _parentCategorias = parents;
-      _selectedParentCategoria = selectedParent;
-      _categorias = filteredChildren;
-      if (_selectedCategory != null &&
-          !_categorias.any((c) => c.id == _selectedCategory!.id)) {
-        _selectedCategory = null;
-      }
-    });
+    if (mounted) {
+      setState(() {
+        _parentCategorias = parents;
+        _selectedParentCategoria = selectedParent;
+        _categorias = filteredChildren;
+        if (_selectedCategory != null &&
+            !_categorias.any((c) => c.id == _selectedCategory!.id)) {
+          _selectedCategory = null;
+        }
+      });
+    }
   }
 
   Future<void> _showCategoriesDialog() async {
+    if (_isDisposed) return;
+
     if (widget.isRecebimento) {
       await Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const RecebimentosTableScreen()),
       );
+      if (_isDisposed) return;
       await _loadCategories();
       return;
     }
     if (_selectedType?.id == null) {
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(_typeSelectMessage), backgroundColor: Colors.orange),
         );
@@ -414,7 +420,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
     await _loadCategories();
 
-    if (!mounted) return;
+    if (!mounted || _isDisposed) return;
     showDialog(
       context: context,
       builder: (ctx) => _CategoriasDialog(
@@ -2074,6 +2080,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
   @override
   void dispose() {
+    _isDisposed = true;
     _totalValueController.dispose();
     _installmentsQtyController.dispose();
     _recurrentValueController.dispose();
