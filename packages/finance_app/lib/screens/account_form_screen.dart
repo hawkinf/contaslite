@@ -841,6 +841,20 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   }
 
   Widget _buildLaunchTypeSelector() {
+    // Para Recebimentos, mostrar apenas o dropdown de parcelas
+    if (widget.isRecebimento) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Forma de Recebimento",
+              style: TextStyle(
+                  fontWeight: FontWeight.w600, fontSize: 13, color: Colors.grey)),
+          const SizedBox(height: 10),
+          _buildInstallmentDropdown(),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -908,7 +922,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     return DropdownButtonFormField<int>(
       value: currentQty,
       decoration: buildOutlinedInputDecoration(
-        label: 'Tipo',
+        label: widget.isRecebimento ? 'Forma de Recebimento' : 'Tipo',
         icon: Icons.repeat,
       ),
       items: List.generate(12, (index) {
