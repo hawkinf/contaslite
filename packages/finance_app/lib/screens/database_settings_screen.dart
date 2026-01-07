@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import '../models/database_config.dart';
 import '../services/prefs_service.dart';
 import '../database/postgresql_impl.dart';
@@ -228,6 +230,60 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _performBackup() async {
+    try {
+      setState(() => _isTesting = true);
+
+      // Criar timestamp para o nome do arquivo
+      final now = DateTime.now();
+      final timestamp = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+      final backupFileName = 'contaslite_backup_$timestamp.db';
+
+      // Obter pasta de downloads
+      final downloadsDir = await getDownloadsDirectory();
+      if (downloadsDir == null) {
+        throw Exception('Não foi possível acessar a pasta de downloads');
+      }
+
+      final backupPath = '${downloadsDir.path}/$backupFileName';
+
+      // Obter banco de dados SQLite
+      final appDir = await getApplicationDocumentsDirectory();
+      final dbFile = File('${appDir.path}/finance.db');
+
+      // Se o arquivo de banco de dados não existir, copiar do caminho padrão
+      if (!dbFile.existsSync()) {
+        final defaultDbPath = File('/data/data/com.contaslite.app/databases/finance.db');
+        if (defaultDbPath.existsSync()) {
+          await defaultDbPath.copy(backupPath);
+        } else {
+          throw Exception('Banco de dados não encontrado');
+        }
+      } else {
+        // Copiar arquivo para a pasta de downloads
+        await dbFile.copy(backupPath);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Backup salvo com sucesso: $backupFileName'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+
+      setState(() => _isTesting = false);
+    } catch (e) {
+      setState(() => _isTesting = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ Erro ao fazer backup: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -495,6 +551,28 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _isTesting ? null : _performBackup,
+                  icon: _isTesting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Icon(Icons.backup),
+                  label: Text(_isTesting ? 'Fazendo Backup...' : 'Fazer Backup'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
               ),
               const SizedBox(height: 12),
               SizedBox(
