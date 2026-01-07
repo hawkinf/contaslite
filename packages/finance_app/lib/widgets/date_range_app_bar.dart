@@ -40,7 +40,7 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
       PrefsService.embeddedMode && title == null
           ? Size.zero
           : Size.fromHeight(
-              toolbarHeight ?? (title == null ? 100 : 110),
+              toolbarHeight ?? (title == null ? 64 : 76),
             );
 
   String _getHolidayName(DateTime date) {

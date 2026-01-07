@@ -3724,25 +3724,34 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                   color: Colors.white.withValues(alpha: 0.9),
                                 ),
                               ),
-                              if (!isCollapsed && _nextHolidayData?.holiday != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text(
-                                    'Próximo feriado: ${_nextHolidayData!.holiday!.name} em ${_nextHolidayData!.daysUntil} dia${_nextHolidayData!.daysUntil == 1 ? '' : 's'}',
-                                    textAlign: TextAlign.left,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: isSmallMobile ? 9 : 11,
-                                      color: Colors.yellow.shade200,
-                                    ),
-                                  ),
-                                ),
                             ],
                           ),
                         ),
                       ),
+                      if (!isCollapsed && _nextHolidayData?.holiday != null)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade400,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                '${_nextHolidayData!.holiday!.name} - Faltam ${_nextHolidayData!.daysUntil} dia${_nextHolidayData!.daysUntil == 1 ? '' : 's'}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: isSmallMobile ? 9 : 11,
+                                  color: Colors.black87,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 );
