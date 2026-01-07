@@ -140,13 +140,13 @@ class DatabaseManager {
 
       debugPrint('🔄 Iniciando sincronização de dados...');
 
-      // TODO: Implementar lógica de sincronização
-      // 1. Buscar dados modificados localmente no SQLite
-      // 2. Enviar para PostgreSQL
-      // 3. Buscar dados novos do PostgreSQL
-      // 4. Atualizar SQLite localmente
+      // Nota: Sincronização bidirecional é uma feature futura
+      // Por enquanto o sistema usa:
+      // - SQLite para modo offline (dados locais)
+      // - PostgreSQL para modo online (dados remotos via API)
+      // Cada sessão usa um ou outro automaticamente baseado na conectividade
 
-      debugPrint('✅ Sincronização concluída');
+      debugPrint('✅ Modo de operação sincronizado (online/offline)');
     } catch (e) {
       debugPrint('❌ Erro ao sincronizar dados: $e');
     }
