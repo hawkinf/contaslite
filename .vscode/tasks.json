@@ -47,6 +47,18 @@
         "panel": "new"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "📸 Create Quick Snapshot",
+      "type": "shell",
+      "command": "powershell",
+      "args": ["-ExecutionPolicy", "Bypass", "-NoProfile", "-File", "${workspaceFolder}/b.ps1"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "focus": false
+      },
+      "problemMatcher": []
     }
   ]
 }

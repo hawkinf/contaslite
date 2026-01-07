@@ -1,0 +1,8 @@
+[
+  {
+    "key": "ctrl+shift+s",
+    "command": "workbench.action.tasks.runTask",
+    "args": "📸 Create Quick Snapshot",
+    "when": "!inDebugMode"
+  }
+]
