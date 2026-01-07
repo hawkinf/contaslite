@@ -570,6 +570,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ) as PreferredSizeWidget)
           : (DateRangeAppBar(
               range: DateTimeRange(start: _startDate, end: _endDate),
+              city: PrefsService.cityNotifier.value,
               onPrevious: () => _changeMonth(-1),
               onNext: () => _changeMonth(1),
               backgroundColor: appBarBg,
@@ -709,6 +710,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return Scaffold(
         appBar: DateRangeAppBar(
           range: DateTimeRange(start: _startDate, end: _endDate),
+          city: PrefsService.cityNotifier.value,
           onPrevious: () => _changeMonth(-1),
           onNext: () => _changeMonth(1),
           backgroundColor: Theme.of(context).colorScheme.primary,
