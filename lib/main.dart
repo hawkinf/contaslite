@@ -3689,8 +3689,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
               valueListenable: contas_prefs.PrefsService.dateRangeNotifier,
               builder: (context, range, _) {
                 final titleFontSize = isSmallMobile ? 18.0 : 22.0;
-                final settings = context.dependOnInheritedWidgetOfExactType<FlexibleSpaceBarSettings>();
-                final bool isCollapsed = settings != null && settings.currentExtent <= (settings.minExtent + 12);
                 return SizedBox(
                   width: double.infinity,
                   child: Stack(
@@ -3728,7 +3726,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                           ),
                         ),
                       ),
-                      if (!isCollapsed && _nextHolidayData?.holiday != null)
+                      if (_nextHolidayData?.holiday != null)
                         Align(
                           alignment: Alignment.centerRight,
                           child: Padding(
