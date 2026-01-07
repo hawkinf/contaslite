@@ -2053,7 +2053,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Navigator.pop(ctx);
                           await showDialog(
                             context: context,
-                            builder: (_) => Dialog(
+                            builder: (dialogContext) => Dialog(
                               insetPadding: EdgeInsets.zero,
                               backgroundColor: Colors.transparent,
                               child: Center(
@@ -2084,7 +2084,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         top: 8,
                                         right: 8,
                                         child: DialogCloseButton(
-                                          onPressed: () => Navigator.pop(context),
+                                          onPressed: () => Navigator.pop(dialogContext),
                                         ),
                                       ),
                                     ],
