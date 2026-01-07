@@ -235,24 +235,26 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               debugPrint(
                   '✅ Recorrência pai carregada: ${parent.description}, valor=${parent.value}');
 
-              setState(() {
-                _descController.text = parent.description;
-                _totalValueController.text =
-                    UtilBrasilFields.obterReal(parent.value);
-                _recurrentValueController.text =
-                    UtilBrasilFields.obterReal(parent.value);
-                _recurrentLaunchedValueController.text =
-                    UtilBrasilFields.obterReal(parent.value);
-                _recurrentDay = parent.dueDay;
-                _payInAdvance = parent.payInAdvance;
-                _observationController.text = parent.observation ?? "";
-                _selectedColor = parent.cardColor ?? 0xFFFFFFFF;
-                _entryMode = 1; // Recorrente
-                _dateController.text = DateFormat('dd/MM/yy').format(
-                    DateTime(DateTime.now().year, DateTime.now().month,
-                        parent.dueDay));
-                _installmentsQtyController.text = "recorrente";
-              });
+              if (mounted) {
+                setState(() {
+                  _descController.text = parent.description;
+                  _totalValueController.text =
+                      UtilBrasilFields.obterReal(parent.value);
+                  _recurrentValueController.text =
+                      UtilBrasilFields.obterReal(parent.value);
+                  _recurrentLaunchedValueController.text =
+                      UtilBrasilFields.obterReal(parent.value);
+                  _recurrentDay = parent.dueDay;
+                  _payInAdvance = parent.payInAdvance;
+                  _observationController.text = parent.observation ?? "";
+                  _selectedColor = parent.cardColor ?? 0xFFFFFFFF;
+                  _entryMode = 1; // Recorrente
+                  _dateController.text = DateFormat('dd/MM/yy').format(
+                      DateTime(DateTime.now().year, DateTime.now().month,
+                          parent.dueDay));
+                  _installmentsQtyController.text = "recorrente";
+                });
+              }
             }
           } catch (e) {
             debugPrint('❌ Erro ao carregar recorrência pai: $e');
@@ -402,9 +404,11 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       return;
     }
     if (_selectedType?.id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_typeSelectMessage), backgroundColor: Colors.orange),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_typeSelectMessage), backgroundColor: Colors.orange),
+        );
+      }
       return;
     }
 
