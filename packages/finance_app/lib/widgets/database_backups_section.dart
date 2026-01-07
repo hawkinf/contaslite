@@ -18,10 +18,7 @@ class _DatabaseBackupsSectionState extends State<DatabaseBackupsSection> {
   @override
   void initState() {
     super.initState();
-    // Carregar backups automaticamente na inicialização
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadBackups();
-    });
+    // NÃO carregar na inicialização para evitar travamento
   }
 
   Future<void> _loadBackups() async {
