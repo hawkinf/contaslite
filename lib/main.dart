@@ -3691,62 +3691,58 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                 final titleFontSize = isSmallMobile ? 18.0 : 22.0;
                 return SizedBox(
                   width: double.infinity,
-                  child: Stack(
-                    alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 2),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'ContasPRO',
-                                textAlign: TextAlign.left,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: titleFontSize,
-                                  color: Colors.white,
-                                ),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 2),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'ContasPRO',
+                              textAlign: TextAlign.left,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: titleFontSize,
+                                color: Colors.white,
                               ),
-                              Text(
-                                'by Aguinaldo Liesack Baptistini',
-                                textAlign: TextAlign.left,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: isSmallMobile ? 10 : 12,
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                ),
+                            ),
+                            Text(
+                              'by Aguinaldo Liesack Baptistini',
+                              textAlign: TextAlign.left,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: isSmallMobile ? 10 : 12,
+                                color: Colors.white.withValues(alpha: 0.9),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                       if (_nextHolidayData?.holiday != null)
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 12),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.shade400,
-                                borderRadius: BorderRadius.circular(16),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade400,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.black, width: 2),
+                            ),
+                            child: Text(
+                              '${_nextHolidayData!.holiday!.name} - Faltam ${_nextHolidayData!.daysUntil} dia${_nextHolidayData!.daysUntil == 1 ? '' : 's'}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: isSmallMobile ? 10 : 12,
+                                color: Colors.black,
                               ),
-                              child: Text(
-                                '${_nextHolidayData!.holiday!.name} - Faltam ${_nextHolidayData!.daysUntil} dia${_nextHolidayData!.daysUntil == 1 ? '' : 's'}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: isSmallMobile ? 9 : 11,
-                                  color: Colors.black87,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ),
