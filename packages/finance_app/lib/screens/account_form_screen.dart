@@ -841,18 +841,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   }
 
   Widget _buildLaunchTypeSelector() {
-    // Para Recebimentos, mostrar apenas o dropdown de parcelas
+    // Para Recebimentos, esconder o seletor de tipo
     if (widget.isRecebimento) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("Forma de Recebimento",
-              style: TextStyle(
-                  fontWeight: FontWeight.w600, fontSize: 13, color: Colors.grey)),
-          const SizedBox(height: 10),
-          _buildInstallmentDropdown(),
-        ],
-      );
+      return const SizedBox.shrink();
     }
 
     return Column(
@@ -1562,6 +1553,34 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                       : _buildRecurrentMode(),
                 ),
               ),
+
+              const SizedBox(height: 20),
+
+              // Card com forma de recebimento (apenas para Recebimentos)
+              if (widget.isRecebimento)
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  color: Colors.blue.shade50,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Forma de Recebimento',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: Colors.grey),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInstallmentDropdown(),
+                      ],
+                    ),
+                  ),
+                ),
 
               const SizedBox(height: 20),
 
