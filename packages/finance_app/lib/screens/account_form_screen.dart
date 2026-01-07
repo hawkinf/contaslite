@@ -880,34 +880,6 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     return 1;
   }
 
-  Widget _buildInstallmentTypeDisplay() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            _entryMode == 1 ? Icons.repeat : Icons.credit_card,
-            color: _entryMode == 1 ? Colors.green : Colors.blue,
-            size: 20,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            _entryMode == 1 ? 'Recorrente' : 'A vista',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: _entryMode == 1 ? Colors.green : Colors.blue,
-              fontSize: 16,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildInstallmentDropdown() {
     final currentQty = _currentInstallmentQty();
     return DropdownButtonFormField<int>(
@@ -980,38 +952,31 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       const SizedBox(height: 20),
 
       // 2. VALOR TOTAL / TIPO (AVULSA OU RECORRENTE)
-      Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-        Expanded(
-          flex: 3,
-          child: _buildFieldWithIcon(
-            icon: Icons.attach_money,
-            label: 'Valor Total (R\$)',
-            child: TextFormField(
-              controller: _totalValueController,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                CentavosInputFormatter(moeda: true),
-              ],
-              decoration: buildOutlinedInputDecoration(
-                label: 'Valor Total (R\$)',
-                icon: Icons.attach_money,
-              ),
-              onChanged: (val) => _updateInstallments(),
+      Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _buildFieldWithIcon(
+          icon: Icons.attach_money,
+          label: 'Valor Total (R\$)',
+          child: TextFormField(
+            controller: _totalValueController,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              CentavosInputFormatter(moeda: true),
+            ],
+            decoration: buildOutlinedInputDecoration(
+              label: 'Valor Total (R\$)',
+              icon: Icons.attach_money,
             ),
+            onChanged: (val) => _updateInstallments(),
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 2,
-          child: _buildFieldWithIcon(
+        const SizedBox(height: 20),
+        if (widget.useInstallmentDropdown)
+          _buildFieldWithIcon(
             icon: Icons.repeat,
-            label: 'Tipo',
-            child: widget.useInstallmentDropdown
-                ? _buildInstallmentDropdown()
-                : _buildInstallmentTypeDisplay(),
+            label: 'Forma de Recebimento',
+            child: _buildInstallmentDropdown(),
           ),
-        ),
       ]),
 
       const SizedBox(height: 20),
@@ -1553,34 +1518,6 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                       : _buildRecurrentMode(),
                 ),
               ),
-
-              const SizedBox(height: 20),
-
-              // Card com forma de recebimento (apenas para Recebimentos)
-              if (widget.isRecebimento)
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  color: Colors.blue.shade50,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Forma de Recebimento',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                              color: Colors.grey),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInstallmentDropdown(),
-                      ],
-                    ),
-                  ),
-                ),
 
               const SizedBox(height: 20),
 
