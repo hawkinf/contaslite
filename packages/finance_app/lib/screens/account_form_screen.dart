@@ -975,7 +975,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       const SizedBox(height: 20),
 
       // 2. VALOR TOTAL / TIPO (AVULSA OU RECORRENTE)
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
         Expanded(
           flex: 3,
           child: _buildFieldWithIcon(
@@ -1017,7 +1017,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           children: [
             // Seletor de Mês/Ano de Início
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Mês
                 Expanded(
