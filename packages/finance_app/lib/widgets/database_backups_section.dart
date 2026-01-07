@@ -14,6 +14,7 @@ class _DatabaseBackupsSectionState extends State<DatabaseBackupsSection> {
   List<DatabaseBackup> backups = [];
   IntegrityCheckResult? lastIntegrityCheck;
   bool isLoading = false;
+  bool isCreatingBackup = false;
 
   @override
   void initState() {
@@ -215,6 +216,39 @@ class _DatabaseBackupsSectionState extends State<DatabaseBackupsSection> {
     _loadBackups();
   }
 
+  Future<void> _createBackup() async {
+    if (isCreatingBackup) return;
+
+    setState(() => isCreatingBackup = true);
+    try {
+      await DatabaseProtectionService.instance.createBackup('Manual backup');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Backup criado com sucesso!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      _loadBackups();
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Erro ao criar backup: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => isCreatingBackup = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -279,10 +313,26 @@ class _DatabaseBackupsSectionState extends State<DatabaseBackupsSection> {
                           ),
                       ],
                     ),
-                    ElevatedButton.icon(
-                      onPressed: isLoading ? null : _checkIntegrity,
-                      icon: const Icon(Icons.check),
-                      label: const Text('Verificar'),
+                    Row(
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: isLoading || isCreatingBackup ? null : _checkIntegrity,
+                          icon: const Icon(Icons.check),
+                          label: const Text('Verificar'),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: isLoading || isCreatingBackup ? null : _createBackup,
+                          icon: isCreatingBackup
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.backup),
+                          label: Text(isCreatingBackup ? 'Criando...' : 'Criar Backup'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
