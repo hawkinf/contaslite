@@ -3692,7 +3692,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                 return SizedBox(
                   width: double.infinity,
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Padding(
@@ -3726,12 +3726,12 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                       ),
                       if (_nextHolidayData?.holiday != null)
                         Padding(
-                          padding: const EdgeInsets.only(right: 12),
+                          padding: const EdgeInsets.only(left: 12, right: 0),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               color: Colors.amber.shade400,
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(16),
                               border: Border.all(color: Colors.black, width: 2),
                             ),
                             child: Text(
