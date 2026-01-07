@@ -74,9 +74,10 @@ class SingleDayAppBar extends StatelessWidget implements PreferredSizeWidget {
         const TextStyle(fontSize: 18, fontWeight: FontWeight.bold);
 
     final nextHoliday = _getNextHoliday(date);
-    final holidayText = nextHoliday.daysUntil == 1
-        ? '${nextHoliday.name} (amanhã)'
-        : '${nextHoliday.name} (${nextHoliday.daysUntil} dias)';
+    final daysText = nextHoliday.daysUntil == 1
+        ? 'Falta 1 dia'
+        : 'Faltam ${nextHoliday.daysUntil} dias';
+    final holidayLabel = '${nextHoliday.name} - $daysText';
 
     return AppBar(
       centerTitle: centerTitle ?? true,
@@ -94,16 +95,23 @@ class SingleDayAppBar extends StatelessWidget implements PreferredSizeWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 2),
-          Text(
-            holidayText,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: Colors.white70,
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade400,
+              borderRadius: BorderRadius.circular(16),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            child: Text(
+              holidayLabel,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
