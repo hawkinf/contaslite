@@ -880,12 +880,6 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
             ],
           ),
           const SizedBox(width: 14),
-          Container(
-            width: 1,
-            height: 48,
-            color: Colors.grey.shade300,
-          ),
-          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

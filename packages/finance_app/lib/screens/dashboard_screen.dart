@@ -863,8 +863,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color textColor;
     Color moneyColor;
     Color subTextColor;
-    final Color? customAccent =
-        !isCard && account.cardColor != null ? Color(account.cardColor!) : null;
+    // customAccent removed (unused)
 
     if (isCard) {
       Color userColor = (account.cardColor != null)
@@ -1029,13 +1028,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     color: isCard ? textColor : statusColor)))
                       ])),
 
-              Container(
-                  height: 50,
-                  width: 1,
-                  color: isCard
-                      ? textColor.withValues(alpha: 0.3)
-                      : Colors.grey.withValues(alpha: 0.3)),
-              const SizedBox(width: 12),
+                const SizedBox(width: 12),
 
               // 3. COLUNA DESCRIÇÃO
               Expanded(

@@ -89,7 +89,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: typeController.text.isNotEmpty ? typeController.text : null,
+                          initialValue: typeController.text.isNotEmpty ? typeController.text : null,
                           decoration: buildOutlinedInputDecoration(
                             label: 'Tipo',
                             icon: Icons.category,
