@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/prefs_service.dart';
+import 'calendar_screen.dart';
 import 'credit_card_screen.dart';
 import 'dashboard_screen.dart';
 import 'recebimentos_screen.dart';
@@ -33,8 +34,8 @@ class _HomeScreenState extends State<HomeScreen> {
       const CreditCardScreen(),
       // Quarta aba: Preferências
       const SettingsScreen(),
-      // Quinta aba: Calendário (placeholder)
-      const SizedBox.shrink(),
+      // Quinta aba: Calendário
+      const CalendarScreen(),
       // Sexta aba: Feriados
       const HolidaysScreen(),
       // Sétima aba: Tabelas (Database)

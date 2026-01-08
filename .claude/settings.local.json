@@ -28,7 +28,8 @@
       "Bash(git mv:*)",
       "Bash(timeout 60 flutter pub get:*)",
       "Bash(timeout 120 flutter build:*)",
-      "Bash(tasklist /FI \"IMAGENAME eq flutter_windows.exe\")"
+      "Bash(tasklist /FI \"IMAGENAME eq flutter_windows.exe\")",
+      "Bash(git checkout:*)"
     ]
   }
 }

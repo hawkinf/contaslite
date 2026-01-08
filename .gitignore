@@ -46,3 +46,9 @@ app.*.map.json
 
 .snapshots/
 
+
+# bloquear nomes reservados do Windows
+nul
+NUL
+nul.*
+

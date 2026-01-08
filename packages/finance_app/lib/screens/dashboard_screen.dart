@@ -941,6 +941,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         color: cardColor,
         elevation: 2,
         margin: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         child: InkWell(
           onTap: () async {
@@ -951,7 +952,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             }
           },
           child: Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             child: Row(children: [
               
               // 1. COLUNA DATA
@@ -1110,20 +1111,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           fontSize: valueMainSize,
                           color: moneyColor)),
                 ],
-                // Indicador de pagamento
+                // Indicador de pagamento com botão desfazer na mesma linha
                 if (account.id != null && _paymentInfo.containsKey(account.id))
                   Padding(
-                    padding: const EdgeInsets.only(top: 6),
+                    padding: const EdgeInsets.only(top: 4),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          '*** PAGO ***',
-                          style: TextStyle(
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.bold,
-                            fontSize: paidSize,
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            InkWell(
+                              onTap: () => _undoPayment(account),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.shade50,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.orange.shade300, width: 1),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.undo, size: 12, color: Colors.orange.shade700),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      'Desfazer',
+                                      style: TextStyle(
+                                        color: Colors.orange.shade700,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '*** PAGO ***',
+                              style: TextStyle(
+                                color: Colors.green.shade700,
+                                fontWeight: FontWeight.bold,
+                                fontSize: paidSize,
+                              ),
+                            ),
+                          ],
                         ),
                         Text(
                           'via ${_paymentInfo[account.id!]?['method_name'] ?? ''}',
@@ -1220,6 +1253,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _undoPayment(Account account) async {
+    if (account.id == null) return;
+    final paymentInfo = _paymentInfo[account.id!];
+    if (paymentInfo == null) return;
+
+    final paymentId = paymentInfo['id'] as int?;
+    if (paymentId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Desfazer Pagamento'),
+        content: Text(
+          'Deseja realmente desfazer o pagamento de "${account.description}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.orange),
+            child: const Text('Desfazer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await DatabaseHelper.instance.deletePayment(paymentId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Pagamento desfeito'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          _refresh();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erro ao desfazer pagamento: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   Future<void> _handlePayAction(Account account) async {
@@ -1415,42 +1502,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
     double launchedValue = account.value;
 
     return [
-      // Valor previsto (cinza, tachado, menor)
-      Text(
-        UtilBrasilFields.obterReal(estimatedValue),
-        style: TextStyle(
-          fontSize: valuePreviewSize,
-          color: Colors.grey.shade600,
-          decoration: TextDecoration.lineThrough,
-          decorationColor: Colors.grey.shade400,
-        ),
-      ),
-      const SizedBox(height: 2),
-      Text(
-        'Previsto',
-        style: TextStyle(
-          fontSize: smallTextSize * 0.8,
-          color: Colors.grey.shade600,
-        ),
-      ),
-      const SizedBox(height: 6),
-      // Valor lançado (vermelho, normal, maior)
-      Text(
-        UtilBrasilFields.obterReal(launchedValue),
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: valueMainSize,
-          color: Colors.red.shade700,
-        ),
-      ),
-      const SizedBox(height: 2),
-      Text(
-        'LANÇADO',
-        style: TextStyle(
-          fontSize: smallTextSize,
-          fontWeight: FontWeight.bold,
-          color: Colors.red.shade700,
-        ),
+      // Linha com Previsto à esquerda e Lançado à direita
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Valor previsto (cinza, tachado, menor)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                UtilBrasilFields.obterReal(estimatedValue),
+                style: TextStyle(
+                  fontSize: valuePreviewSize * 0.9,
+                  color: Colors.grey.shade600,
+                  decoration: TextDecoration.lineThrough,
+                  decorationColor: Colors.grey.shade400,
+                ),
+              ),
+              Text(
+                'Previsto',
+                style: TextStyle(
+                  fontSize: smallTextSize * 0.7,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 8),
+          // Valor lançado (vermelho, normal, maior)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                UtilBrasilFields.obterReal(launchedValue),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: valueMainSize,
+                  color: Colors.red.shade700,
+                ),
+              ),
+              Text(
+                'LANÇADO',
+                style: TextStyle(
+                  fontSize: smallTextSize * 0.8,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red.shade700,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     ];
   }
