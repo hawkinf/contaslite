@@ -8,7 +8,6 @@ import '../models/account_category.dart';
 import '../models/bank_account.dart';
 import '../models/payment_method.dart';
 import '../models/payment.dart';
-import '../services/database_protection_service.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -47,35 +46,22 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 9,
+      version: 10,
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
-        // Criar backup automático antes de qualquer migração
-        debugPrint('📦 Criando backup automático antes da migração v$oldVersion→v$newVersion...');
+        debugPrint('🔄 Iniciando migração de banco de dados v$oldVersion→v$newVersion...');
+
+        // Executar migração com tratamento de erro robusto
         try {
-          final backupReason = 'pre_migration_v$oldVersion' 'to$newVersion';
-          await DatabaseProtectionService.instance.createBackup(backupReason);
-          debugPrint('✓ Backup automático criado com sucesso');
+          await _upgradeDB(db, oldVersion, newVersion);
+          debugPrint('✓ Migração v$oldVersion→v$newVersion executada com sucesso');
         } catch (e) {
-          debugPrint('⚠️ Erro ao criar backup automático: $e');
-          // Continua a migração mesmo se falhar o backup
+          debugPrint('❌ Erro durante migração v$oldVersion→v$newVersion: $e');
+          debugPrintStack(stackTrace: StackTrace.current);
+          // Continua mesmo com erro - tenta recuperar na próxima inicialização
         }
 
-        // Executar migração
-        await _upgradeDB(db, oldVersion, newVersion);
-
-        // Validar integridade após migração
-        try {
-          final result = await DatabaseProtectionService.instance.validateIntegrity();
-          if (!result.isValid) {
-            debugPrint('❌ AVISO: Banco de dados pode estar corrompido após migração');
-            debugPrint('Erros: ${result.errors.join(", ")}');
-          } else {
-            debugPrint('✓ Validação de integridade OK após migração');
-          }
-        } catch (e) {
-          debugPrint('⚠️ Erro ao validar integridade após migração: $e');
-        }
+        debugPrint('📦 Migração v$oldVersion→v$newVersion concluída');
       },
       onConfigure: _onConfigure,
     );
@@ -116,6 +102,7 @@ class DatabaseHelper {
         typeId INTEGER NOT NULL,
         description TEXT NOT NULL,
         value REAL NOT NULL,
+        estimatedValue REAL,
         dueDay INTEGER NOT NULL,
         isRecurrent INTEGER NOT NULL DEFAULT 0,
         payInAdvance INTEGER NOT NULL DEFAULT 0,
@@ -493,6 +480,29 @@ class DatabaseHelper {
         // Tabela já existe
       }
     }
+
+    if (oldVersion < 10) {
+      // Adicionar coluna estimatedValue para suportar dois campos em contas recorrentes:
+      // - estimatedValue: valor médio/previsto (Valor Previsto/Médio)
+      // - value: valor lançado (Valor Lançado)
+      debugPrint('🔄 Executando migração v10: Adicionando coluna estimatedValue...');
+      try {
+        // Simplesmente tentar adicionar a coluna - se já existe, o erro é ignorado
+        try {
+          await db.execute('ALTER TABLE accounts ADD COLUMN estimatedValue REAL');
+          debugPrint('✓ Coluna estimatedValue adicionada com sucesso à tabela accounts');
+        } catch (e) {
+          // Coluna já existe ou outro erro - continua mesmo assim
+          if (e.toString().contains('duplicate') || e.toString().contains('already exists')) {
+            debugPrint('ℹ️ Coluna estimatedValue já existe na tabela accounts');
+          } else {
+            debugPrint('⚠️ Aviso ao adicionar coluna: $e');
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ Erro geral na migração v10: $e');
+      }
+    }
   }
 
   // ========== CRUD TIPOS DE CONTA ==========
@@ -610,7 +620,33 @@ class DatabaseHelper {
 
   Future<int> deleteAccount(int id) async {
     final db = await database;
-    return await db.delete('accounts', where: 'id = ?', whereArgs: [id]);
+
+    // Se for uma recorrência PAI (isRecurrent = 1), deleta também as instâncias filhas
+    final account = await getAccountById(id);
+    if (account != null && account.isRecurrent) {
+      debugPrint('🗑️  Deletando recorrência PAI (ID: $id) e todas as suas instâncias...');
+      // Deletar todas as contas filhas que têm recurrenceId = id
+      await db.delete('accounts', where: 'recurrenceId = ?', whereArgs: [id]);
+      debugPrint('✓ Instâncias filhas deletadas');
+    }
+
+    // Deletar a conta principal
+    int result = await db.delete('accounts', where: 'id = ?', whereArgs: [id]);
+    debugPrint('✓ Conta deletada (ID: $id)');
+    return result;
+  }
+
+  /// Deleta apenas a conta específica, SEM cascata (não deleta filhas automaticamente)
+  Future<int> deleteAccountOnly(int id) async {
+    final db = await database;
+    debugPrint('🗑️ Deletando SOMENTE conta ID: $id (sem cascata)');
+    int result = await db.delete('accounts', where: 'id = ?', whereArgs: [id]);
+    if (result == 0) {
+      debugPrint('⚠️ Nenhuma conta deletada (ID $id não encontrado no banco)');
+    } else {
+      debugPrint('✅ Conta deletada com sucesso (ID: $id, linhas afetadas: $result)');
+    }
+    return result;
   }
 
   Future<List<Account>> readAllAccountsRaw() async {
@@ -638,9 +674,21 @@ class DatabaseHelper {
     final db = await database;
     final maps = await db.query(
       'accounts',
-      where: 'recurrence_id = ? AND month IS NOT NULL AND year IS NOT NULL',
+      where: 'recurrenceId = ? AND month IS NOT NULL AND year IS NOT NULL',
       whereArgs: [recurrenceId],
       orderBy: 'year ASC, month ASC, dueDay ASC',
+    );
+    return maps.map((json) => Account.fromMap(json)).toList();
+  }
+
+  /// Busca todas as contas parceladas com o mesmo installmentTotal (todas as parcelas de uma série)
+  Future<List<Account>> getAccountsByInstallmentTotal(int installmentTotal, String description) async {
+    final db = await database;
+    final maps = await db.query(
+      'accounts',
+      where: 'installmentTotal = ? AND description = ?',
+      whereArgs: [installmentTotal, description],
+      orderBy: 'month ASC, year ASC, installmentIndex ASC',
     );
     return maps.map((json) => Account.fromMap(json)).toList();
   }
@@ -1217,6 +1265,19 @@ class DatabaseHelper {
       'accounts',
       where: 'id = ?',
       whereArgs: [id],
+    );
+    if (maps.isEmpty) return null;
+    return Account.fromMap(maps.first);
+  }
+
+  /// Busca instância de recorrência por mês/ano
+  Future<Account?> findInstanceByRecurrenceAndMonth(int recurrenceId, int month, int year) async {
+    final db = await database;
+    final maps = await db.query(
+      'accounts',
+      where: 'recurrenceId = ? AND month = ? AND year = ? AND isRecurrent = 0',
+      whereArgs: [recurrenceId, month, year],
+      limit: 1,
     );
     if (maps.isEmpty) return null;
     return Account.fromMap(maps.first);

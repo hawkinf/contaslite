@@ -463,20 +463,40 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: FilledButton.icon(
-            onPressed: _launchExpense,
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
-              backgroundColor: Colors.green.shade600,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.close),
+                  label: const Text('Cancelar'),
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            icon: const Icon(Icons.check_circle, size: 24),
-            label: const Text(
-              'Gravar',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _launchExpense,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
+                    backgroundColor: Colors.green.shade600,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.check_circle, size: 24),
+                  label: const Text(
+                    'Gravar',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

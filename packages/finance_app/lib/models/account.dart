@@ -3,6 +3,7 @@ class Account {
   final int typeId;
   final String description;
   final double value;
+  final double? estimatedValue;  // Valor Previsto/Médio (para recorrências)
   final int dueDay;
   final bool isRecurrent;
   final bool payInAdvance;
@@ -11,14 +12,14 @@ class Account {
   final int? recurrenceId;
   final int? installmentIndex;
   final int? installmentTotal;
-  
+
   // Campos específicos para cartões de crédito
   final int? bestBuyDay;
   final String? cardBrand;
   final String? cardBank;
   final double? cardLimit;
   final int? cardColor;
-  
+
   // Campos para rastreamento
   final int? cardId;
   final String? observation;
@@ -32,6 +33,7 @@ class Account {
     required this.typeId,
     required this.description,
     required this.value,
+    this.estimatedValue,
     required this.dueDay,
     this.isRecurrent = false,
     this.payInAdvance = false,
@@ -78,6 +80,7 @@ class Account {
     int? typeId,
     String? description,
     double? value,
+    double? estimatedValue,
     int? dueDay,
     bool? isRecurrent,
     bool? payInAdvance,
@@ -103,6 +106,7 @@ class Account {
       typeId: typeId ?? this.typeId,
       description: description ?? this.description,
       value: value ?? this.value,
+      estimatedValue: estimatedValue ?? this.estimatedValue,
       dueDay: dueDay ?? this.dueDay,
       isRecurrent: isRecurrent ?? this.isRecurrent,
       payInAdvance: payInAdvance ?? this.payInAdvance,
@@ -131,6 +135,7 @@ class Account {
       'typeId': typeId,
       'description': description,
       'value': value,
+      'estimatedValue': estimatedValue,
       'dueDay': dueDay,
       'isRecurrent': isRecurrent ? 1 : 0,
       'payInAdvance': payInAdvance ? 1 : 0,
@@ -159,6 +164,7 @@ class Account {
       typeId: map['typeId'] as int,
       description: map['description'] as String,
       value: (map['value'] as num).toDouble(),
+      estimatedValue: map['estimatedValue'] != null ? (map['estimatedValue'] as num).toDouble() : null,
       dueDay: map['dueDay'] as int,
       isRecurrent: (map['isRecurrent'] as int) == 1,
       payInAdvance: (map['payInAdvance'] as int) == 1,

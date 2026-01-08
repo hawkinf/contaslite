@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/database_backup.dart';
 import '../models/integrity_check_result.dart';
 import '../services/database_protection_service.dart';
+import '../services/prefs_service.dart';
 
 class DatabaseBackupsSection extends StatefulWidget {
   const DatabaseBackupsSection({super.key});
@@ -15,10 +16,12 @@ class _DatabaseBackupsSectionState extends State<DatabaseBackupsSection> {
   IntegrityCheckResult? lastIntegrityCheck;
   bool isLoading = false;
   bool isCreatingBackup = false;
+  bool _askBackupOnStartup = false;
 
   @override
   void initState() {
     super.initState();
+    _askBackupOnStartup = PrefsService.askBackupOnStartup;
     // NÃO carregar na inicialização para evitar travamento
   }
 
@@ -338,6 +341,24 @@ class _DatabaseBackupsSectionState extends State<DatabaseBackupsSection> {
                 ),
               ],
             ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Checkbox para perguntar backup ao iniciar
+        Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: CheckboxListTile(
+            value: _askBackupOnStartup,
+            onChanged: (value) async {
+              setState(() => _askBackupOnStartup = value ?? false);
+              await PrefsService.saveAskBackupOnStartup(value ?? false);
+            },
+            title: const Text('Perguntar backup ao iniciar'),
+            subtitle: const Text(
+              'Ao abrir o programa, pergunta se deseja fazer backup do banco de dados',
+              style: TextStyle(fontSize: 12),
+            ),
+            secondary: const Icon(Icons.backup, color: Colors.blue),
           ),
         ),
         const SizedBox(height: 16),

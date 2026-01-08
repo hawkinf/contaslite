@@ -283,8 +283,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           .where((a) => a.isRecurrent && a.cardBrand == null && a.cardId == null)
           .toList();
       // Filtrar lançamentos (inclui instâncias de recorrência)
+      // Excluir contas com observation='[CANCELADA]' da exibição
       final normalExpenses = allAccounts
-          .where((a) => a.cardId == null && !a.isRecurrent && a.cardBrand == null)
+          .where((a) => a.cardId == null && !a.isRecurrent && a.cardBrand == null && a.observation != '[CANCELADA]')
+          .toList();
+      
+      // Coletar também as instâncias canceladas para marcar o mês como "processado"
+      final cancelledInstances = allAccounts
+          .where((a) => a.observation == '[CANCELADA]')
           .toList();
 
       // Pré-computar índice de lançamentos para busca rápida
@@ -293,7 +299,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (exp.recurrenceId != null) {
           final key = '${exp.recurrenceId}_${exp.year}_${exp.month}';
           launchedIndex.putIfAbsent(exp.recurrenceId!, () => {}).add(key);
+          debugPrint('📝 Lançamento indexado: recurrenceId=${exp.recurrenceId}, key=$key, description=${exp.description}');
         }
+      }
+      // Também indexar instâncias canceladas para que o PAI não apareça
+      for (final cancelled in cancelledInstances) {
+        if (cancelled.recurrenceId != null) {
+          final key = '${cancelled.recurrenceId}_${cancelled.year}_${cancelled.month}';
+          launchedIndex.putIfAbsent(cancelled.recurrenceId!, () => {}).add(key);
+          debugPrint('🚫 Instância cancelada indexada: recurrenceId=${cancelled.recurrenceId}, key=$key');
+        }
+      }
+      debugPrint('🔍 launchedIndex completo: $launchedIndex');
+      debugPrint('📊 normalExpenses ${normalExpenses.length} contas:');
+      for (var exp in normalExpenses) {
+        debugPrint('   - ${exp.description} (id=${exp.id}, recId=${exp.recurrenceId}, isRec=${exp.isRecurrent}, instTotal=${exp.installmentTotal}, ${exp.year}_${exp.month})');
       }
 
       // Processar contas pelo mês (não dia por dia)
@@ -312,25 +332,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
         // Evitar processar o mesmo mês múltiplas vezes
         if (!processedMonths.contains(monthKey)) {
           processedMonths.add(monthKey);
-          processedList.addAll(accountsByMonth[monthKey] ?? []);
+          final monthAccounts = accountsByMonth[monthKey] ?? [];
+          if (monthAccounts.isNotEmpty) {
+            debugPrint('📋 Adicionando ${monthAccounts.length} contas do mês $monthKey:');
+            for (var acc in monthAccounts) {
+              debugPrint('   - ${acc.description} (id=${acc.id}, recurrenceId=${acc.recurrenceId}, value=${acc.value})');
+            }
+          }
+          processedList.addAll(monthAccounts);
 
           // Adicionar recorrências não lançadas neste mês
           for (var rec in recurrents) {
             if (!_hasRecurrenceStarted(rec, current)) continue;
 
             final launchKey = '${rec.id}_${current.year}_${current.month}';
-            if (!(launchedIndex[rec.id]?.contains(launchKey) ?? false)) {
+            final wasLaunched = launchedIndex[rec.id]?.contains(launchKey) ?? false;
+            debugPrint('🔎 Verificando recorrência: ${rec.description} (id=${rec.id}), launchKey=$launchKey');
+            debugPrint('   launchedIndex[${rec.id}] = ${launchedIndex[rec.id]}');
+            debugPrint('   wasLaunched=$wasLaunched, value=${rec.value}');
+            if (!wasLaunched) {
+              debugPrint('➕ ADICIONANDO recorrência PAI: ${rec.description}');
               processedList.add(Account(
                 id: rec.id,
                 typeId: rec.typeId,
                 description: rec.description,
                 value: rec.value,
+                estimatedValue: rec.estimatedValue,
                 dueDay: rec.dueDay,
                 isRecurrent: true,
+                recurrenceId: null,
                 payInAdvance: rec.payInAdvance,
                 month: current.month,
                 year: current.year,
               ));
+            } else {
+              debugPrint('✅ PULANDO recorrência PAI pois foi lançada: ${rec.description} (id=${rec.id})');
             }
           }
         }
@@ -447,7 +483,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
 
       debugPrint('📊 Antes de filtros: ${processedList.length} contas');
-      debugPrint('   Tipos: ${processedList.map((a) => '(id: ${a.id}, typeId: ${a.typeId})').join(', ')}');
+      debugPrint('   Detalhes: ${processedList.map((a) => '${a.description}(id=${a.id},rec=${a.isRecurrent},recId=${a.recurrenceId})').join(', ')}');
 
       // Aplicar filtro de inclusão (se especificado)
       if (allowedTypeIds != null) {
@@ -735,6 +771,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildAccountCard(Account account) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calculate responsive font sizes based on screen width
+        final screenWidth = constraints.maxWidth;
+        final baseFontSize = screenWidth / 50; // Base unit for scaling
+
+        // Define all font sizes proportionally
+        final dayNumberSize = baseFontSize * 2.0;
+        final smallDateSize = baseFontSize * 0.6;
+        final weekdaySize = baseFontSize * 0.75;
+        final statusSize = baseFontSize * 0.55;
+        final categorySize = baseFontSize * 0.7;
+        final descriptionSize = baseFontSize * 0.95;
+        final badgeSize = baseFontSize * 0.65;
+        final valuePreviewSize = baseFontSize * 0.75;
+        final valueMainSize = baseFontSize * 1.05;
+        final paidSize = baseFontSize * 0.7;
+        final iconSize = baseFontSize * 0.95;
+
+        return _buildAccountCardInternal(
+          account,
+          dayNumberSize,
+          smallDateSize,
+          weekdaySize,
+          statusSize,
+          categorySize,
+          descriptionSize,
+          badgeSize,
+          valuePreviewSize,
+          valueMainSize,
+          paidSize,
+          iconSize,
+        );
+      },
+    );
+  }
+
+  Widget _buildAccountCardInternal(
+    Account account,
+    double dayNumberSize,
+    double smallDateSize,
+    double weekdaySize,
+    double statusSize,
+    double categorySize,
+    double descriptionSize,
+    double badgeSize,
+    double valuePreviewSize,
+    double valueMainSize,
+    double paidSize,
+    double iconSize,
+  ) {
     // Tratamento de Data
     int year = account.year ?? _startDate.year;
     int month = account.month ?? _startDate.month;
@@ -768,7 +855,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // Configurações de Cor e Estilo
     bool isCard = account.cardBrand != null;
-    bool isRecurrent = account.isRecurrent;
+    // isRecurrent = true se é recorrência PAI OU é instância de recorrência
+    bool isRecurrent = account.isRecurrent || account.recurrenceId != null;
 
     Color containerBg;
     Color cardColor;
@@ -811,15 +899,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Dados para Cartão
     final breakdown = isCard ? CardBreakdown.parse(account.observation) : const CardBreakdown(total: 0, installments: 0, oneOff: 0, subscriptions: 0);
     final t = breakdown.total;
-    String statusText = isRecurrent ? 'PREVISÃO (RECORRENTE)' : 'LANÇADO';
+    String statusText = isRecurrent ? 'PREVISÃO [RECORRENTE]' : 'LANÇADO';
     Color statusColor = isRecurrent ? Colors.deepOrange : Colors.green;
     if (isCard) {
       statusText = isRecurrent ? 'PREVISÃO' : 'FATURA FECHADA';
       statusColor = isRecurrent ? Colors.white : Colors.black;
     }
-    
-    // Diferenciador: se recorrenceId != null, foi lançado
-    bool isLaunched = account.recurrenceId != null;
+
+    // Diferenciador: se é instância de recorrência (recurrenceId != null) E tem valor lançado (value > 0), foi lançado
+    bool isLaunched = account.recurrenceId != null && account.value > 0.01;
     if (isRecurrent && isLaunched) {
       statusText = 'LANÇADO';
       statusColor = Colors.green;
@@ -843,7 +931,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             color: installmentBadgeBg, borderRadius: BorderRadius.circular(8)),
         child: Text(installmentDisplay.labelText,
             style: TextStyle(
-                fontSize: 11,
+                fontSize: badgeSize,
                 fontWeight: FontWeight.w600,
                 color: installmentBadgeTextColor)));
 
@@ -883,7 +971,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Text(effectiveDate.day.toString().padLeft(2, '0'),
                       style: TextStyle(
-                          fontSize: 34,
+                          fontSize: dayNumberSize,
                           fontWeight: FontWeight.bold,
                           color: textColor,
                           height: 1.0)),
@@ -894,7 +982,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Text(
                           "Orig. ${DateFormat('dd/MM').format(originalDate)}",
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: smallDateSize,
                             color: isCard ? subTextColor : Colors.grey.shade600,
                             fontWeight: FontWeight.bold,
                           ),
@@ -903,7 +991,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Text(
                             "Ajust. ${DateFormat('dd/MM').format(effectiveDate)}",
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: smallDateSize,
                               color: isCard ? subTextColor : Colors.red.shade700,
                               fontWeight: FontWeight.bold,
                             ),
@@ -923,17 +1011,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         Text(weekdayName,
                             style:
-                                TextStyle(fontSize: 13, color: subTextColor)),
+                                TextStyle(fontSize: weekdaySize, color: subTextColor)),
                         if (isHoliday)
-                          const Text('FERIADO',
+                          Text('FERIADO',
                               style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: smallDateSize,
                                   color: Colors.red,
                                   fontWeight: FontWeight.bold)),
                         if (isWeekend && !isHoliday)
-                          const Text('FIM DE SEMANA',
+                          Text('FIM DE SEMANA',
                               style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: smallDateSize,
                                   color: Colors.orange,
                                   fontWeight: FontWeight.bold)),
                         const SizedBox(height: 6),
@@ -946,7 +1034,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 borderRadius: BorderRadius.circular(4)),
                             child: Text(statusText,
                                 style: TextStyle(
-                                    fontSize: 9,
+                                    fontSize: statusSize,
                                     fontWeight: FontWeight.bold,
                                     color: isCard ? textColor : statusColor)))
                       ])),
@@ -968,11 +1056,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         isCard
                             ? account.cardBank ?? 'Cartão'
                             : _typeNames[account.typeId] ?? 'Outros',
-                        style: TextStyle(fontSize: 12, color: subTextColor)),
+                        style: TextStyle(fontSize: categorySize, color: subTextColor)),
                     Text(cleanedDescription,
                         style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: descriptionSize,
                             color: textColor),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis),
@@ -988,13 +1076,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Text(
                                   'Original: ${UtilBrasilFields.obterReal(installmentSummary.totalAmount)}',
                                   style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: badgeSize,
                                       color: textColor.withValues(alpha: 0.85),
                                       fontWeight: FontWeight.w600)),
                               Text(
                                   'Restam: ${UtilBrasilFields.obterReal(installmentSummary.remainingAmount)}',
                                   style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: badgeSize,
                                       color: textColor,
                                       fontWeight: FontWeight.bold)),
                             ]
@@ -1008,13 +1096,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 // Renderizar valor com diferenciação entre previsto e lançado
                 if (isRecurrent) ...[
                   // Se for lançamento, mostrar ambos (Previsto e Lançado)
-                  if (isLaunched) ..._buildRecurrenceValues(account) else ...[
-                    // Recorrência prevista (não lançada)
+                  if (isLaunched) ..._buildRecurrenceValues(account, valuePreviewSize, valueMainSize, smallDateSize) else ...[
+                    // Recorrência prevista (não lançada) - mostrar estimatedValue
                     Text(
-                      UtilBrasilFields.obterReal(account.value),
+                      UtilBrasilFields.obterReal(account.estimatedValue ?? account.value),
                       style: TextStyle(
                         fontWeight: FontWeight.w500,
-                        fontSize: 13,
+                        fontSize: valuePreviewSize,
                         color: Colors.grey.shade600,
                         decoration: TextDecoration.lineThrough,
                         decorationColor: Colors.grey.shade400,
@@ -1024,7 +1112,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Text(
                       'PREVISTO',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: smallDateSize,
                         fontWeight: FontWeight.bold,
                         color: Colors.grey.shade600,
                       ),
@@ -1036,7 +1124,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       UtilBrasilFields.obterReal(account.value),
                       style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                          fontSize: valueMainSize,
                           color: moneyColor)),
                 ],
                 // Indicador de pagamento
@@ -1051,14 +1139,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           style: TextStyle(
                             color: Colors.green.shade700,
                             fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                            fontSize: paidSize,
                           ),
                         ),
                         Text(
                           'via ${_paymentInfo[account.id!]?['method_name'] ?? ''}',
                           style: TextStyle(
                             color: Colors.grey.shade600,
-                            fontSize: 10,
+                            fontSize: smallDateSize,
                           ),
                         ),
                       ],
@@ -1079,49 +1167,68 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           _refresh();
                         },
                         child: _actionIcon(Icons.edit,
-                            textColor.withValues(alpha: 0.2), textColor)),
+                            textColor.withValues(alpha: 0.2), textColor, size: iconSize)),
                     const SizedBox(width: 6),
                     InkWell(
                         onTap: isPaid ? null : () => _handlePayAction(account),
                         child: _actionIcon(Icons.payments, Colors.blue.shade50,
                           Colors.blue.shade800,
-                          enabled: !isPaid)),
+                          enabled: !isPaid, size: iconSize)),
                     const SizedBox(width: 6),
                     InkWell(
                         onTap: () => _showExpenseDialog(account),
                         child: _actionIcon(Icons.add_shopping_cart,
-                            textColor.withValues(alpha: 0.2), textColor)),
+                            textColor.withValues(alpha: 0.2), textColor, size: iconSize)),
                     const SizedBox(width: 6),
                     InkWell(
                       onTap: () => _showLaunchInvoiceDialog(account, t),
                       child: _actionIcon(Icons.description,
-                          Colors.orange.shade50, Colors.orange.shade700),
+                          Colors.orange.shade50, Colors.orange.shade700, size: iconSize),
                     ),
                     const SizedBox(width: 6),
                     if (account.id != null)
                       InkWell(
                         onTap: () => _confirmDelete(account),
                         child: _actionIcon(
-                            Icons.delete, Colors.red.shade50, Colors.red.shade800),
+                            Icons.delete, Colors.red.shade50, Colors.red.shade800, size: iconSize),
                       ),
                   ] else ...[
                     InkWell(
                         onTap: isPaid ? null : () => _handlePayAction(account),
                         child: _actionIcon(Icons.payments, Colors.blue.shade50,
                             Colors.blue.shade800,
-                            enabled: !isPaid)),
+                            enabled: !isPaid, size: iconSize)),
                     const SizedBox(width: 8),
                     if (isRecurrent && !isLaunched)
                       InkWell(
-                          onTap: () => _showLaunchDialog(account),
+                          onTap: () async {
+                            // Se é uma instância lançada, encontrar a recorrência pai no banco
+                            Account parentRecurrence = account;
+                            if (account.recurrenceId != null) {
+                              // Esta é uma instância lançada, precisa encontrar a PAI no banco
+                              final parentId = account.recurrenceId!;
+                              try {
+                                final parentAccount = await DatabaseHelper.instance.readAccountById(parentId);
+                                if (parentAccount != null) {
+                                  parentRecurrence = parentAccount;
+                                  debugPrint('✅ Encontrada recorrência PAI: ${account.id} → ${parentRecurrence.id} (isRecurrent=${parentRecurrence.isRecurrent})');
+                                } else {
+                                  debugPrint('⚠️ Recorrência PAI não encontrada (ID: $parentId)');
+                                }
+                              } catch (e) {
+                                debugPrint('❌ Erro ao buscar recorrência PAI: $e');
+                              }
+                            }
+                            if (mounted) _showLaunchDialog(parentRecurrence);
+                          },
                           child: _actionIcon(Icons.rocket_launch,
-                              Colors.green.shade50, Colors.green.shade800)),
+                              Colors.green.shade50, Colors.green.shade800, size: iconSize)),
                     if (isRecurrent && !isLaunched)
                       const SizedBox(width: 8),
                     InkWell(
                         onTap: () => _confirmDelete(account),
                         child: _actionIcon(Icons.delete, Colors.red.shade50,
-                            Colors.red.shade800)),
+                            Colors.red.shade800, size: iconSize)),
                   ]
                 ]),
               ]),
@@ -1133,7 +1240,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _handlePayAction(Account account) async {
-    final result = await Navigator.push<bool>(
+    await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => PaymentDialog(
@@ -1143,13 +1250,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
     );
-    if (result == true) {
+    if (mounted) {
       _refresh();
     }
   }
 
   Widget _actionIcon(IconData icon, Color bg, Color iconColor,
-      {bool enabled = true}) {
+      {bool enabled = true, double size = 16}) {
     final displayColor = enabled ? iconColor : iconColor.withValues(alpha: 0.4);
     final displayBg = enabled ? bg : bg.withValues(alpha: 0.3);
     return Opacity(
@@ -1158,7 +1265,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           padding: const EdgeInsets.all(5),
           decoration: BoxDecoration(
               color: displayBg, borderRadius: BorderRadius.circular(4)),
-          child: Icon(icon, size: 16, color: displayColor)),
+          child: Icon(icon, size: size, color: displayColor)),
     );
   }
 
@@ -1317,19 +1424,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return (a.id ?? 0).compareTo(b.id ?? 0);
   }
 
-  List<Widget> _buildRecurrenceValues(Account account) {
+  List<Widget> _buildRecurrenceValues(Account account, double valuePreviewSize, double valueMainSize, double smallTextSize) {
     // Para lançamentos de recorrência, mostrar Previsto e Lançado
-    double averageValue = account.recurrenceId != null 
-        ? (_recurrenceParentValues[account.recurrenceId] ?? account.value)
-        : account.value;
+    // Valor Previsto = estimatedValue (predicted/average value)
+    double estimatedValue = account.estimatedValue ?? account.value;
+    // Valor Lançado = value (actual launched value, 0 if not launched yet)
     double launchedValue = account.value;
-    
+
     return [
       // Valor previsto (cinza, tachado, menor)
       Text(
-        UtilBrasilFields.obterReal(averageValue),
+        UtilBrasilFields.obterReal(estimatedValue),
         style: TextStyle(
-          fontSize: 11,
+          fontSize: valuePreviewSize,
           color: Colors.grey.shade600,
           decoration: TextDecoration.lineThrough,
           decorationColor: Colors.grey.shade400,
@@ -1339,7 +1446,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       Text(
         'Previsto',
         style: TextStyle(
-          fontSize: 8,
+          fontSize: smallTextSize * 0.8,
           color: Colors.grey.shade600,
         ),
       ),
@@ -1349,7 +1456,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         UtilBrasilFields.obterReal(launchedValue),
         style: TextStyle(
           fontWeight: FontWeight.bold,
-          fontSize: 16,
+          fontSize: valueMainSize,
           color: Colors.red.shade700,
         ),
       ),
@@ -1357,7 +1464,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       Text(
         'LANÇADO',
         style: TextStyle(
-          fontSize: 10,
+          fontSize: smallTextSize,
           fontWeight: FontWeight.bold,
           color: Colors.red.shade700,
         ),
@@ -1367,18 +1474,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // ... (Diálogos mantidos)
   Future<void> _showLaunchDialog(Account rule) async {
-    // Calcular valor médio da recorrência
-    final allAccounts = await DatabaseHelper.instance.readAllAccountsRaw();
-    final relatedAccounts = allAccounts
-        .where((a) => a.recurrenceId == rule.id && !a.isRecurrent)
-        .toList();
+    // Usar o estimatedValue (Valor Previsto) da recorrência pai
+    double averageValue = rule.estimatedValue ?? rule.value;
 
-    double averageValue = rule.value;
-    if (relatedAccounts.isNotEmpty) {
-      final totalValue =
-          relatedAccounts.fold<double>(0, (sum, a) => sum + a.value);
-      averageValue = totalValue / relatedAccounts.length;
-    }
+    debugPrint('💰💰💰 LANÇANDO RECORRÊNCIA 💰💰💰');
+    debugPrint('   rule.id=${rule.id} (DEVE SER A RECORRÊNCIA PAI)');
+    debugPrint('   rule.recurrenceId=${rule.recurrenceId} (DEVE SER NULL para PAI)');
+    debugPrint('   rule.isRecurrent=${rule.isRecurrent} (DEVE SER TRUE)');
+    debugPrint('   rule.estimatedValue=${rule.estimatedValue}');
+    debugPrint('   rule.value=${rule.value}');
+    debugPrint('   averageValue final=$averageValue');
 
     // Controllers para valores médio e lançado
     final averageController =
@@ -1510,24 +1615,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 debugPrint('   - Valor Lançado: $finalValue');
                 debugPrint('   - Data: ${finalDate.day}/${finalDate.month}/${finalDate.year}');
 
-                final newAccount = Account(
-                  typeId: rule.typeId,
-                  description: rule.description,
-                  value: finalValue,
-                  dueDay: finalDate.day,
-                  month: finalDate.month,
-                  year: finalDate.year,
-                  isRecurrent: false,
-                  payInAdvance: rule.payInAdvance,
-                  recurrenceId: rule.id,
-                  cardBrand: rule.cardBrand,
-                  cardColor: rule.cardColor,
-                  cardBank: rule.cardBank,
-                  observation: rule.observation,
+                // Procurar instância existente para este mês
+                final existingInstance = await DatabaseHelper.instance.findInstanceByRecurrenceAndMonth(
+                  rule.id!,
+                  finalDate.month,
+                  finalDate.year,
                 );
 
-                final id = await DatabaseHelper.instance.createAccount(newAccount);
-                debugPrint('✅ Parcela criada com ID: $id');
+                if (existingInstance != null) {
+                  // ATUALIZAR a instância existente com o valor lançado
+                  debugPrint('📝 Atualizando instância existente ID=${existingInstance.id} com valor $finalValue');
+                  final updatedAccount = Account(
+                    id: existingInstance.id,
+                    typeId: existingInstance.typeId,
+                    description: existingInstance.description,
+                    value: finalValue,
+                    estimatedValue: existingInstance.estimatedValue,
+                    dueDay: finalDate.day,
+                    month: finalDate.month,
+                    year: finalDate.year,
+                    isRecurrent: false,
+                    payInAdvance: existingInstance.payInAdvance,
+                    recurrenceId: existingInstance.recurrenceId,
+                    cardBrand: existingInstance.cardBrand,
+                    cardColor: existingInstance.cardColor,
+                    cardBank: existingInstance.cardBank,
+                    observation: existingInstance.observation,
+                  );
+                  await DatabaseHelper.instance.updateAccount(updatedAccount);
+                  debugPrint('✅ Instância atualizada: ID=${existingInstance.id}, valor=$finalValue');
+                } else {
+                  // Criar nova instância (fallback se não existir)
+                  final newAccount = Account(
+                    typeId: rule.typeId,
+                    description: rule.description,
+                    value: finalValue,
+                    estimatedValue: rule.estimatedValue,
+                    dueDay: finalDate.day,
+                    month: finalDate.month,
+                    year: finalDate.year,
+                    isRecurrent: false,
+                    payInAdvance: rule.payInAdvance,
+                    recurrenceId: rule.id,
+                    cardBrand: rule.cardBrand,
+                    cardColor: rule.cardColor,
+                    cardBank: rule.cardBank,
+                    observation: rule.observation,
+                  );
+
+                  debugPrint('📝 Criando nova instância com recurrenceId=${rule.id}');
+                  final id = await DatabaseHelper.instance.createAccount(newAccount);
+                  debugPrint('✅ Parcela criada com ID: $id, recurrenceId=${rule.id}');
+                }
 
                 if (mounted) {
                   Navigator.pop(ctx);
@@ -1665,17 +1804,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _showExpenseDialog(Account card) async {
-    final result = await Navigator.push<bool>(
+    await Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (_) => NewExpenseDialog(card: card)),
     );
-    if (result == true) {
+    if (mounted) {
       _refresh();
     }
   }
 
   Future<void> _showPaymentDialog() async {
-    final result = await Navigator.push<bool>(
+    await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => PaymentDialog(
@@ -1684,7 +1823,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
     );
-    if (result == true) {
+    if (mounted) {
       _refresh();
     }
   }
@@ -1703,12 +1842,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       screenToOpen = AccountEditScreen(account: account);
     }
 
-    final result = await Navigator.push<bool>(
+    await Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (context) => screenToOpen),
     );
 
-    if (result == true && mounted) {
+    if (mounted) {
       _refresh();
     }
   }
@@ -1716,9 +1855,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _confirmDelete(Account acc) async {
     if (acc.id == null) return;
 
-    // Se é recorrente (PAI ou FILHA)
-    if (acc.isRecurrent || acc.recurrenceId != null) {
-      // Se é filha, carregar o pai para referência
+    debugPrint('🗑️ _confirmDelete iniciado para conta:');
+    debugPrint('   id=${acc.id}');
+    debugPrint('   description=${acc.description}');
+    debugPrint('   isRecurrent=${acc.isRecurrent}');
+    debugPrint('   recurrenceId=${acc.recurrenceId}');
+    debugPrint('   installmentTotal=${acc.installmentTotal}');
+    debugPrint('   month=${acc.month}, year=${acc.year}');
+
+    // Se é recorrente (PAI ou FILHA) ou parcelada (installment)
+    final isRecurringOrInstallment = acc.isRecurrent || acc.recurrenceId != null || (acc.installmentTotal != null && acc.installmentTotal! > 1);
+    debugPrint('   isRecurringOrInstallment=$isRecurringOrInstallment');
+    
+    if (isRecurringOrInstallment) {
+      // Determinar se é recorrência ou parcelamento
+      final isInstallment = acc.installmentTotal != null && acc.installmentTotal! > 1 && acc.recurrenceId == null;
+      final isRecurrence = acc.isRecurrent || acc.recurrenceId != null;
+      debugPrint('   isInstallment=$isInstallment, isRecurrence=$isRecurrence');
+
+      // Se é filha de recorrência, carregar o pai para referência
       Account? parent;
       if (acc.recurrenceId != null) {
         try {
@@ -1735,10 +1890,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         parent = acc;
       }
 
+      final dialogTitle = isInstallment ? 'Excluir Parcela' : 'Excluir Recorrência';
+      final deleteAllText = isInstallment ? 'Apagar todas as parcelas' : 'Apagar todas as recorrências';
+
       final option = await showDialog<int>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Excluir Recorrência'),
+          title: Text(dialogTitle),
           content: Text('Como você deseja excluir "${acc.description}"?'),
           actions: [
             TextButton(
@@ -1749,14 +1907,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: () => Navigator.pop(ctx, 1),
               child: const Text('Apagar somente essa conta'),
             ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, 3),
-              child: const Text('Apagar essa e futuras'),
-            ),
+            if (isRecurrence)
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, 3),
+                child: const Text('Apagar essa e futuras'),
+              ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () => Navigator.pop(ctx, 2),
-              child: const Text('Apagar todas as recorrências'),
+              child: Text(deleteAllText),
             ),
           ],
         ),
@@ -1764,21 +1923,132 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       if (option == null || option == 0) return;
 
+      // Confirmar exclusão antes de prosseguir
+      String confirmMessage;
+      switch (option) {
+        case 1:
+          confirmMessage = 'Tem certeza que deseja apagar somente esta conta "${acc.description}"?';
+          break;
+        case 2:
+          confirmMessage = isInstallment
+              ? 'Tem certeza que deseja apagar TODAS as parcelas de "${acc.description}"?\n\nEsta ação não pode ser desfeita.'
+              : 'Tem certeza que deseja apagar TODAS as recorrências de "${acc.description}"?\n\nEsta ação não pode ser desfeita.';
+          break;
+        case 3:
+          confirmMessage = 'Tem certeza que deseja apagar "${acc.description}" e todas as recorrências futuras?\n\nEsta ação não pode ser desfeita.';
+          break;
+        default:
+          return;
+      }
+
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+          title: const Text('Confirmar Exclusão'),
+          content: Text(confirmMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Sim, Apagar'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+
       if (option == 1) {
-        // Apagar apenas esta parcela
+        // Apagar apenas esta instância específica (sem cascata)
         try {
-          await DatabaseHelper.instance.deleteAccount(acc.id!);
+          // Verificar se é PAI (isRecurrent=true e recurrenceId=null) ou FILHA (recurrenceId != null)
+          final isPai = acc.isRecurrent && acc.recurrenceId == null;
+          debugPrint('🗑️ Opção 1 selecionada - isPai=$isPai');
+
+          if (isPai) {
+            // Se é PAI exibido como "previsão" (não lançado ainda no mês atual),
+            // precisamos criar uma exceção para esse mês específico
+            // Por agora: criar uma instância "cancelada" para esse mês (com valor 0)
+            // ou simplesmente não fazer nada (o mês passa sem lançamento)
+            
+            // Nova abordagem: criar uma instância filha com valor 0 para "marcar como cancelado" esse mês
+            debugPrint('🗑️ Opção 1: Conta é PAI - criando instância cancelada para o mês ${acc.month}/${acc.year}');
+            
+            // Verificar se já existe uma instância para esse mês
+            final allAccounts = await DatabaseHelper.instance.readAllAccountsRaw();
+            final existingInstance = allAccounts.where((a) =>
+                a.recurrenceId == acc.id &&
+                a.month == acc.month &&
+                a.year == acc.year
+            ).toList();
+            
+            if (existingInstance.isNotEmpty) {
+              // Já existe instância, deletar ela
+              debugPrint('🗑️ Encontrada instância existente id=${existingInstance.first.id}, deletando...');
+              await DatabaseHelper.instance.deleteAccountOnly(existingInstance.first.id!);
+            } else {
+              // Não existe instância lançada - criar uma instância "cancelada"
+              // para marcar que esse mês foi pulado
+              debugPrint('📝 Criando instância cancelada para mês ${acc.month}/${acc.year}');
+              
+              // Criar instância filha com observation="[CANCELADA]" para marcar como pulada
+              final cancelledInstance = Account(
+                typeId: acc.typeId,
+                description: acc.description,
+                value: 0,  // Valor 0 para não afetar totais
+                dueDay: acc.dueDay,
+                isRecurrent: false,  // Filha, não PAI
+                month: acc.month,
+                year: acc.year,
+                recurrenceId: acc.id,  // Referência ao PAI
+                observation: '[CANCELADA]',  // Marcador especial
+              );
+              
+              await DatabaseHelper.instance.createAccount(cancelledInstance);
+              debugPrint('✅ Instância cancelada criada com sucesso para ${acc.month}/${acc.year}');
+            }
+          } else {
+            // Se é FILHA de recorrência, deletar ela E criar instância cancelada
+            // para que o PAI não volte a aparecer
+            debugPrint('🗑️ Opção 1: Conta é FILHA - deletando SOMENTE esta instância (id=${acc.id})');
+            await DatabaseHelper.instance.deleteAccountOnly(acc.id!);
+            
+            // Se é filha de uma recorrência (tem recurrenceId), criar instância cancelada
+            if (acc.recurrenceId != null) {
+              debugPrint('📝 Criando instância cancelada para impedir PAI de reaparecer');
+              final cancelledInstance = Account(
+                typeId: acc.typeId,
+                description: acc.description,
+                value: 0,
+                dueDay: acc.dueDay,
+                isRecurrent: false,
+                month: acc.month,
+                year: acc.year,
+                recurrenceId: acc.recurrenceId,  // Referência ao PAI
+                observation: '[CANCELADA]',
+              );
+              await DatabaseHelper.instance.createAccount(cancelledInstance);
+              debugPrint('✅ Instância cancelada criada para ${acc.month}/${acc.year}');
+            }
+          }
+
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Parcela excluída'),
+              SnackBar(
+                content: Text(isPai ? 'Recorrência excluída com sucesso' : 'Conta excluída com sucesso'),
                 backgroundColor: Colors.green,
-                duration: Duration(seconds: 2),
+                duration: const Duration(seconds: 2),
               ),
             );
             _refresh();
           }
         } catch (e) {
+          debugPrint('❌ Erro ao excluir conta: $e');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -1789,7 +2059,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
         }
       } else if (option == 3) {
-        // Apagar atual e daqui pra frente
+        // Apagar atual e daqui pra frente (APENAS RECORRÊNCIAS)
         final confirmFuture = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -1814,17 +2084,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         if (confirmFuture == true) {
           try {
-            final allAccounts =
-                await DatabaseHelper.instance.readAllAccountsRaw();
+            debugPrint('🗑️ Opção 3: Apagar esta e futuras recorrências');
 
-            // Obter a data da parcela atual
+            // Verificar se é PAI (isRecurrent=true e recurrenceId=null)
+            final isPai = acc.isRecurrent && acc.recurrenceId == null;
+            debugPrint('🗑️ isPai=$isPai');
+
+            // Obter todas as contas para análise
+            final allAccounts = await DatabaseHelper.instance.readAllAccountsRaw();
+
+            // Obter a data do mês atual
             final currentDate = DateTime(acc.year ?? DateTime.now().year,
                 acc.month ?? DateTime.now().month, 1);
 
             // Determinar qual recorrência estamos lidando
-            final parentId = acc.recurrenceId ?? acc.id;
+            final parentId = isPai ? acc.id : (acc.recurrenceId ?? acc.id);
+            debugPrint('🗑️ parentId=$parentId, currentDate=${currentDate.month}/${currentDate.year}');
 
-            // Apagar parcelas atuais e futuras (mes/ano >= mes/ano atual)
+            // Apagar instâncias filhas atuais e futuras (mes/ano >= mes/ano atual)
             final futureAccounts = allAccounts.where((a) {
               if (a.recurrenceId != parentId) return false;
 
@@ -1834,27 +2111,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   accDate.isAfter(currentDate);
             }).toList();
 
+            debugPrint('🗑️ Encontradas ${futureAccounts.length} instâncias futuras para deletar');
+
+            int deletedCount = 0;
             for (final future in futureAccounts) {
               if (future.id != null) {
-                debugPrint('🗑️ Apagando conta: ${future.description} (id=${future.id})');
-                await DatabaseHelper.instance.deleteAccount(future.id!);
+                debugPrint('🗑️ Apagando instância futura: ${future.description} (id=${future.id}, mês=${future.month}/${future.year})');
+                await DatabaseHelper.instance.deleteAccountOnly(future.id!);
+                deletedCount++;
               }
             }
 
-            debugPrint('✅ Total de ${futureAccounts.length} parcelas deletadas');
+            // Verificar se resta alguma instância filha ANTERIOR
+            final remainingInstances = allAccounts.where((a) =>
+                a.recurrenceId == parentId && 
+                !futureAccounts.any((f) => f.id == a.id)
+            ).toList();
+            
+            debugPrint('🗑️ Instâncias anteriores restantes: ${remainingInstances.length}');
+
+            // SEMPRE deletar o PAI quando usar "essa e daqui pra frente"
+            // As instâncias anteriores já existem como contas independentes no banco
+            if (parentId != null) {
+              debugPrint('🗑️ Deletando PAI (id=$parentId) para encerrar a recorrência');
+              await DatabaseHelper.instance.deleteAccountOnly(parentId);
+              deletedCount++;
+              debugPrint('✅ Recorrência encerrada. Instâncias anteriores mantidas: ${remainingInstances.length}');
+            }
+
+            debugPrint('✅ Total de $deletedCount itens deletados');
 
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Parcelas atuais e futuras excluídas'),
+                SnackBar(
+                  content: Text('$deletedCount instância(s) excluída(s)'),
                   backgroundColor: Colors.green,
-                  duration: Duration(seconds: 2),
+                  duration: const Duration(seconds: 2),
                 ),
               );
               debugPrint('📄 Atualizando tela...');
               _refresh();
             }
           } catch (e) {
+            debugPrint('❌ Erro ao excluir instâncias futuras: $e');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -1866,14 +2165,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
         }
       } else if (option == 2) {
-        // Apagar toda a recorrência (pai + filhas)
-        final parentId = acc.recurrenceId ?? acc.id;
+        // Apagar tudo (recorrência ou parcelamento)
+        late String confirmMessage;
+        if (isInstallment) {
+          confirmMessage = 'Tem certeza que deseja excluir TODAS as parcelas de "${acc.description}"?\n\nIsso vai apagar todas as ${acc.installmentTotal} parcelas.';
+        } else {
+          confirmMessage = 'Tem certeza que deseja excluir TODA a recorrência "${parent.description}"?\n\nIsso vai apagar a recorrência e TODAS as suas parcelas lançadas.';
+        }
+
         final confirmAll = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Text('Confirmar'),
             content: Text(
-              'Tem certeza que deseja excluir TODA a recorrência "${parent?.description ?? acc.description}"?\n\nIsso vai apagar a recorrência e TODAS as suas parcelas lançadas.',
+              confirmMessage,
               style: const TextStyle(color: Colors.red),
             ),
             actions: [
@@ -1892,34 +2197,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         if (confirmAll == true) {
           try {
-            // Apagar todas as parcelas (filhas)
-            final allAccounts =
-                await DatabaseHelper.instance.readAllAccountsRaw();
-            final relatedAccounts = allAccounts
-                .where((a) => a.recurrenceId == parentId)
-                .toList();
+            if (isInstallment) {
+              // Para parcelamentos: apagar todas as parcelas com mesmo installmentTotal e description
+              final allInstallments = await DatabaseHelper.instance
+                  .getAccountsByInstallmentTotal(acc.installmentTotal!, acc.description);
 
-            for (final related in relatedAccounts) {
-              if (related.id != null) {
-                await DatabaseHelper.instance.deleteAccount(related.id!);
+              for (final installment in allInstallments) {
+                if (installment.id != null) {
+                  debugPrint('🗑️ Apagando parcela: ${installment.description} (índice ${installment.installmentIndex}/${installment.installmentTotal})');
+                  await DatabaseHelper.instance.deleteAccount(installment.id!);
+                }
               }
-            }
 
-            // Apagar a recorrência (pai) - só se for a própria conta pai
-            if (acc.isRecurrent && acc.recurrenceId == null) {
-              await DatabaseHelper.instance.deleteAccount(acc.id!);
-            }
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${allInstallments.length} parcelas excluídas com sucesso'),
+                    backgroundColor: Colors.green,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+                _refresh();
+              }
+            } else {
+              // Para recorrências: deletar PAI + todas as filhas manualmente
+              final parentId = acc.recurrenceId ?? acc.id;
 
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content:
-                      Text('Recorrência "${parent.description}" excluída com sucesso'),
-                  backgroundColor: Colors.green,
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-              _refresh();
+              if (parentId != null) {
+                debugPrint('🗑️ Apagando recorrência completa (parentId=$parentId)');
+                
+                // Primeiro, buscar e deletar todas as instâncias filhas
+                final allAccounts = await DatabaseHelper.instance.readAllAccountsRaw();
+                final childInstances = allAccounts.where((a) => a.recurrenceId == parentId).toList();
+                
+                debugPrint('🗑️ Encontradas ${childInstances.length} instâncias filhas para deletar');
+                
+                for (final child in childInstances) {
+                  if (child.id != null) {
+                    debugPrint('🗑️ Deletando filha: ${child.description} (id=${child.id}, mês=${child.month}/${child.year})');
+                    await DatabaseHelper.instance.deleteAccountOnly(child.id!);
+                  }
+                }
+                
+                // Depois, deletar o PAI
+                debugPrint('🗑️ Deletando PAI (id=$parentId)');
+                await DatabaseHelper.instance.deleteAccountOnly(parentId);
+                debugPrint('✅ Recorrência completamente deletada (PAI + ${childInstances.length} filhas)');
+              }
+
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content:
+                        Text('Recorrência "${parent.description}" excluída com sucesso'),
+                    backgroundColor: Colors.green,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+                _refresh();
+              }
             }
           } catch (e) {
             if (mounted) {
@@ -1938,7 +2274,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final confirm = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Excluir Conta'),
+          icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+          title: const Text('Confirmar Exclusão'),
           content: Text('Tem certeza que deseja excluir "${acc.description}"?'),
           actions: [
             TextButton(
@@ -1948,7 +2285,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Excluir'),
+              child: const Text('Sim, Apagar'),
             ),
           ],
         ),

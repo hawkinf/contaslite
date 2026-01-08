@@ -173,12 +173,8 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     _recurrentStartYear = now.year;
     _recurrentStartYearController.text = _recurrentStartYear.toString();
     
-    // Sincronizar Valor Lançado com Valor Médio
-    _recurrentValueController.addListener(() {
-      if (_recurrentLaunchedValueController.text.isEmpty) {
-        _recurrentLaunchedValueController.text = _recurrentValueController.text;
-      }
-    });
+    // Valor Lançado sempre zero
+    _recurrentLaunchedValueController.text = '0,00';
     
     _dateMaskFormatter = TextInputFormatter.withFunction((oldValue, newValue) {
       // Remove non-digits
@@ -243,8 +239,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                       UtilBrasilFields.obterReal(parent.value);
                   _recurrentValueController.text =
                       UtilBrasilFields.obterReal(parent.value);
-                  _recurrentLaunchedValueController.text =
-                      UtilBrasilFields.obterReal(parent.value);
+                  _recurrentLaunchedValueController.text = '0,00';
                   _recurrentDay = parent.dueDay;
                   _payInAdvance = parent.payInAdvance;
                   _observationController.text = parent.observation ?? "";
@@ -285,7 +280,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       _editingAccount = acc;
       _descController.text = acc.description;
       _recurrentValueController.text = UtilBrasilFields.obterReal(acc.value);
-      _recurrentLaunchedValueController.text = UtilBrasilFields.obterReal(acc.value);
+      _recurrentLaunchedValueController.text = '0,00';
       _recurrentDay = acc.dueDay;
       _payInAdvance = acc.payInAdvance;
       _observationController.text = acc.observation ?? "";
@@ -896,33 +891,28 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     );
   }
 
-  int _currentInstallmentQty() {
-    final value = int.tryParse(_installmentsQtyController.text);
-    if (value != null && value > 0) {
-      return value;
-    }
-    return 1;
-  }
-
   Widget _buildInstallmentDropdown() {
-    final currentQty = _currentInstallmentQty();
-    return DropdownButtonFormField<int>(
-      value: currentQty,
+    return TextFormField(
+      controller: _installmentsQtyController,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       decoration: buildOutlinedInputDecoration(
-        label: widget.isRecebimento ? 'Forma de Recebimento' : 'Tipo',
+        label: 'Quantidade de Parcelas',
         icon: Icons.repeat,
+        hintText: 'Ex: 1 (à vista) ou 12 (12 parcelas)',
       ),
-      items: List.generate(12, (index) {
-        final qty = index + 1;
-        return DropdownMenuItem(
-          value: qty,
-          child: Text(qty == 1 ? 'A vista' : '${qty}x'),
-        );
-      }),
       onChanged: (val) {
-        final qty = val ?? 1;
-        _installmentsQtyController.text = qty.toString();
         _updateInstallments();
+      },
+      validator: (val) {
+        if (val == null || val.isEmpty) {
+          return 'Informe a quantidade de parcelas (1-99)';
+        }
+        final qty = int.tryParse(val);
+        if (qty == null || qty < 1 || qty > 99) {
+          return 'Quantidade deve estar entre 1 e 99';
+        }
+        return null;
       },
     );
   }
@@ -1096,9 +1086,10 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         Column(children: [
           // Cabeçalho da Tabela
           const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               child: Row(children: [
-                SizedBox(width: 30),
+                SizedBox(width: 32),
+                SizedBox(width: 8),
                 Expanded(
                     flex: 3,
                     child: Text("VENCIMENTO",
@@ -1578,27 +1569,47 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               color: Theme.of(context).cardColor,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
-                  backgroundColor: Colors.green.shade600,
-                  disabledBackgroundColor: Colors.green.shade600.withOpacity(0.6),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.close),
+                      label: const Text('Cancelar'),
+                      onPressed: _isSaving ? null : () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                onPressed: _isSaving ? null : _saveAccount,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2.5))
-                    : const Icon(Icons.check_circle, size: 24),
-                label: Text(
-                  _isSaving ? "Gravando..." : _saveButtonLabel(),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
+                        backgroundColor: Colors.green.shade600,
+                        disabledBackgroundColor: Colors.green.shade600.withOpacity(0.6),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: _isSaving ? null : _saveAccount,
+                      icon: _isSaving
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2.5))
+                          : const Icon(Icons.check_circle, size: 24),
+                      label: Text(
+                        _isSaving ? "Gravando..." : _saveButtonLabel(),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1658,11 +1669,18 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
         if (_entryMode == 1) {
           // Editar recorrente
-          double updateVal = UtilBrasilFields.converterMoedaParaDouble(
+          double averageVal = UtilBrasilFields.converterMoedaParaDouble(
               _recurrentValueController.text);
+          double launchedVal = UtilBrasilFields.converterMoedaParaDouble(
+              _recurrentLaunchedValueController.text);
+
           debugPrint('🔍 EDIÇÃO RECORRÊNCIA:');
-          debugPrint('  Controller text: "${_recurrentValueController.text}"');
-          debugPrint('  Valor convertido: $updateVal');
+          debugPrint('  Valor Médio (controller): "${_recurrentValueController.text}" = $averageVal');
+          debugPrint('  Valor Lançado (controller): "${_recurrentLaunchedValueController.text}" = $launchedVal');
+
+          // Usar o Valor Lançado se foi preenchido, senão usar o Valor Médio
+          double updateVal = launchedVal > 0.01 ? launchedVal : averageVal;
+          debugPrint('  → Valor final para salvar: $updateVal (lançado=$launchedVal, médio=$averageVal)');
 
           // Valor anterior (usar _editingAccount que pode ser pai, não acc que pode ser filha)
           double previousValue = _editingAccount?.value ?? acc.value;
@@ -1694,39 +1712,39 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                         style: const TextStyle(
                             fontWeight: FontWeight.bold, color: Colors.green),
                       ),
-                      const TextSpan(text: '.\n\nEssa alteração será somente para essa conta ou para essa e para todas as futuras?'),
-                    ],
+                        const TextSpan(text: '.\n\nEssa alteração será somente para essa conta ou para essa e para todas as futuras?'),
+                      ],
+                    ),
                   ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, 0),
+                      child: const Text('Cancelar'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, 1),
+                      child: const Text('Somente essa'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(ctx, 2),
+                      child: const Text('Essa e as futuras'),
+                    ),
+                  ],
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx, 0),
-                    child: const Text('Cancelar'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx, 1),
-                    child: const Text('Somente essa'),
-                  ),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(ctx, 2),
-                    child: const Text('Essa e as futuras'),
-                  ),
-                ],
-              ),
-            );
+              );
 
-            if (!mounted) return;
-            option = changeOption;
-          } else {
-            // SEM MUDANÇA - atualizar normalmente (apenas a conta)
-            debugPrint('  ✓ Sem mudança significativa de valor');
-            option = 1; // Apenas esta conta
-          }
+              if (!mounted) return;
+              option = changeOption;
+            } else {
+              // SEM MUDANÇA - atualizar normalmente (apenas a conta)
+              debugPrint('  ✓ Sem mudança significativa de valor');
+              option = 1; // Apenas esta conta
+            }
 
-          if (option == null || option == 0) {
-            setState(() => _isSaving = false);
-            return;
-          }
+            if (option == null || option == 0) {
+              setState(() => _isSaving = false);
+              return;
+            }
 
           // Usar _editingAccount se for disponível (pode ser a recorrência pai), senão usar acc (original)
           final accountToUpdate = _editingAccount ?? acc;
@@ -1736,7 +1754,8 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             id: accountToUpdate.id,
             typeId: _selectedType!.id!,
             description: _descController.text,
-            value: updateVal,
+            value: launchedVal > 0.01 ? launchedVal : 0,
+            estimatedValue: averageVal,
             dueDay: _recurrentDay,
             isRecurrent: true,
             payInAdvance: _payInAdvance,
@@ -1818,7 +1837,8 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                 final updatedFuture = future.copyWith(
                   typeId: _selectedType!.id!,
                   description: _descController.text,
-                  value: updateVal,
+                  value: launchedVal > 0.01 ? launchedVal : 0,
+                  estimatedValue: averageVal,
                   dueDay: _recurrentDay,
                   observation: _observationController.text,
                   cardColor: _selectedColor,
@@ -1829,7 +1849,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               }
 
               debugPrint(
-                  '  ✅ ${futureAccounts.length} parcelas futuras atualizadas (SEM criar novas)');
+                  '  ✅ ${futureAccounts.length} parcelas futuras atualizadas');
             }
           }
         } else {
@@ -1905,13 +1925,17 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
         double val = UtilBrasilFields.converterMoedaParaDouble(
             _recurrentValueController.text);
+        double launchedVal = UtilBrasilFields.converterMoedaParaDouble(
+            _recurrentLaunchedValueController.text);
         debugPrint('🔍 SALVAMENTO RECORRÊNCIA:');
         debugPrint('  Controller text: "${_recurrentValueController.text}"');
         debugPrint('  Valor convertido: $val');
+        debugPrint('  Valor Lançado: $launchedVal');
         final acc = Account(
             typeId: _selectedType!.id!,
             description: _descController.text,
-            value: val,
+            value: launchedVal > 0.01 ? launchedVal : 0,
+            estimatedValue: val,
             dueDay: _recurrentDay,
             isRecurrent: true,
             payInAdvance: _payInAdvance,
@@ -1974,7 +1998,8 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             final monthlyAccount = Account(
               typeId: _selectedType!.id!,
               description: _descController.text,
-              value: val,
+              value: 0,
+              estimatedValue: val,
               dueDay: adjustedDate.day,
               month: adjustedDate.month,
               year: adjustedDate.year,
@@ -2041,6 +2066,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         } else {
           int totalItems = _installments.length;
           final baseDescription = cleanInstallmentDescription(_descController.text.trim());
+          debugPrint('💾 Salvando $totalItems parcelas de "$baseDescription"');
           for (var item in _installments) {
             final acc = Account(
               typeId: _selectedType!.id!,
@@ -2056,8 +2082,10 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               installmentIndex: item.index,
               installmentTotal: totalItems,
             );
+            debugPrint('   📝 Parcela ${item.index}/$totalItems: R\$ ${item.value} em ${item.adjustedDate.day}/${item.adjustedDate.month}/${item.adjustedDate.year}');
             await DatabaseHelper.instance.createAccount(acc);
           }
+          debugPrint('✅ $totalItems parcelas salvas com sucesso');
         }
       }
       if (mounted) {

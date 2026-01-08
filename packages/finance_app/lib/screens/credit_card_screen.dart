@@ -297,7 +297,18 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
   }
   
   Future<void> _confirmDelete() async {
-    final confirm = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(title: const Text('Excluir Cartão?'), content: Text('Deseja excluir o cartão ${widget.card.description}? Isso apagará também os lançamentos vinculados a ele.'), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')), FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(ctx, true), child: const Text('Excluir'))]));
+    final confirm = await showDialog<bool>(
+      context: context, 
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+        title: const Text('Confirmar Exclusão'), 
+        content: Text('Tem certeza que deseja excluir o cartão "${widget.card.description}"?\n\nIsso apagará também TODOS os lançamentos vinculados a ele.\n\nEsta ação não pode ser desfeita.'), 
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')), 
+          FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(ctx, true), child: const Text('Sim, Apagar'))
+        ]
+      )
+    );
     if (confirm == true && widget.card.id != null) { await DatabaseHelper.instance.deleteAccount(widget.card.id!); widget.onUpdateNeeded(); }
   }
 }

@@ -7,7 +7,6 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'services/prefs_service.dart';
 import 'services/database_initialization_service.dart';
-import 'services/backup_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/database_migration_screen.dart';
 
@@ -94,8 +93,9 @@ class _FinanceAppState extends State<FinanceApp> with WidgetsBindingObserver {
     debugPrint('📊 AppLifecycleState: $state');
     if (state == AppLifecycleState.detached) {
       // App está sendo encerrado
-      debugPrint('🔌 App encerrado - Fazendo backup do banco de dados...');
-      BackupService.instance.createBackup();
+      debugPrint('🔌 App encerrado');
+      // Backup automático desabilitado por enquanto - causa travamento em algumas situações
+      // BackupService.instance.createBackup();
     }
   }
 

@@ -339,21 +339,41 @@ class _CardExpenseEditScreenState extends State<CardExpenseEditScreen> {
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),
         color: Theme.of(context).cardColor,
-        child: FilledButton.icon(
-          style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
-            backgroundColor: Colors.green.shade600,
-            disabledBackgroundColor: Colors.green.shade600.withValues(alpha: 0.6),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.close),
+                label: const Text('Cancelar'),
+                onPressed: _isSaving ? null : () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
             ),
-          ),
-          onPressed: _isSaving ? null : _saveExpense,
-          icon: _isSaving ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)) : const Icon(Icons.check_circle, size: 24),
-          label: Text(
-            _isSaving ? 'Gravando...' : 'Gravar',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
+                  backgroundColor: Colors.green.shade600,
+                  disabledBackgroundColor: Colors.green.shade600.withValues(alpha: 0.6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: _isSaving ? null : _saveExpense,
+                icon: _isSaving ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)) : const Icon(Icons.check_circle, size: 24),
+                label: Text(
+                  _isSaving ? 'Gravando...' : 'Gravar',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
         );

@@ -377,9 +377,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       });
     }
 
-    // Mostrar dialog de backup após a tela inicializar
+    // Mostrar dialog de backup após a tela inicializar (apenas se a opção estiver ativada)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (mounted && contas_prefs.PrefsService.askBackupOnStartup) {
         _showBackupDialog();
       }
     });
@@ -2556,10 +2556,25 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
 
   Widget _buildCalendarGrid() {
     final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 800;
+    final screenHeight = MediaQuery.of(context).size.height;
     final isSmallMobile = screenWidth < 600;
-    final double fontSize = isMobile ? 11.0 : 13.0;
-    final double headerFontSize = isMobile ? 13.0 : 15.0;
+
+    // Calculate cell size based on available space (7 columns, ~6 rows)
+    final cellWidth = (screenWidth - 120) / 7;
+    final cellHeight = (screenHeight - 300) / 6;
+    final cellSize = cellWidth < cellHeight ? cellWidth : cellHeight;
+
+    // Responsive font sizing based on CELL SIZE (proportional to fit)
+    final baseFontSize = cellSize / 10;
+    final double headerFontSize = baseFontSize * 0.9;
+    final double dayNumberSize = baseFontSize * 2.34;   // +30%
+    final double hojeTextSize = baseFontSize * 1.20;    // +60%
+    final double moneyTextSize = baseFontSize * 1.52;   // +60%
+    final double holidayTextSize = baseFontSize * 1.10; // Larger holiday name
+    final double minHolidayWidth = cellSize * 0.80;     // Min 80% of cell width
+    final double maxHolidayWidth = cellSize * 0.95;     // Max 95% of cell width
+    const Color todayColor = Colors.purple;             // Purple for today
+
     final moneyFormat = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     
     final now = DateTime(_selectedYear, _calendarMonth, 1);
@@ -2901,10 +2916,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 Color bgColor = Colors.white;
                                 Color textColor = Theme.of(context).colorScheme.onSurface;
                                 double opacity = 1.0;
-                                Color? todayHighlightColor;
 
                                 if (isToday) {
-                                  todayHighlightColor = Colors.yellow[600] ?? Colors.yellow;
+                                  // Today: purple text, no yellow circle
                                   textColor = Colors.black;
                                 } else if (isHoliday) {
                                   bgColor = isCurrentMonth ? Colors.green : (Colors.lightGreen[300] ?? Colors.lightGreen);
@@ -2940,54 +2954,43 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Stack(
-                                            alignment: Alignment.center,
-                                            children: [
-                                              if (todayHighlightColor != null)
-                                                Container(
-                                                  width: isSmallMobile ? 36 : 66,
-                                                  height: isSmallMobile ? 36 : 66,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: todayHighlightColor,
-                                                    border: Border.all(color: Colors.black, width: 3),
-                                                  ),
-                                                ),
-                                              Text(
-                                                day.toString(),
-                                                style: TextStyle(fontSize: fontSize * (isSmallMobile ? 1.4 : 1.7), fontWeight: FontWeight.w900, color: textColor),
-                                              ),
-                                            ],
+                                          Text(
+                                            day.toString(),
+                                            style: TextStyle(
+                                              fontSize: dayNumberSize,
+                                              fontWeight: FontWeight.w900,
+                                              color: isToday ? todayColor : textColor,
+                                            ),
                                           ),
                                           if (isToday)
                                             Padding(
-                                              padding: const EdgeInsets.only(top: 4),
+                                              padding: const EdgeInsets.only(top: 2),
                                               child: Text(
                                                 'HOJE',
-                                                style: TextStyle(fontSize: fontSize * 0.9, fontWeight: FontWeight.w700, color: Colors.black),
+                                                style: TextStyle(fontSize: hojeTextSize, fontWeight: FontWeight.w700, color: todayColor),
                                               ),
                                             ),
                                           if (previsto > 0)
                                             Padding(
-                                              padding: EdgeInsets.only(top: isSmallMobile ? 2 : 4),
+                                              padding: EdgeInsets.only(top: isSmallMobile ? 1 : 2),
                                               child: Text.rich(
                                                 TextSpan(
                                                   children: [
+                                                    TextSpan(text: moneyFormat.format(previsto)),
                                                     TextSpan(
-                                                      text: '($previstoCount) ',
+                                                      text: ' [$previstoCount]',
                                                       style: TextStyle(
                                                         color: Colors.blue.shade700,
                                                         fontWeight: FontWeight.w700,
                                                       ),
                                                     ),
-                                                    TextSpan(text: moneyFormat.format(previsto)),
                                                   ],
                                                 ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                                 textAlign: TextAlign.center,
                                                 style: TextStyle(
-                                                  fontSize: fontSize * (isSmallMobile ? 1.2 : 1.4),
+                                                  fontSize: moneyTextSize,
                                                   fontWeight: FontWeight.w700,
                                                   color: textColor,
                                                 ),
@@ -2999,21 +3002,21 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                               child: Text.rich(
                                                 TextSpan(
                                                   children: [
+                                                    TextSpan(text: moneyFormat.format(lancado)),
                                                     TextSpan(
-                                                      text: '($lancadoCount) ',
+                                                      text: ' [$lancadoCount]',
                                                       style: TextStyle(
                                                         color: Colors.red.shade700,
                                                         fontWeight: FontWeight.w700,
                                                       ),
                                                     ),
-                                                    TextSpan(text: moneyFormat.format(lancado)),
                                                   ],
                                                 ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                                 textAlign: TextAlign.center,
                                                 style: TextStyle(
-                                                  fontSize: fontSize * (isSmallMobile ? 1.2 : 1.4),
+                                                  fontSize: moneyTextSize,
                                                   fontWeight: FontWeight.w700,
                                                   color: Colors.red.shade700,
                                                 ),
@@ -3025,36 +3028,40 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                               child: Text.rich(
                                                 TextSpan(
                                                   children: [
+                                                    TextSpan(text: moneyFormat.format(recebimentos)),
                                                     TextSpan(
-                                                      text: '($recebimentosCount) ',
+                                                      text: ' [$recebimentosCount]',
                                                       style: TextStyle(
-                                                        color: Colors.blue.shade700,
+                                                        color: Colors.green.shade700,
                                                         fontWeight: FontWeight.w700,
                                                       ),
                                                     ),
-                                                    TextSpan(text: moneyFormat.format(recebimentos)),
                                                   ],
                                                 ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                                 textAlign: TextAlign.center,
                                                 style: TextStyle(
-                                                  fontSize: fontSize * (isSmallMobile ? 1.2 : 1.4),
+                                                  fontSize: moneyTextSize,
                                                   fontWeight: FontWeight.w700,
-                                                  color: Colors.blue.shade700,
+                                                  color: Colors.green.shade700,
                                                 ),
                                               ),
                                             ),
                                           if (isHoliday && holidayName != null)
                                             Flexible(
-                                              child: Padding(
+                                              child: Container(
+                                                constraints: BoxConstraints(
+                                                  minWidth: minHolidayWidth,
+                                                  maxWidth: maxHolidayWidth,
+                                                ),
                                                 padding: const EdgeInsets.only(top: 0.0),
                                                 child: Text(
                                                   holidayName,
-                                                  maxLines: 1,
+                                                  maxLines: 2,
                                                   overflow: TextOverflow.ellipsis,
                                                   textAlign: TextAlign.center,
-                                                  style: TextStyle(fontSize: fontSize * (isSmallMobile ? 0.75 : 0.85), fontWeight: FontWeight.w600, color: textColor),
+                                                  style: TextStyle(fontSize: holidayTextSize, fontWeight: FontWeight.w600, color: textColor),
                                                 ),
                                               ),
                                             ),

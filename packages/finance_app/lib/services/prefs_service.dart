@@ -16,6 +16,7 @@ class PrefsService {
 
   // Database Protection Settings
   static bool autoBackupEnabled = true;
+  static bool askBackupOnStartup = false;
   static int integrityCheckIntervalDays = 7;
   static DateTime? lastIntegrityCheck;
   static int backupRetentionCount = 5;
@@ -59,6 +60,7 @@ class PrefsService {
 
     // Database Protection Settings
     autoBackupEnabled = prefs.getBool('db_auto_backup_enabled') ?? true;
+    askBackupOnStartup = prefs.getBool('db_ask_backup_on_startup') ?? false;
     integrityCheckIntervalDays = prefs.getInt('db_integrity_check_interval') ?? 7;
     backupRetentionCount = prefs.getInt('db_backup_retention_count') ?? 5;
 
@@ -133,6 +135,12 @@ static Future<void> saveDateRange(DateTime start, DateTime end) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('db_auto_backup_enabled', enabled);
     autoBackupEnabled = enabled;
+  }
+
+  static Future<void> saveAskBackupOnStartup(bool ask) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('db_ask_backup_on_startup', ask);
+    askBackupOnStartup = ask;
   }
 
   static Future<void> saveIntegrityCheckInterval(int days) async {

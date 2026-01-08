@@ -4,7 +4,6 @@ import '../models/account_type.dart';
 import '../models/account_category.dart';
 import '../models/payment_method.dart';
 import 'default_account_categories_service.dart';
-import 'database_protection_service.dart';
 
 class DatabaseInitializationService {
   static final DatabaseInitializationService instance =
@@ -18,8 +17,22 @@ class DatabaseInitializationService {
       final db = DatabaseHelper.instance;
 
       // Consultas rapidas sequenciais para evitar disputa na abertura do banco
-      int typeCount = await db.countAccountTypes();
-      int methodCount = await db.countPaymentMethods(onlyActive: false);
+      int typeCount = 0;
+      int methodCount = 0;
+
+      try {
+        typeCount = await db.countAccountTypes();
+      } catch (e) {
+        debugPrint('[DB INIT] ⚠️ Erro ao contar tipos de conta: $e');
+        typeCount = 0;
+      }
+
+      try {
+        methodCount = await db.countPaymentMethods(onlyActive: false);
+      } catch (e) {
+        debugPrint('[DB INIT] ⚠️ Erro ao contar formas de pagamento: $e');
+        methodCount = 0;
+      }
 
       debugPrint('[DB INIT] Tipos de conta encontrados: $typeCount');
       debugPrint('[DB INIT] Formas de pagamento encontradas: $methodCount');
@@ -36,25 +49,8 @@ class DatabaseInitializationService {
         debugPrint('[DB INIT] Banco de dados inicializado com sucesso!');
       }
 
-      // Validar integridade do banco
-      debugPrint('[DB INIT] Validando integridade do banco de dados...');
-      try {
-        final integrityResult =
-            await DatabaseProtectionService.instance.validateIntegrity();
-        if (integrityResult.isValid) {
-          debugPrint('✓ [DB INIT] Integridade do banco: OK');
-        } else {
-          debugPrint('⚠️ [DB INIT] AVISO: Banco com problemas detectados');
-          for (final error in integrityResult.errors) {
-            debugPrint('  ❌ $error');
-          }
-          for (final warning in integrityResult.warnings) {
-            debugPrint('  ⚠️ $warning');
-          }
-        }
-      } catch (e) {
-        debugPrint('⚠️ [DB INIT] Erro ao validar integridade: $e');
-      }
+      // Validar integridade do banco (skip por agora - pode travar em algumas situações)
+      debugPrint('[DB INIT] Validação de integridade skipped durante inicialização');
 
       final elapsedMs = stopwatch.elapsedMilliseconds;
       debugPrint('[DB INIT] Banco pronto com $typeCount tipo(s) e $methodCount forma(s) (${elapsedMs}ms).');

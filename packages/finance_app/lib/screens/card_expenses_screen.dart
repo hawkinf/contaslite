@@ -827,15 +827,51 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
             TextButton(
               onPressed: () async {
-                await DatabaseHelper.instance.deleteAccount(expense.id!);
-                if (!ctx.mounted) return;
                 Navigator.pop(ctx);
+                // Confirmar antes de apagar
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx2) => AlertDialog(
+                    icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+                    title: const Text('Confirmar Exclusão'),
+                    content: Text('Tem certeza que deseja apagar somente esta conta "${expense.description}"?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx2, false), child: const Text('Cancelar')),
+                      FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                        onPressed: () => Navigator.pop(ctx2, true),
+                        child: const Text('Sim, Apagar'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true) return;
+                await DatabaseHelper.instance.deleteAccount(expense.id!);
                 await _loadExpenses();
               },
               child: const Text('Apagar somente essa conta', style: TextStyle(color: Colors.orange)),
             ),
             TextButton(
               onPressed: () async {
+                Navigator.pop(ctx);
+                // Confirmar antes de apagar
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx2) => AlertDialog(
+                    icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+                    title: const Text('Confirmar Exclusão'),
+                    content: Text('Tem certeza que deseja apagar "${expense.description}" e todas as recorrências futuras?\n\nEsta ação não pode ser desfeita.'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx2, false), child: const Text('Cancelar')),
+                      FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                        onPressed: () => Navigator.pop(ctx2, true),
+                        child: const Text('Sim, Apagar'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true) return;
                 // Apagar essa e futuras
                 try {
                   final allAccounts =
@@ -858,15 +894,12 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                     }
                   }
 
-                  if (!ctx.mounted) return;
-                  Navigator.pop(ctx);
                   await _loadExpenses();
                 } catch (e) {
-                  if (!ctx.mounted) return;
-                  ScaffoldMessenger.of(ctx).showSnackBar(
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Erro ao excluir: $e')),
                   );
-                  Navigator.pop(ctx);
                 }
               },
               child: const Text('Apagar essa e futuras', style: TextStyle(color: Colors.deepOrange)),
@@ -874,6 +907,26 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () async {
+                Navigator.pop(ctx);
+                // Confirmar antes de apagar
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx2) => AlertDialog(
+                    icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+                    title: const Text('Confirmar Exclusão'),
+                    content: Text('Tem certeza que deseja apagar TODAS as recorrências de "${expense.description}"?\n\nEsta ação não pode ser desfeita.'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx2, false), child: const Text('Cancelar')),
+                      FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                        onPressed: () => Navigator.pop(ctx2, true),
+                        child: const Text('Sim, Apagar'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true) return;
+                
                 if (expense.recurrenceId != null) {
                   await DatabaseHelper.instance.deleteSubscriptionSeries(expense.recurrenceId!);
                 } else if (expense.isRecurrent) {
@@ -893,16 +946,13 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
 
                     await DatabaseHelper.instance.deleteAccount(expense.id!);
                   } catch (e) {
-                    if (!ctx.mounted) return;
-                    ScaffoldMessenger.of(ctx).showSnackBar(
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Erro ao excluir: $e')),
                     );
-                    Navigator.pop(ctx);
                     return;
                   }
                 }
-                if (!ctx.mounted) return;
-                Navigator.pop(ctx);
                 await _loadExpenses();
               },
               child: const Text('Apagar todas as recorrências'),
@@ -923,9 +973,26 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
             TextButton(
               onPressed: () async {
-                await DatabaseHelper.instance.deleteAccount(expense.id!);
-                if (!ctx.mounted) return;
                 Navigator.pop(ctx);
+                // Confirmar antes de apagar
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx2) => AlertDialog(
+                    icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+                    title: const Text('Confirmar Exclusão'),
+                    content: Text('Tem certeza que deseja apagar somente esta parcela de "${expense.description}"?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx2, false), child: const Text('Cancelar')),
+                      FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                        onPressed: () => Navigator.pop(ctx2, true),
+                        child: const Text('Sim, Apagar'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true) return;
+                await DatabaseHelper.instance.deleteAccount(expense.id!);
                 await _loadExpenses();
               },
               child: const Text('Só esta parcela', style: TextStyle(color: Colors.orange)),
@@ -933,14 +1000,32 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () async {
+                Navigator.pop(ctx);
+                // Confirmar antes de apagar
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx2) => AlertDialog(
+                    icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+                    title: const Text('Confirmar Exclusão'),
+                    content: Text('Tem certeza que deseja apagar a compra "${expense.description}" INTEIRA com todas as parcelas?\n\nEsta ação não pode ser desfeita.'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx2, false), child: const Text('Cancelar')),
+                      FilledButton(
+                        style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                        onPressed: () => Navigator.pop(ctx2, true),
+                        child: const Text('Sim, Apagar'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true) return;
+                
                 if (expense.purchaseUuid != null) {
                   await DatabaseHelper.instance.deleteInstallmentSeriesByUuid(expense.purchaseUuid!);
                 } else {
                   String baseDesc = expense.description.split('(')[0].trim();
                   await DatabaseHelper.instance.deleteInstallmentSeries(expense.cardId!, baseDesc);
                 }
-                if (!ctx.mounted) return;
-                Navigator.pop(ctx);
                 await _loadExpenses();
               },
               child: const Text('Apagar Compra Inteira'),
@@ -954,14 +1039,15 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Excluir?'),
-        content: Text("Apagar '${expense.description}'?"),
+        icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+        title: const Text('Confirmar Exclusão'),
+        content: Text('Tem certeza que deseja excluir "${expense.description}"?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Excluir'),
+            child: const Text('Sim, Apagar'),
           ),
         ],
       ),

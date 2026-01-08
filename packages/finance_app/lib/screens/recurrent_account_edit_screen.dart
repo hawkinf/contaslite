@@ -11,7 +11,7 @@ import '../widgets/payment_dialog.dart';
 import '../services/prefs_service.dart';
 import '../widgets/date_range_app_bar.dart';
 
-enum _RecurrentEditScope { thisOnly, thisAndFuture }
+enum _RecurrentEditScope { thisOnly, thisAndFuture, all }
 
 class RecurrentAccountEditScreen extends StatefulWidget {
   final Account account;
@@ -85,7 +85,7 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
 
     _descController = TextEditingController(text: _parentAccount.description);
     _valueController = TextEditingController(text: UtilBrasilFields.obterReal(_parentAccount.value));
-    _averageValueController = TextEditingController(text: UtilBrasilFields.obterReal(_parentAccount.value));
+    _averageValueController = TextEditingController(text: UtilBrasilFields.obterReal(_parentAccount.estimatedValue ?? _parentAccount.value));
     _dueDayController = TextEditingController(text: _parentAccount.dueDay.toString());
     _observationController = TextEditingController(text: _parentAccount.observation ?? '');
     _selectedColor = _parentAccount.cardColor ?? 0xFFFFFFFF;
@@ -109,7 +109,7 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
               _selectedColor = parent.cardColor ?? 0xFFFFFFFF;
               _payInAdvance = parent.payInAdvance;
             } else {
-              _averageValueController.text = UtilBrasilFields.obterReal(parent.value);
+              _averageValueController.text = UtilBrasilFields.obterReal(parent.estimatedValue ?? parent.value);
             }
           });
         }
@@ -250,88 +250,178 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
       }
 
       final newValue = UtilBrasilFields.converterMoedaParaDouble(_valueController.text);
-      final averageValue = _isEditingParent
-          ? newValue
-          : UtilBrasilFields.converterMoedaParaDouble(_averageValueController.text);
+      final averageValue = UtilBrasilFields.converterMoedaParaDouble(_averageValueController.text);
       final newDesc = _descController.text.trim();
+
+      debugPrint('💾 Salvando recorrência:');
+      debugPrint('   - Valor Médio (estimatedValue): $averageValue');
+      debugPrint('   - Valor Lançado (value): $newValue');
 
       // Criar versão atualizada do pai
       final updatedParent = _parentAccount.copyWith(
         typeId: _selectedType!.id!,
         description: newDesc,
-        value: averageValue,
+        value: newValue,  // ✅ CORRIGIDO: value é o Valor Lançado
+        estimatedValue: averageValue,  // ✅ ADICIONADO: estimatedValue é o Valor Médio
         dueDay: dueDay,
         payInAdvance: _payInAdvance,
         cardColor: _selectedColor,
         observation: _observationController.text,
       );
 
-      // Se estamos editando uma filha, mostrar diálogo de escolha
-      if (!_isEditingParent) {
-        if (!mounted) return;
-        final scope = await showDialog<_RecurrentEditScope>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Editar Recorrência'),
-            content: const Text('Deseja atualizar:\n\n• Somente essa instância\n• Essa e as futuras'),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, _RecurrentEditScope.thisOnly),
-                child: const Text('Só essa'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, _RecurrentEditScope.thisAndFuture),
-                child: const Text('Essa e futuras'),
-              ),
-            ],
-          ),
+      // Mostrar diálogo de escolha para salvar
+      if (!mounted) return;
+      final scope = await showDialog<_RecurrentEditScope>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          icon: const Icon(Icons.save, color: Colors.blue, size: 48),
+          title: const Text('Salvar Alterações'),
+          content: const Text('Como deseja aplicar as alterações?\n\nNota: O valor lançado é específico para cada conta e nunca é propagado.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, _RecurrentEditScope.thisOnly),
+              child: const Text('Somente essa conta'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, _RecurrentEditScope.thisAndFuture),
+              child: const Text('Essa e futuras'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, _RecurrentEditScope.all),
+              child: const Text('Todas as recorrentes'),
+            ),
+          ],
+        ),
+      );
+
+      if (scope == null) {
+        if (mounted) setState(() => _isSaving = false);
+        return;
+      }
+
+      if (scope == _RecurrentEditScope.thisOnly) {
+        // Atualizar só a instância atual (incluindo valor lançado)
+        final updated = widget.account.copyWith(
+          typeId: _selectedType!.id!,
+          description: newDesc,
+          value: newValue,  // Valor lançado só para essa conta
+          estimatedValue: averageValue,
+          dueDay: dueDay,
+          payInAdvance: _payInAdvance,
+          cardColor: _selectedColor,
+          observation: _observationController.text,
         );
-
-        if (scope == null) {
-          if (mounted) setState(() => _isSaving = false);
-          return;
-        }
-
-        if (scope == _RecurrentEditScope.thisOnly) {
-          // Atualizar só a instância atual
-          final updated = widget.account.copyWith(
+        await DatabaseHelper.instance.updateAccount(updated);
+      } else if (scope == _RecurrentEditScope.thisAndFuture) {
+        // Atualizar essa e futuras (mas NÃO propagar valor lançado)
+        
+        // Verificar se estamos editando o PAI ou uma FILHA
+        final isEditingParentAccount = widget.account.id == _parentAccount.id;
+        
+        // Atualizar o PAI (com ou sem valor lançado dependendo se é o que estamos editando)
+        final updatedParent = _parentAccount.copyWith(
+          typeId: _selectedType!.id!,
+          description: newDesc,
+          value: isEditingParentAccount ? newValue : _parentAccount.value,  // Só atualiza value se editamos o PAI
+          estimatedValue: averageValue,
+          dueDay: dueDay,
+          payInAdvance: _payInAdvance,
+          cardColor: _selectedColor,
+          observation: _observationController.text,
+        );
+        await DatabaseHelper.instance.updateAccount(updatedParent);
+        
+        // Se não estamos editando o PAI, atualizar a conta atual com valor lançado
+        if (!isEditingParentAccount) {
+          final updatedThis = widget.account.copyWith(
             typeId: _selectedType!.id!,
             description: newDesc,
-            value: _currentLaunchedValue,
+            value: newValue,  // Valor lançado só para essa
+            estimatedValue: averageValue,
+            dueDay: dueDay,
+            payInAdvance: _payInAdvance,
+            cardColor: _selectedColor,
+            observation: _observationController.text,
+          );
+          await DatabaseHelper.instance.updateAccount(updatedThis);
+        }
+        
+        // Atualizar futuras (sem propagar valor lançado)
+        final currentMonth = widget.account.month ?? DateTime.now().month;
+        final currentYear = widget.account.year ?? DateTime.now().year;
+        final currentDate = DateTime(currentYear, currentMonth, 1);
+        
+        final instances = await DatabaseHelper.instance.readAllAccountsRaw();
+        final futureChildren = instances.where((a) {
+          if (a.recurrenceId != _parentAccount.id) return false;
+          if (a.id == widget.account.id) return false;  // Já atualizamos essa
+          final accDate = DateTime(a.year ?? DateTime.now().year, a.month ?? 1, 1);
+          return accDate.isAfter(currentDate);
+        }).toList();
+        
+        for (var child in futureChildren) {
+          final updated = child.copyWith(
+            typeId: _selectedType!.id!,
+            description: newDesc,
+            // NÃO atualizar value (valor lançado) - manter o original
+            estimatedValue: averageValue,
             dueDay: dueDay,
             payInAdvance: _payInAdvance,
             cardColor: _selectedColor,
             observation: _observationController.text,
           );
           await DatabaseHelper.instance.updateAccount(updated);
-        } else {
-          // Atualizar pai e futuras
-          await DatabaseHelper.instance.updateAccount(updatedParent);
-          final updateMap = updatedParent.toMap();
-          updateMap.remove('id'); // Remover ID para não violar constraint UNIQUE
-          await DatabaseHelper.instance.updateRecurrenceInstances(
-            _parentAccount.id!,
-            widget.account.month ?? DateTime.now().month,
-            widget.account.year ?? DateTime.now().year,
-            updateMap,
-          );
         }
-      } else {
-        // Editando o pai - atualizar pai e todas as instâncias existentes
+      } else if (scope == _RecurrentEditScope.all) {
+        // Atualizar TODAS as recorrências (mas NÃO propagar valor lançado)
+        
+        // Verificar se estamos editando o PAI ou uma FILHA
+        final isEditingParentAccount = widget.account.id == _parentAccount.id;
+        
+        // Atualizar o PAI (com ou sem valor lançado dependendo se é o que estamos editando)
+        final updatedParent = _parentAccount.copyWith(
+          typeId: _selectedType!.id!,
+          description: newDesc,
+          value: isEditingParentAccount ? newValue : _parentAccount.value,  // Só atualiza value se editamos o PAI
+          estimatedValue: averageValue,
+          dueDay: dueDay,
+          payInAdvance: _payInAdvance,
+          cardColor: _selectedColor,
+          observation: _observationController.text,
+        );
         await DatabaseHelper.instance.updateAccount(updatedParent);
-
-        // Atualizar todas as instâncias existentes com os novos valores
-        // Mantendo month/year originais (não recalcular datas)
+        
+        // Se não estamos editando o PAI, atualizar a conta atual com valor lançado
+        if (!isEditingParentAccount) {
+          final updatedThis = widget.account.copyWith(
+            typeId: _selectedType!.id!,
+            description: newDesc,
+            value: newValue,  // Valor lançado só para essa
+            estimatedValue: averageValue,
+            dueDay: dueDay,
+            payInAdvance: _payInAdvance,
+            cardColor: _selectedColor,
+            observation: _observationController.text,
+          );
+          await DatabaseHelper.instance.updateAccount(updatedThis);
+        }
+        
+        // Atualizar TODAS as outras filhas (sem propagar valor lançado)
         final instances = await DatabaseHelper.instance.readAllAccountsRaw();
-        final children = instances.where((a) => a.recurrenceId == _parentAccount.id).toList();
-
-        for (var child in children) {
+        final allChildren = instances.where((a) {
+          if (a.recurrenceId != _parentAccount.id) return false;
+          if (a.id == widget.account.id) return false;  // Já atualizamos essa
+          return true;
+        }).toList();
+        
+        for (var child in allChildren) {
           final updated = child.copyWith(
             typeId: _selectedType!.id!,
             description: newDesc,
-            value: newValue,
-            dueDay: dueDay, // Atualizar só o dia, manter month/year originais
+            // NÃO atualizar value (valor lançado) - manter o original
+            estimatedValue: averageValue,
+            dueDay: dueDay,
             payInAdvance: _payInAdvance,
             cardColor: _selectedColor,
             observation: _observationController.text,
@@ -407,8 +497,44 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
       );
 
       if (action == 'single') {
+        // Confirmar antes de apagar
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+            title: const Text('Confirmar Exclusão'),
+            content: Text('Tem certeza que deseja apagar somente esta instância de "${widget.account.description}"?'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Sim, Apagar'),
+              ),
+            ],
+          ),
+        );
+        if (confirmed != true) return;
         await _deleteSingleInstance();
       } else if (action == 'series') {
+        // Confirmar antes de apagar
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+            title: const Text('Confirmar Exclusão'),
+            content: Text('Tem certeza que deseja apagar TODA a série de "${widget.account.description}"?\n\nEsta ação não pode ser desfeita.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Sim, Apagar'),
+              ),
+            ],
+          ),
+        );
+        if (confirmed != true) return;
         await _deleteRecurrence();
       }
     }
@@ -439,8 +565,8 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
   @override
   Widget build(BuildContext context) {
     final isChild = !_isEditingParent;
-    final valueLabel = _isEditingParent ? 'Valor Médio (R\$)' : 'Valor Lançado (R\$)';
-    final showAverageValue = isChild;
+    final valueLabel = _isEditingParent ? 'Valor Lançado (R\$)' : 'Valor Lançado (R\$)';
+    final showAverageValue = true;  // Sempre mostrar Valor Médio
 
     return ValueListenableBuilder<DateTimeRange>(
       valueListenable: PrefsService.dateRangeNotifier,
@@ -470,6 +596,11 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
                         ? null
                         : _openPayAccount,
                   ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: 'Cancelar',
+                  onPressed: () => Navigator.pop(context),
+                ),
               ],
             ),
             body: SingleChildScrollView(
@@ -655,30 +786,50 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
             bottomNavigationBar: Container(
               padding: const EdgeInsets.all(16),
               color: Theme.of(context).cardColor,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
-                  backgroundColor: Colors.green.shade600,
-                  disabledBackgroundColor: Colors.green.shade600.withValues(alpha: 0.6),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: _isSaving ? null : _saveAccount,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2.5,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.close),
+                      label: const Text('Cancelar'),
+                      onPressed: _isSaving ? null : () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      )
-                    : const Icon(Icons.check_circle, size: 24),
-                label: Text(
-                  _isSaving ? 'Gravando...' : 'Gravar',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
+                        backgroundColor: Colors.green.shade600,
+                        disabledBackgroundColor: Colors.green.shade600.withValues(alpha: 0.6),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: _isSaving ? null : _saveAccount,
+                      icon: _isSaving
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : const Icon(Icons.check_circle, size: 24),
+                      label: Text(
+                        _isSaving ? 'Gravando...' : 'Gravar',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
