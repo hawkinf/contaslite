@@ -35,10 +35,12 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   void _showPaymentMethodDialog({PaymentMethod? method}) {
     showDialog(
       context: context,
-      builder: (context) {
+        builder: (context) {
         final isEditing = method != null;
         final nameController = TextEditingController(text: method?.name ?? '');
         final typeController = TextEditingController(text: method?.type ?? '');
+        // Tipos disponíveis (pode ser ajustado conforme necessidade)
+        const paymentTypes = ['CASH', 'PIX', 'BANK_DEBIT', 'CREDIT_CARD'];
 
         // Se é novo e nome está vazio, usar o tipo como padrão
         if (!isEditing && nameController.text.isEmpty && typeController.text.isNotEmpty) {
@@ -86,18 +88,23 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        TextField(
-                          controller: typeController,
+                        DropdownButtonFormField<String>(
+                          value: typeController.text.isNotEmpty ? typeController.text : null,
+                          decoration: buildOutlinedInputDecoration(
+                            label: 'Tipo',
+                            icon: Icons.category,
+                          ),
+                          items: paymentTypes
+                              .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                              .toList(),
                           onChanged: (value) {
-                            // Se o nome está vazio, preencher com o tipo
-                            if (nameController.text.isEmpty && value.isNotEmpty) {
+                            if (value == null) return;
+                            // Atualiza controller para manter compatibilidade na gravação
+                            typeController.text = value;
+                            if (nameController.text.isEmpty) {
                               nameController.text = value;
                             }
                           },
-                          decoration: buildOutlinedInputDecoration(
-                            label: 'Tipo (ex: CASH, PIX, BANK_DEBIT)',
-                            icon: Icons.category,
-                          ),
                         ),
                         const SizedBox(height: 24),
                         Row(
@@ -269,15 +276,6 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                     padding: const EdgeInsets.all(16),
                     child: Row(
                       children: [
-                        Container(
-                          width: 6,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: statusColor,
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,

@@ -165,15 +165,6 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Container(
-            width: 4,
-            height: 24,
-            decoration: BoxDecoration(
-              color: Colors.indigo,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

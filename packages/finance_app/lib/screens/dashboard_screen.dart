@@ -954,17 +954,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Row(children: [
-              if (customAccent != null) ...[
-                Container(
-                  width: 4,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: customAccent,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: 10),
-              ],
+              
               // 1. COLUNA DATA
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,

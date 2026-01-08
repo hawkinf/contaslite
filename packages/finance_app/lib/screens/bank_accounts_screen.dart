@@ -486,15 +486,6 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Container(
-                                    width: 6,
-                                    height: 70,
-                                    decoration: BoxDecoration(
-                                      color: Color(bank.color),
-                                      borderRadius: BorderRadius.circular(3),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:

@@ -109,7 +109,6 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           clipBehavior: Clip.antiAlias,
           child: DataTable(
-            headingRowColor: WidgetStateProperty.all(Colors.indigo.shade50),
             columnSpacing: 20,
             columns: const [
               DataColumn(label: Text('Descrição', style: TextStyle(fontWeight: FontWeight.bold))),
