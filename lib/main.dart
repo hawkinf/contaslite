@@ -2546,6 +2546,64 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     }
   }
 
+  Future<
+          Map<
+              String,
+              ({
+                double previsto,
+                double lancado,
+                int previstoCount,
+                int lancadoCount,
+                double recebimentos,
+                int recebimentosCount
+              })>> _loadWeeklyTotals(DateTime startOfWeek) async {
+    final dates = List.generate(7, (i) => startOfWeek.add(Duration(days: i)));
+
+    final monthKeys = <String, ({int month, int year})>{};
+    for (final date in dates) {
+      monthKeys['${date.year}-${date.month}'] = (month: date.month, year: date.year);
+    }
+
+    final totalsByMonthKey =
+        <String, Map<int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount})>>{};
+
+    await Future.wait(
+      monthKeys.entries.map((entry) async {
+        totalsByMonthKey[entry.key] =
+            await _loadMonthlyTotals(entry.value.month, entry.value.year);
+      }),
+    );
+
+    const empty = (
+      previsto: 0.0,
+      lancado: 0.0,
+      previstoCount: 0,
+      lancadoCount: 0,
+      recebimentos: 0.0,
+      recebimentosCount: 0,
+    );
+
+    final result = <
+        String,
+        ({
+          double previsto,
+          double lancado,
+          int previstoCount,
+          int lancadoCount,
+          double recebimentos,
+          int recebimentosCount
+        })>{};
+
+    for (final date in dates) {
+      final dateKey =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      final monthKey = '${date.year}-${date.month}';
+      result[dateKey] = totalsByMonthKey[monthKey]?[date.day] ?? empty;
+    }
+
+    return result;
+  }
+
   void _openAccountsForDay(int day, int month, int year) {
     final date = DateTime(year, month, day);
     _skipNextContasReset = true;
@@ -2558,6 +2616,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallMobile = screenWidth < 600;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final monthHeaderColor =
+        isDark ? Colors.grey.shade800 : Colors.grey.shade700;
 
     // Calculate cell size based on available space (7 columns, ~6 rows)
     final cellWidth = (screenWidth - 120) / 7;
@@ -2566,7 +2627,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
 
     // Responsive font sizing based on CELL SIZE (proportional to fit)
     final baseFontSize = cellSize / 10;
-    final double headerFontSize = baseFontSize * 0.9;
     final double dayNumberSize = baseFontSize * 2.34;   // +30%
     final double hojeTextSize = baseFontSize * 1.20;    // +60%
     final double moneyTextSize = baseFontSize * 1.52;   // +60%
@@ -2661,6 +2721,14 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           future: _monthlyTotalsFuture,
           builder: (context, totalsSnapshot) {
             final totalsByDay = totalsSnapshot.data ?? {};
+            double monthPayTotal = 0.0;
+            double monthReceiveTotal = 0.0;
+            for (int day = 1; day <= daysInMonth; day++) {
+              final daily = totalsByDay[day];
+              if (daily == null) continue;
+              monthPayTotal += (daily.previsto + daily.lancado);
+              monthReceiveTotal += daily.recebimentos;
+            }
             return GestureDetector(
           behavior: HitTestBehavior.opaque,
           onHorizontalDragStart: (_) => _horizontalDragDistance = 0,
@@ -2685,26 +2753,28 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.chevron_left),
+                            icon: const Icon(Icons.chevron_left, size: 28),
                             onPressed: () => _changeMonth(-1),
                             tooltip: 'Mês anterior',
-                            iconSize: 28,
                           ),
-                          Text(
-                            '$monthName $_selectedYear',
-                            style: TextStyle(
-                              fontSize: isSmallMobile ? 20 : 32,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.blue,
-                              letterSpacing: 1.2,
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                '$monthName $_selectedYear',
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
                             ),
-                            textAlign: TextAlign.center,
                           ),
                           IconButton(
-                            icon: const Icon(Icons.chevron_right),
+                            icon: const Icon(Icons.chevron_right, size: 28),
                             onPressed: () => _changeMonth(1),
                             tooltip: 'Próximo mês',
-                            iconSize: 28,
                           ),
                         ],
                       ),
@@ -2712,8 +2782,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _buildTodayButton(),
-                          const SizedBox(width: 12),
                           SizedBox(
                             width: 100,
                             height: 32,
@@ -2752,97 +2820,122 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     ],
                   )
                 else
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Align(
-                        alignment: Alignment.center,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              onPressed: () => _changeMonth(-1),
-                              tooltip: 'Mì anterior',
-                              splashRadius: 18,
-                              icon: const Text(
-                                '<',
-                                style: TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.blue,
-                                ),
+                  Container(
+                     height: 56,
+                     padding: const EdgeInsets.symmetric(horizontal: 12),
+                     decoration: BoxDecoration(
+                      color: monthHeaderColor,
+                      borderRadius: BorderRadius.circular(12),
+                     ),
+                     child: Stack(
+                       alignment: Alignment.center,
+                       children: [
+                        Align(
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                onPressed: () => _changeMonth(-1),
+                                tooltip: 'Mês anterior',
+                                splashRadius: 18,
+                                icon: const Icon(Icons.chevron_left, size: 28, color: Colors.white),
                               ),
-                            ),
-                            Text(
-                              '$monthName $_selectedYear',
-                              style: TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.blue,
-                                letterSpacing: 1.2,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            IconButton(
-                              onPressed: () => _changeMonth(1),
-                              tooltip: 'Pr│imo mì',
-                              splashRadius: 18,
-                              icon: const Text(
-                                '>',
-                                style: TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.blue,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildTodayButton(),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              width: 120,
-                              height: 32,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Theme.of(context).colorScheme.outline,
-                                    width: 2,
+                              Flexible(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    '$monthName $_selectedYear',
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: DropdownButton<String>(
-                                  value: _calendarType,
-                                  isExpanded: true,
-                                  underline: const SizedBox(),
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
-                                  items: const [
-                                    DropdownMenuItem<String>(value: 'semanal', child: Text('Semanal')),
-                                    DropdownMenuItem<String>(value: 'mensal', child: Text('Mensal')),
-                                    DropdownMenuItem<String>(value: 'anual', child: Text('Anual')),
-                                  ],
-                                  onChanged: (type) {
-                                    if (type != null) {
-                                      setState(() {
-                                        _calendarType = type;
-                                      });
-                                      _savePreferences();
-                                    }
-                                  },
                                 ),
                               ),
-                            ),
-                          ],
+                              IconButton(
+                                onPressed: () => _changeMonth(1),
+                                tooltip: 'Próximo mês',
+                                splashRadius: 18,
+                                icon: const Icon(Icons.chevron_right, size: 28, color: Colors.white),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                        Align(
+                          alignment: Alignment.centerRight,
+                           child: Row(
+                             mainAxisSize: MainAxisSize.min,
+                             children: [
+                              SizedBox(
+                                width: 120,
+                                height: 32,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: DropdownButton<String>(
+                                    value: _calendarType,
+                                    isExpanded: true,
+                                    underline: const SizedBox(),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                    dropdownColor: Colors.white,
+                                    iconEnabledColor: Colors.white,
+                                    selectedItemBuilder: (context) => const [
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          'Semanal',
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+                                        ),
+                                      ),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          'Mensal',
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+                                        ),
+                                      ),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          'Anual',
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+                                        ),
+                                      ),
+                                    ],
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                    ),
+                                    items: const [
+                                      DropdownMenuItem<String>(value: 'semanal', child: Text('Semanal')),
+                                      DropdownMenuItem<String>(value: 'mensal', child: Text('Mensal')),
+                                      DropdownMenuItem<String>(value: 'anual', child: Text('Anual')),
+                                    ],
+                                    onChanged: (type) {
+                                      if (type != null) {
+                                        setState(() {
+                                          _calendarType = type;
+                                        });
+                                        _savePreferences();
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 const SizedBox(height: 8),
                 Container(
@@ -2859,6 +2952,45 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                         padding: EdgeInsets.symmetric(horizontal: isSmallMobile ? 8 : 40),
                         child: Column(
                           children: [
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                        'Contas a Pagar: ${moneyFormat.format(monthPayTotal)}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: dayNumberSize,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.red.shade700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Text(
+                                        'Contas a Receber: ${moneyFormat.format(monthReceiveTotal)}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.right,
+                                        style: TextStyle(
+                                          fontSize: dayNumberSize,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.blue.shade700,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: dayHeaders.map((day) => Expanded(
@@ -2866,7 +2998,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                   child: Text(
                                     day,
                                     style: TextStyle(
-                                      fontSize: headerFontSize * 0.8,
+                                      fontSize: dayNumberSize,
                                       fontWeight: FontWeight.bold,
                                       color: day == 'DOM' || day == 'SAB'
                                           ? Colors.white
@@ -3093,6 +3225,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     final startOfWeek = _selectedWeek.subtract(Duration(days: _selectedWeek.weekday % 7));
     final weekDays = <({String label, DateTime date})>[];
     final dayLabels = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+    final moneyFormat = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     final monthNamesComplete = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
     // Calcular o número da semana (ISO 8601)
@@ -3152,7 +3285,32 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           debugPrint('Feriados da semana ${startOfWeek.toIso8601String()}: ${holidayDays.length}');
         }
         
-        return GestureDetector(
+        return FutureBuilder<
+            Map<
+                String,
+                ({
+                  double previsto,
+                  double lancado,
+                  int previstoCount,
+                  int lancadoCount,
+                  double recebimentos,
+                  int recebimentosCount
+                })>>(
+          future: _loadWeeklyTotals(startOfWeek),
+          builder: (context, totalsSnapshot) {
+            final totalsByDate = totalsSnapshot.data ?? {};
+            double weekPayTotal = 0.0;
+            double weekReceiveTotal = 0.0;
+            for (final day in weekDays) {
+              final key =
+                  '${day.date.year}-${day.date.month.toString().padLeft(2, '0')}-${day.date.day.toString().padLeft(2, '0')}';
+              final daily = totalsByDate[key];
+              if (daily == null) continue;
+              weekPayTotal += (daily.previsto + daily.lancado);
+              weekReceiveTotal += daily.recebimentos;
+            }
+
+            return GestureDetector(
           behavior: HitTestBehavior.opaque,
           onHorizontalDragStart: (_) => _horizontalDragDistance = 0,
           onHorizontalDragUpdate: (details) {
@@ -3176,29 +3334,25 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Column(
                       children: [
-                        RichText(
-                          text: TextSpan(
-                            style: DefaultTextStyle.of(context).style,
-                            children: [
-                              TextSpan(
-                                text: 'Semana #$weekNumber\n',
-                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.blue),
-                              ),
-                              TextSpan(
-                                text: '${monthNamesComplete[startOfWeek.month - 1]} ${startOfWeek.year}',
-                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87),
-                              ),
-                            ],
-                          ),
-                        ),
                         Row(
-                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _buildTodayButton(),
-                            const SizedBox(width: 8),
+                            Expanded(
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Text(
+                                  'Semana #$weekNumber - ${monthNamesComplete[startOfWeek.month - 1].toUpperCase()} ${startOfWeek.year}',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
                             SizedBox(
                               width: 120,
                               height: 32,
@@ -3234,6 +3388,45 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                             ),
                           ],
                         ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    'Contas a Pagar: ${moneyFormat.format(weekPayTotal)}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.red.shade700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerRight,
+                                  child: Text(
+                                    'Contas a Receber: ${moneyFormat.format(weekReceiveTotal)}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.blue.shade700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -3260,6 +3453,14 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                               final isHoliday = holidayDays.contains(holidayKey);
                               final holidayName = isHoliday ? holidayNames[holidayKey] : null;
 
+                              final dailyTotals = totalsByDate[holidayKey];
+                              final previsto = dailyTotals?.previsto ?? 0.0;
+                              final lancado = dailyTotals?.lancado ?? 0.0;
+                              final recebimentos = dailyTotals?.recebimentos ?? 0.0;
+                              final previstoCount = dailyTotals?.previstoCount ?? 0;
+                              final lancadoCount = dailyTotals?.lancadoCount ?? 0;
+                              final recebimentosCount = dailyTotals?.recebimentosCount ?? 0;
+
                               Color bgColor = Colors.white;
                               Color textColor = Theme.of(context).colorScheme.onSurface;
 
@@ -3277,42 +3478,143 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 textColor = Colors.white;
                               }
 
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: bgColor,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.black, width: 1.5),
+                              return GestureDetector(
+                                onTap: () => _openAccountsForDay(
+                                  day.date.day,
+                                  day.date.month,
+                                  day.date.year,
                                 ),
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      day.label,
-                                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            '${day.date.day}',
-                                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
-                                          ),
-                                          if (isToday)
-                                            Text('HOJE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: textColor)),
-                                          if (isHoliday && holidayName != null)
-                                            Text(
-                                              holidayName,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: textColor),
-                                            ),
-                                        ],
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: bgColor,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.black, width: 1.5),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        day.label,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: textColor,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              '${day.date.day}',
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                color: textColor,
+                                              ),
+                                            ),
+                                            if (isToday)
+                                              Text(
+                                                'HOJE',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: textColor,
+                                                ),
+                                              ),
+                                            if (previsto > 0)
+                                              Padding(
+                                                padding: const EdgeInsets.only(top: 2),
+                                                child: Text.rich(
+                                                  TextSpan(
+                                                    children: [
+                                                      TextSpan(text: moneyFormat.format(previsto)),
+                                                      TextSpan(
+                                                        text: ' [$previstoCount]',
+                                                        style: TextStyle(
+                                                          color: Colors.blue.shade700,
+                                                          fontWeight: FontWeight.w700,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: textColor,
+                                                  ),
+                                                ),
+                                              ),
+                                            if (lancado > 0)
+                                              Padding(
+                                                padding: const EdgeInsets.only(top: 2),
+                                                child: Text.rich(
+                                                  TextSpan(
+                                                    children: [
+                                                      TextSpan(text: moneyFormat.format(lancado)),
+                                                      TextSpan(
+                                                        text: ' [$lancadoCount]',
+                                                        style: TextStyle(
+                                                          color: Colors.red.shade700,
+                                                          fontWeight: FontWeight.w700,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Colors.red.shade700,
+                                                  ),
+                                                ),
+                                              ),
+                                            if (recebimentos > 0)
+                                              Padding(
+                                                padding: const EdgeInsets.only(top: 2),
+                                                child: Text.rich(
+                                                  TextSpan(
+                                                    children: [
+                                                      TextSpan(text: moneyFormat.format(recebimentos)),
+                                                      TextSpan(
+                                                        text: ' [$recebimentosCount]',
+                                                        style: TextStyle(
+                                                          color: Colors.green.shade700,
+                                                          fontWeight: FontWeight.w700,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Colors.green.shade700,
+                                                  ),
+                                                ),
+                                              ),
+                                            if (isHoliday && holidayName != null)
+                                              Text(
+                                                holidayName,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: textColor,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               );
                             }).toList(),
@@ -3337,6 +3639,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
               ),
             ),
           ),
+        );
+          },
         );
       },
     );
@@ -3475,14 +3779,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                   onPressed: () => _changeYear(-1),
                                   tooltip: 'Ano anterior',
                                   splashRadius: 18,
-                                  icon: const Text(
-                                    '<',
-                                    style: TextStyle(
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.blue,
-                                    ),
-                                  ),
+                                  icon: const Icon(Icons.chevron_left, color: Colors.blue),
+                                  iconSize: 32,
                                 ),
                                 Text(
                                   '$_selectedYear',
@@ -3498,14 +3796,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                   onPressed: () => _changeYear(1),
                                   tooltip: 'Proximo ano',
                                   splashRadius: 18,
-                                  icon: const Text(
-                                    '>',
-                                    style: TextStyle(
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.blue,
-                                    ),
-                                  ),
+                                  icon: const Icon(Icons.chevron_right, color: Colors.blue),
+                                  iconSize: 32,
                                 ),
                               ],
                             ),
@@ -3515,8 +3807,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                _buildTodayButton(),
-                                const SizedBox(width: 8),
                                 SizedBox(
                                   width: 120,
                                   height: 32,
