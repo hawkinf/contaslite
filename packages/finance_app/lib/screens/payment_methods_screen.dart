@@ -3,7 +3,6 @@ import '../database/db_helper.dart';
 import '../models/payment_method.dart';
 import '../widgets/app_input_decoration.dart';
 import '../services/prefs_service.dart';
-import '../widgets/date_range_app_bar.dart';
 import '../widgets/dialog_close_button.dart';
 
 class PaymentMethodsScreen extends StatefulWidget {

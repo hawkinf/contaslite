@@ -5,7 +5,6 @@ import '../models/bank_account.dart';
 import '../services/bank_service.dart';
 import '../widgets/app_input_decoration.dart';
 import '../services/prefs_service.dart';
-import '../widgets/date_range_app_bar.dart';
 
 class BankAccountsScreen extends StatefulWidget {
   const BankAccountsScreen({super.key});
