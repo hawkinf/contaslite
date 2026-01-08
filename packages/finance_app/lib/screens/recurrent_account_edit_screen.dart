@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+// ignore_for_file: use_build_context_synchronously
 import 'package:flutter/services.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import '../database/db_helper.dart';
@@ -29,7 +30,7 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
   late TextEditingController _dueDayController;
   late TextEditingController _observationController;
   late TextEditingController _averageValueController;
-  late double _currentLaunchedValue;
+  
 
   late Account _parentAccount;
   bool _isEditingParent = false;
@@ -90,7 +91,7 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
     _observationController = TextEditingController(text: _parentAccount.observation ?? '');
     _selectedColor = _parentAccount.cardColor ?? 0xFFFFFFFF;
     _payInAdvance = _parentAccount.payInAdvance;
-    _currentLaunchedValue = _parentAccount.value;
+    
   }
 
   Future<void> _initializeAsync() async {
@@ -154,7 +155,6 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
       await DatabaseHelper.instance.updateAccount(updated);
       if (!mounted) return;
       setState(() {
-        _currentLaunchedValue = launchedValue;
         _shouldRefreshOnPop = true;
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -257,17 +257,7 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
       debugPrint('   - Valor Médio (estimatedValue): $averageValue');
       debugPrint('   - Valor Lançado (value): $newValue');
 
-      // Criar versão atualizada do pai
-      final updatedParent = _parentAccount.copyWith(
-        typeId: _selectedType!.id!,
-        description: newDesc,
-        value: newValue,  // ✅ CORRIGIDO: value é o Valor Lançado
-        estimatedValue: averageValue,  // ✅ ADICIONADO: estimatedValue é o Valor Médio
-        dueDay: dueDay,
-        payInAdvance: _payInAdvance,
-        cardColor: _selectedColor,
-        observation: _observationController.text,
-      );
+      // Criar versão atualizada do pai (será construída conforme o escopo selecionado)
 
       // Mostrar diálogo de escolha para salvar
       if (!mounted) return;
@@ -431,10 +421,10 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
       }
 
       if (!mounted) return;
-      Navigator.pop(context, true);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Recorrência atualizada com sucesso!'), backgroundColor: Colors.green),
       );
+      Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -472,6 +462,7 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
         ),
       );
 
+      if (!mounted) return;
       if (confirm == true) {
         await _deleteRecurrence();
       }
@@ -514,8 +505,11 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
             ],
           ),
         );
+        if (!mounted) return;
         if (confirmed != true) return;
-        await _deleteSingleInstance();
+        final deleted = await _deleteSingleInstance();
+        if (!mounted) return;
+        if (deleted) Navigator.pop(context, true);
       } else if (action == 'series') {
         // Confirmar antes de apagar
         final confirmed = await showDialog<bool>(
@@ -534,22 +528,25 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
             ],
           ),
         );
+        if (!mounted) return;
         if (confirmed != true) return;
-        await _deleteRecurrence();
+        final deleted = await _deleteRecurrence();
+        if (!mounted) return;
+        if (deleted) Navigator.pop(context, true);
       }
     }
   }
 
-  Future<void> _deleteSingleInstance() async {
-    if (widget.account.id == null) return;
+  Future<bool> _deleteSingleInstance() async {
+    if (widget.account.id == null) return false;
     await DatabaseHelper.instance.deleteAccount(widget.account.id!);
-    if (mounted) Navigator.pop(context, true);
+    return true;
   }
 
-  Future<void> _deleteRecurrence() async {
-    if (_parentAccount.id == null) return;
+  Future<bool> _deleteRecurrence() async {
+    if (_parentAccount.id == null) return false;
     await DatabaseHelper.instance.deleteSubscriptionSeries(_parentAccount.id!);
-    if (mounted) Navigator.pop(context, true);
+    return true;
   }
 
   @override
