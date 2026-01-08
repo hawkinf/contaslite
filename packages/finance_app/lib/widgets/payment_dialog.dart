@@ -455,7 +455,10 @@ class _PaymentDialogState extends State<PaymentDialog> {
       return;
     }
 
-    if (_selectedMethod!.requiresBank && _selectedBank == null) {
+    if ((_selectedMethod!.requiresBank ||
+            _selectedMethod!.type == 'PIX' ||
+            _selectedMethod!.type == 'BANK_DEBIT') &&
+        _selectedBank == null) {
       _showError('Selecione um banco');
       return;
     }
@@ -637,8 +640,11 @@ class _PaymentDialogState extends State<PaymentDialog> {
           ),
           const SizedBox(height: 24),
 
-          // Seção Condicional: Banco (PIX ou Débito C/C)
-          if (_selectedMethod != null && _selectedMethod!.requiresBank) ...[
+            // Seção Condicional: Banco (PIX ou Débito C/C)
+            if (_selectedMethod != null &&
+              (_selectedMethod!.requiresBank ||
+                _selectedMethod!.type == 'PIX' ||
+                _selectedMethod!.type == 'BANK_DEBIT')) ...[
             Text(
               'Conta Bancária',
               style: TextStyle(
