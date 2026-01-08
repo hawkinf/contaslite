@@ -101,6 +101,7 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
         final parent = await DatabaseHelper.instance.readAccountById(widget.account.recurrenceId!);
         if (parent != null && mounted) {
           setState(() {
+            // Atualiza referência ao pai, mas NÃO sobrescreve campos da instância filha
             _parentAccount = parent;
             if (_isEditingParent) {
               _descController.text = parent.description;
@@ -109,8 +110,6 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
               _observationController.text = parent.observation ?? '';
               _selectedColor = parent.cardColor ?? 0xFFFFFFFF;
               _payInAdvance = parent.payInAdvance;
-            } else {
-              _averageValueController.text = UtilBrasilFields.obterReal(parent.estimatedValue ?? parent.value);
             }
           });
         }
@@ -578,8 +577,9 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
             appBar: DateRangeAppBar(
               title: 'Editar Recorrência',
               range: range,
-              onPrevious: () => PrefsService.shiftDateRange(-1),
-              onNext: () => PrefsService.shiftDateRange(1),
+              // Durante edição não permitir troca de mês pela AppBar
+              onPrevious: null,
+              onNext: null,
               backgroundColor: Colors.blue.shade700,
               foregroundColor: Colors.white,
               actions: [

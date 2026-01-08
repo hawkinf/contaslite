@@ -4,8 +4,8 @@ import 'package:finance_app/services/prefs_service.dart';
 
 class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
   final DateTimeRange range;
-  final VoidCallback onPrevious;
-  final VoidCallback onNext;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
   final String? title;
   final List<Widget>? actions;
   final Widget? leading;
@@ -19,8 +19,8 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
   const DateRangeAppBar({
     super.key,
     required this.range,
-    required this.onPrevious,
-    required this.onNext,
+    this.onPrevious,
+    this.onNext,
     this.title,
     this.actions,
     this.leading,
