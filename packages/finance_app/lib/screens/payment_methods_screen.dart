@@ -224,11 +224,8 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
       valueListenable: PrefsService.dateRangeNotifier,
       builder: (context, range, _) {
         return Scaffold(
-      appBar: DateRangeAppBar(
-          title: 'Formas de Pagamento',
-          range: range,
-          onPrevious: () => PrefsService.shiftDateRange(-1),
-          onNext: () => PrefsService.shiftDateRange(1),
+      appBar: AppBar(
+          title: const Text('Formas de Pagamento'),
         ),
         floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showPaymentMethodDialog(),

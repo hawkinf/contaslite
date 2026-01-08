@@ -38,11 +38,8 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
       valueListenable: PrefsService.dateRangeNotifier,
       builder: (context, range, _) {
         return Scaffold(
-          appBar: DateRangeAppBar(
-            title: 'Tabelas de Contas',
-            range: range,
-            onPrevious: () => PrefsService.shiftDateRange(-1),
-            onNext: () => PrefsService.shiftDateRange(1),
+          appBar: AppBar(
+            title: const Text('Tabelas de Contas'),
             actions: [
               IconButton(
                 icon: const Icon(Icons.info_outline),

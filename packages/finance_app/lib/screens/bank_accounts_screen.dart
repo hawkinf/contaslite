@@ -423,11 +423,8 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
       valueListenable: PrefsService.dateRangeNotifier,
       builder: (context, range, _) {
         return Scaffold(
-      appBar: DateRangeAppBar(
-          title: 'Bancos',
-          range: range,
-          onPrevious: () => PrefsService.shiftDateRange(-1),
-          onNext: () => PrefsService.shiftDateRange(1),
+      appBar: AppBar(
+          title: const Text('Bancos'),
           actions: [
             IconButton(
               icon: const Icon(Icons.payments),
