@@ -505,9 +505,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       debugPrint('📊 Depois de filtros: ${processedList.length} contas');
       processedList.sort((a, b) => a.dueDay.compareTo(b.dueDay));
-      double total = processedList.fold(
-          0, (sum, item) => item.isRecurrent ? sum : sum + item.value);
-      double totalForecast = processedList.fold(0, (sum, item) {
+      final double totalForecast = processedList.fold(0.0, (sum, item) {
         if (item.cardBrand != null && item.isRecurrent) {
           final breakdown = CardBreakdown.parse(item.observation);
           return sum + breakdown.total;
@@ -526,13 +524,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ? <int, Map<String, dynamic>>{}
           : await DatabaseHelper.instance.getPaymentsForAccountsByMonth(
               paymentIds, _startDate.month, _startDate.year);
+      final totalPaid = paymentIds.isEmpty
+          ? 0.0
+          : await DatabaseHelper.instance.getPaymentsSumForAccountsByMonth(
+              paymentIds, _startDate.month, _startDate.year);
+      final totalRemaining = math.max(0.0, totalForecast - totalPaid);
 
       if (mounted) {
         setState(() {
           _displayList = processedList;
           _typeNames = typeMap;
-          _totalPeriod = total;
-          _totalForecast = totalForecast;
+          _totalPeriod = totalPaid;
+          _totalForecast = totalRemaining;
           _installmentSummaries = installmentSummaries;
           _paymentInfo = paymentInfo;
           _isLoading = false;

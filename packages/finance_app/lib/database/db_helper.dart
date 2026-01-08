@@ -1235,6 +1235,31 @@ class DatabaseHelper {
 
   // ========== FUNÇÕES DE DEBUG ==========
 
+  Future<double> getPaymentsSumForAccountsByMonth(
+    List<int> accountIds,
+    int month,
+    int year,
+  ) async {
+    if (accountIds.isEmpty) return 0.0;
+    final db = await database;
+    final placeholders = List.filled(accountIds.length, '?').join(',');
+    final monthStr = month.toString().padLeft(2, '0');
+    final yearStr = year.toString();
+    final result = await db.rawQuery('''
+      SELECT COALESCE(SUM(p.value), 0) as total
+      FROM payments p
+      WHERE p.account_id IN ($placeholders)
+        AND strftime('%m', p.payment_date) = ?
+        AND strftime('%Y', p.payment_date) = ?
+    ''', [...accountIds, monthStr, yearStr]);
+
+    if (result.isEmpty) return 0.0;
+    final total = result.first['total'];
+    if (total is int) return total.toDouble();
+    if (total is double) return total;
+    return double.tryParse(total?.toString() ?? '') ?? 0.0;
+  }
+
   /// Reset banco de dados (para testes/debug)
   Future<void> resetDatabase() async {
     final dbPath = await getDatabasesPath();
