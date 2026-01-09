@@ -37,16 +37,17 @@ class DatabaseInitializationService {
       debugPrint('[DB INIT] Tipos de conta encontrados: $typeCount');
       debugPrint('[DB INIT] Formas de pagamento encontradas: $methodCount');
 
-      if (typeCount == 0) {
+      // SOMENTE popular dados padrão se o banco estiver VAZIO (primeiro uso)
+      // Não recriar categorias em todo startup - isso sobrescreve edições do usuário!
+      if (typeCount == 0 && methodCount == 0) {
         debugPrint('[DB INIT] Banco vazio detectado. Inicializando com categorias padrao...');
-      }
+        await populateDefaultData();
 
-      await populateDefaultData();
-
-      typeCount = await db.countAccountTypes();
-      methodCount = await db.countPaymentMethods(onlyActive: false);
-      if (typeCount > 0 && methodCount > 0) {
+        typeCount = await db.countAccountTypes();
+        methodCount = await db.countPaymentMethods(onlyActive: false);
         debugPrint('[DB INIT] Banco de dados inicializado com sucesso!');
+      } else {
+        debugPrint('[DB INIT] Banco ja possui dados. Pulando populacao automatica.');
       }
 
       // Validar integridade do banco (skip por agora - pode travar em algumas situa‡äes)
@@ -62,12 +63,12 @@ class DatabaseInitializationService {
     }
   }
 
-  Future<void> populateDefaultData() async {
+  Future<void> populateDefaultData({String tipoPessoa = 'Ambos (PF e PJ)'}) async {
     try {
-      debugPrint('[DB INIT] Populando dados padrao...');
+      debugPrint('[DB INIT] Populando dados padrao (Tipo: $tipoPessoa)...');
       final db = DatabaseHelper.instance;
       final defaultService = DefaultAccountCategoriesService.instance;
-      final categoriesMap = defaultService.getCategoriesAsMap();
+      final categoriesMap = defaultService.getCategoriesAsMap(tipoPessoa: tipoPessoa);
       final existingTypes = await db.readAllTypes();
       final typeIdByName = <String, int>{
         for (final type in existingTypes) type.name.trim().toUpperCase(): type.id!,
@@ -112,8 +113,8 @@ class DatabaseInitializationService {
 
         if (normalizedName ==
             DefaultAccountCategoriesService.recebimentosName.toUpperCase()) {
-          for (final entry
-              in DefaultAccountCategoriesService.recebimentosChildDefaults.entries) {
+          final recebimentosChildren = defaultService.getRecebimentosChildDefaults(tipoPessoa: tipoPessoa);
+          for (final entry in recebimentosChildren.entries) {
             final parentName = entry.key;
             final parentNormalized = parentName.trim().toUpperCase();
             if (!existingNames.contains(parentNormalized)) {

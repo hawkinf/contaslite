@@ -1,0 +1,29 @@
+Contas a Receber Pessoa Juridica:
+ndas: Marketplace, Venda à vista (PIX/dinheiro), Vendas com cartão, Outros
+Serviços: Consultoria, Contrato mensal (recorrente), Instalação/Projeto, Manutenção, Serviço avulso, Suporte, Outros
+Recebimentos Financeiros: Cashback, Juros recebidos, Rendimentos (aplicações), Outros
+Reembolsos e Ajustes: Ajustes/Acertos, Estornos recebidos, Reembolsos/Ressarcimentos, Outros
+Vendas de Ativos: Venda de ativo (equipamento/usado), Outros
+
+Pessoa Física — Contas a Receber
+Salário/Pró-Labore: 13º Salário, Abono de Férias, Adiantamento Salarial, Bônus, Férias, PLR, Pró-labore, Salário Mensal, Outros,
+Aposentadoria/Benefícios: Auxílios, INSS, Pensão, Previdência Privada, Outros
+Outras Receitas: Ajustes Positivos, Ganhos Eventuais, Indenizações, Restituições, Venda de Bens, Outros
+Presentes/Doações: Ajuda Familiar, Doações, Herança, Mesada, Premiações, Presentes/Doações, Outros
+Reembolsos e Restituições: Ajustes, Ajustes Positivos, Devoluções, Estornos, Médico, Trabalho, Viagem, Reembolso (empresa), Reembolso (saúde), Restituição IRPF, Outros
+Rendas de Aluguel: Arrendamento, Comercial, Equipamentos, Garagem, Residencial, Outros
+Receitas Financeiras: Cashback, Dividendos, Juros recebidos, Rendimentos (aplicações), Outros
+Trabalho Autônomo: Bicos, Comissões, Consultorias, Diárias, Freelance, Honorários, Serviços Eventuais, Outros
+
+Contas a Receber Pessoa Fisica e Juridica
+Vendas: Marketplace, Venda à vista (PIX/dinheiro), Vendas com cartão, Outros
+Serviços: Consultoria, Contrato mensal (recorrente), Instalação/Projeto, Manutenção, Serviço avulso, Suporte, Outros
+Salário/Pró-Labore: 13º Salário, Abono de Férias, Adiantamento Salarial, Bônus, Férias, PLR, Pró-Labore, Salário Mensal
+Aposentadoria/Benefícios: Auxílios, INSS, Pensão, Previdência Privada
+Outras Receitas: Ajustes Positivos, Ganhos Eventuais, Indenizações, Restituições, Venda de Bens
+Presentes/Doações: Ajuda Familiar, Doações, Herança, Mesada, Premiações, Presentes/Doações
+Rendas de Aluguel: Arrendamento, Comercial, Equipamentos, Garagem, Residencial
+Receitas Financeiras: Cashback, Dividendos, Juros recebidos, Rendimentos (aplicações), Outros
+Trabalho Autônomo: Bicos, Comissões, Consultorias, Diárias, Freelance, Honorários, Serviços Eventuais
+Reembolsos e Ajustes: Ajustes/Acertos, Devoluções, Estornos, Estornos recebidos, Médico, Trabalho, Viagem, Reembolso (empresa), Reembolso (saúde), Reembolsos/Ressarcimentos, Restituição IRPF, Outroso (empresa), Reembolso (saúde), Reembolsos/Ressarcimentos, Restituição IRPF, Outros
+Vendas de Ativos: Venda de ativo (equipamento/usado), Outros

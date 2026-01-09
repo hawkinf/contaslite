@@ -1,0 +1,42 @@
+Contas a Pagar Pessoa Fisica e Juridica:
+
+Alimentação: Açougue, Bares, Delivery, Lanches/Café, Padaria, Restaurantes, Supermercado, Outros
+Assinaturas e Serviços Digitais: Música, Nuvem (Google/Apple/Microsoft), Software, Streaming, Outros
+Cartões de Crédito: AMEX, ELO, MASTERCARD, VISA
+Comunicação: Celular, Internet comercial, Internet residencial, Telefone, Outros
+Despesas Operacionais / Moradia: Água, Aluguel, Condomínio, Energia elétrica, Gás, Internet, Limpeza, Manutenção/Reformas, Material de consumo, Material de escritório, Seguro residencial, Outros
+Dívidas e Obrigações Financeiras: Acordos/Renegociações, Consórcio, Empréstimo, Financiamento imobiliário, Financiamento veículo, Outros
+Educação: Cursos, Escola/Faculdade, Idiomas, Livros/Materiais, Outros
+Família e Pets: Despesas com filhos, Despesas com pets, Outros
+Financeiro Geral: Antecipação de recebíveis, IOF, Juros, Juros bancários, Multas, Tarifas bancárias, Outros
+Fornecedores: Compra de insumos, Compra de mercadorias, Fornecedor A, Fornecedor B, Outros
+Impostos e Tributos: DAS, FGTS, INSS, ISS, IPTU e taxas, Simples Nacional, Taxas estaduais, Taxas municipais, Outros
+Lazer e Viagens: Cinema, Shows, Viagens, Outros
+Pessoal: Pró-labore, Rescisões, Salários, Vale-refeição, Vale-transporte, Outros
+Saúde: Academia, Consultas, Dentista, Exames, Farmácia, Plano de saúde, Terapias, Outros
+Tecnologia: Assinaturas corporativas, Cloud / Servidores, Computadores, Software, Outros
+Veículo: Combustível, Estacionamento, IPVA/Licenciamento, Manutenções/Reparos, Multas, Seguro, Uber, Outros
+
+Contas a Pagar Pessoa Fisica:
+
+Alimentação: Açougue, Bares, Delivery, Lanches/Café, Padaria, Restaurantes, Supermercado, Outros
+Moradia/Consumo: Água, Aluguel, Condomínio, Gás, Internet, IPTU e taxas, Luz, Manutenção/Reformas, Seguro residencial, Outros
+Saúde: Academia, Consultas, Dentista, Exames, Farmácia, Plano de saúde, Terapias, Outros
+Assinaturas e Serviços Digitais: Música, Nuvem (Google/Apple/MS), Streaming, Outros
+Lazer/Viagens: Cinema, Hobbies, Lanches/Café, Presentes, Restaurantes, Shows, Viagens, Outros
+Cartões de Crédito: AMEX, ELO, MASTERCARD, VISA
+Veículo: Combustível, Estacionamento, IPVA/Licenciamento, Manutenções/Reparos, Multas, Seguro, Uber, Outros
+Educação: Cursos, Escola/Faculdade, Idiomas, Livros/Materiais, Outros
+Dívidas: Acordos/Renegociações, Consórcio, Empréstimo, Financiamento imobiliário, Financiamento veículo, Outros
+Família e Pets: Despesas com filhos, Despesas com pets, Outros
+
+Contas a Pagar Pessoa Juridica:
+
+Despesas Operacionais: Água, Aluguel, Condomínio, Energia elétrica, Internet, Limpeza, Manutenção, Material de consumo, Material de escritório, Telefone, Outros
+Pessoal: FGTS, INSS, Pró-labore, Rescisões, Salários, Vale-refeição, Vale-transporte, Outros
+Impostos e Tributos: DAS, ISS, Simples Nacional, Taxas estaduais, Taxas municipais, Outros
+Financeiras: Antecipação de recebíveis, Juros bancários, Tarifa de cartão (crédito), Tarifa de cartão (débito), Tarifas bancárias, Outros
+Fornecedores: Compra de insumos, Compra de mercadorias, Fornecedor A, Fornecedor B, Outros
+Comunicação: Celular, Internet comercial, Internet residencial, Outros
+Tecnologia: Assinaturas (Adobe, Microsoft, etc.), Cloud / Servidores, Computadores, Software, Outros
+Financeiro Geral: IOF, Juros, Multas, Tarifas bancárias, Outros

@@ -5,6 +5,13 @@ import '../models/account_type.dart';
 import '../services/default_account_categories_service.dart';
 import '../widgets/app_input_decoration.dart';
 
+/// Opções de tipo de pessoa para seleção
+const List<String> _tipoPessoaOptions = [
+  'Pessoa Física',
+  'Pessoa Jurídica',
+  'Ambos (PF e PJ)',
+];
+
 class RecebimentosTableScreen extends StatefulWidget {
   final bool asDialog;
 
@@ -19,7 +26,7 @@ class _RecebimentosTableScreenState extends State<RecebimentosTableScreen> {
       DefaultAccountCategoriesService.recebimentosName;
   static const String _childSeparator =
       DefaultAccountCategoriesService.recebimentosChildSeparator;
-  static const Map<String, List<String>> _recebimentosDefaults =
+  static final Map<String, List<String>> _recebimentosDefaults =
       DefaultAccountCategoriesService.recebimentosChildDefaults;
 
   AccountType? _type;
@@ -79,18 +86,55 @@ class _RecebimentosTableScreenState extends State<RecebimentosTableScreen> {
   }
 
   Future<void> _populateDefaults() async {
+    // Mostrar diálogo de seleção de tipo de pessoa
+    final tipoPessoa = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        String selected = _tipoPessoaOptions[2]; // Ambos (PF e PJ) como padrão
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: const Text('Popular Categorias'),
+            content: RadioGroup<String>(
+              groupValue: selected,
+              onChanged: (value) {
+                if (value != null) {
+                  setDialogState(() => selected = value);
+                }
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Selecione o tipo de pessoa:'),
+                  const SizedBox(height: 16),
+                  ..._tipoPessoaOptions.map((option) => ListTile(
+                        title: Text(option),
+                        leading: Radio<String>(value: option),
+                        onTap: () => setDialogState(() => selected = option),
+                      )),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, selected),
+                child: const Text('Popular'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (tipoPessoa == null || !mounted) return;
+
     final typeId = _type?.id ?? await _ensureTypeId();
-    final defaults = DefaultAccountCategoriesService.instance.getCategoriesAsMap();
-    if (!defaults.containsKey(_recebimentosName)) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nenhuma categoria padrao para recebimentos'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
+    final defaultService = DefaultAccountCategoriesService.instance;
+    final recebimentosDefaults = defaultService.getRecebimentosChildDefaults(tipoPessoa: tipoPessoa);
 
     int addedCount = 0;
 
@@ -101,13 +145,13 @@ class _RecebimentosTableScreenState extends State<RecebimentosTableScreen> {
     // Construir lista de categorias a criar
     final categoriesToCreate = <AccountCategory>[];
 
-    for (final parent in _recebimentosDefaults.keys) {
+    for (final parent in recebimentosDefaults.keys) {
       if (!existingCategoryNames.contains(parent.toUpperCase())) {
         categoriesToCreate.add(AccountCategory(accountId: typeId, categoria: parent));
         addedCount++;
       }
 
-      for (final child in _recebimentosDefaults[parent]!) {
+      for (final child in recebimentosDefaults[parent]!) {
         final fullName = _fullChildName(parent, child);
         if (!existingCategoryNames.contains(fullName.toUpperCase())) {
           categoriesToCreate.add(AccountCategory(accountId: typeId, categoria: fullName));

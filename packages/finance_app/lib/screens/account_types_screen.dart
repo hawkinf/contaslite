@@ -8,6 +8,13 @@ import '../services/credit_card_brand_service.dart';
 import '../services/default_account_categories_service.dart';
 import 'recebimentos_table_screen.dart';
 
+/// Opções de tipo de pessoa para seleção
+const List<String> tipoPessoaOptions = [
+  'Pessoa Física',
+  'Pessoa Jurídica',
+  'Ambos (PF e PJ)',
+];
+
 class AccountTypesScreen extends StatefulWidget {
   const AccountTypesScreen({super.key});
 
@@ -263,45 +270,134 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
   }
 
   Future<void> _populateDefaults() async {
-    // Cartões de crédito padrão do Banco Central
-    final defaultTypes = [
-      'Cartão Nacional',
-      'Cartão Internacional',
-      'Cartão Débito',
-      'Conta Corrente',
-      'Conta Poupança',
-      'Outro',
-    ];
+    // Mostrar diálogo de seleção de tipo de pessoa
+    final tipoPessoa = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        String selected = tipoPessoaOptions[2]; // Ambos (PF e PJ) como padrão
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: const Text('Popular Categorias'),
+            content: RadioGroup<String>(
+              groupValue: selected,
+              onChanged: (value) {
+                if (value != null) {
+                  setDialogState(() => selected = value);
+                }
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Selecione o tipo de pessoa:'),
+                  const SizedBox(height: 16),
+                  ...tipoPessoaOptions.map((option) => ListTile(
+                        title: Text(option),
+                        leading: Radio<String>(value: option),
+                        onTap: () => setDialogState(() => selected = option),
+                      )),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, selected),
+                child: const Text('Popular'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
 
-    int addedCount = 0;
+    if (tipoPessoa == null || !mounted) return;
 
-    // Carregar todos os tipos existentes uma única vez (em vez de verificar um por um)
+    // Obter categorias do serviço com base no tipo selecionado
+    final defaultService = DefaultAccountCategoriesService.instance;
+    final categoriesMap = defaultService.getCategoriesAsMap(tipoPessoa: tipoPessoa);
+
+    int typesCreated = 0;
+    int categoriesCreated = 0;
+
+    // Carregar todos os tipos existentes
     final existingTypes = await DatabaseHelper.instance.readAllTypes();
-    final existingTypeNames = {for (final type in existingTypes) type.name.toUpperCase()};
+    final typeIdByName = <String, int>{
+      for (final type in existingTypes) type.name.trim().toUpperCase(): type.id!,
+    };
 
-    // Criar lista de tipos que não existem
-    final typesToCreate = <AccountType>[];
-    for (final typeName in defaultTypes) {
-      if (!existingTypeNames.contains(typeName.toUpperCase())) {
-        typesToCreate.add(AccountType(name: typeName));
-        addedCount++;
+    // Criar tipos e subcategorias
+    for (final typeName in categoriesMap.keys) {
+      final normalizedName = typeName.trim().toUpperCase();
+      int typeId;
+
+      if (typeIdByName.containsKey(normalizedName)) {
+        typeId = typeIdByName[normalizedName]!;
+      } else {
+        typeId = await DatabaseHelper.instance.createType(AccountType(name: typeName));
+        typeIdByName[normalizedName] = typeId;
+        typesCreated++;
+      }
+
+      // Criar subcategorias
+      final subcategories = categoriesMap[typeName]!;
+      final existingCategories = await DatabaseHelper.instance.readAccountCategories(typeId);
+      final existingNames = existingCategories.map((c) => c.categoria.trim().toUpperCase()).toSet();
+
+      for (final subcategory in subcategories) {
+        final normalizedSub = subcategory.trim().toUpperCase();
+        if (existingNames.contains(normalizedSub)) continue;
+
+        await DatabaseHelper.instance.createAccountCategory(
+          AccountCategory(accountId: typeId, categoria: subcategory),
+        );
+        existingNames.add(normalizedSub);
+        categoriesCreated++;
+      }
+
+      // Se for Recebimentos, adicionar subcategorias filhas
+      if (normalizedName == DefaultAccountCategoriesService.recebimentosName.toUpperCase()) {
+        final recebimentosChildren = defaultService.getRecebimentosChildDefaults(tipoPessoa: tipoPessoa);
+        for (final entry in recebimentosChildren.entries) {
+          final parentName = entry.key;
+          final parentNormalized = parentName.trim().toUpperCase();
+
+          if (!existingNames.contains(parentNormalized)) {
+            await DatabaseHelper.instance.createAccountCategory(
+              AccountCategory(accountId: typeId, categoria: parentName),
+            );
+            existingNames.add(parentNormalized);
+            categoriesCreated++;
+          }
+
+          for (final child in entry.value) {
+            final fullName = defaultService.buildRecebimentosChildName(parentName, child);
+            final fullNormalized = fullName.trim().toUpperCase();
+            if (existingNames.contains(fullNormalized)) continue;
+
+            await DatabaseHelper.instance.createAccountCategory(
+              AccountCategory(accountId: typeId, categoria: fullName),
+            );
+            existingNames.add(fullNormalized);
+            categoriesCreated++;
+          }
+        }
       }
     }
 
-    // Criar todos de uma vez (se houver implementação de batch) ou usar loop mais rápido
-    for (final type in typesToCreate) {
-      await DatabaseHelper.instance.createType(type);
-    }
-
     if (mounted) {
+      final total = typesCreated + categoriesCreated;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            addedCount > 0
-                ? '$addedCount tipos adicionados com sucesso!'
-                : 'Todos os tipos padrão já existem!',
+            total > 0
+                ? '$typesCreated tipos e $categoriesCreated categorias adicionados!'
+                : 'Todas as categorias padrão já existem!',
           ),
-          backgroundColor: addedCount > 0 ? Colors.green : Colors.orange,
+          backgroundColor: total > 0 ? Colors.green : Colors.orange,
         ),
       );
     }
@@ -458,7 +554,7 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
 
   Future<void> _editCategory(AccountCategory category) async {
     final controller = TextEditingController(text: category.categoria);
-    
+
     final newName = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -474,7 +570,7 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text),
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
             child: const Text('Salvar'),
           ),
         ],
@@ -482,11 +578,32 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
     );
 
     if (newName != null && newName.isNotEmpty && newName != category.categoria) {
+      debugPrint('[EDIT] Editando categoria: ID=${category.id}, de "${category.categoria}" para "$newName"');
+
+      // Verificar se o novo nome já existe (excluindo o registro atual)
+      final exists = await DatabaseHelper.instance.checkAccountCategoryExists(widget.typeId, newName);
+      if (exists) {
+        debugPrint('[EDIT] Nome "$newName" já existe!');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Uma categoria com este nome já existe'), backgroundColor: Colors.red),
+          );
+        }
+        controller.dispose();
+        return;
+      }
+
       final updated = category.copyWith(categoria: newName);
-      await DatabaseHelper.instance.updateAccountCategory(updated);
+      debugPrint('[EDIT] Chamando updateAccountCategory com ID=${updated.id}');
+      final rowsAffected = await DatabaseHelper.instance.updateAccountCategory(updated);
+      debugPrint('[EDIT] Resultado do update: $rowsAffected linhas');
+
+      // Recarregar dados do banco para garantir sincronização
+      final refreshed = await DatabaseHelper.instance.readAccountCategories(widget.typeId);
+      debugPrint('[EDIT] Recarregado ${refreshed.length} categorias do banco');
       setState(() {
-        final idx = _categorias.indexWhere((c) => c.id == category.id);
-        if (idx >= 0) _categorias[idx] = updated;
+        _categorias.clear();
+        _categorias.addAll(refreshed);
       });
       widget.onCategoriasUpdated();
     }

@@ -616,12 +616,30 @@ class DatabaseHelper {
 
   Future<int> updateAccountCategory(AccountCategory categoria) async {
     final db = await database;
-    return await db.update(
+
+    // Se não tiver ID, não pode fazer update
+    if (categoria.id == null) {
+      debugPrint('[DB] ERRO: Tentativa de UPDATE sem ID! Categoria: ${categoria.categoria}');
+      return 0;
+    }
+
+    // Não incluir o ID nos dados de atualização, apenas usar no WHERE
+    final dataToUpdate = {
+      'accountId': categoria.accountId,
+      'description': categoria.categoria,
+    };
+
+    debugPrint('[DB] UPDATE categoria ID=${categoria.id}: "${categoria.categoria}"');
+
+    final rowsAffected = await db.update(
       'account_descriptions',
-      categoria.toMap(),
+      dataToUpdate,
       where: 'id = ?',
       whereArgs: [categoria.id],
     );
+
+    debugPrint('[DB] UPDATE resultado: $rowsAffected linhas afetadas');
+    return rowsAffected;
   }
 
   Future<List<AccountCategory>> readAccountCategories(int accountId) async {

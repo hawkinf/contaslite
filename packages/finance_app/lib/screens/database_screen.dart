@@ -292,108 +292,136 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
   Future<void> _showRecreateTablesDialog() async {
     final confirmController = TextEditingController();
     final parentContext = context;
+    String tipoPessoa = 'Ambos (PF e PJ)';
 
     await showDialog(
       context: parentContext,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text(
-          'Recriar Tabelas Padrão?',
-          style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Isso apagará e recriará as categorias de contas e formas de pagamento.\n\n'
-              'Seus lançamentos serão preservados.\n\n'
-              'Para confirmar, digite SIM no campo abaixo:',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: confirmController,
-              autofocus: true,
-              textCapitalization: TextCapitalization.characters,
-              decoration: buildOutlinedInputDecoration(
-                label: 'Confirmação',
-                icon: Icons.warning_amber_rounded,
-                hintText: 'SIM',
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text(
+            'Recriar Tabelas Padrão?',
+            style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Isso apagará e recriará as categorias de contas e formas de pagamento.\n\n'
+                'Seus lançamentos serão preservados.',
+                style: TextStyle(fontSize: 14),
               ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: tipoPessoa,
+                decoration: buildOutlinedInputDecoration(
+                  label: 'Tipo de Pessoa',
+                  icon: Icons.person_outline,
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'Pessoa Física', child: Text('Pessoa Física')),
+                  DropdownMenuItem(value: 'Pessoa Jurídica', child: Text('Pessoa Jurídica')),
+                  DropdownMenuItem(value: 'Ambos (PF e PJ)', child: Text('Ambos (PF e PJ)')),
+                ],
+                onChanged: (value) {
+                  setDialogState(() {
+                    tipoPessoa = value ?? 'Ambos (PF e PJ)';
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Para confirmar, digite SIM no campo abaixo:',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: confirmController,
+                autofocus: true,
+                textCapitalization: TextCapitalization.characters,
+                decoration: buildOutlinedInputDecoration(
+                  label: 'Confirmação',
+                  icon: Icons.warning_amber_rounded,
+                  hintText: 'SIM',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('CANCELAR', style: TextStyle(color: Colors.grey)),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.amber),
+              onPressed: () async {
+                if (confirmController.text.trim() == 'SIM') {
+                  final selectedTipoPessoa = tipoPessoa;
+                  Navigator.pop(dialogContext);
+
+                  if (mounted) {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
+
+                  try {
+                    final db = DatabaseHelper.instance;
+                    final types = await db.readAllTypes();
+                    for (final type in types) {
+                      await db.deleteType(type.id!);
+                    }
+
+                    final methods = await db.readPaymentMethods(onlyActive: false);
+                    for (final method in methods) {
+                      await db.deletePaymentMethod(method.id!);
+                    }
+
+                    await DatabaseInitializationService.instance.populateDefaultData(
+                      tipoPessoa: selectedTipoPessoa,
+                    );
+
+                    if (!mounted) return;
+                    Navigator.pop(parentContext);
+
+                    ScaffoldMessenger.of(parentContext).showSnackBar(
+                      const SnackBar(
+                        content: Text('Tabelas padrão recriadas com sucesso!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
+                    Navigator.pop(parentContext);
+
+                    ScaffoldMessenger.of(parentContext).showSnackBar(
+                      SnackBar(
+                        content: Text('Erro ao recriar tabelas: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                } else {
+                  if (mounted) {
+                    Navigator.pop(dialogContext);
+                    ScaffoldMessenger.of(parentContext).showSnackBar(
+                      const SnackBar(
+                        content: Text('Ação abortada. Texto de confirmação incorreto.'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('RECRIAR TABELAS'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('CANCELAR', style: TextStyle(color: Colors.grey)),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.amber),
-            onPressed: () async {
-              if (confirmController.text.trim() == 'SIM') {
-                Navigator.pop(dialogContext);
-
-                if (mounted) {
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (context) => const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                }
-
-                try {
-                  final db = DatabaseHelper.instance;
-                  final types = await db.readAllTypes();
-                  for (final type in types) {
-                    await db.deleteType(type.id!);
-                  }
-
-                  final methods = await db.readPaymentMethods(onlyActive: false);
-                  for (final method in methods) {
-                    await db.deletePaymentMethod(method.id!);
-                  }
-
-                  await DatabaseInitializationService.instance.populateDefaultData();
-
-                  if (!mounted) return;
-                  Navigator.pop(parentContext);
-
-                  ScaffoldMessenger.of(parentContext).showSnackBar(
-                    const SnackBar(
-                      content: Text('Tabelas padrão recriadas com sucesso!'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } catch (e) {
-                  if (!mounted) return;
-                  Navigator.pop(parentContext);
-
-                  ScaffoldMessenger.of(parentContext).showSnackBar(
-                    SnackBar(
-                      content: Text('Erro ao recriar tabelas: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              } else {
-                if (mounted) {
-                  Navigator.pop(dialogContext);
-                  ScaffoldMessenger.of(parentContext).showSnackBar(
-                    const SnackBar(
-                      content: Text('Ação abortada. Texto de confirmação incorreto.'),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('RECRIAR TABELAS'),
-          ),
-        ],
       ),
     );
   }
@@ -401,68 +429,95 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
   Future<void> _showWipeDatabaseDialog() async {
     final confirmController = TextEditingController();
     final parentContext = context;
+    String tipoPessoa = 'Ambos (PF e PJ)';
 
     await showDialog(
       context: parentContext,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text(
-          'TEM CERTEZA?',
-          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Isso apagará TODOS os seus lançamentos, tipos de contas e configurações.\n\n'
-              'Para confirmar, digite SIM no campo abaixo:',
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: confirmController,
-              autofocus: true,
-              textCapitalization: TextCapitalization.characters,
-              decoration: buildOutlinedInputDecoration(
-                label: 'Confirmação',
-                icon: Icons.warning_amber_rounded,
-                hintText: 'SIM',
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text(
+            'TEM CERTEZA?',
+            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Isso apagará TODOS os seus lançamentos, tipos de contas e configurações.\n\n'
+                'Após apagar, as tabelas padrão serão recriadas.',
+                style: TextStyle(fontSize: 14),
               ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: tipoPessoa,
+                decoration: buildOutlinedInputDecoration(
+                  label: 'Tipo de Pessoa',
+                  icon: Icons.person_outline,
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'Pessoa Física', child: Text('Pessoa Física')),
+                  DropdownMenuItem(value: 'Pessoa Jurídica', child: Text('Pessoa Jurídica')),
+                  DropdownMenuItem(value: 'Ambos (PF e PJ)', child: Text('Ambos (PF e PJ)')),
+                ],
+                onChanged: (value) {
+                  setDialogState(() {
+                    tipoPessoa = value ?? 'Ambos (PF e PJ)';
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Para confirmar, digite SIM no campo abaixo:',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: confirmController,
+                autofocus: true,
+                textCapitalization: TextCapitalization.characters,
+                decoration: buildOutlinedInputDecoration(
+                  label: 'Confirmação',
+                  icon: Icons.warning_amber_rounded,
+                  hintText: 'SIM',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('CANCELAR', style: TextStyle(color: Colors.grey)),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () async {
+                if (confirmController.text.trim() == 'SIM') {
+                  final selectedTipoPessoa = tipoPessoa;
+                  if (mounted) Navigator.pop(dialogContext);
+                  await _wipeAndRecreateDatabaseWithFeedback(tipoPessoa: selectedTipoPessoa);
+                } else {
+                  if (mounted) {
+                    Navigator.pop(dialogContext);
+                    ScaffoldMessenger.of(parentContext).showSnackBar(
+                      const SnackBar(
+                        content: Text('Ação abortada. Texto de confirmação incorreto.'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('APAGAR TUDO'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('CANCELAR', style: TextStyle(color: Colors.grey)),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              if (confirmController.text.trim() == 'SIM') {
-                if (mounted) Navigator.pop(dialogContext);
-                await _wipeAndRecreateDatabaseWithFeedback();
-              } else {
-                if (mounted) {
-                  Navigator.pop(dialogContext);
-                  ScaffoldMessenger.of(parentContext).showSnackBar(
-                    const SnackBar(
-                      content: Text('Ação abortada. Texto de confirmação incorreto.'),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('APAGAR TUDO'),
-          ),
-        ],
       ),
     );
   }
 
-  Future<void> _wipeAndRecreateDatabaseWithFeedback() async {
+  Future<void> _wipeAndRecreateDatabaseWithFeedback({String tipoPessoa = 'Ambos (PF e PJ)'}) async {
     if (!mounted) return;
 
     final logNotifier = ValueNotifier<List<String>>([]);
@@ -516,7 +571,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
       await DatabaseHelper.instance.clearDatabase();
 
       addLog('Recriando categorias e formas de pagamento padrão...');
-      await DatabaseInitializationService.instance.populateDefaultData();
+      await DatabaseInitializationService.instance.populateDefaultData(tipoPessoa: tipoPessoa);
 
       addLog('Verificando consistência do banco...');
       await DatabaseInitializationService.instance.initializeDatabase();

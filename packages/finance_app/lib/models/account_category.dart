@@ -11,11 +11,14 @@ class AccountCategory {
 
   // Converter objeto para Map (para salvar no banco)
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
+    final map = <String, dynamic>{
       'accountId': accountId,
       'description': categoria,
     };
+    if (id != null) {
+      map['id'] = id;
+    }
+    return map;
   }
 
   // Criar objeto a partir de Map (do banco)
