@@ -24,7 +24,9 @@ class _PayAccountScreenState extends State<PayAccountScreen> {
   void initState() {
     super.initState();
     _paymentMethodsFuture =
-        DatabaseHelper.instance.readPaymentMethods(onlyActive: true);
+        DatabaseHelper.instance.readPaymentMethods(onlyActive: true).then(
+              (methods) => methods.where((m) => m.supportsPagamentos).toList(),
+            );
   }
 
   Future<void> _onPaymentMethodSelected(PaymentMethod method) async {

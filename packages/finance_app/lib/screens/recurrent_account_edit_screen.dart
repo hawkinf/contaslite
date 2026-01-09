@@ -763,7 +763,7 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
                       decoration: buildOutlinedInputDecoration(
                         label: 'Dia (1-31)',
                         icon: Icons.calendar_today,
-                      ),
+                      ).copyWith(counter: const SizedBox.shrink()),
                       validator: (v) {
                         if (v == null || v.isEmpty) return 'Obrigatório';
                         final day = int.tryParse(v);

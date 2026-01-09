@@ -240,7 +240,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
               children: [
                 _buildStatusRow('Tipos de Contas', types.length),
                 _buildStatusRow('Categorias', categories.length),
-                _buildStatusRow('Formas de Pagamento', methods.length),
+                _buildStatusRow('Formas de Pagamento/Recebimento', methods.length),
               ],
             ),
           ),

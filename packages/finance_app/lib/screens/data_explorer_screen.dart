@@ -22,7 +22,7 @@ class _DataExplorerScreenState extends State<DataExplorerScreen> {
     'Categorias',
     'Pagamentos',
     'Bancos',
-    'Formas de Pagamento'
+    'Formas de Pagamento/Recebimento'
   ];
 
   @override
@@ -84,7 +84,7 @@ class _DataExplorerScreenState extends State<DataExplorerScreen> {
         return _buildPaymentsTable();
       case 'Bancos':
         return _buildBanksTable();
-      case 'Formas de Pagamento':
+      case 'Formas de Pagamento/Recebimento':
         return _buildPaymentMethodsTable();
       default:
         return const Center(child: Text('Tabela não encontrada'));
@@ -270,7 +270,8 @@ class _DataExplorerScreenState extends State<DataExplorerScreen> {
                 title: Text(method.name),
                 subtitle: Text('Ativo: ${method.isActive ? "Sim" : "Não"}'),
                 trailing: Text('#${method.id}'),
-                onTap: () => _showDetailsDialog(context, 'Forma de Pagamento', method),
+                onTap: () =>
+                    _showDetailsDialog(context, 'Forma de Pagamento/Recebimento', method),
               ),
             );
           },

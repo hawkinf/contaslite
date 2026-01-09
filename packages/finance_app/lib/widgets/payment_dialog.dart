@@ -65,6 +65,10 @@ class _PaymentDialogState extends State<PaymentDialog> {
         widget.endDate,
       );
       final paymentMethods = await DatabaseHelper.instance.readPaymentMethods();
+      final filteredPaymentMethods = paymentMethods
+          .where((m) =>
+              widget.isRecebimento ? m.supportsRecebimentos : m.supportsPagamentos)
+          .toList();
       final banks = await DatabaseHelper.instance.readBankAccounts();
       final cards = await DatabaseHelper.instance.readAllCards();
 
@@ -129,7 +133,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
         setState(() {
           _regularAccounts = regularAccounts;
           _cardInvoices = cardInvoices;
-          _paymentMethods = paymentMethods;
+          _paymentMethods = filteredPaymentMethods;
           _banks = banks;
           _paymentCards = cards;
           _selectedAccount = initialAccount;

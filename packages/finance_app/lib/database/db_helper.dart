@@ -67,7 +67,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 10,
+      version: 11,
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
         debugPrint('🔄 Iniciando migração de banco de dados v$oldVersion→v$newVersion...');
@@ -177,12 +177,13 @@ class DatabaseHelper {
       CREATE TABLE payment_methods (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE,
-        type TEXT NOT NULL,
-        icon_code INTEGER NOT NULL,
-        requires_bank INTEGER NOT NULL DEFAULT 0,
-        is_active INTEGER NOT NULL DEFAULT 1
-      )
-    ''');
+	        type TEXT NOT NULL,
+	        icon_code INTEGER NOT NULL,
+	        requires_bank INTEGER NOT NULL DEFAULT 0,
+	        usage INTEGER NOT NULL DEFAULT 2,
+	        is_active INTEGER NOT NULL DEFAULT 1
+	      )
+	    ''');
 
     // Tabela de pagamentos
     await db.execute('''
@@ -437,8 +438,9 @@ class DatabaseHelper {
             name TEXT NOT NULL UNIQUE,
             type TEXT NOT NULL,
             icon_code INTEGER NOT NULL,
-            requires_bank INTEGER NOT NULL DEFAULT 0,
-            is_active INTEGER NOT NULL DEFAULT 1
+	            requires_bank INTEGER NOT NULL DEFAULT 0,
+	            usage INTEGER NOT NULL DEFAULT 2,
+	            is_active INTEGER NOT NULL DEFAULT 1
           )
         ''');
 
@@ -446,30 +448,34 @@ class DatabaseHelper {
         await db.insert('payment_methods', {
           'name': 'Dinheiro',
           'type': 'CASH',
-          'icon_code': 0xe25a,
-          'requires_bank': 0,
-          'is_active': 1,
+	          'icon_code': 0xe25a,
+	          'requires_bank': 0,
+	          'usage': 2,
+	          'is_active': 1,
         });
         await db.insert('payment_methods', {
           'name': 'PIX',
           'type': 'PIX',
-          'icon_code': 0xe8d0,
-          'requires_bank': 1,
-          'is_active': 1,
+	          'icon_code': 0xe8d0,
+	          'requires_bank': 1,
+	          'usage': 2,
+	          'is_active': 1,
         });
         await db.insert('payment_methods', {
           'name': 'Débito C/C',
           'type': 'BANK_DEBIT',
-          'icon_code': 0xe25c,
-          'requires_bank': 1,
-          'is_active': 1,
+	          'icon_code': 0xe25c,
+	          'requires_bank': 1,
+	          'usage': 2,
+	          'is_active': 1,
         });
         await db.insert('payment_methods', {
           'name': 'Cartão Crédito',
           'type': 'CREDIT_CARD',
-          'icon_code': 0xe25e,
-          'requires_bank': 0,
-          'is_active': 1,
+	          'icon_code': 0xe25e,
+	          'requires_bank': 0,
+	          'usage': 2,
+	          'is_active': 1,
         });
       } catch (_) {
         // Tabela já existe
@@ -499,6 +505,21 @@ class DatabaseHelper {
         await db.execute('CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(payment_date)');
       } catch (_) {
         // Tabela já existe
+      }
+    }
+
+    if (oldVersion < 11) {
+      debugPrint('?? Executando migra‡Æo v11: Adicionando coluna usage em payment_methods...');
+      try {
+        try {
+          await db.execute(
+              'ALTER TABLE payment_methods ADD COLUMN usage INTEGER NOT NULL DEFAULT 2');
+        } catch (_) {
+          // coluna j  existe
+        }
+        await db.execute('UPDATE payment_methods SET usage = 2 WHERE usage IS NULL');
+      } catch (e) {
+        debugPrint('?? Erro na migra‡Æo v11: $e');
       }
     }
 

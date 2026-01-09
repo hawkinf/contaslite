@@ -55,7 +55,7 @@ class PdfExportService {
                 pw.Text('• Categorias: ${categories.length}'),
                 pw.Text('• Pagamentos: ${payments.length}'),
                 pw.Text('• Contas Bancárias: ${banks.length}'),
-                pw.Text('• Formas de Pagamento: ${paymentMethods.length}'),
+                pw.Text('• Formas de Pagamento/Recebimento: ${paymentMethods.length}'),
               ],
             ),
           ),

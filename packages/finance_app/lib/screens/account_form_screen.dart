@@ -1101,15 +1101,20 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                     return Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
-                        child: Row(children: [
+                        child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                           // Parcela #
-                          CircleAvatar(
-                              radius: 12,
-                              backgroundColor: Colors.blue.shade100,
-                              child: Text("${item.index}",
-                                  style: TextStyle(
-                                      color: Colors.blue.shade900,
-                                      fontSize: 11))),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 14),
+                            child: CircleAvatar(
+                                radius: 12,
+                                backgroundColor: Colors.blue.shade100,
+                                child: Text("${item.index}",
+                                    style: TextStyle(
+                                        color: Colors.blue.shade900,
+                                        fontSize: 11))),
+                          ),
                           const SizedBox(width: 8),
                           // Vencimento (Editável)
                           Expanded(

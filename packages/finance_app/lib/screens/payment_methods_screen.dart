@@ -38,6 +38,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
         final isEditing = method != null;
         final nameController = TextEditingController(text: method?.name ?? '');
         final typeController = TextEditingController(text: method?.type ?? '');
+        final usageNotifier = ValueNotifier<PaymentMethodUsage>(
+          method?.usage ?? PaymentMethodUsage.pagamentosRecebimentos,
+        );
         // Tipos disponíveis (pode ser ajustado conforme necessidade)
         const paymentTypes = ['CASH', 'PIX', 'BANK_DEBIT', 'CREDIT_CARD'];
 
@@ -72,7 +75,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isEditing ? 'Editar Forma de Pagamento' : 'Nova Forma de Pagamento',
+                          isEditing
+                              ? 'Editar Forma de Pagamento/Recebimento'
+                              : 'Nova Forma de Pagamento/Recebimento',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -86,8 +91,32 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                             icon: Icons.payment,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
+	                        const SizedBox(height: 16),
+	                        ValueListenableBuilder<PaymentMethodUsage>(
+	                          valueListenable: usageNotifier,
+	                          builder: (context, usage, _) {
+	                            return DropdownButtonFormField<PaymentMethodUsage>(
+	                              key: ValueKey(usage),
+	                              initialValue: usage,
+	                              decoration: buildOutlinedInputDecoration(
+	                                label: 'Uso:',
+	                                icon: Icons.swap_horiz,
+	                              ),
+	                              items: PaymentMethodUsage.values
+	                                  .map((u) => DropdownMenuItem(
+	                                        value: u,
+	                                        child: Text(u.label),
+	                                      ))
+	                                  .toList(),
+	                              onChanged: (value) {
+	                                if (value == null) return;
+	                                usageNotifier.value = value;
+	                              },
+	                            );
+	                          },
+	                        ),
+	                        const SizedBox(height: 16),
+	                        DropdownButtonFormField<String>(
                           initialValue: typeController.text.isNotEmpty ? typeController.text : null,
                           decoration: buildOutlinedInputDecoration(
                             label: 'Tipo',
@@ -118,6 +147,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                               onPressed: () async {
                                 final name = nameController.text.trim();
                                 final type = typeController.text.trim();
+                                final usage = usageNotifier.value;
 
                                 if (name.isEmpty) {
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -140,7 +170,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
 
                                 if (exists) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Já existe uma forma de pagamento com este nome')),
+                                    const SnackBar(content: Text('Já existe uma forma de pagamento/recebimento com este nome')),
                                   );
                                   return;
                                 }
@@ -148,10 +178,11 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                 // Salvar
                                 if (isEditing) {
                                   await DatabaseHelper.instance.updatePaymentMethod(
-                                    method.copyWith(
-                                      name: name,
-                                      type: type,
-                                    ),
+	                                    method.copyWith(
+	                                      name: name,
+	                                      type: type,
+	                                      usage: usage,
+	                                    ),
                                   );
                                 } else {
                                   await DatabaseHelper.instance.createPaymentMethod(
@@ -159,9 +190,10 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                       name: name,
                                       type: type,
                                       iconCode: 0xe25a, // Ícone padrão
-                                      requiresBank: false,
-                                      isActive: true,
-                                    ),
+	                                      requiresBank: false,
+	                                      isActive: true,
+	                                      usage: usage,
+	                                    ),
                                   );
                                 }
 
@@ -196,7 +228,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Deletar Forma de Pagamento?'),
+        title: const Text('Deletar Forma de Pagamento/Recebimento?'),
         content: Text('Tem certeza que deseja deletar "${method.name}"?'),
         actions: [
           TextButton(
@@ -224,7 +256,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
       builder: (context, range, _) {
         return Scaffold(
       appBar: AppBar(
-          title: const Text('Formas de Pagamento'),
+          title: const Text('Formas de Pagamento/Recebimento'),
         ),
         floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showPaymentMethodDialog(),
@@ -246,7 +278,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
 
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(
-              child: Text('Nenhuma forma de pagamento cadastrada'),
+              child: Text('Nenhuma forma de pagamento/recebimento cadastrada'),
             );
           }
 
