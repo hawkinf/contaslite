@@ -4638,8 +4638,8 @@ class TablesScreen extends StatelessWidget {
         builder: () => const BankAccountsScreen(),
       ),
       _TableShortcut(
-        title: 'Formas de Pagamento',
-        subtitle: 'Cartao, boleto, etc.',
+        title: 'Formas de Pagamento/Recebimento',
+        subtitle: 'Cartão, boleto, etc.',
         icon: Icons.payments,
         builder: () => const PaymentMethodsScreen(),
       ),

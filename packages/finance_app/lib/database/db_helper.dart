@@ -444,38 +444,54 @@ class DatabaseHelper {
           )
         ''');
 
-        // Inserir dados iniciais de formas de pagamento
+        // Inserir dados iniciais de formas de pagamento/recebimento
+        await db.insert('payment_methods', {
+          'name': 'Cartão de Credito',
+          'type': 'CREDIT_CARD',
+          'icon_code': 0xe25e,
+          'requires_bank': 0,
+          'usage': 0,
+          'is_active': 1,
+        });
+        await db.insert('payment_methods', {
+          'name': 'Crédito em conta',
+          'type': 'PIX',
+          'icon_code': 0xe8d0,
+          'requires_bank': 1,
+          'usage': 1,
+          'is_active': 1,
+        });
         await db.insert('payment_methods', {
           'name': 'Dinheiro',
           'type': 'CASH',
-	          'icon_code': 0xe25a,
-	          'requires_bank': 0,
-	          'usage': 2,
-	          'is_active': 1,
-        });
-        await db.insert('payment_methods', {
-          'name': 'PIX',
-          'type': 'PIX',
-	          'icon_code': 0xe8d0,
-	          'requires_bank': 1,
-	          'usage': 2,
-	          'is_active': 1,
+          'icon_code': 0xe25a,
+          'requires_bank': 0,
+          'usage': 2,
+          'is_active': 1,
         });
         await db.insert('payment_methods', {
           'name': 'Débito C/C',
           'type': 'BANK_DEBIT',
-	          'icon_code': 0xe25c,
-	          'requires_bank': 1,
-	          'usage': 2,
-	          'is_active': 1,
+          'icon_code': 0xe25c,
+          'requires_bank': 1,
+          'usage': 0,
+          'is_active': 1,
         });
         await db.insert('payment_methods', {
-          'name': 'Cartão Crédito',
-          'type': 'CREDIT_CARD',
-	          'icon_code': 0xe25e,
-	          'requires_bank': 0,
-	          'usage': 2,
-	          'is_active': 1,
+          'name': 'Internet Banking',
+          'type': 'BANK_DEBIT',
+          'icon_code': 0xe25c,
+          'requires_bank': 1,
+          'usage': 0,
+          'is_active': 1,
+        });
+        await db.insert('payment_methods', {
+          'name': 'PIX',
+          'type': 'PIX',
+          'icon_code': 0xe8d0,
+          'requires_bank': 1,
+          'usage': 2,
+          'is_active': 1,
         });
       } catch (_) {
         // Tabela já existe

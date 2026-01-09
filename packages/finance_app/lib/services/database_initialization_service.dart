@@ -23,14 +23,14 @@ class DatabaseInitializationService {
       try {
         typeCount = await db.countAccountTypes();
       } catch (e) {
-        debugPrint('[DB INIT] ⚠️ Erro ao contar tipos de conta: $e');
+        debugPrint('[DB INIT] ?? Erro ao contar tipos de conta: $e');
         typeCount = 0;
       }
 
       try {
         methodCount = await db.countPaymentMethods(onlyActive: false);
       } catch (e) {
-        debugPrint('[DB INIT] ⚠️ Erro ao contar formas de pagamento: $e');
+        debugPrint('[DB INIT] ?? Erro ao contar formas de pagamento: $e');
         methodCount = 0;
       }
 
@@ -49,11 +49,12 @@ class DatabaseInitializationService {
         debugPrint('[DB INIT] Banco de dados inicializado com sucesso!');
       }
 
-      // Validar integridade do banco (skip por agora - pode travar em algumas situações)
-      debugPrint('[DB INIT] Validação de integridade skipped durante inicialização');
+      // Validar integridade do banco (skip por agora - pode travar em algumas situa‡äes)
+      debugPrint('[DB INIT] Valida‡Æo de integridade skipped durante inicializa‡Æo');
 
       final elapsedMs = stopwatch.elapsedMilliseconds;
-      debugPrint('[DB INIT] Banco pronto com $typeCount tipo(s) e $methodCount forma(s) (${elapsedMs}ms).');
+      debugPrint(
+          '[DB INIT] Banco pronto com $typeCount tipo(s) e $methodCount forma(s) (${elapsedMs}ms).');
     } catch (e, st) {
       debugPrint('[DB INIT] ERRO ao inicializar banco de dados: $e');
       debugPrintStack(stackTrace: st);
@@ -69,8 +70,7 @@ class DatabaseInitializationService {
       final categoriesMap = defaultService.getCategoriesAsMap();
       final existingTypes = await db.readAllTypes();
       final typeIdByName = <String, int>{
-        for (final type in existingTypes)
-          type.name.trim().toUpperCase(): type.id!,
+        for (final type in existingTypes) type.name.trim().toUpperCase(): type.id!,
       };
 
       debugPrint('[DB INIT] Criando ${categoriesMap.length} tipos de conta com subcategorias...');
@@ -80,8 +80,8 @@ class DatabaseInitializationService {
       // Criar tipos padrao com suas categorias
       for (final typeName in categoriesMap.keys) {
         final normalizedName = typeName.trim().toUpperCase();
-        final typeId = typeIdByName[normalizedName] ??
-            await db.createType(AccountType(name: typeName));
+        final typeId =
+            typeIdByName[normalizedName] ?? await db.createType(AccountType(name: typeName));
         if (!typeIdByName.containsKey(normalizedName)) {
           typeIdByName[normalizedName] = typeId;
           typesCreated++;
@@ -92,9 +92,8 @@ class DatabaseInitializationService {
 
         final subcategories = categoriesMap[typeName]!;
         final existingCategories = await db.readAccountCategories(typeId);
-        final existingNames = existingCategories
-            .map((c) => c.categoria.trim().toUpperCase())
-            .toSet();
+        final existingNames =
+            existingCategories.map((c) => c.categoria.trim().toUpperCase()).toSet();
 
         int addedForType = 0;
         for (final subcategory in subcategories) {
@@ -150,7 +149,8 @@ class DatabaseInitializationService {
         }
       }
 
-      debugPrint('[DB INIT] Tipos criados: $typesCreated | Subcategorias criadas: $categoriesCreated');
+      debugPrint(
+          '[DB INIT] Tipos criados: $typesCreated | Subcategorias criadas: $categoriesCreated');
 
       // Criar formas de pagamento padrao
       debugPrint('[DB INIT] Populando formas de pagamento...');
@@ -165,20 +165,30 @@ class DatabaseInitializationService {
   }
 
   Future<void> populatePaymentMethods(DatabaseHelper db) async {
-    final methods = [
+    final canonicalMethods = [
+      PaymentMethod(
+        name: 'Cartão de Credito',
+        type: 'CREDIT_CARD',
+        iconCode: 0xe25e,
+        requiresBank: false,
+        isActive: true,
+        usage: PaymentMethodUsage.pagamentos,
+      ),
+      PaymentMethod(
+        name: 'Crédito em conta',
+        type: 'PIX',
+        iconCode: 0xe8d0,
+        requiresBank: true,
+        isActive: true,
+        usage: PaymentMethodUsage.recebimentos,
+      ),
       PaymentMethod(
         name: 'Dinheiro',
         type: 'CASH',
         iconCode: 0xe25a,
         requiresBank: false,
         isActive: true,
-      ),
-      PaymentMethod(
-        name: 'PIX',
-        type: 'PIX',
-        iconCode: 0xe8d0,
-        requiresBank: true,
-        isActive: true,
+        usage: PaymentMethodUsage.pagamentosRecebimentos,
       ),
       PaymentMethod(
         name: 'Débito C/C',
@@ -186,34 +196,96 @@ class DatabaseInitializationService {
         iconCode: 0xe25c,
         requiresBank: true,
         isActive: true,
+        usage: PaymentMethodUsage.pagamentos,
       ),
       PaymentMethod(
-        name: 'Cartão Crédito',
-        type: 'CREDIT_CARD',
-        iconCode: 0xe25e,
-        requiresBank: false,
+        name: 'Internet Banking',
+        type: 'BANK_DEBIT',
+        iconCode: 0xe25c,
+        requiresBank: true,
         isActive: true,
+        usage: PaymentMethodUsage.pagamentos,
+      ),
+      PaymentMethod(
+        name: 'PIX',
+        type: 'PIX',
+        iconCode: 0xe8d0,
+        requiresBank: true,
+        isActive: true,
+        usage: PaymentMethodUsage.pagamentosRecebimentos,
       ),
     ];
 
-    final existing = (await db.readPaymentMethods(onlyActive: false))
-        .map((m) => m.name.toUpperCase())
-        .toSet();
+    final existingMethods = await db.readPaymentMethods(onlyActive: false);
+    final existingByUpperName = <String, PaymentMethod>{};
+    for (final method in existingMethods) {
+      existingByUpperName[method.name.toUpperCase()] = method;
+    }
+
+    final methodByName = <String, PaymentMethod>{
+      for (final method in canonicalMethods) method.name: method,
+    };
+
+    // Normaliza defaults antigos (nomes com encoding antigo/variações) sem sobrescrever métodos customizados.
+    final legacyToCanonicalName = <String, String>{
+      'CARTÃO DE CREDITO': 'Cartão de Credito',
+      'CARTAO DE CREDITO': 'Cartão de Credito',
+      'CARTÃO DE CRÉDITO': 'Cartão de Credito',
+      'CARTAO DE CRÉDITO': 'Cartão de Credito',
+      'CARTÃO CRÉDITO': 'Cartão de Credito',
+      'CARTAO CREDITO': 'Cartão de Credito',
+      'CARTÃO CREDITO': 'Cartão de Credito',
+      'CARTÆO CR‚DITO': 'Cartão de Credito',
+      'CRÉDITO EM CONTA': 'Crédito em conta',
+      'CREDITO EM CONTA': 'Crédito em conta',
+      'DÉBITO C/C': 'Débito C/C',
+      'DEBITO C/C': 'Débito C/C',
+      'D‚BITO C/C': 'Débito C/C',
+    };
+
+    for (final entry in legacyToCanonicalName.entries) {
+      final legacyUpper = entry.key;
+      final canonicalName = entry.value;
+      final canonical = methodByName[canonicalName];
+      final legacy = existingByUpperName[legacyUpper];
+      if (canonical == null || legacy == null) continue;
+
+      if (existingByUpperName.containsKey(canonicalName.toUpperCase())) continue;
+
+      try {
+        await db.updatePaymentMethod(
+          legacy.copyWith(
+            name: canonical.name,
+            type: canonical.type,
+            iconCode: canonical.iconCode,
+            requiresBank: canonical.requiresBank,
+            isActive: canonical.isActive,
+            usage: canonical.usage,
+          ),
+        );
+      } catch (e) {
+        debugPrint('??  [DB INIT] Erro ao normalizar forma "${legacy.name}": $e');
+      }
+    }
+
+    final existing =
+        (await db.readPaymentMethods(onlyActive: false)).map((m) => m.name.toUpperCase()).toSet();
 
     int methodsCreated = 0;
-    for (final method in methods) {
+    for (final method in canonicalMethods) {
       try {
         if (!existing.contains(method.name.toUpperCase())) {
           await db.createPaymentMethod(method);
           methodsCreated++;
-          debugPrint('  ├─ Forma de pagamento "${method.name}" criada');
+          debugPrint('  ÃÄ Forma de pagamento/recebimento "${method.name}" criada');
         } else {
-          debugPrint('  ├─ Forma de pagamento "${method.name}" já existe (pulada)');
+          debugPrint('  ÃÄ Forma de pagamento/recebimento "${method.name}" j  existe (pulada)');
         }
       } catch (e) {
-        debugPrint('⚠️  [DB INIT] Erro ao criar forma de pagamento "${method.name}": $e');
+        debugPrint(
+            '??  [DB INIT] Erro ao criar forma de pagamento/recebimento "${method.name}": $e');
       }
     }
-    debugPrint('✓ [DB INIT] Formas de pagamento criadas: $methodsCreated');
+    debugPrint('V [DB INIT] Formas de pagamento/recebimento criadas: $methodsCreated');
   }
 }
