@@ -41,7 +41,6 @@ class RecebimentoFormScreen extends StatelessWidget {
                 child: const AccountFormScreen(
                   typeNameFilter: 'Recebimentos',
                   lockTypeSelection: true,
-                  useInstallmentDropdown: true,
                   isRecebimento: true,
                 ),
               ),

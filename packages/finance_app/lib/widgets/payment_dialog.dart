@@ -17,11 +17,13 @@ class PaymentDialog extends StatefulWidget {
   final DateTime startDate;
   final DateTime endDate;
   final Account? preselectedAccount;
+  final bool isRecebimento;
 
   const PaymentDialog({
     required this.startDate,
     required this.endDate,
     this.preselectedAccount,
+    this.isRecebimento = false,
     super.key,
   });
 
@@ -301,7 +303,8 @@ class _PaymentDialogState extends State<PaymentDialog> {
     // Criar despesa no cartão
     final expense = Account(
       typeId: card.typeId,
-      description: 'Pagamento: ${_selectedAccount!.description}',
+      description:
+          '${widget.isRecebimento ? 'Recebimento' : 'Pagamento'}: ${_selectedAccount!.description}',
       value: _selectedAccount!.value,
       dueDay: card.dueDay,
       month: month,
@@ -310,7 +313,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
       cardBrand: card.cardBrand,
       cardBank: card.cardBank,
       establishment: _selectedAccount!.description,
-      observation: 'Pagamento via cartão de crédito',
+      observation: widget.isRecebimento
+          ? 'Recebimento via cartão de crédito'
+          : 'Pagamento via cartão de crédito',
       purchaseDate: _paymentDate.toIso8601String(),
       creationDate: DateTime.now().toIso8601String(),
       isRecurrent: false,
@@ -451,7 +456,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
     }
 
     if (_selectedMethod == null) {
-      _showError('Selecione uma forma de pagamento');
+      _showError(widget.isRecebimento
+          ? 'Selecione uma forma de recebimento'
+          : 'Selecione uma forma de pagamento');
       return;
     }
 
@@ -495,7 +502,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
         Navigator.pop(context, true);
       }
     } catch (e) {
-      _showError('Erro ao salvar pagamento: $e');
+      _showError(widget.isRecebimento
+          ? 'Erro ao salvar recebimento: $e'
+          : 'Erro ao salvar pagamento: $e');
     }
   }
 
@@ -510,7 +519,8 @@ class _PaymentDialogState extends State<PaymentDialog> {
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Lançar Pagamento'),
+          title:
+              Text(widget.isRecebimento ? 'Lançar Recebimento' : 'Lançar Pagamento'),
           actions: [
             Padding(
               padding: const EdgeInsets.all(8),
@@ -526,7 +536,8 @@ class _PaymentDialogState extends State<PaymentDialog> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lançar Pagamento'),
+        title:
+            Text(widget.isRecebimento ? 'Lançar Recebimento' : 'Lançar Pagamento'),
         elevation: 0,
         actions: [
           Padding(
@@ -595,7 +606,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
           const SizedBox(height: 20),
           Text(
             _accountType == PaymentAccountType.regular
-                ? 'Conta a Pagar'
+                ? (widget.isRecebimento ? 'Conta a Receber' : 'Conta a Pagar')
                 : 'Fatura do Cartão',
             style: TextStyle(
               fontSize: 16,
@@ -609,7 +620,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
 
           // Seção: Forma de Pagamento
           Text(
-            'Forma de Pagamento',
+            widget.isRecebimento ? 'Forma de Recebimento' : 'Forma de Pagamento',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -620,7 +631,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
           DropdownButtonFormField<PaymentMethod>(
             initialValue: _selectedMethod,
             decoration: buildOutlinedInputDecoration(
-              label: 'Selecione a forma de pagamento',
+              label: widget.isRecebimento
+                  ? 'Selecione a forma de recebimento'
+                  : 'Selecione a forma de pagamento',
               icon: Icons.payment,
             ),
             items: _paymentMethods
@@ -709,9 +722,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
             const SizedBox(height: 24),
           ],
 
-          // Seção: Data do Pagamento
+          // Seção: Data do Pagamento/Recebimento
           Text(
-            'Data do Pagamento',
+            widget.isRecebimento ? 'Data do Recebimento' : 'Data do Pagamento',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -721,7 +734,8 @@ class _PaymentDialogState extends State<PaymentDialog> {
           const SizedBox(height: 12),
           TextField(
             decoration: buildOutlinedInputDecoration(
-              label: 'Data do Pagamento',
+              label:
+                  widget.isRecebimento ? 'Data do Recebimento' : 'Data do Pagamento',
               icon: Icons.calendar_today,
             ),
             readOnly: true,

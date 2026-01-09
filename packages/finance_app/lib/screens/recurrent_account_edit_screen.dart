@@ -16,7 +16,12 @@ enum _RecurrentEditScope { thisOnly, thisAndFuture, all }
 
 class RecurrentAccountEditScreen extends StatefulWidget {
   final Account account;
-  const RecurrentAccountEditScreen({super.key, required this.account});
+  final bool isRecebimento;
+  const RecurrentAccountEditScreen({
+    super.key,
+    required this.account,
+    this.isRecebimento = false,
+  });
 
   @override
   State<RecurrentAccountEditScreen> createState() => _RecurrentAccountEditScreenState();
@@ -182,6 +187,7 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
           startDate: startDate,
           endDate: endDate,
           preselectedAccount: widget.account,
+          isRecebimento: widget.isRecebimento,
         ),
       ),
     );
@@ -194,16 +200,27 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
     final types = await DatabaseHelper.instance.readAllTypes();
     if (!mounted) return;
 
+    final baseTypes =
+        types.where((t) => !t.name.toLowerCase().contains('cart')).toList();
+    final filteredTypes = widget.isRecebimento
+        ? baseTypes
+            .where((t) => t.name.trim().toLowerCase() == 'recebimentos')
+            .toList()
+        : baseTypes
+            .where((t) => !t.name.toLowerCase().contains('recebimento'))
+            .toList();
+
     AccountType? selected;
     try {
-      selected = types.firstWhere((t) => t.id == _parentAccount.typeId);
+      selected =
+          filteredTypes.firstWhere((t) => t.id == _parentAccount.typeId);
     } catch (_) {
-      selected = types.isNotEmpty ? types.first : null;
+      selected = filteredTypes.isNotEmpty ? filteredTypes.first : null;
     }
 
     if (mounted) {
       setState(() {
-        _typesList = types;
+        _typesList = filteredTypes;
         _selectedType = selected;
       });
     }
@@ -587,8 +604,12 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
                   IconButton(
                     icon: const Icon(Icons.payments),
                     tooltip: _paymentInfo != null
-                        ? 'Pagamento já registrado'
-                        : 'Registrar pagamento',
+                        ? (widget.isRecebimento
+                            ? 'Recebimento já registrado'
+                            : 'Pagamento já registrado')
+                        : (widget.isRecebimento
+                            ? 'Registrar recebimento'
+                            : 'Registrar pagamento'),
                     onPressed: (widget.account.id == null || _paymentInfo != null)
                         ? null
                         : _openPayAccount,
@@ -651,7 +672,9 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
               DropdownButtonFormField<AccountType>(
                 initialValue: _selectedType,
                 decoration: buildOutlinedInputDecoration(
-                  label: 'Tipo da Conta',
+                  label: widget.isRecebimento
+                      ? 'Tipo de Recebimento'
+                      : 'Tipo da Conta',
                   icon: Icons.account_balance_wallet,
                 ),
                 items: _typesList.map((t) => DropdownMenuItem(value: t, child: Text(t.name))).toList(),

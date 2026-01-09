@@ -812,59 +812,42 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   }
 
   Widget _buildColorPaletteSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text("Cor da Conta",
-            style: TextStyle(
-                fontWeight: FontWeight.w600, fontSize: 13, color: Colors.grey)),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          alignment: WrapAlignment.center,
-          children: _colors
-              .map(
-                (color) => InkWell(
-                  onTap: () => setState(() => _selectedColor = color.value),
-                  child: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                      border: _selectedColor == color.value
-                          ? Border.all(
-                              color: foregroundColorFor(color),
-                              width: 3,
-                            )
-                          : Border.all(color: Colors.grey.shade400, width: 2),
-                      boxShadow: const [
-                        BoxShadow(color: Colors.black12, blurRadius: 4)
-                      ],
-                    ),
-                    child: _selectedColor == color.value
-                        ? Icon(
-                            Icons.check,
-                            color: foregroundColorFor(color),
-                            size: 24,
-                          )
-                        : null,
+    return Wrap(
+      spacing: 12,
+      runSpacing: 10,
+      children: _colors
+          .map(
+            (color) => InkWell(
+              onTap: () => setState(() => _selectedColor = color.value),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: _selectedColor == color.value
+                        ? foregroundColorFor(color)
+                        : Colors.grey.shade400,
+                    width: _selectedColor == color.value ? 3 : 1,
                   ),
                 ),
-              )
-              .toList(),
-        ),
-      ],
+                child: _selectedColor == color.value
+                    ? Icon(
+                        Icons.check,
+                        color: foregroundColorFor(color),
+                        size: 18,
+                      )
+                    : null,
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 
   Widget _buildLaunchTypeSelector() {
-    // Para Recebimentos, esconder o seletor de tipo
-    if (widget.isRecebimento) {
-      return const SizedBox.shrink();
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1419,35 +1402,13 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                     borderRadius: BorderRadius.circular(12)),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final bool stackVertical = constraints.maxWidth < 640;
-                      final paletteSection = _buildColorPaletteSection();
-                      final typeSection = SizedBox(
-                        width: stackVertical ? double.infinity : 260,
-                        child: _buildLaunchTypeSelector(),
-                      );
-
-                      if (stackVertical) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            paletteSection,
-                            const SizedBox(height: 20),
-                            typeSection,
-                          ],
-                        );
-                      }
-
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: paletteSection),
-                          const SizedBox(width: 24),
-                          typeSection,
-                        ],
-                      );
-                    },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildColorPaletteSection(),
+                      const SizedBox(height: 20),
+                      _buildLaunchTypeSelector(),
+                    ],
                   ),
                 ),
               ),

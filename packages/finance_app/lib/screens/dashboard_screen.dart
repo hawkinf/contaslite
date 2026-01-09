@@ -1152,7 +1152,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              '*** PAGO ***',
+                              _isRecebimentosFilter
+                                  ? '*** RECEBIDO ***'
+                                  : '*** PAGO ***',
                               style: TextStyle(
                                 color: Colors.green.shade700,
                                 fontWeight: FontWeight.bold,
@@ -1269,9 +1271,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Desfazer Pagamento'),
+        title: Text(
+            _isRecebimentosFilter ? 'Desfazer Recebimento' : 'Desfazer Pagamento'),
         content: Text(
-          'Deseja realmente desfazer o pagamento de "${account.description}"?',
+          _isRecebimentosFilter
+              ? 'Deseja realmente desfazer o recebimento de "${account.description}"?'
+              : 'Deseja realmente desfazer o pagamento de "${account.description}"?',
         ),
         actions: [
           TextButton(
@@ -1292,8 +1297,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         await DatabaseHelper.instance.deletePayment(paymentId);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Pagamento desfeito'),
+            SnackBar(
+              content: Text(
+                _isRecebimentosFilter ? 'Recebimento desfeito' : 'Pagamento desfeito',
+              ),
               backgroundColor: Colors.orange,
             ),
           );
@@ -1303,7 +1310,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Erro ao desfazer pagamento: $e'),
+              content: Text(_isRecebimentosFilter
+                  ? 'Erro ao desfazer recebimento: $e'
+                  : 'Erro ao desfazer pagamento: $e'),
               backgroundColor: Colors.red,
             ),
           );
@@ -1319,6 +1328,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         builder: (_) => PaymentDialog(
           startDate: _startDate,
           endDate: _endDate,
+          isRecebimento: _isRecebimentosFilter,
           preselectedAccount: account,
         ),
       ),
@@ -1908,6 +1918,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         builder: (_) => PaymentDialog(
           startDate: _startDate,
           endDate: _endDate,
+          isRecebimento: _isRecebimentosFilter,
         ),
       ),
     );
@@ -1924,7 +1935,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Widget screenToOpen;
     if (isRecurrentParent || isRecurrentChild) {
       // Abrir tela de edição de recorrentes
-      screenToOpen = rec.RecurrentAccountEditScreen(account: account);
+      screenToOpen = rec.RecurrentAccountEditScreen(
+        account: account,
+        isRecebimento: _isRecebimentosFilter,
+      );
     } else {
       // Abrir tela normal de edição
       screenToOpen = AccountEditScreen(account: account);
