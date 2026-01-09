@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 InputDecoration buildOutlinedInputDecoration({
   required String label,
   required IconData icon,
+  Widget? prefixIcon,
   String? hintText,
   String? prefixText,
   TextStyle? prefixStyle,
@@ -20,7 +21,7 @@ InputDecoration buildOutlinedInputDecoration({
   return InputDecoration(
     labelText: label,
     hintText: hintText,
-    prefixIcon: Icon(icon),
+    prefixIcon: prefixIcon ?? Icon(icon),
     prefixText: prefixText,
     prefixStyle: prefixStyle,
     suffixIcon: suffixIcon,

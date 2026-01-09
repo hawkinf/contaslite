@@ -530,33 +530,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   }
 
   Future<void> _selectDate(TextEditingController controller) async {
-    DateTime initialDate;
-    try {
-      final text = controller.text.trim();
-      if (text.isEmpty || text.length < 8) {
-        initialDate = DateTime.now();
-      } else {
-        // Converter dd/mm/yy para data completa (sempre 20xx)
-        List<String> parts = text.split('/');
-        if (parts.length == 3) {
-          int day = int.parse(parts[0]);
-          int month = int.parse(parts[1]);
-          int year = int.parse(parts[2]);
-          if (year < 100) year = 2000 + year;
-          initialDate = DateTime(year, month, day);
-        } else {
-          initialDate = DateTime.now();
-        }
-        // Ensure initialDate is within valid range
-        if (initialDate.isBefore(DateTime(2020))) {
-          initialDate = DateTime.now();
-        } else if (initialDate.isAfter(DateTime(2030))) {
-          initialDate = DateTime.now();
-        }
-      }
-    } catch (e) {
-      initialDate = DateTime.now();
-    }
+    DateTime initialDate = _getInitialDateFromController(controller);
 
     if (!mounted) return;
 
@@ -584,6 +558,71 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           SnackBar(
               content: Text('Erro ao selecionar data: $e'),
               backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  DateTime _getInitialDateFromController(TextEditingController controller) {
+    try {
+      final text = controller.text.trim();
+      if (text.isEmpty || text.length < 8) {
+        return DateTime.now();
+      }
+
+      // Converter dd/mm/yy ou dd/mm/yyyy para DateTime
+      final parts = text.split('/');
+      if (parts.length != 3) {
+        return DateTime.now();
+      }
+
+      final day = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      var year = int.parse(parts[2]);
+      if (year < 100) year = 2000 + year;
+
+      var initialDate = DateTime(year, month, day);
+      if (initialDate.isBefore(DateTime(2020)) || initialDate.isAfter(DateTime(2030))) {
+        initialDate = DateTime.now();
+      }
+      return initialDate;
+    } catch (_) {
+      return DateTime.now();
+    }
+  }
+
+  Future<void> _selectInstallmentDate(int index) async {
+    if (index < 0 || index >= _installments.length) return;
+
+    final controller = _installments[index].dateController;
+    final initialDate = _getInitialDateFromController(controller);
+
+    if (!mounted) return;
+
+    try {
+      final picked = await showDatePicker(
+        context: context,
+        initialDate: initialDate,
+        firstDate: DateTime(2020),
+        lastDate: DateTime(2030),
+        locale: const Locale('pt', 'BR'),
+      );
+
+      if (!mounted) return;
+
+      if (picked != null) {
+        final formatted = DateFormat('dd/MM/yy').format(picked);
+        controller.text = formatted;
+        controller.selection = TextSelection.fromPosition(TextPosition(offset: formatted.length));
+        _onTableDateChanged(index, formatted);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao selecionar data: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -1131,6 +1170,15 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                                       decoration: buildOutlinedInputDecoration(
                                         label: 'Vencimento',
                                         icon: Icons.calendar_today,
+                                        prefixIcon: IconButton(
+                                          icon: const Icon(Icons.calendar_month),
+                                          iconSize: 20,
+                                          padding: EdgeInsets.zero,
+                                          visualDensity: VisualDensity.compact,
+                                          constraints: BoxConstraints(minWidth: 40, minHeight: 40),
+                                          tooltip: 'Selecionar data',
+                                          onPressed: () => _selectInstallmentDate(index),
+                                        ),
                                         dense: true,
                                       ),
                                       inputFormatters: [_dateMaskFormatter],
