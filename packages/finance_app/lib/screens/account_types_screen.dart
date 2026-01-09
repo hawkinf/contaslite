@@ -38,7 +38,7 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
       builder: (context, range, _) {
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Tabelas de Contas'),
+            title: const Text('Contas a Pagar'),
             actions: [
               IconButton(
                 icon: const Icon(Icons.info_outline),

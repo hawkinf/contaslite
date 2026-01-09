@@ -279,6 +279,18 @@ class _RecebimentosTableScreenState extends State<RecebimentosTableScreen> {
         : ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton.icon(
+                  onPressed: _populateDefaults,
+                  icon: const Icon(Icons.auto_awesome),
+                  label: const Text('Popular'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.amber.shade700,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               Card(
                 elevation: 2,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -354,7 +366,7 @@ class _RecebimentosTableScreenState extends State<RecebimentosTableScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
-                'Categorias: Recebimentos',
+                'Categorias: Contas a Receber',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 12),
@@ -398,7 +410,7 @@ class _RecebimentosTableScreenState extends State<RecebimentosTableScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tabela de Recebimentos'),
+        title: const Text('Contas a Receber'),
         actions: [
           IconButton(
             icon: const Icon(Icons.auto_awesome),

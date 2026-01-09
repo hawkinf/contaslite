@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../database/db_helper.dart';
 import '../models/payment_method.dart';
+import '../services/database_initialization_service.dart';
 import '../widgets/app_input_decoration.dart';
 import '../services/prefs_service.dart';
 import '../widgets/dialog_close_button.dart';
@@ -14,6 +15,7 @@ class PaymentMethodsScreen extends StatefulWidget {
 
 class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   late Future<List<PaymentMethod>> _futurePaymentMethods;
+  bool _isPopulating = false;
 
   @override
   void initState() {
@@ -29,6 +31,33 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     setState(() {
       _loadPaymentMethods();
     });
+  }
+
+  Future<void> _populateDefaults() async {
+    if (_isPopulating) return;
+    setState(() => _isPopulating = true);
+    try {
+      await DatabaseInitializationService.instance
+          .populatePaymentMethods(DatabaseHelper.instance);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Padrões populados com sucesso!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao popular padrões: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isPopulating = false);
+    }
   }
 
   void _showPaymentMethodDialog({PaymentMethod? method}) {
@@ -257,125 +286,152 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
         return Scaffold(
       appBar: AppBar(
           title: const Text('Formas de Pagamento/Recebimento'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.auto_awesome),
+              tooltip: 'Popular com padrões',
+              onPressed: _isPopulating ? null : _populateDefaults,
+            ),
+          ],
         ),
         floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showPaymentMethodDialog(),
         label: const Text('Novo Item'),
         icon: const Icon(Icons.add),
       ),
-      body: FutureBuilder<List<PaymentMethod>>(
-        future: _futurePaymentMethods,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (snapshot.hasError) {
-            return Center(
-              child: Text('Erro: ${snapshot.error}'),
-            );
-          }
-
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-              child: Text('Nenhuma forma de pagamento/recebimento cadastrada'),
-            );
-          }
-
-          final methods = snapshot.data!;
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: methods.length,
-            itemBuilder: (context, index) {
-              final method = methods[index];
-              final statusColor = method.isActive
-                  ? Colors.green
-                  : Colors.red;
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Card(
-                  elevation: 1,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Row(
+              children: [
+                const Spacer(),
+                FilledButton.icon(
+                  onPressed: _isPopulating ? null : _populateDefaults,
+                  icon: const Icon(Icons.auto_awesome),
+                  label: const Text('Popular'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.amber.shade700,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: FutureBuilder<List<PaymentMethod>>(
+              future: _futurePaymentMethods,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text('Erro: ${snapshot.error}'),
+                  );
+                }
+
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(
+                    child: Text('Nenhuma forma de pagamento/recebimento cadastrada'),
+                  );
+                }
+
+                final methods = snapshot.data!;
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: methods.length,
+                  itemBuilder: (context, index) {
+                    final method = methods[index];
+                    final statusColor = method.isActive ? Colors.green : Colors.red;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Card(
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
                             children: [
-                              Text(
-                                method.name,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      method.name,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
                                 ),
-                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(width: 12),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  method.isActive ? 'Ativo' : 'Inativo',
+                                  style: TextStyle(
+                                    color: statusColor,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Tooltip(
+                                    message: 'Editar',
+                                    child: IconButton(
+                                      icon: const Icon(
+                                        Icons.edit,
+                                        color: Colors.blue,
+                                      ),
+                                      onPressed: () =>
+                                          _showPaymentMethodDialog(method: method),
+                                      iconSize: 24,
+                                    ),
+                                  ),
+                                  Tooltip(
+                                    message: 'Deletar',
+                                    child: IconButton(
+                                      icon: const Icon(
+                                        Icons.delete,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () => _deletePaymentMethod(method),
+                                      iconSize: 24,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: statusColor.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            method.isActive ? 'Ativo' : 'Inativo',
-                            style: TextStyle(
-                              color: statusColor,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Tooltip(
-                              message: 'Editar',
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.edit,
-                                  color: Colors.blue,
-                                ),
-                                onPressed: () =>
-                                    _showPaymentMethodDialog(method: method),
-                                iconSize: 24,
-                              ),
-                            ),
-                            Tooltip(
-                              message: 'Deletar',
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
-                                ),
-                                onPressed: () => _deletePaymentMethod(method),
-                                iconSize: 24,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
-        },
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
         );
       },

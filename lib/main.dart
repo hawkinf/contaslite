@@ -4626,10 +4626,16 @@ class TablesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       _TableShortcut(
-        title: 'Tipos de Conta',
-        subtitle: 'Categorias para contas',
+        title: 'Contas a Pagar',
+        subtitle: 'Categorias para contas a pagar',
         icon: Icons.category,
         builder: () => const AccountTypesScreen(),
+      ),
+      _TableShortcut(
+        title: 'Contas a Receber',
+        subtitle: 'Categorias para contas a receber',
+        icon: Icons.savings,
+        builder: () => const RecebimentosTableScreen(),
       ),
       _TableShortcut(
         title: 'Contas Bancarias',
@@ -4642,12 +4648,6 @@ class TablesScreen extends StatelessWidget {
         subtitle: 'Cartão, boleto, etc.',
         icon: Icons.payments,
         builder: () => const PaymentMethodsScreen(),
-      ),
-      _TableShortcut(
-        title: 'Tabela de Recebimentos',
-        subtitle: 'Categorias de recebimentos',
-        icon: Icons.savings,
-        builder: () => const RecebimentosTableScreen(),
       ),
     ];
 
