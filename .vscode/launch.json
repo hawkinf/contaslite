@@ -7,8 +7,7 @@
       "type": "dart",
       "program": "lib/main.dart",
       "deviceId": "windows",
-      "args": ["--dart-define=FLUTTER_WEB_USE_SKIA=true"],
-      "toolArgs": ["--no-fast-start"]
+      "args": ["--dart-define=FLUTTER_WEB_USE_SKIA=true"]
     },
     {
       "name": "finance_app (Windows Release)",
