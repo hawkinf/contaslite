@@ -9,7 +9,12 @@ import 'database_screen.dart';
 import 'holidays_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final int initialTabIndex;
+
+  const HomeScreen({
+    super.key,
+    this.initialTabIndex = 0,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -41,6 +46,8 @@ class _HomeScreenState extends State<HomeScreen> {
       // Sétima aba: Tabelas (Database)
       const DatabaseScreen(),
     ];
+    final requestedIndex = widget.initialTabIndex;
+    _selectedIndex = (requestedIndex >= 0 && requestedIndex < _screens.length) ? requestedIndex : 0;
     _tabRequestListener = () {
       final requested = PrefsService.tabRequestNotifier.value;
       if (requested == null || requested == _selectedIndex) return;
@@ -66,4 +73,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-

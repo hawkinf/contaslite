@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -78,6 +79,13 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  bool _isInlineEditing = false;
+
+  Future<void>? _activeLoad;
+  bool _pendingReload = false;
+  int _loadCounter = 0;
+  String _currentLoadStage = '';
+
   late final VoidCallback _dateRangeListener;
   // ... (Variáveis de estado mantidas)
   late DateTime _startDate;
@@ -85,7 +93,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _datesInitialized = false;
   List<Account> _displayList = [];
   Map<int, String> _typeNames = {};
-  bool _isLoading = true;
+  bool _isLoading = false;
   double _totalPeriod = 0.0;
   double _totalForecast = 0.0;
   Map<int, _InstallmentSummary> _installmentSummaries = {};
@@ -219,12 +227,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _loadData() async {
     if (!_datesInitialized) return;
+    if (_activeLoad != null) {
+      _pendingReload = true;
+      return _activeLoad!;
+    }
+
+    final loadId = ++_loadCounter;
+    final completer = Completer<void>();
+    _activeLoad = completer.future;
+
+    final stopwatch = Stopwatch()..start();
+    Future<T> timed<T>(
+      String label,
+      Future<T> future, {
+      Duration timeout = const Duration(seconds: 10),
+    }) async {
+      _currentLoadStage = label;
+      debugPrint('⏳ DashboardScreen: $label (#$loadId)');
+      final result = await future.timeout(timeout);
+      debugPrint(
+        '✅ DashboardScreen: $label ok (${stopwatch.elapsedMilliseconds}ms) (#$loadId)',
+      );
+      return result;
+    }
+
+    debugPrint('⏳ DashboardScreen: _loadData start (#$loadId)');
     setState(() => _isLoading = true);
 
     try {
-      final allAccounts = await DatabaseHelper.instance.readAllAccountsRaw();
-      final types = await DatabaseHelper.instance.readAllTypes();
-      final cards = await DatabaseHelper.instance.readAllCards();
+      _currentLoadStage = 'readAllAccountsRaw';
+      final allAccounts = await timed(
+        'readAllAccountsRaw',
+        DatabaseHelper.instance.readAllAccountsRaw(),
+        timeout: const Duration(seconds: 15),
+      );
+      final types = await timed(
+        'readAllTypes',
+        DatabaseHelper.instance.readAllTypes(),
+      );
+      final cards = await timed(
+        'readAllCards',
+        DatabaseHelper.instance.readAllCards(),
+      );
       final typeMap = {for (var t in types) t.id!: t.name};
 
       debugPrint('📋 Tipos no banco: ${types.map((t) => '${t.name}(id: ${t.id})').join(', ')}');
@@ -512,8 +556,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
         return sum + item.value;
       });
-      final installmentSummaries =
-          await _buildInstallmentSummaries(processedList);
+      final installmentSummaries = await timed(
+        'buildInstallmentSummaries',
+        _buildInstallmentSummaries(processedList),
+        timeout: const Duration(seconds: 15),
+      );
 
       // Carregar informações de pagamento de forma assíncrona não-bloqueante
       final paymentIds = processedList
@@ -522,12 +569,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
           .toList();
       final paymentInfo = paymentIds.isEmpty
           ? <int, Map<String, dynamic>>{}
-          : await DatabaseHelper.instance.getPaymentsForAccountsByMonth(
-              paymentIds, _startDate.month, _startDate.year);
+          : await timed(
+              'getPaymentsForAccountsByMonth',
+              DatabaseHelper.instance.getPaymentsForAccountsByMonth(
+                paymentIds,
+                _startDate.month,
+                _startDate.year,
+              ),
+              timeout: const Duration(seconds: 10),
+            );
       final totalPaid = paymentIds.isEmpty
           ? 0.0
-          : await DatabaseHelper.instance.getPaymentsSumForAccountsByMonth(
-              paymentIds, _startDate.month, _startDate.year);
+          : await timed(
+              'getPaymentsSumForAccountsByMonth',
+              DatabaseHelper.instance.getPaymentsSumForAccountsByMonth(
+                paymentIds,
+                _startDate.month,
+                _startDate.year,
+              ),
+              timeout: const Duration(seconds: 10),
+            );
       final totalRemaining = math.max(0.0, totalForecast - totalPaid);
 
       if (mounted) {
@@ -538,14 +599,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _totalForecast = totalRemaining;
           _installmentSummaries = installmentSummaries;
           _paymentInfo = paymentInfo;
-          _isLoading = false;
         });
       }
     } catch (e, stackTrace) {
       debugPrint('❌ Erro ao carregar dados: $e');
       debugPrint('Stack trace: $stackTrace');
       if (mounted) {
-        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erro ao carregar dados: $e'),
@@ -553,6 +612,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
             duration: const Duration(seconds: 5),
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+      debugPrint(
+        '✅ DashboardScreen: _loadData end (#$loadId) '
+        'isLoading=$_isLoading items=${_displayList.length}',
+      );
+      _currentLoadStage = '';
+      _activeLoad = null;
+      completer.complete();
+      if (_pendingReload) {
+        _pendingReload = false;
+        unawaited(_loadData());
       }
     }
   }
@@ -572,7 +646,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final isDark = Theme.of(context).brightness == Brightness.dark;
       final headerColor = isDark ? Colors.grey.shade900 : Colors.blue.shade50;
       final totalColor = _isRecebimentosFilter
-          ? (isDark ? Colors.greenAccent : Colors.green.shade700)
+          ? (isDark ? Colors.lightBlueAccent : Colors.blue.shade700)
           : (isDark ? Colors.redAccent : Colors.red.shade700);
       final totalForecastColor = _isRecebimentosFilter
           ? (isDark ? Colors.blueAccent : Colors.blue.shade700)
@@ -607,19 +681,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               actions: _buildAppBarActions(includeFilter: false),
             ) as PreferredSizeWidget)
-          : (DateRangeAppBar(
-              range: DateTimeRange(start: _startDate, end: _endDate),
-              onPrevious: () => _changeMonth(-1),
-              onNext: () => _changeMonth(1),
-              backgroundColor: appBarBg,
-              foregroundColor: appBarFg,
-              actions: _buildAppBarActions(includeFilter: true),
-            ) as PreferredSizeWidget);
-      return Scaffold(
-        appBar: appBarWidget,
-        body: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
+           : (DateRangeAppBar(
+               range: DateTimeRange(start: _startDate, end: _endDate),
+               onPrevious: () => _changeMonth(-1),
+               onNext: () => _changeMonth(1),
+               backgroundColor: appBarBg,
+               foregroundColor: appBarFg,
+               actions: _buildAppBarActions(includeFilter: true),
+             ) as PreferredSizeWidget);
+      final dashboardBody = SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
               final headerPadding = EdgeInsets.symmetric(
                 vertical: isCompactHeight ? 10 : 16,
                 horizontal: isCompactHeight ? 6 : 8,
@@ -698,7 +770,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ])),
                 Expanded(
                     child: _isLoading
-                        ? const Center(child: CircularProgressIndicator())
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const CircularProgressIndicator(),
+                                const SizedBox(height: 12),
+                                Text(
+                                  _currentLoadStage.isEmpty
+                                      ? 'Carregando...'
+                                      : 'Carregando... ($_currentLoadStage)',
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 8),
+                                TextButton(
+                                  onPressed: () {
+                                    setState(() => _isLoading = false);
+                                  },
+                                  child: const Text('Cancelar carregamento'),
+                                ),
+                              ],
+                            ),
+                          )
                         : _displayList.isEmpty
                             ? Center(child: Text(emptyText))
                             : ListView.builder(
@@ -720,27 +813,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   }
                                 })),
               ]);
-            },
-          ),
+          },
         ),
+      );
+
+      return Scaffold(
+        appBar: _isInlineEditing ? null : appBarWidget,
+        body: dashboardBody,
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         floatingActionButtonAnimator: FloatingActionButtonAnimator.scaling,
-        floatingActionButton: SafeArea(
-          child: Padding(
-            padding: EdgeInsets.only(right: fabRight, bottom: fabBottom),
-            child: FloatingActionButton(
-              heroTag: null,
-              tooltip: _isRecebimentosFilter ? 'Novo recebimento' : 'Novo lancamento',
-              backgroundColor: Colors.blue.shade800,
-              foregroundColor: Colors.white,
-              onPressed: _isRecebimentosFilter
-                  ? _openRecebimentoForm
-                  : _showQuickActions,
-              mini: isCompactFab,
-              child: const Icon(Icons.add),
-            ),
-          ),
-        ),
+        floatingActionButton: _isInlineEditing
+            ? null
+            : SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.only(right: fabRight, bottom: fabBottom),
+                  child: FloatingActionButton(
+                    heroTag: null,
+                    tooltip: _isRecebimentosFilter
+                        ? 'Novo recebimento'
+                        : 'Novo lancamento',
+                    backgroundColor: Colors.blue.shade800,
+                    foregroundColor: Colors.white,
+                    onPressed: _isRecebimentosFilter
+                        ? _openRecebimentoForm
+                        : _showQuickActions,
+                    mini: isCompactFab,
+                    child: const Icon(Icons.add),
+                  ),
+                ),
+              ),
       );
     } catch (e, stackTrace) {
       debugPrint('❌ Erro ao renderizar DashboardScreen: $e');
@@ -1944,14 +2045,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       screenToOpen = AccountEditScreen(account: account);
     }
 
-    await Navigator.push<bool>(
-      context,
+    setState(() => _isInlineEditing = true);
+    await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (context) => screenToOpen),
     );
-
-    if (mounted) {
-      _refresh();
-    }
+    if (!mounted) return;
+    setState(() => _isInlineEditing = false);
+    _refresh();
   }
 
   Future<void> _confirmDelete(Account acc) async {

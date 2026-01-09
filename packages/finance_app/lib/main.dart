@@ -62,10 +62,12 @@ void main() async {
 
 class FinanceApp extends StatefulWidget {
   final bool migrationRequired;
+  final int initialTabIndex;
 
   const FinanceApp({
     super.key,
     this.migrationRequired = false,
+    this.initialTabIndex = 0,
   });
 
   @override
@@ -131,7 +133,7 @@ class _FinanceAppState extends State<FinanceApp> with WidgetsBindingObserver {
 
           home: widget.migrationRequired
               ? const DatabaseMigrationScreen()
-              : const HomeScreen(),
+              : HomeScreen(initialTabIndex: widget.initialTabIndex),
         );
       },
     );

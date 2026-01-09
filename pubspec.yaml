@@ -22,14 +22,16 @@ dependencies:
 
   # Necessário para inicialização do módulo finance_app em desktop
   sqflite_common_ffi: ^2.4.0+1
+  path: ^1.9.0
+  path_provider: ^2.1.0
 
   # EXPORTAÇÃO PDF
   pdf: ^3.11.0
   printing: ^5.12.0
 
   # GRÁFICOS
-  fl_chart: ^0.66.0
-  window_manager: ^0.3.8
+  fl_chart: ^1.1.1
+  window_manager: ^0.5.1
 
 dev_dependencies:
   flutter_test:

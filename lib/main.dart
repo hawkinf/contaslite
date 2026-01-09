@@ -3,7 +3,6 @@ import 'package:finance_app/screens/credit_card_screen.dart';
 import 'package:finance_app/screens/bank_accounts_screen.dart';
 import 'package:finance_app/screens/payment_methods_screen.dart';
 import 'package:finance_app/screens/recebimentos_table_screen.dart';
-import 'package:finance_app/screens/recebimentos_screen.dart';
 import 'package:finance_app/screens/settings_screen.dart';
 import 'package:finance_app/database/db_helper.dart';
 import 'package:finance_app/services/holiday_service.dart';
@@ -50,6 +49,9 @@ String get appDisplayVersion {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Configurar sqflite_common_ffi antes de qualquer acesso ao banco (desktop)
+  await configureContasDatabaseIfNeeded();
+
   // Inicializar window_manager para desktop
   if (GetPlatform.isDesktop) {
     try {
@@ -92,15 +94,6 @@ void main() async {
   await initializeDateFormatting('pt_BR', null);
   Intl.defaultLocale = 'pt_BR';
   await contas_prefs.PrefsService.init();
-
-  // Criar backup automático ao iniciar a app
-  try {
-    debugPrint('💾 Iniciando backup automático do banco de dados...');
-    await DatabaseProtectionService.instance.createBackup('app_startup');
-    debugPrint('✅ Backup automático concluído com sucesso');
-  } catch (e) {
-    debugPrint('❌ Erro ao criar backup automático: $e');
-  }
 
   runApp(const MyApp());
 }
@@ -2959,8 +2952,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                   Expanded(
                                     child: Align(
                                       alignment: Alignment.centerLeft,
-                                      child: Text(
-                                        'Contas a Pagar: ${moneyFormat.format(monthPayTotal)}',
+                                      child: Text.rich(
+                                        TextSpan(
+                                          children: [
+                                            TextSpan(text: 'Contas a Pagar: ${moneyFormat.format(monthPayTotal)}'),
+                                            TextSpan(text: 'D'),
+                                          ],
+                                        ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
@@ -2975,8 +2973,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                   Expanded(
                                     child: Align(
                                       alignment: Alignment.centerRight,
-                                      child: Text(
-                                        'Contas a Receber: ${moneyFormat.format(monthReceiveTotal)}',
+                                      child: Text.rich(
+                                        TextSpan(
+                                          children: [
+                                            TextSpan(text: 'Contas a Receber: ${moneyFormat.format(monthReceiveTotal)}'),
+                                            TextSpan(text: 'C'),
+                                          ],
+                                        ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         textAlign: TextAlign.right,
@@ -3107,13 +3110,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                               padding: EdgeInsets.only(top: isSmallMobile ? 1 : 2),
                                               child: Text.rich(
                                                 TextSpan(
-                                                  children: [
-                                                    TextSpan(text: moneyFormat.format(previsto)),
-                                                    TextSpan(
-                                                      text: ' [$previstoCount]',
-                                                      style: TextStyle(
-                                                        color: Colors.blue.shade700,
-                                                        fontWeight: FontWeight.w700,
+                                                    children: [
+                                                      TextSpan(text: '${moneyFormat.format(previsto)}D'),
+                                                      TextSpan(
+                                                        text: ' [$previstoCount]',
+                                                        style: TextStyle(
+                                                          color: Colors.blue.shade700,
+                                                          fontWeight: FontWeight.w700,
                                                       ),
                                                     ),
                                                   ],
@@ -3133,13 +3136,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                               padding: EdgeInsets.only(top: isSmallMobile ? 1 : 2),
                                               child: Text.rich(
                                                 TextSpan(
-                                                  children: [
-                                                    TextSpan(text: moneyFormat.format(lancado)),
-                                                    TextSpan(
-                                                      text: ' [$lancadoCount]',
-                                                      style: TextStyle(
-                                                        color: Colors.red.shade700,
-                                                        fontWeight: FontWeight.w700,
+                                                    children: [
+                                                      TextSpan(text: '${moneyFormat.format(lancado)}D'),
+                                                      TextSpan(
+                                                        text: ' [$lancadoCount]',
+                                                        style: TextStyle(
+                                                          color: Colors.red.shade700,
+                                                          fontWeight: FontWeight.w700,
                                                       ),
                                                     ),
                                                   ],
@@ -3159,13 +3162,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                               padding: EdgeInsets.only(top: isSmallMobile ? 1 : 2),
                                               child: Text.rich(
                                                 TextSpan(
-                                                  children: [
-                                                    TextSpan(text: moneyFormat.format(recebimentos)),
-                                                    TextSpan(
-                                                      text: ' [$recebimentosCount]',
-                                                      style: TextStyle(
-                                                        color: Colors.green.shade700,
-                                                        fontWeight: FontWeight.w700,
+                                                    children: [
+                                                      TextSpan(text: '${moneyFormat.format(recebimentos)}C'),
+                                                      TextSpan(
+                                                        text: ' [$recebimentosCount]',
+                                                        style: TextStyle(
+                                                          color: Colors.blue.shade700,
+                                                          fontWeight: FontWeight.w700,
                                                       ),
                                                     ),
                                                   ],
@@ -3176,7 +3179,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                 style: TextStyle(
                                                   fontSize: moneyTextSize,
                                                   fontWeight: FontWeight.w700,
-                                                  color: Colors.green.shade700,
+                                                  color: Colors.blue.shade700,
                                                 ),
                                               ),
                                             ),
@@ -3397,8 +3400,12 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 child: FittedBox(
                                   fit: BoxFit.scaleDown,
                                   alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    'Contas a Pagar: ${moneyFormat.format(weekPayTotal)}',
+                                  child: Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        TextSpan(text: 'Contas a Pagar: ${moneyFormat.format(weekPayTotal)}D'),
+                                      ],
+                                    ),
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w800,
@@ -3414,8 +3421,12 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 child: FittedBox(
                                   fit: BoxFit.scaleDown,
                                   alignment: Alignment.centerRight,
-                                  child: Text(
-                                    'Contas a Receber: ${moneyFormat.format(weekReceiveTotal)}',
+                                  child: Text.rich(
+                                    TextSpan(
+                                      children: [
+                                        TextSpan(text: 'Contas a Receber: ${moneyFormat.format(weekReceiveTotal)}C'),
+                                      ],
+                                    ),
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w800,
@@ -3507,13 +3518,88 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text(
-                                              '${day.date.day}',
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                                color: textColor,
-                                              ),
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  '${day.date.day}',
+                                                  style: TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: textColor,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: Align(
+                                                          alignment: Alignment.centerLeft,
+                                                          child: FittedBox(
+                                                            fit: BoxFit.scaleDown,
+                                                            alignment: Alignment.centerLeft,
+                                                            child: (previsto + lancado) > 0
+                                                                ? Text.rich(
+                                                                    TextSpan(
+                                                                      children: [
+                                                                        TextSpan(text: '${moneyFormat.format(previsto + lancado)}D'),
+                                                                        TextSpan(
+                                                                          text: ' [${previstoCount + lancadoCount}]',
+                                                                          style: TextStyle(
+                                                                            color: Colors.red.shade700,
+                                                                            fontWeight: FontWeight.w700,
+                                                                          ),
+                                                                        ),
+                                                                      ],
+                                                                    ),
+                                                                    maxLines: 1,
+                                                                    overflow: TextOverflow.ellipsis,
+                                                                    style: TextStyle(
+                                                                      fontSize: 12,
+                                                                      fontWeight: FontWeight.w700,
+                                                                      color: Colors.red.shade700,
+                                                                    ),
+                                                                  )
+                                                                : const SizedBox.shrink(),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      Expanded(
+                                                        child: Align(
+                                                          alignment: Alignment.centerRight,
+                                                          child: FittedBox(
+                                                            fit: BoxFit.scaleDown,
+                                                            alignment: Alignment.centerRight,
+                                                            child: recebimentos > 0
+                                                                ? Text.rich(
+                                                                    TextSpan(
+                                                                      children: [
+                                                                        TextSpan(text: '${moneyFormat.format(recebimentos)}C'),
+                                                                        TextSpan(
+                                                                          text: ' [$recebimentosCount]',
+                                                                          style: TextStyle(
+                                                                            color: Colors.blue.shade700,
+                                                                            fontWeight: FontWeight.w700,
+                                                                          ),
+                                                                        ),
+                                                                      ],
+                                                                    ),
+                                                                    maxLines: 1,
+                                                                    overflow: TextOverflow.ellipsis,
+                                                                    style: TextStyle(
+                                                                      fontSize: 12,
+                                                                      fontWeight: FontWeight.w700,
+                                                                      color: Colors.blue.shade700,
+                                                                    ),
+                                                                  )
+                                                                : const SizedBox.shrink(),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                             if (isToday)
                                               Text(
@@ -3522,81 +3608,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                   fontSize: 10,
                                                   fontWeight: FontWeight.w600,
                                                   color: textColor,
-                                                ),
-                                              ),
-                                            if (previsto > 0)
-                                              Padding(
-                                                padding: const EdgeInsets.only(top: 2),
-                                                child: Text.rich(
-                                                  TextSpan(
-                                                    children: [
-                                                      TextSpan(text: moneyFormat.format(previsto)),
-                                                      TextSpan(
-                                                        text: ' [$previstoCount]',
-                                                        style: TextStyle(
-                                                          color: Colors.blue.shade700,
-                                                          fontWeight: FontWeight.w700,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: textColor,
-                                                  ),
-                                                ),
-                                              ),
-                                            if (lancado > 0)
-                                              Padding(
-                                                padding: const EdgeInsets.only(top: 2),
-                                                child: Text.rich(
-                                                  TextSpan(
-                                                    children: [
-                                                      TextSpan(text: moneyFormat.format(lancado)),
-                                                      TextSpan(
-                                                        text: ' [$lancadoCount]',
-                                                        style: TextStyle(
-                                                          color: Colors.red.shade700,
-                                                          fontWeight: FontWeight.w700,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Colors.red.shade700,
-                                                  ),
-                                                ),
-                                              ),
-                                            if (recebimentos > 0)
-                                              Padding(
-                                                padding: const EdgeInsets.only(top: 2),
-                                                child: Text.rich(
-                                                  TextSpan(
-                                                    children: [
-                                                      TextSpan(text: moneyFormat.format(recebimentos)),
-                                                      TextSpan(
-                                                        text: ' [$recebimentosCount]',
-                                                        style: TextStyle(
-                                                          color: Colors.green.shade700,
-                                                          fontWeight: FontWeight.w700,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Colors.green.shade700,
-                                                  ),
                                                 ),
                                               ),
                                             if (isHoliday && holidayName != null)
@@ -4504,19 +4515,107 @@ class _ContasTabState extends State<ContasTab> {
     }
 
     return SizedBox.expand(
-      child: contas_app.FinanceApp(migrationRequired: _migrationRequired),
+      child: contas_app.FinanceApp(
+        migrationRequired: _migrationRequired,
+        initialTabIndex: 0,
+      ),
     );
   }
 }
 
 
 
-class RecebimentosTab extends StatelessWidget {
+class RecebimentosTab extends StatefulWidget {
   const RecebimentosTab({super.key});
 
   @override
+  State<RecebimentosTab> createState() => _RecebimentosTabState();
+}
+
+class _RecebimentosTabState extends State<RecebimentosTab> {
+  bool _ready = false;
+  bool _migrationRequired = false;
+  Object? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      await configureContasDatabaseIfNeeded();
+
+      await contas_prefs.PrefsService.init();
+      contas_prefs.PrefsService.setEmbeddedMode(false);
+
+      try {
+        await contas_db.DatabaseInitializationService.instance.initializeDatabase();
+      } catch (_) {
+        _migrationRequired = true;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _ready = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _ready = true;
+        _error = e;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const RecebimentosScreen();
+    if (!_ready) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: 16),
+            Text('Carregando Recebimentos...', style: Theme.of(context).textTheme.titleMedium),
+          ],
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+              const SizedBox(height: 12),
+              Text(
+                'Erro ao abrir o módulo Recebimentos',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$_error',
+                style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SizedBox.expand(
+      child: contas_app.FinanceApp(
+        migrationRequired: _migrationRequired,
+        initialTabIndex: 1,
+      ),
+    );
   }
 }
 

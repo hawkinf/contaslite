@@ -12,17 +12,38 @@ import '../models/payment.dart';
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
+  static Future<Database>? _opening;
   static const String _dbName = 'finance_v62.db';
 
   DatabaseHelper._init();
 
   Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDB(_dbName);
-    return _database!;
+    final existing = _database;
+    if (existing != null) return existing;
+
+    final inFlight = _opening;
+    if (inFlight != null) return inFlight;
+
+    final opening = _initDB(_dbName);
+    _opening = opening;
+    try {
+      final db = await opening;
+      _database = db;
+      return db;
+    } finally {
+      _opening = null;
+    }
   }
 
   Future<void> closeDatabase() async {
+    final inFlight = _opening;
+    if (inFlight != null) {
+      try {
+        await inFlight;
+      } catch (_) {
+        // ignore - close below will handle if opened
+      }
+    }
     if (_database != null) {
       await _database!.close();
       _database = null;
@@ -31,7 +52,7 @@ class DatabaseHelper {
 
   Future<void> reopenDatabase() async {
     await closeDatabase();
-    _database = await _initDB(_dbName);
+    _database = await database;
   }
 
   Future<Database> _initDB(String filePath) async {
@@ -1207,17 +1228,19 @@ class DatabaseHelper {
     if (accountIds.isEmpty) return {};
     final db = await database;
     final placeholders = List.filled(accountIds.length, '?').join(',');
-    final monthStr = month.toString().padLeft(2, '0');
-    final yearStr = year.toString();
+    final start = DateTime(year, month, 1);
+    final endExclusive = DateTime(year, month + 1, 1);
+    final startIso = start.toIso8601String();
+    final endIso = endExclusive.toIso8601String();
     final result = await db.rawQuery('''
       SELECT p.account_id, p.id, p.payment_date, pm.name as method_name, p.created_at
       FROM payments p
       INNER JOIN payment_methods pm ON p.payment_method_id = pm.id
       WHERE p.account_id IN ($placeholders)
-        AND strftime('%m', p.payment_date) = ?
-        AND strftime('%Y', p.payment_date) = ?
+        AND p.payment_date >= ?
+        AND p.payment_date < ?
       ORDER BY p.account_id, p.created_at DESC
-    ''', [...accountIds, monthStr, yearStr]);
+    ''', [...accountIds, startIso, endIso]);
 
     final map = <int, Map<String, dynamic>>{};
     for (final row in result) {
@@ -1243,15 +1266,17 @@ class DatabaseHelper {
     if (accountIds.isEmpty) return 0.0;
     final db = await database;
     final placeholders = List.filled(accountIds.length, '?').join(',');
-    final monthStr = month.toString().padLeft(2, '0');
-    final yearStr = year.toString();
+    final start = DateTime(year, month, 1);
+    final endExclusive = DateTime(year, month + 1, 1);
+    final startIso = start.toIso8601String();
+    final endIso = endExclusive.toIso8601String();
     final result = await db.rawQuery('''
       SELECT COALESCE(SUM(p.value), 0) as total
       FROM payments p
       WHERE p.account_id IN ($placeholders)
-        AND strftime('%m', p.payment_date) = ?
-        AND strftime('%Y', p.payment_date) = ?
-    ''', [...accountIds, monthStr, yearStr]);
+        AND p.payment_date >= ?
+        AND p.payment_date < ?
+    ''', [...accountIds, startIso, endIso]);
 
     if (result.isEmpty) return 0.0;
     final total = result.first['total'];
