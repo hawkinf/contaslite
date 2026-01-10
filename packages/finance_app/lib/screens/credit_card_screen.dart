@@ -172,9 +172,13 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
     _loadTotals();
   }
 
-  // MÉTODO _changeMonth RESTAURADO AQUI
-  void _changeMonth(int offset) {
-    PrefsService.shiftDateRange(offset);
+  Future<void> _editCard() async {
+    await showDialog(
+      context: context,
+      builder: (_) => CreditCardFormScreen(cardToEdit: widget.card),
+    );
+    if (!mounted) return;
+    widget.onUpdateNeeded();
   }
 
   Future<void> _loadTotals() async {
@@ -248,7 +252,6 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
     var check = HolidayService.adjustDateToBusinessDay(dueDateBase, PrefsService.cityNotifier.value);
     DateTime displayDueDate = check.date;
     final bool isAdjusted = check.warning != null && !DateUtils.isSameDay(dueDateBase, displayDueDate);
-    String monthName = DateFormat('MMMM yyyy', 'pt_BR').format(_viewDate).toUpperCase();
     
     Color bgColor = (widget.card.cardColor != null) ? Color(widget.card.cardColor!) : Colors.purple.shade900;
     final fgColor = foregroundColorFor(bgColor);
@@ -263,29 +266,59 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
         detailsChildren.add(_buildDetailRow('Assinaturas:', _subscriptionTotal, Colors.purpleAccent, fgColor));
     }
     detailsChildren.add(const SizedBox(height: 6));
-    detailsChildren.add(Text('PREVISÃO FATURA', style: TextStyle(color: fgColor, fontSize: 10, fontWeight: FontWeight.bold)));
+    detailsChildren.add(Text('PREVISÃO FATURA', style: TextStyle(color: fgColor, fontSize: 11, fontWeight: FontWeight.bold)));
     detailsChildren.add(Text(UtilBrasilFields.obterReal(_currentInvoice), style: TextStyle(color: fgColor, fontSize: 24, fontWeight: FontWeight.bold)));
 
     return GestureDetector(
       onTap: _openExpenses,
-      onDoubleTap: () {
-        showDialog(
-          context: context,
-          builder: (_) => CreditCardFormScreen(cardToEdit: widget.card),
-        ).then((_) => widget.onUpdateNeeded());
-      },
+      onDoubleTap: _editCard,
       child: Card(
-      elevation: 4, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4), child: Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), gradient: LinearGradient(colors: [bgColor, bgColor.withOpacity(0.8)], begin: Alignment.topLeft, end: Alignment.bottomRight)), padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Row(children: [IconButton(icon: Icon(Icons.chevron_left, color: fgColor), onPressed: () => _changeMonth(-1), padding: EdgeInsets.zero, constraints: const BoxConstraints()), const SizedBox(width: 8), Text(monthName, style: TextStyle(color: fgColor, fontWeight: FontWeight.bold, fontSize: 14)), const SizedBox(width: 8), IconButton(icon: Icon(Icons.chevron_right, color: fgColor), onPressed: () => _changeMonth(1), padding: EdgeInsets.zero, constraints: const BoxConstraints())]), Expanded(child: Text(widget.card.cardBank ?? 'Banco', style: TextStyle(color: fgColor, fontWeight: FontWeight.bold, fontSize: 20), textAlign: TextAlign.right, overflow: TextOverflow.ellipsis))]), 
-          Align(alignment: Alignment.centerRight, child: Text(widget.card.cardBrand ?? '', style: TextStyle(color: fgColor.withOpacity(0.8), fontSize: 12, fontStyle: FontStyle.italic))), 
-          const SizedBox(height: 15), 
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Column(crossAxisAlignment: CrossAxisAlignment.start, children: detailsChildren), if (widget.card.cardLimit != null && widget.card.cardLimit! > 0) Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Text('LIMITE', style: TextStyle(color: fgColor.withOpacity(0.8), fontSize: 10)), Text(UtilBrasilFields.obterReal(widget.card.cardLimit!), style: TextStyle(color: fgColor.withOpacity(0.9), fontSize: 14))])]), 
-          const SizedBox(height: 15), Divider(color: fgColor.withOpacity(0.2)), 
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('VENCIMENTO', style: TextStyle(color: fgColor.withOpacity(0.8), fontSize: 10)), Text('Original: ${DateFormat('dd/MM/yyyy').format(dueDateBase)}', style: TextStyle(color: fgColor.withOpacity(0.95), fontSize: 12)), if (isAdjusted) Text('Ajustada: ${DateFormat('dd/MM/yyyy').format(displayDueDate)}', style: TextStyle(color: fgColor, fontSize: 12, fontWeight: FontWeight.bold))]), 
+      elevation: 4, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4), child: Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), gradient: LinearGradient(colors: [bgColor, bgColor.withOpacity(0.8)], begin: Alignment.topLeft, end: Alignment.bottomRight)), padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: detailsChildren,
+                ),
+              ),
+              const SizedBox(width: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 160),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      widget.card.cardBank ?? 'Banco',
+                      style: TextStyle(color: fgColor, fontWeight: FontWeight.bold, fontSize: 15),
+                      textAlign: TextAlign.right,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if ((widget.card.cardBrand ?? '').isNotEmpty)
+                      Text(
+                        widget.card.cardBrand ?? '',
+                        style: TextStyle(color: fgColor.withOpacity(0.8), fontSize: 10, fontStyle: FontStyle.italic),
+                        textAlign: TextAlign.right,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    if (widget.card.cardLimit != null && widget.card.cardLimit! > 0) ...[
+                      const SizedBox(height: 6),
+                      Text('LIMITE', style: TextStyle(color: fgColor.withOpacity(0.8), fontSize: 9)),
+                      Text(UtilBrasilFields.obterReal(widget.card.cardLimit!), style: TextStyle(color: fgColor.withOpacity(0.9), fontSize: 12)),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 11), Divider(color: fgColor.withOpacity(0.2)), 
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('VENCIMENTO', style: TextStyle(color: fgColor.withOpacity(0.8), fontSize: 10)), Text('Original: ${DateFormat('dd/MM/yyyy').format(dueDateBase)}', style: TextStyle(color: fgColor.withOpacity(0.95), fontSize: 11)), if (isAdjusted) Text('Ajustada: ${DateFormat('dd/MM/yyyy').format(displayDueDate)}', style: TextStyle(color: fgColor, fontSize: 11, fontWeight: FontWeight.bold))]), 
           Row(children: [
-            IconButton(icon: Icon(Icons.list_alt, color: fgColor, size: 24), tooltip: 'Ver Despesas', onPressed: _openExpenses), 
-            ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: fgColor, foregroundColor: bgColor, padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0), minimumSize: const Size(30, 30), tapTargetSize: MaterialTapTargetSize.shrinkWrap), onPressed: _showNewExpenseDialog, child: const Icon(Icons.add_shopping_cart, size: 18)), 
-            PopupMenuButton<String>(icon: Icon(Icons.more_vert, color: fgColor.withOpacity(0.8)), onSelected: (val) { if (val == 'edit') { showDialog(context: context, builder: (_) => CreditCardFormScreen(cardToEdit: widget.card)).then((_) => widget.onUpdateNeeded()); } else if (val == 'delete') { _confirmDelete(); } }, itemBuilder: (context) => [const PopupMenuItem(value: 'edit', child: Text('Editar Cartão')), const PopupMenuItem(value: 'delete', child: Text('Excluir Cartão', style: TextStyle(color: Colors.red)))])
+            IconButton(icon: Icon(Icons.list_alt, color: fgColor, size: 18), tooltip: 'Ver Despesas', onPressed: _openExpenses), 
+            ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: fgColor, foregroundColor: bgColor, padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0), minimumSize: const Size(22, 22), tapTargetSize: MaterialTapTargetSize.shrinkWrap), onPressed: _showNewExpenseDialog, child: const Icon(Icons.add_shopping_cart, size: 14)), 
+            PopupMenuButton<String>(icon: Icon(Icons.more_vert, color: fgColor.withOpacity(0.8)), onSelected: (val) { if (val == 'edit') { _editCard(); } else if (val == 'delete') { _confirmDelete(); } }, itemBuilder: (context) => [const PopupMenuItem(value: 'edit', child: Text('Editar Cartão')), const PopupMenuItem(value: 'delete', child: Text('Excluir Cartão', style: TextStyle(color: Colors.red)))])
           ])
       ])]))
       ),
@@ -293,7 +326,7 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
   }
 
   Widget _buildDetailRow(String label, double value, Color color, Color baseColor) {
-    return Row(children: [Text(label, style: TextStyle(color: baseColor.withOpacity(0.8), fontSize: 11)), const SizedBox(width: 6), Text(UtilBrasilFields.obterReal(value), style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold))]);
+    return Row(children: [Text(label, style: TextStyle(color: baseColor.withOpacity(0.8), fontSize: 10)), const SizedBox(width: 4), Text(UtilBrasilFields.obterReal(value), style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold))]);
   }
   
   Future<void> _confirmDelete() async {

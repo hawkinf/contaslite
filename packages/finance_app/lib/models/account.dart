@@ -1,6 +1,7 @@
 class Account {
   final int? id;
   final int typeId;
+  final int? categoryId;
   final String description;
   final double value;
   final double? estimatedValue;  // Valor Previsto/Médio (para recorrências)
@@ -31,6 +32,7 @@ class Account {
   Account({
     this.id,
     required this.typeId,
+    this.categoryId,
     required this.description,
     required this.value,
     this.estimatedValue,
@@ -78,6 +80,7 @@ class Account {
   Account copyWith({
     int? id,
     int? typeId,
+    int? categoryId,
     String? description,
     double? value,
     double? estimatedValue,
@@ -104,6 +107,7 @@ class Account {
     return Account(
       id: id ?? this.id,
       typeId: typeId ?? this.typeId,
+      categoryId: categoryId ?? this.categoryId,
       description: description ?? this.description,
       value: value ?? this.value,
       estimatedValue: estimatedValue ?? this.estimatedValue,
@@ -133,6 +137,7 @@ class Account {
     return {
       'id': id,
       'typeId': typeId,
+      'categoryId': categoryId,
       'description': description,
       'value': value,
       'estimatedValue': estimatedValue,
@@ -162,6 +167,7 @@ class Account {
     return Account(
       id: map['id'] as int?,
       typeId: map['typeId'] as int,
+      categoryId: map['categoryId'] as int?,
       description: map['description'] as String,
       value: (map['value'] as num).toDouble(),
       estimatedValue: map['estimatedValue'] != null ? (map['estimatedValue'] as num).toDouble() : null,

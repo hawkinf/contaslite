@@ -347,8 +347,52 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     if (!widget.isRecebimento) {
       setState(() {
         _categorias = categorias;
+        final editing = widget.accountToEdit;
+        if (editing != null) {
+          final desiredId = editing.categoryId;
+          AccountCategory? resolved;
+          if (desiredId != null) {
+            for (final category in categorias) {
+              if (category.id == desiredId) {
+                resolved = category;
+                break;
+              }
+            }
+          }
+          if (resolved == null) {
+            final descLower = editing.description.trim().toLowerCase();
+            for (final category in categorias) {
+              if (category.categoria.trim().toLowerCase() == descLower) {
+                resolved = category;
+                break;
+              }
+            }
+          }
+          if (resolved != null) _selectedCategory = resolved;
+        }
       });
       return;
+    }
+
+    final editing = widget.accountToEdit;
+    final desiredId = editing?.categoryId;
+    AccountCategory? desiredCategory;
+    if (desiredId != null) {
+      for (final category in categorias) {
+        if (category.id == desiredId) {
+          desiredCategory = category;
+          break;
+        }
+      }
+    }
+    if (desiredCategory == null && editing != null) {
+      final descLower = editing.description.trim().toLowerCase();
+      for (final category in categorias) {
+        if (category.categoria.trim().toLowerCase() == descLower) {
+          desiredCategory = category;
+          break;
+        }
+      }
     }
 
     final parents = <AccountCategory>[];
@@ -363,6 +407,16 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     parents.sort((a, b) => a.categoria.compareTo(b.categoria));
 
     AccountCategory? selectedParent = _selectedParentCategoria;
+    if (desiredCategory != null && _isRecebimentosChild(desiredCategory)) {
+      final parentName =
+          desiredCategory.categoria.split(_recebimentosChildSeparator).first.trim();
+      for (final parent in parents) {
+        if (parent.categoria.trim() == parentName) {
+          selectedParent = parent;
+          break;
+        }
+      }
+    }
     if (selectedParent == null && parents.isNotEmpty) {
       selectedParent = parents.first;
     } else if (selectedParent != null &&
@@ -384,6 +438,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         _parentCategorias = parents;
         _selectedParentCategoria = selectedParent;
         _categorias = filteredChildren;
+        if (desiredCategory != null) {
+          _selectedCategory = desiredCategory;
+        }
         if (_selectedCategory != null &&
             !_categorias.any((c) => c.id == _selectedCategory!.id)) {
           _selectedCategory = null;
@@ -1764,9 +1821,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           final accountToUpdate = _editingAccount ?? acc;
 
           // Criar Account atualizada
-          final updated = Account(
-            id: accountToUpdate.id,
+          final updated = accountToUpdate.copyWith(
             typeId: _selectedType!.id!,
+            categoryId: _selectedCategory?.id ?? accountToUpdate.categoryId,
             description: _descController.text,
             value: launchedVal > 0.01 ? launchedVal : 0,
             estimatedValue: averageVal,
@@ -1775,6 +1832,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             payInAdvance: _payInAdvance,
             month: null,
             year: null,
+            recurrenceId: null,
             observation: _observationController.text,
             cardColor: _selectedColor,
           );
@@ -1850,6 +1908,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               for (final future in futureAccounts) {
                 final updatedFuture = future.copyWith(
                   typeId: _selectedType!.id!,
+                  categoryId: _selectedCategory?.id ?? future.categoryId,
                   description: _descController.text,
                   value: launchedVal > 0.01 ? launchedVal : 0,
                   estimatedValue: averageVal,
@@ -1876,12 +1935,13 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                 acc.month ?? DateTime.now().month, acc.dueDay);
           }
 
-          final updated = Account(
-            id: acc.id,
+          final updated = acc.copyWith(
             typeId: _selectedType!.id!,
+            categoryId: _selectedCategory?.id ?? acc.categoryId,
             description: _descController.text,
             value: UtilBrasilFields.converterMoedaParaDouble(
-                _totalValueController.text),
+              _totalValueController.text,
+            ),
             dueDay: editDate.day,
             month: editDate.month,
             year: editDate.year,
@@ -1947,6 +2007,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         debugPrint('  Valor Lançado: $launchedVal');
         final acc = Account(
             typeId: _selectedType!.id!,
+            categoryId: _selectedCategory?.id,
             description: _descController.text,
             value: launchedVal > 0.01 ? launchedVal : 0,
             estimatedValue: val,
@@ -2011,6 +2072,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
             final monthlyAccount = Account(
               typeId: _selectedType!.id!,
+              categoryId: _selectedCategory?.id,
               description: _descController.text,
               value: 0,
               estimatedValue: val,
@@ -2055,6 +2117,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             DateTime dt = UtilData.obterDateTime(_dateController.text);
             final acc = Account(
               typeId: _selectedType!.id!,
+              categoryId: _selectedCategory?.id,
               description: _descController.text + " (Assinatura)",
               value: val,
               dueDay: dt.day,
@@ -2084,6 +2147,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           for (var item in _installments) {
             final acc = Account(
               typeId: _selectedType!.id!,
+              categoryId: _selectedCategory?.id,
               description: baseDescription,
               value: item.value,
               dueDay: item.adjustedDate.day,

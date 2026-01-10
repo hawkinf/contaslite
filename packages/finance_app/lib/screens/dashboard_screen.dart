@@ -93,6 +93,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _datesInitialized = false;
   List<Account> _displayList = [];
   Map<int, String> _typeNames = {};
+  Map<int, String> _categoryNames = {};
   bool _isLoading = false;
   double _totalPeriod = 0.0;
   double _totalForecast = 0.0;
@@ -225,6 +226,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return effectiveDate;
   }
 
+  int? _normalizeYear(int? year) {
+    if (year == null) return null;
+    if (year < 100) return 2000 + year;
+    return year;
+  }
+
   Future<void> _loadData() async {
     if (!_datesInitialized) return;
     if (_activeLoad != null) {
@@ -265,11 +272,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'readAllTypes',
         DatabaseHelper.instance.readAllTypes(),
       );
+      final categories = await timed(
+        'readAllAccountCategories',
+        DatabaseHelper.instance.readAllAccountCategories(),
+      );
       final cards = await timed(
         'readAllCards',
         DatabaseHelper.instance.readAllCards(),
       );
       final typeMap = {for (var t in types) t.id!: t.name};
+      final categoryMap = {
+        for (final c in categories)
+          if (c.id != null) c.id!: c.categoria,
+      };
 
       debugPrint('📋 Tipos no banco: ${types.map((t) => '${t.name}(id: ${t.id})').join(', ')}');
       debugPrint('📋 Total de contas: ${allAccounts.length}');
@@ -341,17 +356,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final launchedIndex = <int, Set<String>>{};
       for (final exp in normalExpenses) {
         if (exp.recurrenceId != null) {
-          final key = '${exp.recurrenceId}_${exp.year}_${exp.month}';
-          launchedIndex.putIfAbsent(exp.recurrenceId!, () => {}).add(key);
-          debugPrint('📝 Lançamento indexado: recurrenceId=${exp.recurrenceId}, key=$key, description=${exp.description}');
+          final y = _normalizeYear(exp.year);
+          if (y != null && exp.month != null) {
+            final key = '${exp.recurrenceId}_${y}_${exp.month}';
+            launchedIndex.putIfAbsent(exp.recurrenceId!, () => {}).add(key);
+            debugPrint('📝 Lançamento indexado: recurrenceId=${exp.recurrenceId}, key=$key, description=${exp.description}');
+          }
         }
       }
       // Também indexar instâncias canceladas para que o PAI não apareça
       for (final cancelled in cancelledInstances) {
         if (cancelled.recurrenceId != null) {
-          final key = '${cancelled.recurrenceId}_${cancelled.year}_${cancelled.month}';
-          launchedIndex.putIfAbsent(cancelled.recurrenceId!, () => {}).add(key);
-          debugPrint('🚫 Instância cancelada indexada: recurrenceId=${cancelled.recurrenceId}, key=$key');
+          final y = _normalizeYear(cancelled.year);
+          if (y != null && cancelled.month != null) {
+            final key = '${cancelled.recurrenceId}_${y}_${cancelled.month}';
+            launchedIndex.putIfAbsent(cancelled.recurrenceId!, () => {}).add(key);
+            debugPrint('🚫 Instância cancelada indexada: recurrenceId=${cancelled.recurrenceId}, key=$key');
+          }
         }
       }
       debugPrint('🔍 launchedIndex completo: $launchedIndex');
@@ -363,7 +384,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // Processar contas pelo mês (não dia por dia)
       final accountsByMonth = <String, List<Account>>{};
       for (final acc in normalExpenses) {
-        final key = '${acc.year}_${acc.month}';
+        final normalizedYear = _normalizeYear(acc.year);
+        if (normalizedYear == null || acc.month == null) continue;
+        final key = '${normalizedYear}_${acc.month}';
         accountsByMonth.putIfAbsent(key, () => []).add(acc);
       }
 
@@ -394,16 +417,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
             debugPrint('🔎 Verificando recorrência: ${rec.description} (id=${rec.id}), launchKey=$launchKey');
             debugPrint('   launchedIndex[${rec.id}] = ${launchedIndex[rec.id]}');
             debugPrint('   wasLaunched=$wasLaunched, value=${rec.value}');
-            if (!wasLaunched) {
-              debugPrint('➕ ADICIONANDO recorrência PAI: ${rec.description}');
-              processedList.add(Account(
-                id: rec.id,
-                typeId: rec.typeId,
-                description: rec.description,
-                value: rec.value,
-                estimatedValue: rec.estimatedValue,
-                dueDay: rec.dueDay,
-                isRecurrent: true,
+              if (!wasLaunched) {
+                debugPrint('➕ ADICIONANDO recorrência PAI: ${rec.description}');
+                processedList.add(Account(
+                  id: rec.id,
+                  typeId: rec.typeId,
+                  categoryId: rec.categoryId,
+                  description: rec.description,
+                  value: rec.value,
+                  estimatedValue: rec.estimatedValue,
+                  dueDay: rec.dueDay,
+                  isRecurrent: true,
                 recurrenceId: null,
                 payInAdvance: rec.payInAdvance,
                 month: current.month,
@@ -595,6 +619,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         setState(() {
           _displayList = processedList;
           _typeNames = typeMap;
+          _categoryNames = categoryMap;
           _totalPeriod = totalPaid;
           _totalForecast = totalRemaining;
           _installmentSummaries = installmentSummaries;
@@ -1017,6 +1042,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
     final cleanedDescription =
         cleanAccountDescription(account).replaceAll('Fatura: ', '');
+    final rawCategory = (account.categoryId != null)
+        ? _categoryNames[account.categoryId!]
+        : null;
+    final categoryChild = rawCategory == null
+        ? null
+        : (rawCategory.contains('||')
+            ? rawCategory.split('||').last.trim()
+            : rawCategory.trim());
     final installmentSummary =
         account.id != null ? _installmentSummaries[account.id!] : null;
     final bool isPaid =
@@ -1143,8 +1176,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Text(
                         isCard
                             ? account.cardBank ?? 'Cartão'
-                            : _typeNames[account.typeId] ?? 'Outros',
-                        style: TextStyle(fontSize: categorySize, color: subTextColor)),
+                            : '${_typeNames[account.typeId] ?? 'Outros'} / ${(categoryChild != null && categoryChild.isNotEmpty) ? categoryChild : '-'}',
+                        style: TextStyle(fontSize: categorySize, color: subTextColor),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
                     Text(cleanedDescription,
                         style: TextStyle(
                             fontWeight: FontWeight.bold,
@@ -1827,6 +1862,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   final updatedAccount = Account(
                     id: existingInstance.id,
                     typeId: existingInstance.typeId,
+                    categoryId: existingInstance.categoryId,
                     description: existingInstance.description,
                     value: finalValue,
                     estimatedValue: existingInstance.estimatedValue,
@@ -1847,6 +1883,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   // Criar nova instância (fallback se não existir)
                   final newAccount = Account(
                     typeId: rule.typeId,
+                    categoryId: rule.categoryId,
                     description: rule.description,
                     value: finalValue,
                     estimatedValue: rule.estimatedValue,
@@ -2201,6 +2238,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               // Criar instância filha com observation="[CANCELADA]" para marcar como pulada
               final cancelledInstance = Account(
                 typeId: acc.typeId,
+                categoryId: acc.categoryId,
                 description: acc.description,
                 value: 0,  // Valor 0 para não afetar totais
                 dueDay: acc.dueDay,
@@ -2225,6 +2263,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               debugPrint('📝 Criando instância cancelada para impedir PAI de reaparecer');
               final cancelledInstance = Account(
                 typeId: acc.typeId,
+                categoryId: acc.categoryId,
                 description: acc.description,
                 value: 0,
                 dueDay: acc.dueDay,

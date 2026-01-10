@@ -67,7 +67,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 11,
+      version: 12,
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
         debugPrint('🔄 Iniciando migração de banco de dados v$oldVersion→v$newVersion...');
@@ -121,6 +121,7 @@ class DatabaseHelper {
       CREATE TABLE accounts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         typeId INTEGER NOT NULL,
+        categoryId INTEGER,
         description TEXT NOT NULL,
         value REAL NOT NULL,
         estimatedValue REAL,
@@ -144,12 +145,14 @@ class DatabaseHelper {
         purchaseDate TEXT,
         creationDate TEXT,
         FOREIGN KEY (typeId) REFERENCES account_types (id) ON DELETE CASCADE,
+        FOREIGN KEY (categoryId) REFERENCES account_descriptions (id) ON DELETE SET NULL,
         FOREIGN KEY (cardId) REFERENCES accounts (id) ON DELETE CASCADE
       )
     ''');
 
     // Índices para melhor performance
     await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_typeId ON accounts(typeId)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_categoryId ON accounts(categoryId)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_month_year ON accounts(month, year)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_cardId ON accounts(cardId)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_purchaseUuid ON accounts(purchaseUuid)');
@@ -211,6 +214,39 @@ class DatabaseHelper {
   // ========== MIGRAÇÃO DE BANCO (v1 → v2) ==========
 
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 12) {
+      debugPrint('🔄 Executando migração v12: adicionando categoryId em accounts...');
+      try {
+        try {
+          await db.execute('ALTER TABLE accounts ADD COLUMN categoryId INTEGER');
+        } catch (_) {
+          // coluna já existe
+        }
+        try {
+          await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_categoryId ON accounts(categoryId)');
+        } catch (_) {
+          // índice já existe
+        }
+        // Melhor esforço: popular categoryId quando description == categoria
+        try {
+          await db.execute('''
+            UPDATE accounts
+               SET categoryId = (
+                 SELECT ad.id
+                   FROM account_descriptions ad
+                  WHERE ad.accountId = accounts.typeId
+                    AND ad.description = accounts.description
+                  LIMIT 1
+               )
+             WHERE categoryId IS NULL
+          ''');
+        } catch (_) {
+          // ignore
+        }
+      } catch (e) {
+        debugPrint('❌ Erro na migração v12: $e');
+      }
+    }
     if (oldVersion < 2) {
       // 1. Criar tabela account_descriptions
       await db.execute('''
