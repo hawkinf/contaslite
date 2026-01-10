@@ -41,7 +41,7 @@ class InstallmentDraft {
   })  : valueController =
             TextEditingController(text: UtilBrasilFields.obterReal(value)),
         dateController = TextEditingController(
-            text: DateFormat('dd/MM/yy').format(adjustedDate));
+            text: DateFormat('dd/MM/yyyy').format(adjustedDate));
 }
 
 class AccountFormScreen extends StatefulWidget {
@@ -245,7 +245,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                   _observationController.text = parent.observation ?? "";
                   _selectedColor = parent.cardColor ?? 0xFFFFFFFF;
                   _entryMode = 1; // Recorrente
-                  _dateController.text = DateFormat('dd/MM/yy').format(
+                  _dateController.text = DateFormat('dd/MM/yyyy').format(
                       DateTime(DateTime.now().year, DateTime.now().month,
                           parent.dueDay));
                   _installmentsQtyController.text = "recorrente";
@@ -292,14 +292,14 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         _entryMode = 1; // Recorrente
         _installmentsQtyController.text = "recorrente";
         _totalValueController.text = UtilBrasilFields.obterReal(acc.value);
-        _dateController.text = DateFormat('dd/MM/yy').format(
+        _dateController.text = DateFormat('dd/MM/yyyy').format(
             DateTime(DateTime.now().year, DateTime.now().month, acc.dueDay));
         debugPrint('✅ _entryMode setado para 1 (Recorrente) por isRecurrent ou recurrenceId');
       } else {
         _entryMode = 0; // Avulsa/Parcelada
         // Carregar valor total e data
         _totalValueController.text = UtilBrasilFields.obterReal(acc.value);
-        _dateController.text = DateFormat('dd/MM/yy').format(DateTime(
+        _dateController.text = DateFormat('dd/MM/yyyy').format(DateTime(
             acc.year ?? DateTime.now().year,
             acc.month ?? DateTime.now().month,
             acc.dueDay));
@@ -545,7 +545,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   Future<void> _setInitialDate() async {
     // Corrigido: Data inicial é HOJE (formato dd/mm/yy)
     final date = DateTime.now();
-    _dateController.text = DateFormat('dd/MM/yy').format(date);
+    _dateController.text = DateFormat('dd/MM/yyyy').format(date);
   }
 
   // --- LÓGICA DE CÁLCULO DE DATAS ---
@@ -603,7 +603,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       if (!mounted) return;
 
       if (picked != null) {
-        String formatted = DateFormat('dd/MM/yy').format(picked);
+        String formatted = DateFormat('dd/MM/yyyy').format(picked);
         controller.text = formatted;
         if (controller == _dateController) {
           _onMainDateChanged(formatted);
@@ -668,7 +668,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       if (!mounted) return;
 
       if (picked != null) {
-        final formatted = DateFormat('dd/MM/yy').format(picked);
+        final formatted = DateFormat('dd/MM/yyyy').format(picked);
         controller.text = formatted;
         controller.selection = TextSelection.fromPosition(TextPosition(offset: formatted.length));
         _onTableDateChanged(index, formatted);
@@ -763,7 +763,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     if (val.length < 8) return;
     final result = _calculateAdjustment(val);
     if (result.changed) {
-      String newText = DateFormat('dd/MM/yyyy').format(result.adjustedDate);
+      String newText = DateFormat('dd/MM/yyyyyy').format(result.adjustedDate);
       if (_installments[index].dateController.text != newText) {
         _installments[index].dateController.text = newText;
         _installments[index].dateController.selection =
@@ -1030,12 +1030,12 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Data original: ${DateFormat('dd/MM/yy').format(_mainOriginalDueDate!)}',
+                'Data original: ${DateFormat('dd/MM/yyyy').format(_mainOriginalDueDate!)}',
                 style: const TextStyle(fontSize: 11, color: Colors.black54, fontWeight: FontWeight.w600),
               ),
               if (_mainDueDateWasAdjusted && _mainAdjustedDueDate != null)
                 Text(
-                  'Data ajustada: ${DateFormat('dd/MM/yy').format(_mainAdjustedDueDate!)}',
+                  'Data ajustada: ${DateFormat('dd/MM/yyyy').format(_mainAdjustedDueDate!)}',
                   style: const TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.bold),
                 ),
             ],
@@ -1248,12 +1248,12 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            'Data original: ${DateFormat('dd/MM/yy').format(item.originalDate)}',
+                                            'Data original: ${DateFormat('dd/MM/yyyy').format(item.originalDate)}',
                                             style: const TextStyle(fontSize: 11, color: Colors.black54, fontWeight: FontWeight.w600),
                                           ),
                                           if (!DateUtils.isSameDay(item.originalDate, item.adjustedDate))
                                             Text(
-                                              'Data ajustada: ${DateFormat('dd/MM/yy').format(item.adjustedDate)}',
+                                              'Data ajustada: ${DateFormat('dd/MM/yyyy').format(item.adjustedDate)}',
                                               style: const TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.bold),
                                             ),
                                           if (item.warning != null)

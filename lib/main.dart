@@ -2397,6 +2397,14 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     }
   }
 
+  /// Normaliza o ano para 4 dígitos (ex: 26 -> 2026)
+  int _normalizeYear(int? year) {
+    if (year == null) return DateTime.now().year;
+    if (year < 100) {
+      return 2000 + year;
+    }
+    return year;
+  }
 
   Future<Map<int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount})>>
       _loadMonthlyTotals(int month, int year) async {
@@ -2423,8 +2431,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
 
       bool hasRecurrenceStarted(dynamic acc) {
         if (acc.year == null || acc.month == null) return true;
-        if (acc.year < year) return true;
-        return acc.year == year && acc.month <= month;
+        final accYear = _normalizeYear(acc.year);
+        if (accYear < year) return true;
+        return accYear == year && acc.month <= month;
       }
 
       void addPrevisto(int dueDay, double value) {
@@ -2470,12 +2479,12 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           accounts.where((acc) => acc.cardId == null && !isRecebimento(acc)).toList();
 
       final monthAccounts =
-          contasAccounts.where((acc) => acc.month == month && acc.year == year).toList();
+          contasAccounts.where((acc) => acc.month == month && _normalizeYear(acc.year) == year).toList();
 
       final monthRecebimentos = accounts
           .where((acc) =>
               acc.month == month &&
-              acc.year == year &&
+              _normalizeYear(acc.year) == year &&
               acc.cardId == null &&
               isRecebimento(acc))
           .toList();
@@ -2673,42 +2682,26 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       builder: (context, snapshot) {
         Map<String, String> holidayNames = {};
         Set<String> holidayDays = {};
-        
-        debugPrint('=== Calendário Debug ===');
-        debugPrint('Mês selecionado: $_calendarMonth, Ano: $_selectedYear');
-        debugPrint('Mês anterior: $prevMonth/$prevYear');
-        debugPrint('Próximo mês: $nextMonth/$nextYear');
-        debugPrint('Dados do snapshot: ${snapshot.hasData}');
-        
+
         if (snapshot.hasData) {
-          debugPrint('Total de feriados carregados: ${snapshot.data!.length}');
           for (final holiday in snapshot.data!) {
             try {
               final holidayDate = DateTime.parse(holiday.date);
               final key = '${holidayDate.year}-${holidayDate.month.toString().padLeft(2, '0')}-${holidayDate.day.toString().padLeft(2, '0')}';
-              debugPrint('Processando feriado: ${holiday.name} em ${holiday.date} (key: $key)');
-              
+
               // Verificar se é do mês atual, anterior ou próximo
               if ((holidayDate.month == _calendarMonth && holidayDate.year == _selectedYear) ||
                   (holidayDate.month == prevMonth && holidayDate.year == prevYear) ||
                   (holidayDate.month == nextMonth && holidayDate.year == nextYear)) {
-                debugPrint('✓ Feriado ADICIONADO: ${holiday.name}');
                 holidayDays.add(key);
                 holidayNames[key] = holiday.name;
-              } else {
-                debugPrint('✗ Feriado IGNORADO: ${holiday.name}');
               }
             } catch (e) {
-              debugPrint('Erro ao parsear feriado: ${holiday.date} - $e');
+              // Erro ao parsear feriado
             }
           }
-          debugPrint('Total de feriados para este mês: ${holidayDays.length}');
-        } else if (snapshot.hasError) {
-          debugPrint('ERRO ao carregar feriados: ${snapshot.error}');
-        } else {
-          debugPrint('Carregando feriados...');
         }
-        
+
         return FutureBuilder<
             Map<int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount})>>(
           future: _monthlyTotalsFuture,
@@ -3272,20 +3265,16 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
         }
         
         if (snapshot.hasData) {
-          debugPrint('=== SEMANAL DEBUG ===');
-          debugPrint('Total de feriados carregados: ${snapshot.data!.length}');
           for (final holiday in snapshot.data!) {
             try {
               final holidayDate = DateTime.parse(holiday.date);
               final key = '${holidayDate.year}-${holidayDate.month.toString().padLeft(2, '0')}-${holidayDate.day.toString().padLeft(2, '0')}';
               holidayDays.add(key);
               holidayNames[key] = holiday.name;
-              debugPrint('Feriado: ${holiday.name} em $key');
             } catch (e) {
               // Erro ao parsear feriado
             }
           }
-          debugPrint('Feriados da semana ${startOfWeek.toIso8601String()}: ${holidayDays.length}');
         }
         
         return FutureBuilder<

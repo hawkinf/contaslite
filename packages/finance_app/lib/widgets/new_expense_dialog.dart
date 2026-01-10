@@ -511,7 +511,7 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
   Widget _buildInvoiceDropdownLabel(DateTime date) {
     final month = _formatMonthTitle(date);
     final dueDate = _dueDateForInvoiceMonth(date);
-    final due = DateFormat('dd/MM/yy').format(dueDate);
+    final due = DateFormat('dd/MM/yyyy').format(dueDate);
     final days = dueDate.difference(DateTime.now()).inDays;
     final isDefault = _defaultInvoiceMonth != null && _sameMonth(date, _defaultInvoiceMonth!);
     final primaryColor = isDefault ? Colors.blue.shade800 : Colors.black87;

@@ -75,7 +75,7 @@ class _CardExpenseEditScreenState extends State<CardExpenseEditScreen> {
       _selectedCategory = selectedCat;
       _descController.text = baseDescription;
       _valueController.text = UtilBrasilFields.obterReal(widget.expense.value);
-      _dateController.text = DateFormat('dd/MM/yy').format(
+      _dateController.text = DateFormat('dd/MM/yyyy').format(
         DateTime(widget.expense.year ?? DateTime.now().year, widget.expense.month ?? DateTime.now().month, widget.expense.dueDay),
       );
       _observationController.text = widget.expense.observation ?? '';
@@ -118,7 +118,7 @@ class _CardExpenseEditScreenState extends State<CardExpenseEditScreen> {
     );
 
     if (picked != null && mounted) {
-      _dateController.text = DateFormat('dd/MM/yy').format(picked);
+      _dateController.text = DateFormat('dd/MM/yyyy').format(picked);
     }
   }
 

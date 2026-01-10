@@ -21,6 +21,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Map<String, List<Account>> _events = {};
   List<Account> _selectedEvents = [];
   bool _isLoading = true;
+  Set<int> _recebimentosTypeIds = {}; // IDs dos tipos de Recebimentos
 
   @override
   void initState() {
@@ -34,10 +35,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
+  /// Normaliza o ano para 4 dígitos (ex: 26 -> 2026)
+  int _normalizeYear(int? year) {
+    if (year == null) return DateTime.now().year;
+    if (year < 100) {
+      // Ano com 2 dígitos - assumir século 21
+      return 2000 + year;
+    }
+    return year;
+  }
+
   /// Calcula a data efetiva de pagamento, ajustando para dia útil
   /// Retorna em UTC para compatibilidade com TableCalendar
   DateTime _resolveEffectiveDate(Account account, DateTime fallbackMonth) {
-    final year = account.year ?? fallbackMonth.year;
+    final year = _normalizeYear(account.year ?? fallbackMonth.year);
     final month = account.month ?? fallbackMonth.month;
     int day = account.dueDay;
     int maxDays = DateUtils.getDaysInMonth(year, month);
@@ -77,6 +88,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
     try {
       final allAccounts = await DatabaseHelper.instance.readAllAccountsRaw();
       final cards = await DatabaseHelper.instance.readAllCards();
+      final types = await DatabaseHelper.instance.readAllTypes();
+
+      // Identificar IDs dos tipos de Recebimentos dinamicamente
+      _recebimentosTypeIds = types
+          .where((t) => t.name.trim().toLowerCase() == 'recebimentos')
+          .map((t) => t.id!)
+          .toSet();
 
       // Definir range de 6 meses antes e 6 meses depois
       final now = DateTime.now();
@@ -103,27 +121,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
 
       // Processar contas normais
-      debugPrint('📊 Contas normais: ${normalAccounts.length}');
       for (var account in normalAccounts) {
         if (account.month != null && account.year != null) {
-          final effectiveDate = _resolveEffectiveDate(account, DateTime(account.year!, account.month!));
+          final normalizedYear = _normalizeYear(account.year);
+          final effectiveDate = _resolveEffectiveDate(account, DateTime(normalizedYear, account.month!));
           final key = _dateKey(effectiveDate);
           events.putIfAbsent(key, () => []).add(account);
         }
       }
 
       // Processar instâncias lançadas de recorrências
-      debugPrint('📊 Instâncias lançadas: ${launchedInstances.length}');
       for (var account in launchedInstances) {
         if (account.month != null && account.year != null) {
-          final effectiveDate = _resolveEffectiveDate(account, DateTime(account.year!, account.month!));
+          final normalizedYear = _normalizeYear(account.year);
+          final effectiveDate = _resolveEffectiveDate(account, DateTime(normalizedYear, account.month!));
           final key = _dateKey(effectiveDate);
           events.putIfAbsent(key, () => []).add(account);
         }
       }
 
       // Processar recorrências não lançadas (previsões)
-      debugPrint('📊 Recorrências: ${recurrents.length}');
       DateTime current = DateTime(startMonth.year, startMonth.month, 1);
       while (current.isBefore(endMonth)) {
         for (var rec in recurrents) {
@@ -152,7 +169,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
 
       // Processar cartões de crédito
-      debugPrint('📊 Cartões: ${cards.length}');
       current = DateTime(startMonth.year, startMonth.month, 1);
       while (current.isBefore(endMonth)) {
         for (var card in cards) {
@@ -182,13 +198,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         current = DateTime(current.year, current.month + 1, 1);
       }
 
-      // Debug: mostrar quantos eventos foram carregados
-      int totalEvents = 0;
-      for (var entry in events.entries) {
-        totalEvents += entry.value.length;
-      }
-      debugPrint('📅 Calendário: ${events.keys.length} dias com eventos, $totalEvents eventos total');
-
       if (mounted) {
         setState(() {
           _events = events;
@@ -206,9 +215,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   List<Account> _getEventsForDay(DateTime day) {
-    final key = _dateKey(day);
-    final events = _events[key] ?? [];
-    return events;
+    // Normalizar a data para local (ignorar timezone)
+    final normalizedDay = DateTime(day.year, day.month, day.day);
+    final key = _dateKey(normalizedDay);
+    return _events[key] ?? [];
   }
 
   @override
@@ -312,41 +322,40 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       double totalPagar = 0;
                       double totalReceber = 0;
                       for (var event in events) {
-                        // Tipo 2 = Recebimentos (ajustar conforme sua base)
-                        if (event.typeId == 2) {
+                        // Verificar se é recebimento pelo ID do tipo
+                        if (_recebimentosTypeIds.contains(event.typeId)) {
                           totalReceber += event.value;
                         } else {
                           totalPagar += event.value;
                         }
                       }
 
-                      return Positioned(
-                        bottom: 2,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (totalPagar > 0)
-                              Container(
-                                width: 8,
-                                height: 8,
-                                margin: const EdgeInsets.symmetric(horizontal: 1),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade600,
-                                  shape: BoxShape.circle,
-                                ),
+                      // Retornar marcador simples
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (totalPagar > 0)
+                            Container(
+                              width: 10,
+                              height: 10,
+                              margin: const EdgeInsets.symmetric(horizontal: 1),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade600,
+                                shape: BoxShape.circle,
                               ),
-                            if (totalReceber > 0)
-                              Container(
-                                width: 8,
-                                height: 8,
-                                margin: const EdgeInsets.symmetric(horizontal: 1),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.shade600,
-                                  shape: BoxShape.circle,
-                                ),
+                            ),
+                          if (totalReceber > 0)
+                            Container(
+                              width: 10,
+                              height: 10,
+                              margin: const EdgeInsets.symmetric(horizontal: 1),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade600,
+                                shape: BoxShape.circle,
                               ),
-                          ],
-                        ),
+                            ),
+                        ],
                       );
                     },
                   ),
@@ -410,7 +419,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final isCard = account.cardBrand != null;
     final isRecurrent = account.isRecurrent || account.recurrenceId != null;
     final isPrevisao = isRecurrent && account.id == null;
-    final isRecebimento = account.typeId == 2; // Ajustar conforme sua base
+    final isRecebimento = _recebimentosTypeIds.contains(account.typeId);
 
     Color valueColor;
     if (isRecebimento) {

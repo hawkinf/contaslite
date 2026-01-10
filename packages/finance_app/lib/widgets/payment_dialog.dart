@@ -245,7 +245,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
       reason = 'Final de Semana';
     }
     final direction = account.payInAdvance ? 'Antecipado' : 'Postergado';
-    final formattedOriginal = DateFormat('dd/MM/yy').format(original);
+    final formattedOriginal = DateFormat('dd/MM/yyyy').format(original);
     return (
       date: adjusted,
       warning: 'Original $formattedOriginal • $reason • $direction',
@@ -382,7 +382,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
           const SizedBox(height: 12),
           TextFormField(
             initialValue: _lockedDueDate != null
-                ? DateFormat('dd/MM/yy').format(_lockedDueDate!)
+                ? DateFormat('dd/MM/yyyy').format(_lockedDueDate!)
                 : '-',
             enabled: false,
             decoration: buildOutlinedInputDecoration(
