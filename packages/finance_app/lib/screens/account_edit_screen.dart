@@ -45,9 +45,14 @@ class _AccountEditScreenState extends State<AccountEditScreen> {
         }
 
         final isRecebimento = snapshot.data ?? false;
-        return AccountFormScreen(
-          accountToEdit: widget.account,
-          isRecebimento: isRecebimento,
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(isRecebimento ? 'Editar Recebimento' : 'Editar Conta'),
+          ),
+          body: AccountFormScreen(
+            accountToEdit: widget.account,
+            isRecebimento: isRecebimento,
+          ),
         );
       },
     );

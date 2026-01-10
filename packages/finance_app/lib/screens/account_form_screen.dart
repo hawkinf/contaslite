@@ -1486,17 +1486,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     return ValueListenableBuilder<DateTimeRange>(
       valueListenable: PrefsService.dateRangeNotifier,
       builder: (context, range, _) {
-        // Calcular altura máxima responsiva
-        final screenHeight = MediaQuery.of(context).size.height;
-        final viewInsets = MediaQuery.of(context).viewInsets;
-        final availableHeight = screenHeight - viewInsets.bottom;
-        final maxFormHeight = availableHeight * 0.75; // Use 75% of available height
-
         return Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: maxFormHeight.clamp(300.0, 900.0)),
+            Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Form(
@@ -1637,50 +1629,53 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                 ),
               ),
             ),
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: Theme.of(context).cardColor,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.close),
-                      label: const Text('Cancelar'),
-                      onPressed: _isSaving ? null : () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+            SafeArea(
+              top: false,
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                color: Theme.of(context).cardColor,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.close),
+                        label: const Text('Cancelar'),
+                        onPressed: _isSaving ? null : () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
-                        backgroundColor: Colors.green.shade600,
-                        disabledBackgroundColor: Colors.green.shade600.withOpacity(0.6),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
+                          backgroundColor: Colors.green.shade600,
+                          disabledBackgroundColor: Colors.green.shade600.withOpacity(0.6),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: _isSaving ? null : _saveAccount,
+                        icon: _isSaving
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2.5))
+                            : const Icon(Icons.check_circle, size: 24),
+                        label: Text(
+                          _isSaving ? "Gravando..." : _saveButtonLabel(),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ),
-                      onPressed: _isSaving ? null : _saveAccount,
-                      icon: _isSaving
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2.5))
-                          : const Icon(Icons.check_circle, size: 24),
-                      label: Text(
-                        _isSaving ? "Gravando..." : _saveButtonLabel(),
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],

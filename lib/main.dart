@@ -2601,6 +2601,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     const Color todayColor = Colors.purple;             // Purple for today
 
     final moneyFormat = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+    final dayAmountFormat =
+        NumberFormat.currency(locale: 'pt_BR', symbol: '', decimalDigits: 2);
     
     final now = DateTime(_selectedYear, _calendarMonth, 1);
     final firstDayOfWeek = now.weekday % 7; // 0=domingo, 1=segunda, ..., 6=sábado
@@ -3069,7 +3071,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                               child: Text.rich(
                                                 TextSpan(
                                                   children: [
-                                                    TextSpan(text: '${moneyFormat.format(previsto)}D'),
+                                                    TextSpan(text: '${dayAmountFormat.format(previsto)}D'),
                                                     TextSpan(
                                                       text: ' $previstoCount',
                                                       style: TextStyle(
@@ -3097,7 +3099,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                 TextSpan(
                                                   children: [
                                                     TextSpan(
-                                                      text: '${moneyFormat.format(lancado)}D',
+                                                      text: '${dayAmountFormat.format(lancado)}D',
                                                     ),
                                                     TextSpan(
                                                       text: ' $lancadoCount',
@@ -3126,7 +3128,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                 TextSpan(
                                                   children: [
                                                     TextSpan(
-                                                      text: '${moneyFormat.format(recebimentos)}C',
+                                                      text: '${dayAmountFormat.format(recebimentos)}C',
                                                     ),
                                                     TextSpan(
                                                       text: ' $recebimentosCount',
@@ -3195,6 +3197,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     final dayLabels = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
     final moneyFormat = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     final monthNamesComplete = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const double weeklySummaryFontSize = 12.0;
+    const double weeklySummaryCountFontSize = weeklySummaryFontSize * 0.8;
 
     // Calcular o número da semana (ISO 8601)
     final jan4 = DateTime(startOfWeek.year, 1, 4);
@@ -3505,10 +3509,11 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                                       children: [
                                                                         TextSpan(text: '${moneyFormat.format(previsto + lancado)}D'),
                                                                         TextSpan(
-                                                                          text: ' [${previstoCount + lancadoCount}]',
+                                                                          text: ' ${previstoCount + lancadoCount}',
                                                                           style: TextStyle(
-                                                                            color: Colors.red.shade700,
+                                                                            fontSize: weeklySummaryCountFontSize,
                                                                             fontWeight: FontWeight.w700,
+                                                                            color: Colors.black,
                                                                           ),
                                                                         ),
                                                                       ],
@@ -3516,7 +3521,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                                     maxLines: 1,
                                                                     overflow: TextOverflow.ellipsis,
                                                                     style: TextStyle(
-                                                                      fontSize: 12,
+                                                                      fontSize: weeklySummaryFontSize,
                                                                       fontWeight: FontWeight.w700,
                                                                       color: Colors.red.shade700,
                                                                     ),
@@ -3537,10 +3542,11 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                                       children: [
                                                                         TextSpan(text: '${moneyFormat.format(recebimentos)}C'),
                                                                         TextSpan(
-                                                                          text: ' [$recebimentosCount]',
+                                                                          text: ' $recebimentosCount',
                                                                           style: TextStyle(
-                                                                            color: Colors.blue.shade700,
+                                                                            fontSize: weeklySummaryCountFontSize,
                                                                             fontWeight: FontWeight.w700,
+                                                                            color: Colors.black,
                                                                           ),
                                                                         ),
                                                                       ],
@@ -3548,7 +3554,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                                     maxLines: 1,
                                                                     overflow: TextOverflow.ellipsis,
                                                                     style: TextStyle(
-                                                                      fontSize: 12,
+                                                                      fontSize: weeklySummaryFontSize,
                                                                       fontWeight: FontWeight.w700,
                                                                       color: Colors.blue.shade700,
                                                                     ),

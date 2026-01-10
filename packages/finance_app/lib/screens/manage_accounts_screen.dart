@@ -208,7 +208,12 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
       final result = await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => AccountFormScreen(accountToEdit: account),
+          builder: (_) => Scaffold(
+            appBar: AppBar(
+              title: const Text('Editar Conta'),
+            ),
+            body: AccountFormScreen(accountToEdit: account),
+          ),
         ),
       );
       if (result == true) {

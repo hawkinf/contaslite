@@ -93,6 +93,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _isInlineEditing = false;
+  bool _isNavigating = false;
 
   Future<void>? _activeLoad;
   bool _pendingReload = false;
@@ -2117,10 +2118,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       screenToOpen = AccountEditScreen(account: account);
     }
 
+    if (_isNavigating) return;
+    _isNavigating = true;
     setState(() => _isInlineEditing = true);
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (context) => screenToOpen),
-    );
+    try {
+      await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (context) => screenToOpen),
+      );
+    } finally {
+      _isNavigating = false;
+    }
     if (!mounted) return;
     setState(() => _isInlineEditing = false);
     _refresh();
@@ -2667,30 +2674,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           await showDialog(
                             context: context,
                             builder: (dialogContext) => Dialog(
-                              insetPadding: EdgeInsets.zero,
+                              insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
                               backgroundColor: Colors.transparent,
                               child: Center(
                                 child: ConstrainedBox(
                                   constraints: const BoxConstraints(
                                     maxWidth: 700,
-                                    maxHeight: 950,
+                                    maxHeight: 850,
                                   ),
                                   child: Stack(
                                     children: [
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(16),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(alpha: 0.3),
-                                              blurRadius: 16,
-                                              offset: const Offset(0, 8),
-                                            ),
-                                          ],
-                                        ),
-                                        child: const SingleChildScrollView(
-                                          child: AccountFormScreen(),
+                                      SizedBox.expand(
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Theme.of(context).scaffoldBackgroundColor,
+                                            borderRadius: BorderRadius.circular(16),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(alpha: 0.3),
+                                                blurRadius: 16,
+                                                offset: const Offset(0, 8),
+                                              ),
+                                            ],
+                                          ),
+                                          clipBehavior: Clip.antiAlias,
+                                          child: const AccountFormScreen(),
                                         ),
                                       ),
                                       Positioned(
