@@ -48,12 +48,10 @@ class AccountCategory {
       identical(this, other) ||
       other is AccountCategory &&
           runtimeType == other.runtimeType &&
-          id == other.id &&
-          accountId == other.accountId &&
-          categoria == other.categoria;
+          id == other.id;
 
   @override
-  int get hashCode => id.hashCode ^ accountId.hashCode ^ categoria.hashCode;
+  int get hashCode => id.hashCode;
 
   @override
   String toString() =>

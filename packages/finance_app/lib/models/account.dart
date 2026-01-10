@@ -66,7 +66,21 @@ class Account {
   /// Obtém a data de vencimento completa
   DateTime? get dueDate {
     if (month == null || year == null) return null;
-    return DateTime(year!, month!, dueDay);
+    // Validar o dia para evitar datas inválidas (ex: 31/02)
+    final day = _validateDay(dueDay, month!, year!);
+    return DateTime(year!, month!, day);
+  }
+
+  /// Valida e ajusta um dia do mês para evitar datas inválidas
+  static int _validateDay(int day, int month, int year) {
+    final daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    
+    // Verificar se é ano bissexto
+    if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) {
+      return day.clamp(1, 29);
+    }
+    
+    return day.clamp(1, daysInMonth[month - 1]);
   }
 
   /// Verifica se a conta está vencida

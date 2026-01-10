@@ -19,32 +19,29 @@ class RecebimentoFormScreen extends StatelessWidget {
       insetPadding: EdgeInsets.zero,
       backgroundColor: Colors.transparent,
       child: Center(
-        child: ConstrainedBox(
+        child: Container(
           constraints: BoxConstraints(
             maxWidth: maxWidth,
             maxHeight: maxHeight,
           ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
           child: Stack(
             children: [
-              SizedBox.expand(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: const AccountFormScreen(
-                    typeNameFilter: 'Recebimentos',
-                    lockTypeSelection: true,
-                    isRecebimento: true,
-                  ),
-                ),
+              const AccountFormScreen(
+                typeNameFilter: 'Recebimentos',
+                lockTypeSelection: true,
+                isRecebimento: true,
               ),
               Positioned(
                 top: 8,

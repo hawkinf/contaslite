@@ -37,9 +37,9 @@ class AccountType {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is AccountType && other.id == id && other.name == name;
+    return other is AccountType && other.id == id;
   }
 
   @override
-  int get hashCode => id.hashCode ^ name.hashCode;
+  int get hashCode => id.hashCode;
 }

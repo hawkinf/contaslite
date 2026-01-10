@@ -163,6 +163,56 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     return raw.split(_recebimentosChildSeparator).last.trim();
   }
 
+  /// Retorna a categoria selecionada validada (garante que está na lista de categorias)
+  AccountCategory? _getValidatedSelectedCategory() {
+    if (_selectedCategory == null) return null;
+    // Verificar se a categoria selecionada está na lista de categorias
+    if (_categorias.any((c) => c.id == _selectedCategory!.id)) {
+      return _selectedCategory;
+    }
+    // Se não estiver na lista, retornar null (evita erro no dropdown)
+    return null;
+  }
+
+  /// Retorna a categoria pai selecionada validada
+  AccountCategory? _getValidatedSelectedParentCategory() {
+    if (_selectedParentCategoria == null) return null;
+    // Verificar se a categoria pai selecionada está na lista de categorias pai
+    if (_parentCategorias.any((c) => c.id == _selectedParentCategoria!.id)) {
+      return _selectedParentCategoria;
+    }
+    // Se não estiver na lista, retornar null (evita erro no dropdown)
+    return null;
+  }
+
+  /// Retorna o tipo selecionado validado
+  AccountType? _getValidatedSelectedType() {
+    if (_selectedType == null) return null;
+    // Verificar se o tipo selecionado está na lista de tipos
+    if (_typesList.any((t) => t.id == _selectedType!.id)) {
+      return _selectedType;
+    }
+    // Se não estiver na lista, retornar null (evita erro no dropdown)
+    return null;
+  }
+
+  /// Valida e ajusta um dia do mês para evitar datas inválidas (ex: 31/02)
+  int _validateAndAdjustDay(int day, int month, int year) {
+    // Definir o máximo de dias para cada mês
+    final daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    
+    // Verificar se é ano bissexto
+    if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) {
+      daysInMonth[1] = 29;
+    }
+    
+    // Se o dia exceder o máximo do mês, ajustar para o último dia do mês
+    if (day > daysInMonth[month - 1]) {
+      return daysInMonth[month - 1];
+    }
+    return day;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -245,9 +295,11 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                   _observationController.text = parent.observation ?? "";
                   _selectedColor = parent.cardColor ?? 0xFFFFFFFF;
                   _entryMode = 1; // Recorrente
+                  // Validar dueDay para evitar datas inválidas
+                  final now = DateTime.now();
+                  final day = _validateAndAdjustDay(parent.dueDay, now.month, now.year);
                   _dateController.text = DateFormat('dd/MM/yyyy').format(
-                      DateTime(DateTime.now().year, DateTime.now().month,
-                          parent.dueDay));
+                      DateTime(now.year, now.month, day));
                   _installmentsQtyController.text = "recorrente";
                 });
               }
@@ -292,17 +344,24 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         _entryMode = 1; // Recorrente
         _installmentsQtyController.text = "recorrente";
         _totalValueController.text = UtilBrasilFields.obterReal(acc.value);
+        // Validar dueDay para evitar datas inválidas
+        final now = DateTime.now();
+        final day = _validateAndAdjustDay(acc.dueDay, now.month, now.year);
         _dateController.text = DateFormat('dd/MM/yyyy').format(
-            DateTime(DateTime.now().year, DateTime.now().month, acc.dueDay));
+            DateTime(now.year, now.month, day));
         debugPrint('✅ _entryMode setado para 1 (Recorrente) por isRecurrent ou recurrenceId');
       } else {
         _entryMode = 0; // Avulsa/Parcelada
         // Carregar valor total e data
         _totalValueController.text = UtilBrasilFields.obterReal(acc.value);
+        // Validar dueDay para evitar datas inválidas (ex: 31/02)
+        final year = acc.year ?? DateTime.now().year;
+        final month = acc.month ?? DateTime.now().month;
+        final day = _validateAndAdjustDay(acc.dueDay, month, year);
         _dateController.text = DateFormat('dd/MM/yyyy').format(DateTime(
-            acc.year ?? DateTime.now().year,
-            acc.month ?? DateTime.now().month,
-            acc.dueDay));
+            year,
+            month,
+            day));
         // Definir quantidade de parcelas como 1 (pode ser editado depois)
         _installmentsQtyController.text = "1";
         debugPrint('❌ _entryMode setado para 0 (Avulsa) - não é recorrente');
@@ -813,7 +872,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             icon: Icons.account_balance_wallet,
             label: _typeLabel,
             child: DropdownButtonFormField<AccountCategory>(
-              value: _selectedParentCategoria,
+              value: _getValidatedSelectedParentCategory(),
               decoration: buildOutlinedInputDecoration(
                 label: _typeLabel,
                 icon: Icons.account_balance_wallet,
@@ -867,7 +926,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           icon: Icons.account_balance_wallet,
           label: _typeLabel,
           child: DropdownButtonFormField<AccountType>(
-            value: _selectedType,
+            value: _getValidatedSelectedType(),
             decoration: buildOutlinedInputDecoration(
               label: _typeLabel,
               icon: Icons.account_balance_wallet,
@@ -1486,17 +1545,16 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     return ValueListenableBuilder<DateTimeRange>(
       valueListenable: PrefsService.dateRangeNotifier,
       builder: (context, range, _) {
-        return Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
               // Card com seleção de cor
               Card(
                 elevation: 2,
@@ -1538,7 +1596,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                               icon: Icons.label,
                               label: 'Categoria',
                               child: DropdownButtonFormField<AccountCategory>(
-                                value: _selectedCategory,
+                                value: _getValidatedSelectedCategory(),
                                 decoration: buildOutlinedInputDecoration(
                                   label: 'Categoria',
                                   icon: Icons.label,
@@ -1623,17 +1681,27 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                 ),
               ),
 
-              const SizedBox(height: 40),
-                    ],
-                  ),
-                ),
+              const SizedBox(height: 20),
+                ],
               ),
             ),
-            SafeArea(
+          ),
+          // Botões FIXOS na parte inferior usando bottomNavigationBar
+          bottomNavigationBar: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: SafeArea(
               top: false,
-              child: Container(
+              child: Padding(
                 padding: const EdgeInsets.all(16),
-                color: Theme.of(context).cardColor,
                 child: Row(
                   children: [
                     Expanded(
@@ -1678,7 +1746,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                 ),
               ),
             ),
-          ],
+          ),
         );
       },
     );
@@ -1732,7 +1800,8 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   DateTime _installmentDate(Account account) {
     final year = account.year ?? DateTime.now().year;
     final month = account.month ?? DateTime.now().month;
-    return DateTime(year, month, account.dueDay);
+    final day = _validateAndAdjustDay(account.dueDay, month, year);
+    return DateTime(year, month, day);
   }
 
   Future<void> _loadPreferences() async {
@@ -1977,8 +2046,10 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             try {
               editDate = UtilData.obterDateTime(_dateController.text);
             } catch (e) {
-              editDate = DateTime(acc.year ?? DateTime.now().year,
-                  acc.month ?? DateTime.now().month, acc.dueDay);
+              final year = acc.year ?? DateTime.now().year;
+              final month = acc.month ?? DateTime.now().month;
+              final day = _validateAndAdjustDay(acc.dueDay, month, year);
+              editDate = DateTime(year, month, day);
             }
 
             final newValue = UtilBrasilFields.converterMoedaParaDouble(

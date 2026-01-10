@@ -2677,30 +2677,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
                               backgroundColor: Colors.transparent,
                               child: Center(
-                                child: ConstrainedBox(
+                                child: Container(
                                   constraints: const BoxConstraints(
                                     maxWidth: 700,
                                     maxHeight: 850,
                                   ),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).scaffoldBackgroundColor,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.3),
+                                        blurRadius: 16,
+                                        offset: const Offset(0, 8),
+                                      ),
+                                    ],
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
                                   child: Stack(
                                     children: [
-                                      SizedBox.expand(
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color: Theme.of(context).scaffoldBackgroundColor,
-                                            borderRadius: BorderRadius.circular(16),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.3),
-                                                blurRadius: 16,
-                                                offset: const Offset(0, 8),
-                                              ),
-                                            ],
-                                          ),
-                                          clipBehavior: Clip.antiAlias,
-                                          child: const AccountFormScreen(),
-                                        ),
-                                      ),
+                                      const AccountFormScreen(),
                                       Positioned(
                                         top: 8,
                                         right: 8,
