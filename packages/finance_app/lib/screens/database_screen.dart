@@ -21,6 +21,37 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
   late TabController _tabController;
   bool _isProcessingBackup = false;
   bool _isRepairing = false;
+ 
+  Color _tileBackgroundColor(BuildContext context, Color lightColor) {
+    final brightness = Theme.of(context).brightness;
+    if (brightness == Brightness.dark) {
+      return Theme.of(context).colorScheme.surfaceContainerHighest;
+    }
+    return lightColor;
+  }
+
+  Color _tileIconColor(BuildContext context, Color lightColor) {
+    final brightness = Theme.of(context).brightness;
+    if (brightness == Brightness.dark) {
+      return Theme.of(context).colorScheme.primary;
+    }
+    return lightColor;
+  }
+
+  TextStyle _tileTitleStyle(BuildContext context, {FontWeight weight = FontWeight.w600}) {
+    final base = Theme.of(context).textTheme.titleMedium;
+    return (base ?? const TextStyle()).copyWith(
+      fontWeight: weight,
+      color: Theme.of(context).colorScheme.onSurface,
+    );
+  }
+
+  TextStyle _tileSubtitleStyle(BuildContext context) {
+    final base = Theme.of(context).textTheme.bodySmall;
+    return (base ?? const TextStyle()).copyWith(
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+    );
+  }
 
   @override
   void initState() {
@@ -41,10 +72,10 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
         ListTile(
           enabled: !_isProcessingBackup,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          tileColor: Colors.blue.shade50,
-          leading: const Icon(Icons.upload_file, color: Colors.blue, size: 30),
-          title: const Text('Exportar Banco de Dados'),
-          subtitle: const Text('Gera um arquivo .db para backup manual', maxLines: 2, overflow: TextOverflow.ellipsis),
+          tileColor: _tileBackgroundColor(context, Colors.blue.shade50),
+          leading: Icon(Icons.upload_file, color: _tileIconColor(context, Colors.blue), size: 30),
+          title: Text('Exportar Banco de Dados', style: _tileTitleStyle(context)),
+          subtitle: Text('Gera um arquivo .db para backup manual', maxLines: 2, overflow: TextOverflow.ellipsis, style: _tileSubtitleStyle(context)),
           trailing: _isProcessingBackup
               ? const SizedBox(
                   height: 20,
@@ -58,10 +89,10 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
         ListTile(
           enabled: !_isProcessingBackup,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          tileColor: Colors.green.shade50,
-          leading: const Icon(Icons.download, color: Colors.green, size: 30),
-          title: const Text('Importar Banco de Dados'),
-          subtitle: const Text('Substitui os dados atuais por um backup', maxLines: 2, overflow: TextOverflow.ellipsis),
+          tileColor: _tileBackgroundColor(context, Colors.green.shade50),
+          leading: Icon(Icons.download, color: _tileIconColor(context, Colors.green), size: 30),
+          title: Text('Importar Banco de Dados', style: _tileTitleStyle(context)),
+          subtitle: Text('Substitui os dados atuais por um backup', maxLines: 2, overflow: TextOverflow.ellipsis, style: _tileSubtitleStyle(context)),
           trailing: _isProcessingBackup
               ? const SizedBox(
                   height: 20,
@@ -74,10 +105,10 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
         const SizedBox(height: 10),
         ListTile(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          tileColor: Colors.teal.shade50,
-          leading: const Icon(Icons.folder_open, color: Colors.teal, size: 30),
-          title: const Text('Mostrar caminho do banco'),
-          subtitle: const Text('Exibe a localização do arquivo .db', maxLines: 2, overflow: TextOverflow.ellipsis),
+          tileColor: _tileBackgroundColor(context, Colors.teal.shade50),
+          leading: Icon(Icons.folder_open, color: _tileIconColor(context, Colors.teal), size: 30),
+          title: Text('Mostrar caminho do banco', style: _tileTitleStyle(context)),
+          subtitle: Text('Exibe a localização do arquivo .db', maxLines: 2, overflow: TextOverflow.ellipsis, style: _tileSubtitleStyle(context)),
           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
           onTap: _showDatabasePath,
         ),
@@ -85,10 +116,10 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
         ListTile(
           enabled: !_isRepairing,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          tileColor: Colors.orange.shade50,
-          leading: const Icon(Icons.build_circle, color: Colors.orange, size: 30),
-          title: const Text('Reparar Banco de Dados'),
-          subtitle: const Text('Executa checagem de integridade e reorganiza o arquivo', maxLines: 2, overflow: TextOverflow.ellipsis),
+          tileColor: _tileBackgroundColor(context, Colors.orange.shade50),
+          leading: Icon(Icons.build_circle, color: _tileIconColor(context, Colors.orange), size: 30),
+          title: Text('Reparar Banco de Dados', style: _tileTitleStyle(context)),
+          subtitle: Text('Executa checagem de integridade e reorganiza o arquivo', maxLines: 2, overflow: TextOverflow.ellipsis, style: _tileSubtitleStyle(context)),
           trailing: _isRepairing
               ? const SizedBox(
                   height: 20,
@@ -108,20 +139,20 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
       children: [
         ListTile(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          tileColor: Colors.indigo.shade50,
-          leading: const Icon(Icons.info_outline, color: Colors.indigo, size: 30),
-          title: const Text('Status das Tabelas'),
-          subtitle: const Text('Verifica quantos registros existem', maxLines: 2, overflow: TextOverflow.ellipsis),
+          tileColor: _tileBackgroundColor(context, Colors.indigo.shade50),
+          leading: Icon(Icons.info_outline, color: _tileIconColor(context, Colors.indigo), size: 30),
+          title: Text('Status das Tabelas', style: _tileTitleStyle(context)),
+          subtitle: Text('Verifica quantos registros existem', maxLines: 2, overflow: TextOverflow.ellipsis, style: _tileSubtitleStyle(context)),
           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
           onTap: _showTableStatusDialog,
         ),
         const SizedBox(height: 10),
         ListTile(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          tileColor: Colors.green.shade50,
-          leading: const Icon(Icons.explore, color: Colors.green, size: 30),
-          title: const Text('Explorador de Dados'),
-          subtitle: const Text('Navegue e visualize todos os registros do banco', maxLines: 2, overflow: TextOverflow.ellipsis),
+          tileColor: _tileBackgroundColor(context, Colors.green.shade50),
+          leading: Icon(Icons.explore, color: _tileIconColor(context, Colors.green), size: 30),
+          title: Text('Explorador de Dados', style: _tileTitleStyle(context)),
+          subtitle: Text('Navegue e visualize todos os registros do banco', maxLines: 2, overflow: TextOverflow.ellipsis, style: _tileSubtitleStyle(context)),
           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
           onTap: () {
             Navigator.push(
@@ -133,20 +164,20 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
         const SizedBox(height: 10),
         ListTile(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          tileColor: Colors.purple.shade50,
-          leading: const Icon(Icons.picture_as_pdf, color: Colors.purple, size: 30),
-          title: const Text('Exportar para PDF'),
-          subtitle: const Text('Gera relatório com todos os dados das tabelas', maxLines: 2, overflow: TextOverflow.ellipsis),
+          tileColor: _tileBackgroundColor(context, Colors.purple.shade50),
+          leading: Icon(Icons.picture_as_pdf, color: _tileIconColor(context, Colors.purple), size: 30),
+          title: Text('Exportar para PDF', style: _tileTitleStyle(context)),
+          subtitle: Text('Gera relatório com todos os dados das tabelas', maxLines: 2, overflow: TextOverflow.ellipsis, style: _tileSubtitleStyle(context)),
           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
           onTap: _exportDataToPdf,
         ),
         const SizedBox(height: 10),
         ListTile(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          tileColor: Colors.amber.shade50,
-          leading: const Icon(Icons.refresh, color: Colors.amber, size: 30),
-          title: const Text('Recriar Tabelas Padrão'),
-          subtitle: const Text('Apaga e recria categorias e formas de pagamento'),
+          tileColor: _tileBackgroundColor(context, Colors.amber.shade50),
+          leading: Icon(Icons.refresh, color: _tileIconColor(context, Colors.amber), size: 30),
+          title: Text('Recriar Tabelas Padrão', style: _tileTitleStyle(context)),
+          subtitle: Text('Apaga e recria categorias e formas de pagamento', style: _tileSubtitleStyle(context)),
           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
           onTap: _showRecreateTablesDialog,
         ),

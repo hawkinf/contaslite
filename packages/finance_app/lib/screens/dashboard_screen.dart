@@ -29,11 +29,13 @@ import 'recurrent_account_edit_screen.dart' as rec;
 class _InstallmentSummary {
   final double totalAmount;
   final double remainingAmount;
+  final DateTime? nextDueDate;
 
 
   const _InstallmentSummary({
     required this.totalAmount,
     required this.remainingAmount,
+    this.nextDueDate,
   });
 }
 
@@ -41,11 +43,13 @@ class _SeriesSummary {
   final double totalAmount;
   final List<double> remainingFromIndex;
   final Map<int, int> idToIndex;
+  final List<Account> orderedInstallments;
 
   const _SeriesSummary({
     required this.totalAmount,
     required this.remainingFromIndex,
     required this.idToIndex,
+    required this.orderedInstallments,
   });
 
   _InstallmentSummary? summaryFor(Account account, InstallmentDisplay display) {
@@ -57,9 +61,18 @@ class _SeriesSummary {
     if (idx < 0 || idx >= remainingFromIndex.length) {
       return null;
     }
+    DateTime? nextDueDate;
+    final nextIndex = idx + 1;
+    if (nextIndex < orderedInstallments.length) {
+      final nextAccount = orderedInstallments[nextIndex];
+      final nextYear = nextAccount.year ?? DateTime.now().year;
+      final nextMonth = nextAccount.month ?? DateTime.now().month;
+      nextDueDate = DateTime(nextYear, nextMonth, nextAccount.dueDay);
+    }
     return _InstallmentSummary(
       totalAmount: totalAmount,
       remainingAmount: remainingFromIndex[idx],
+      nextDueDate: nextDueDate,
     );
   }
 }
@@ -155,6 +168,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _refresh() => _loadData();
+
+  Color _adaptiveGreyTextColor(BuildContext context, Color lightGrey, {Color? darkGrey}) {
+    return Theme.of(context).brightness == Brightness.dark ? (darkGrey ?? Colors.grey.shade600) : lightGrey;
+  }
 
   String _formatRangeLabel(DateTime start, DateTime end) {
     final formatter = DateFormat('dd/MM/yyyy');
@@ -749,10 +766,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ]),
                               child: Column(children: [
                                 Text(totalLabel,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 12,
-                                        color: Colors.grey)),
+                                        color: _adaptiveGreyTextColor(context, Colors.grey))),
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
                                   child: Text(UtilBrasilFields.obterReal(_totalPeriod),
@@ -779,10 +796,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ]),
                               child: Column(children: [
                                 Text(totalForecastLabel,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 12,
-                                        color: Colors.grey)),
+                                        color: _adaptiveGreyTextColor(context, Colors.grey))),
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
                                   child: Text(UtilBrasilFields.obterReal(_totalForecast),
@@ -890,7 +907,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Text(
                 e.toString(),
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: _adaptiveGreyTextColor(context, Colors.grey)),
               ),
             ],
           ),
@@ -1000,27 +1017,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
           : Colors.purple.shade900;
       cardColor = userColor;
       containerBg = Colors.transparent;
-        textColor = foregroundColorFor(userColor);
+      textColor = foregroundColorFor(userColor);
       subTextColor = textColor.withValues(alpha: 0.8);
       moneyColor = textColor;
     } else {
+      final int? accountColorValue = account.cardColor;
+      final bool usesCustomColor = accountColorValue != null;
+      final Color? customColor =
+          usesCustomColor ? Color(accountColorValue) : null;
       containerBg = isAlertDay ? Colors.red.shade800 : Colors.transparent;
-      cardColor = isAlertDay ? Colors.white : Theme.of(context).cardColor;
-      textColor = isAlertDay
-          ? Colors.black87
-          : (Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black);
-      subTextColor = Colors.grey.shade600;
-      if (isRecurrent) {
-        moneyColor = Colors.grey;
+      cardColor = customColor ?? (isAlertDay ? Colors.white : Theme.of(context).cardColor);
+      if (customColor != null) {
+        textColor = foregroundColorFor(customColor);
+        subTextColor = textColor.withValues(alpha: 0.8);
+        moneyColor = textColor;
       } else {
-        moneyColor =
-            _isRecebimentosFilter ? Colors.green.shade700 : Colors.red.shade700;
-      }
-      if (Theme.of(context).brightness == Brightness.dark && !isRecurrent) {
-        moneyColor = _isRecebimentosFilter ? Colors.lightGreenAccent : Colors.redAccent;
-      }
-      if (isAlertDay && !isRecurrent && !_isRecebimentosFilter) {
-        moneyColor = Colors.red.shade900;
+        textColor = isAlertDay
+            ? Colors.black87
+            : (Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black);
+      subTextColor = _adaptiveGreyTextColor(context, Colors.grey.shade600);
+      if (isRecurrent) {
+        moneyColor = _adaptiveGreyTextColor(context, Colors.grey);
+      } else {
+          moneyColor =
+              _isRecebimentosFilter ? Colors.green.shade700 : Colors.red.shade700;
+        }
+        if (Theme.of(context).brightness == Brightness.dark && !isRecurrent) {
+          moneyColor = _isRecebimentosFilter ? Colors.lightGreenAccent : Colors.redAccent;
+        }
+        if (isAlertDay && !isRecurrent && !_isRecebimentosFilter) {
+          moneyColor = Colors.red.shade900;
+        }
       }
     }
 
@@ -1108,11 +1135,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         Text(
                           "Orig. ${DateFormat('dd/MM').format(originalDate)}",
-                          style: TextStyle(
-                            fontSize: smallDateSize,
-                            color: isCard ? subTextColor : Colors.grey.shade600,
-                            fontWeight: FontWeight.bold,
-                          ),
+                                  style: TextStyle(
+                                    fontSize: smallDateSize,
+                                    color: isCard ? subTextColor : _adaptiveGreyTextColor(context, Colors.grey.shade600),
+                                    fontWeight: FontWeight.bold,
+                                  ),
                         ),
                         if (isAlertDay)
                           Text(
@@ -1203,7 +1230,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       color: textColor.withValues(alpha: 0.85),
                                       fontWeight: FontWeight.w600)),
                               Text(
-                                  'Restam: ${UtilBrasilFields.obterReal(installmentSummary.remainingAmount)}',
+                                  'Restam: ${UtilBrasilFields.obterReal(installmentSummary.remainingAmount)}${_installmentNextDueLabel(installmentSummary)}',
                                   style: TextStyle(
                                       fontSize: badgeSize,
                                       color: textColor,
@@ -1226,9 +1253,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       style: TextStyle(
                         fontWeight: FontWeight.w500,
                         fontSize: valuePreviewSize,
-                        color: Colors.grey.shade600,
+                        color: _adaptiveGreyTextColor(context, Colors.grey.shade600),
                         decoration: TextDecoration.lineThrough,
-                        decorationColor: Colors.grey.shade400,
+                        decorationColor: _adaptiveGreyTextColor(context, Colors.grey.shade400),
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -1237,7 +1264,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       style: TextStyle(
                         fontSize: smallDateSize,
                         fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade600,
+                        color: _adaptiveGreyTextColor(context, Colors.grey.shade600),
                       ),
                     ),
                   ],
@@ -1302,7 +1329,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Text(
                           'via ${_paymentInfo[account.id!]?['method_name'] ?? ''}',
                           style: TextStyle(
-                            color: Colors.grey.shade600,
+                            color: _adaptiveGreyTextColor(context, Colors.grey.shade600),
                             fontSize: smallDateSize,
                           ),
                         ),
@@ -1546,6 +1573,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return result;
   }
 
+  String _installmentNextDueLabel(_InstallmentSummary summary) {
+    final nextDueDate = summary.nextDueDate;
+    if (nextDueDate == null) return '';
+    final formattedDate = DateFormat('dd/MM/yyyy').format(nextDueDate);
+    return ' (Próx: $formattedDate)';
+  }
+
   Future<_SeriesSummary?> _buildSeriesSummary(
       Account account, InstallmentDisplay display) async {
     final series = await _fetchInstallmentSeries(account, display);
@@ -1573,6 +1607,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       totalAmount: total,
       remainingFromIndex: remaining,
       idToIndex: idToIndex,
+      orderedInstallments: sorted,
     );
   }
 
@@ -1664,16 +1699,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 UtilBrasilFields.obterReal(estimatedValue),
                 style: TextStyle(
                   fontSize: valuePreviewSize * 0.9,
-                  color: Colors.grey.shade600,
+                  color: _adaptiveGreyTextColor(context, Colors.grey.shade600),
                   decoration: TextDecoration.lineThrough,
-                  decorationColor: Colors.grey.shade400,
+                  decorationColor: _adaptiveGreyTextColor(context, Colors.grey.shade400),
                 ),
               ),
               Text(
                 'Previsto',
                 style: TextStyle(
                   fontSize: smallTextSize * 0.7,
-                  color: Colors.grey.shade600,
+                  color: _adaptiveGreyTextColor(context, Colors.grey.shade600),
                 ),
               ),
             ],
@@ -1760,7 +1795,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   label: 'Valor Médio (R\$)',
                   icon: Icons.trending_flat,
                 ),
-                style: TextStyle(color: Colors.grey.shade600),
+                style: TextStyle(color: _adaptiveGreyTextColor(context, Colors.grey.shade600)),
               ),
               const SizedBox(height: 12),
               // Campo Valor Lançado (editável) com botão de copiar

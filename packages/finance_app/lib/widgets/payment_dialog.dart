@@ -380,18 +380,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
             ),
           ),
           const SizedBox(height: 12),
-          TextFormField(
-            initialValue: _lockedDueDate != null
-                ? DateFormat('dd/MM/yyyy').format(_lockedDueDate!)
-                : '-',
-            enabled: false,
-            decoration: buildOutlinedInputDecoration(
-              label: 'Vencimento',
-              icon: Icons.event,
-            ).copyWith(
-              helperText: _lockedDueDateWarning,
-            ),
-          ),
+          _buildDueDateField(useLocked: true),
         ],
       );
     }
@@ -432,23 +421,52 @@ class _PaymentDialogState extends State<PaymentDialog> {
       });
     }
 
-    return DropdownButtonFormField<Account>(
-      initialValue: currentValue,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DropdownButtonFormField<Account>(
+          initialValue: currentValue,
+          decoration: buildOutlinedInputDecoration(
+            label: label,
+            icon: isRegular ? Icons.receipt : Icons.credit_card,
+          ),
+          items: list
+              .map((account) => DropdownMenuItem(
+                    value: account,
+                    child: Text(_accountDisplayLabel(account)),
+                  ))
+              .toList(),
+          onChanged: (account) {
+            setState(() {
+              _selectedAccount = account;
+            });
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildDueDateField(account: currentValue),
+      ],
+    );
+  }
+
+  Widget _buildDueDateField({Account? account, bool useLocked = false}) {
+    final effectiveAccount = account ?? _selectedAccount;
+    DateTime? dueDate;
+    if (useLocked) {
+      dueDate = _lockedDueDate;
+    } else if (effectiveAccount != null) {
+      dueDate = _getAccountDueDate(effectiveAccount);
+    }
+    final label = widget.isRecebimento ? 'Recebimento' : 'Vencimento';
+    final text = dueDate != null ? DateFormat('dd/MM/yyyy').format(dueDate) : '-';
+    return TextFormField(
+      initialValue: text,
+      enabled: false,
       decoration: buildOutlinedInputDecoration(
         label: label,
-        icon: isRegular ? Icons.receipt : Icons.credit_card,
+        icon: Icons.event,
+      ).copyWith(
+        helperText: useLocked ? _lockedDueDateWarning : null,
       ),
-      items: list
-          .map((account) => DropdownMenuItem(
-                value: account,
-                child: Text(_accountDisplayLabel(account)),
-              ))
-          .toList(),
-      onChanged: (account) {
-        setState(() {
-          _selectedAccount = account;
-        });
-      },
     );
   }
 

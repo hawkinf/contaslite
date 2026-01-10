@@ -1689,6 +1689,57 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     );
   }
 
+  Future<int?> _showInstallmentScopeDialog(Account acc) async {
+    final total = acc.installmentTotal ?? 0;
+    return showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Aplicar alteração em parcelas?'),
+        content: Text(
+          'A conta "${acc.description}" tem $total parcelas. Deseja aplicar a edição apenas nesta, nesta e nas futuras ou em todas as parcelas?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 0),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 1),
+            child: const Text('Somente essa'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 2),
+            child: const Text('Essa e as futuras'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.green),
+            onPressed: () => Navigator.pop(ctx, 3),
+            child: const Text('Todas as parcelas'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _shouldUpdateInstallment(Account installment, Account base, int scope) {
+    if (scope == 3) return true;
+    if (scope == 2) {
+      if (base.installmentIndex != null && installment.installmentIndex != null) {
+        return installment.installmentIndex! >= base.installmentIndex!;
+      }
+      final baseDate = _installmentDate(base);
+      final instDate = _installmentDate(installment);
+      return !instDate.isBefore(baseDate);
+    }
+    return installment.id == base.id;
+  }
+
+  DateTime _installmentDate(Account account) {
+    final year = account.year ?? DateTime.now().year;
+    final month = account.month ?? DateTime.now().month;
+    return DateTime(year, month, account.dueDay);
+  }
+
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -1927,30 +1978,76 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           }
         } else {
           // Editar avulsa/parcelada - Extract date from form
-          DateTime editDate = DateTime.now();
-          try {
-            editDate = UtilData.obterDateTime(_dateController.text);
-          } catch (e) {
-            editDate = DateTime(acc.year ?? DateTime.now().year,
-                acc.month ?? DateTime.now().month, acc.dueDay);
-          }
+            DateTime editDate = DateTime.now();
+            try {
+              editDate = UtilData.obterDateTime(_dateController.text);
+            } catch (e) {
+              editDate = DateTime(acc.year ?? DateTime.now().year,
+                  acc.month ?? DateTime.now().month, acc.dueDay);
+            }
 
-          final updated = acc.copyWith(
-            typeId: _selectedType!.id!,
-            categoryId: _selectedCategory?.id ?? acc.categoryId,
-            description: _descController.text,
-            value: UtilBrasilFields.converterMoedaParaDouble(
+            final newValue = UtilBrasilFields.converterMoedaParaDouble(
               _totalValueController.text,
-            ),
-            dueDay: editDate.day,
-            month: editDate.month,
-            year: editDate.year,
-            isRecurrent: false,
-            payInAdvance: _payInAdvance,
-            observation: _observationController.text,
-            cardColor: _selectedColor,
-          );
-          await DatabaseHelper.instance.updateAccount(updated);
+            );
+
+            final updated = acc.copyWith(
+              typeId: _selectedType!.id!,
+              categoryId: _selectedCategory?.id ?? acc.categoryId,
+              description: _descController.text,
+              value: newValue,
+              dueDay: editDate.day,
+              month: editDate.month,
+              year: editDate.year,
+              isRecurrent: false,
+              payInAdvance: _payInAdvance,
+              observation: _observationController.text,
+              cardColor: _selectedColor,
+            );
+
+            final isInstallmentSeries = acc.installmentTotal != null &&
+                acc.installmentTotal! > 1 &&
+                acc.recurrenceId == null;
+            int installmentScope = 1;
+            if (isInstallmentSeries) {
+              final userChoice = await _showInstallmentScopeDialog(acc);
+              if (userChoice == null || userChoice == 0) {
+                setState(() => _isSaving = false);
+                return;
+              }
+              installmentScope = userChoice;
+            }
+
+            if (installmentScope == 1) {
+              await DatabaseHelper.instance.updateAccount(updated);
+            } else {
+              final allInstallments = await DatabaseHelper.instance
+                  .getAccountsByInstallmentTotal(
+                      acc.installmentTotal!, acc.description);
+              for (final installment in allInstallments) {
+                if (!_shouldUpdateInstallment(
+                    installment, acc, installmentScope)) {
+                  continue;
+                }
+                final isCurrent = installment.id == acc.id;
+                final updatedInstallment = installment.copyWith(
+                  typeId: _selectedType!.id!,
+                  categoryId:
+                      _selectedCategory?.id ?? installment.categoryId,
+                  description: _descController.text,
+                  value: newValue,
+                  payInAdvance: _payInAdvance,
+                  observation: _observationController.text,
+                  cardColor: _selectedColor,
+                  dueDay: isCurrent ? editDate.day : installment.dueDay,
+                  month: isCurrent ? editDate.month : installment.month,
+                  year: isCurrent ? editDate.year : installment.year,
+                );
+                if (updatedInstallment.id != null) {
+                  await DatabaseHelper.instance
+                      .updateAccount(updatedInstallment);
+                }
+              }
+            }
         }
 
         if (mounted) {

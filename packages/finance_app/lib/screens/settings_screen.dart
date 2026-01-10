@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/holiday_service.dart';
 import '../services/prefs_service.dart';
+import '../widgets/backup_dialog.dart';
 import 'database_screen.dart';
 import 'database_settings_screen.dart';
 
@@ -305,30 +306,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          ListTile(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: BorderSide(color: _preferenceCardBorderColor(context), width: 1.2),
-            ),
-            tileColor: _preferenceCardColor(context, Colors.blueGrey.shade50),
-            leading: Icon(Icons.storage, color: Theme.of(context).colorScheme.primary, size: 30),
-            title: Text(
-              'Banco de dados',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600),
-            ),
-            subtitle: Text(
-              'Backup, restauração e manutenção',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
-            ),
-            trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const DatabaseScreen()),
-              );
-            },
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ListTile(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(color: _preferenceCardBorderColor(context), width: 1.2),
+                ),
+                tileColor: _preferenceCardColor(context, Colors.blueGrey.shade50),
+                leading: Icon(Icons.storage, color: Theme.of(context).colorScheme.primary, size: 30),
+                title: Text(
+                  'Banco de dados',
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  'Backup, restauração e manutenção',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+                ),
+                trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DatabaseScreen()),
+                  );
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0, left: 16, right: 16),
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.backup),
+                  label: const Text('Backup agora'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () => BackupDialogHelper.showBackupDialog(this),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           ListTile(
