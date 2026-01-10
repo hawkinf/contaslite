@@ -14,7 +14,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late List<String> _cities;
   late String _selectedCity;
-  late bool _isDark;
   bool _citiesInitialized = false;
 
   @override
@@ -22,7 +21,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     // Initialize from notifiers in initState to avoid blocking during widget construction
     _selectedCity = PrefsService.cityNotifier.value;
-    _isDark = PrefsService.themeNotifier.value == ThemeMode.dark;
     // Initialize cities immediately to avoid late initialization errors
     _initializeCities();
   }
@@ -188,6 +186,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Color _preferenceCardColor(BuildContext context, Color lightColor) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (isDark) {
+      return scheme.surface.withValues(alpha: 0.65);
+    }
+    return lightColor;
+  }
+
+  Color _preferenceCardBorderColor(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? Colors.white : Colors.black;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -234,23 +246,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const Divider(height: 40, thickness: 1),
-          const Text(
-            'Aparência',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.indigo,
-            ),
-          ),
-          SwitchListTile(
-            title: const Text('Modo Escuro'),
-            value: _isDark,
-            onChanged: (val) {
-              setState(() => _isDark = val);
-              PrefsService.saveTheme(val);
-            },
-          ),
-          const SizedBox(height: 20),
           const Text(
             'Localização (Feriados)',
             style: TextStyle(
@@ -311,12 +306,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
           ListTile(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            tileColor: Colors.blueGrey.shade50,
-            leading: const Icon(Icons.storage, color: Colors.blueGrey, size: 30),
-            title: const Text('Banco de dados'),
-            subtitle: const Text('Backup, restauração e manutenção', maxLines: 2, overflow: TextOverflow.ellipsis),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: _preferenceCardBorderColor(context), width: 1.2),
+            ),
+            tileColor: _preferenceCardColor(context, Colors.blueGrey.shade50),
+            leading: Icon(Icons.storage, color: Theme.of(context).colorScheme.primary, size: 30),
+            title: Text(
+              'Banco de dados',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              'Backup, restauração e manutenção',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+            ),
+            trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
             onTap: () {
               Navigator.push(
                 context,
@@ -326,12 +332,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 12),
           ListTile(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            tileColor: Colors.cyan.shade50,
-            leading: const Icon(Icons.cloud, color: Colors.cyan, size: 30),
-            title: const Text('PostgreSQL'),
-            subtitle: const Text('Configurar conexão online com servidor', maxLines: 2, overflow: TextOverflow.ellipsis),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: _preferenceCardBorderColor(context), width: 1.2),
+            ),
+            tileColor: _preferenceCardColor(context, Colors.cyan.shade50),
+            leading: Icon(Icons.cloud, color: Theme.of(context).colorScheme.primary, size: 30),
+            title: Text(
+              'PostgreSQL',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              'Configurar conexão online com servidor',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+            ),
+            trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
             onTap: () {
               Navigator.push(
                 context,

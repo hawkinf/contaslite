@@ -103,6 +103,12 @@ class GetPlatform {
   static bool get isDesktop => !kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS);
 }
 
+Color adaptiveSurface(BuildContext context) => Theme.of(context).colorScheme.surface;
+Color adaptiveSurfaceVariant(BuildContext context) => Theme.of(context).colorScheme.surfaceContainerHighest;
+Color adaptiveOutline(BuildContext context) => Theme.of(context).colorScheme.outline;
+Color adaptiveOnSurface(BuildContext context) => Theme.of(context).colorScheme.onSurface;
+Color adaptiveBackground(BuildContext context) => Theme.of(context).colorScheme.surface;
+
 // =======================================================
 // === MODELOS DE DADOS ===
 // =======================================================
@@ -198,6 +204,20 @@ class _MyAppState extends State<MyApp> {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: contas_prefs.PrefsService.themeNotifier,
       builder: (context, themeMode, _) {
+        final primarySeed = const Color(0xFF1976D2);
+        final lightSurfaceContainerHighest = Colors.grey[50] ?? const Color(0xFFF7F7F7);
+        final lightColorScheme = ColorScheme.fromSeed(seedColor: primarySeed, brightness: Brightness.light).copyWith(
+          surface: Colors.white,
+          onSurface: Colors.black87,
+          outline: Colors.grey[400] ?? const Color(0xFFBDBDBD),
+          surfaceContainerHighest: lightSurfaceContainerHighest,
+        );
+        final darkColorScheme = ColorScheme.fromSeed(seedColor: primarySeed, brightness: Brightness.dark).copyWith(
+          surface: const Color(0xFF1E1E1E),
+          onSurface: Colors.white,
+          outline: const Color(0xFF3F3F3F),
+          surfaceContainerHighest: const Color(0xFF121212),
+        );
         return MaterialApp(
           title: 'ContasPRO',
           debugShowCheckedModeBanner: false,
@@ -215,60 +235,87 @@ class _MyAppState extends State<MyApp> {
           theme: ThemeData(
             useMaterial3: true,
             brightness: Brightness.light,
-            colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1976D2), brightness: Brightness.light),
-            scaffoldBackgroundColor: Colors.grey[50],
-            cardTheme: const CardThemeData(
+            colorScheme: lightColorScheme,
+            scaffoldBackgroundColor: lightSurfaceContainerHighest,
+            cardTheme: CardThemeData(
               elevation: 0,
-              color: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+              color: lightColorScheme.surface,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
             ),
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                backgroundColor: lightColorScheme.primary,
+                foregroundColor: lightColorScheme.onPrimary,
               ),
             ),
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              fillColor: lightColorScheme.surface,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: lightColorScheme.outline)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: lightColorScheme.primary)),
             ),
+            appBarTheme: AppBarTheme(
+              backgroundColor: lightColorScheme.surface,
+              foregroundColor: lightColorScheme.onSurface,
+              elevation: 0,
+              iconTheme: IconThemeData(color: lightColorScheme.onSurface),
+              titleTextStyle: TextStyle(color: lightColorScheme.onSurface, fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+            dialogTheme: DialogThemeData(
+              backgroundColor: lightColorScheme.surface,
+              titleTextStyle: TextStyle(color: lightColorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.w600),
+              contentTextStyle: TextStyle(color: lightColorScheme.onSurface),
+            ),
+            dividerColor: lightColorScheme.outline,
           ),
           darkTheme: ThemeData(
             useMaterial3: true,
             brightness: Brightness.dark,
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: const Color(0xFF1976D2),
-              brightness: Brightness.dark,
-              surface: const Color(0xFF1E1E1E),
-              onSurface: Colors.white,
-            ),
-            scaffoldBackgroundColor: const Color(0xFF121212),
-            cardTheme: const CardThemeData(
+            colorScheme: darkColorScheme,
+            scaffoldBackgroundColor: darkColorScheme.surfaceContainerHighest,
+            cardTheme: CardThemeData(
               elevation: 0,
-              color: Color(0xFF1E1E1E),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+              color: darkColorScheme.surface,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
             ),
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                backgroundColor: darkColorScheme.primary,
+                foregroundColor: darkColorScheme.onPrimary,
               ),
             ),
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
-              fillColor: const Color(0xFF2C2C2C),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              labelStyle: const TextStyle(color: Colors.white70),
+              fillColor: darkColorScheme.surfaceContainerHighest,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: darkColorScheme.outline)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: darkColorScheme.primary)),
+              labelStyle: TextStyle(color: darkColorScheme.onSurface.withValues(alpha: 0.8)),
             ),
-            textTheme: const TextTheme(
-              titleLarge: TextStyle(color: Colors.white),
-              titleMedium: TextStyle(color: Colors.white),
-              bodyMedium: TextStyle(color: Colors.white70),
+            appBarTheme: AppBarTheme(
+              backgroundColor: darkColorScheme.surfaceContainerHighest,
+              foregroundColor: darkColorScheme.onSurface,
+              elevation: 0,
+              iconTheme: IconThemeData(color: darkColorScheme.onSurface),
+              titleTextStyle: TextStyle(color: darkColorScheme.onSurface, fontSize: 20, fontWeight: FontWeight.w600),
             ),
-            iconTheme: const IconThemeData(color: Colors.white70),
+            dialogTheme: DialogThemeData(
+              backgroundColor: darkColorScheme.surface,
+              titleTextStyle: TextStyle(color: darkColorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.w600),
+              contentTextStyle: TextStyle(color: darkColorScheme.onSurface),
+            ),
+            dividerColor: darkColorScheme.outline,
+            textTheme: TextTheme(
+              titleLarge: TextStyle(color: darkColorScheme.onSurface),
+              titleMedium: TextStyle(color: darkColorScheme.onSurface),
+              bodyMedium: TextStyle(color: darkColorScheme.onSurface.withValues(alpha: 0.85)),
+            ),
+            iconTheme: IconThemeData(color: darkColorScheme.onSurface),
           ),
           home: const HolidayScreen(),
         );
@@ -419,6 +466,24 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
         ),
         child: const Text('Hoje'),
       ),
+    );
+  }
+
+  Widget _buildThemeToggleButton({required Color iconColor, required double iconSize}) {
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: contas_prefs.PrefsService.themeNotifier,
+      builder: (context, mode, _) {
+        final isDarkModeActive = mode == ThemeMode.dark;
+        return IconButton(
+          icon: Icon(isDarkModeActive ? Icons.dark_mode : Icons.light_mode),
+          iconSize: iconSize,
+          color: iconColor,
+          tooltip: isDarkModeActive ? 'Ativar modo claro' : 'Ativar modo escuro',
+          onPressed: () {
+            contas_prefs.PrefsService.saveTheme(!isDarkModeActive);
+          },
+        );
+      },
     );
   }
   
@@ -653,6 +718,10 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     const saturdayColor = Color(0xFFF7B3B3);
     const sundayColor = Color(0xFFD75252);
     const holidayColor = Color(0xFF3F9441);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDarkMode ? Colors.white : Colors.black;
+    final neutralTextColor = Theme.of(context).colorScheme.onSurface;
+    final holidayEntryColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75);
 
     final monthHolidayEntries = <MapEntry<int, String>>[];
     for (int day = 1; day <= daysInMonth; day++) {
@@ -668,7 +737,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       elevation: 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: Colors.black, width: 1.5),
+        side: BorderSide(color: borderColor, width: 1.5),
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -682,7 +751,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
               child: Text(
                 monthNames[monthIndex],
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: isSmallMobile ? 12 : 14, fontWeight: FontWeight.w900),
+                style: TextStyle(fontSize: isSmallMobile ? 12 : 14, fontWeight: FontWeight.w900, color: neutralTextColor),
               ),
             ),
             Row(
@@ -690,10 +759,10 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                   .map(
                     (day) => Expanded(
                       child: Center(
-                        child: Text(
-                          day,
-                          style: TextStyle(fontSize: isSmallMobile ? 7 : 8, fontWeight: FontWeight.bold),
-                        ),
+                          child: Text(
+                            day,
+                            style: TextStyle(fontSize: isSmallMobile ? 7 : 8, fontWeight: FontWeight.bold, color: neutralTextColor),
+                          ),
                       ),
                     ),
                   )
@@ -734,27 +803,27 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                       final isHoliday = holidayDays.contains(holidayKey);
 
                       Color bgColor = baseDayColor;
-                      Color textColor = Colors.black;
+                      Color dayTextColor = neutralTextColor;
                       Color? todayHighlightColor;
 
                       if (isToday) {
                         todayHighlightColor = Colors.yellow[600] ?? Colors.yellow;
-                        textColor = Colors.black;
+                        dayTextColor = Colors.black;
                       } else if (isHoliday) {
                         bgColor = holidayColor;
-                        textColor = Colors.white;
+                        dayTextColor = Colors.white;
                       } else if (dayOfWeek == 0) {
                         bgColor = sundayColor;
-                        textColor = Colors.white;
+                        dayTextColor = Colors.white;
                       } else if (dayOfWeek == 6) {
                         bgColor = saturdayColor;
-                        textColor = Colors.white;
+                        dayTextColor = Colors.white;
                       }
 
                       return Container(
                         decoration: BoxDecoration(
                           color: bgColor,
-                          border: Border.all(color: Colors.black, width: 0.3),
+                          border: Border.all(color: borderColor, width: 0.3),
                           borderRadius: BorderRadius.circular(2),
                         ),
                         child: Stack(
@@ -767,12 +836,12 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: todayHighlightColor,
-                                  border: Border.all(color: Colors.black, width: 2),
+                                  border: Border.all(color: borderColor, width: 2),
                                 ),
                               ),
                             Text(
                               day.toString(),
-                              style: TextStyle(fontSize: isSmallMobile ? 10 : 13, fontWeight: FontWeight.w700, color: textColor),
+                              style: TextStyle(fontSize: isSmallMobile ? 10 : 13, fontWeight: FontWeight.w700, color: dayTextColor),
                             ),
                           ],
                         ),
@@ -794,9 +863,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                         for (final entry in visibleHolidayEntries)
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 1),
-                            child: Text(
-                              '${entry.key} - ${entry.value}',
-                              style: TextStyle(fontSize: isSmallMobile ? 8 : 9, fontWeight: FontWeight.w700, color: Colors.grey.shade800),
+                              child: Text(
+                                '${entry.key} - ${entry.value}',
+                                style: TextStyle(fontSize: isSmallMobile ? 8 : 9, fontWeight: FontWeight.w700, color: holidayEntryColor),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -2050,7 +2119,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
 
   // --- RESUMO QUE APARECE NA TELA PRINCIPAL (LIMPO E CORRIGIDO PARA DARK MODE) ---
   Widget _buildMainStatsSummary(HolidayStats stats, double fontSize, {bool isSmallMobile = false}) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Card(
       elevation: 2,
@@ -2183,10 +2251,10 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
             const Divider(height: 8),
             Text('Por Tipo', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            _buildStatRow(context, 'Nacionais', stats.nacionais, isDark ? Colors.white : Colors.black87, backgroundColor: isDark ? Colors.blue.withValues(alpha: 0.2) : Colors.blue[50]),
-            _buildStatRow(context, 'Municipais', stats.municipais, isDark ? Colors.white : Colors.black87, backgroundColor: isDark ? Colors.orange.withValues(alpha: 0.2) : Colors.orange[50]),
-            _buildStatRow(context, 'Bancários', stats.bancarios, isDark ? Colors.white : Colors.black87, backgroundColor: isDark ? Colors.teal.withValues(alpha: 0.2) : Colors.teal[50]),
-            _buildStatRow(context, 'Estaduais', stats.estaduais, isDark ? Colors.white : Colors.black87, backgroundColor: isDark ? Colors.purple.withValues(alpha: 0.2) : Colors.purple[50]),
+            _buildStatRow(context, 'Nacionais', stats.nacionais, backgroundColor: _typeRowBackground(context, Colors.blue)),
+            _buildStatRow(context, 'Municipais', stats.municipais, backgroundColor: _typeRowBackground(context, Colors.orange)),
+            _buildStatRow(context, 'Bancários', stats.bancarios, backgroundColor: _typeRowBackground(context, Colors.teal)),
+            _buildStatRow(context, 'Estaduais', stats.estaduais, backgroundColor: _typeRowBackground(context, Colors.purple)),
           ],
         ),
       ),
@@ -2212,13 +2280,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
               runSpacing: 12,
               alignment: WrapAlignment.center,
               children: [
-                _buildDayChip('Seg', stats.segundas, Colors.blue, fontSize),
-                _buildDayChip('Ter', stats.tercas, Colors.cyan, fontSize),
-                _buildDayChip('Qua', stats.quartas, Colors.green, fontSize),
-                _buildDayChip('Qui', stats.quintas, Colors.amber, fontSize),
-                _buildDayChip('Sex', stats.sextas, Colors.orange, fontSize),
-                _buildDayChip('Sab', stats.sabados, Colors.red, fontSize),
-                _buildDayChip('Dom', stats.domingos, Colors.purple, fontSize),
+                _buildDayChip(context, 'Seg', stats.segundas, Colors.blue, fontSize),
+                _buildDayChip(context, 'Ter', stats.tercas, Colors.cyan, fontSize),
+                _buildDayChip(context, 'Qua', stats.quartas, Colors.green, fontSize),
+                _buildDayChip(context, 'Qui', stats.quintas, Colors.amber, fontSize),
+                _buildDayChip(context, 'Sex', stats.sextas, Colors.orange, fontSize),
+                _buildDayChip(context, 'Sab', stats.sabados, Colors.red, fontSize),
+                _buildDayChip(context, 'Dom', stats.domingos, Colors.purple, fontSize),
               ],
             ),
           ],
@@ -2227,7 +2295,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     );
   }
 
-  Widget _buildDayChip(String label, int count, Color color, double fontSize) {
+  Widget _buildDayChip(BuildContext context, String label, int count, Color color, double fontSize) {
     return Container(
       width: 70,
       decoration: BoxDecoration(
@@ -2236,17 +2304,17 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
         border: Border.all(color: color, width: 2),
       ),
       padding: const EdgeInsets.all(12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade700,
-              fontSize: fontSize - 1,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: adaptiveOnSurface(context).withValues(alpha: 0.8),
+                  fontSize: fontSize - 1,
+                ),
             ),
-          ),
           const SizedBox(height: 6),
           Text(
             count.toString(),
@@ -2350,9 +2418,16 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     );
   }
 
+  Color _typeRowBackground(BuildContext context, Color base) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? base.withValues(alpha: 0.25) : base.withValues(alpha: 0.12);
+  }
+
   // --- MODIFICADO: _buildStatRow COM CORES DINÂMICAS ---
-  Widget _buildStatRow(BuildContext context, String label, int value, Color textColor, {Color? backgroundColor}) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildStatRow(BuildContext context, String label, int value, {Color? backgroundColor}) {
+    final brightness = Theme.of(context).brightness;
+    final textColor = adaptiveOnSurface(context);
+    final chipColor = brightness == Brightness.dark ? adaptiveSurfaceVariant(context) : adaptiveSurfaceVariant(context).withValues(alpha: 0.9);
 
     return Container(
       decoration: BoxDecoration(
@@ -2371,7 +2446,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
             decoration: BoxDecoration(
-              color: isDark ? Colors.grey[800] : Colors.grey[200],
+              color: chipColor,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -2619,8 +2694,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallMobile = screenWidth < 600;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final monthHeaderColor =
-        isDark ? Colors.grey.shade800 : Colors.grey.shade700;
+    final monthHeaderColor = adaptiveSurfaceVariant(context);
+    final monthHeaderTextColor = Theme.of(context).colorScheme.onSurface;
 
     // Calculate cell size based on available space (7 columns, ~6 rows)
     final cellWidth = (screenWidth - 120) / 7;
@@ -2632,6 +2707,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     final double dayNumberSize = baseFontSize * 2.34;   // +30%
     final double hojeTextSize = baseFontSize * 1.20;    // +60%
     final double moneyTextSize = baseFontSize * 1.52;   // +60%
+    final double countFontSize = moneyTextSize * 0.8; // 20% smaller for counts
     final double holidayTextSize = baseFontSize * 1.10; // Larger holiday name
     final double minHolidayWidth = cellSize * 0.80;     // Min 80% of cell width
     final double maxHolidayWidth = cellSize * 0.95;     // Max 95% of cell width
@@ -2739,6 +2815,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           IconButton(
+                            color: Theme.of(context).colorScheme.primary,
                             icon: const Icon(Icons.chevron_left, size: 28),
                             onPressed: () => _changeMonth(-1),
                             tooltip: 'Mês anterior',
@@ -2748,16 +2825,17 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                               fit: BoxFit.scaleDown,
                               child: Text(
                                 '$monthName $_selectedYear',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.blue,
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
                             ),
                           ),
                           IconButton(
+                            color: Theme.of(context).colorScheme.primary,
                             icon: const Icon(Icons.chevron_right, size: 28),
                             onPressed: () => _changeMonth(1),
                             tooltip: 'Próximo mês',
@@ -2825,17 +2903,17 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 onPressed: () => _changeMonth(-1),
                                 tooltip: 'Mês anterior',
                                 splashRadius: 18,
-                                icon: const Icon(Icons.chevron_left, size: 28, color: Colors.white),
+                                icon: Icon(Icons.chevron_left, size: 28, color: monthHeaderTextColor),
                               ),
                               Flexible(
                                 child: FittedBox(
                                   fit: BoxFit.scaleDown,
                                   child: Text(
                                     '$monthName $_selectedYear',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 24,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.white,
+                                      color: monthHeaderTextColor,
                                     ),
                                     textAlign: TextAlign.center,
                                   ),
@@ -2845,7 +2923,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 onPressed: () => _changeMonth(1),
                                 tooltip: 'Próximo mês',
                                 splashRadius: 18,
-                                icon: const Icon(Icons.chevron_right, size: 28, color: Colors.white),
+                                icon: Icon(Icons.chevron_right, size: 28, color: monthHeaderTextColor),
                               ),
                             ],
                           ),
@@ -2859,40 +2937,40 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 width: 120,
                                 height: 32,
                                 child: Container(
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: Colors.white,
-                                      width: 2,
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: monthHeaderTextColor.withValues(alpha: 0.6),
+                                        width: 2,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
                                   child: DropdownButton<String>(
                                     value: _calendarType,
                                     isExpanded: true,
                                     underline: const SizedBox(),
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                                    dropdownColor: Colors.white,
-                                    iconEnabledColor: Colors.white,
-                                    selectedItemBuilder: (context) => const [
+                                    dropdownColor: Theme.of(context).colorScheme.surface,
+                                    iconEnabledColor: Theme.of(context).colorScheme.onSurface,
+                                    selectedItemBuilder: (context) => [
                                       Align(
                                         alignment: Alignment.centerLeft,
                                         child: Text(
                                           'Semanal',
-                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
                                         ),
                                       ),
                                       Align(
                                         alignment: Alignment.centerLeft,
                                         child: Text(
                                           'Mensal',
-                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
                                         ),
                                       ),
                                       Align(
                                         alignment: Alignment.centerLeft,
                                         child: Text(
                                           'Anual',
-                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
                                         ),
                                       ),
                                     ],
@@ -3040,9 +3118,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 final previstoCount = dailyTotals?.previstoCount ?? 0;
                                 final lancadoCount = dailyTotals?.lancadoCount ?? 0;
                                 final recebimentosCount = dailyTotals?.recebimentosCount ?? 0;
-                                
-                                Color bgColor = Colors.white;
-                                Color textColor = Theme.of(context).colorScheme.onSurface;
+                                Color bgColor = adaptiveSurface(context);
+                                Color textColor = adaptiveOnSurface(context);
+                                final cellBorderColor = isDark ? Colors.white : Colors.black;
                                 double opacity = 1.0;
 
                                 if (isToday) {
@@ -3050,7 +3128,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                   textColor = Colors.black;
                                 } else if (isHoliday) {
                                   bgColor = isCurrentMonth ? Colors.green : (Colors.lightGreen[300] ?? Colors.lightGreen);
-                                  textColor = isCurrentMonth ? Colors.white : (Colors.grey[700] ?? Colors.grey);
+                                  textColor = isCurrentMonth ? Colors.white : adaptiveOnSurface(context);
                                   opacity = 1.0;
                                 } else if (dayOfWeek == 0) { // Domingo
                                   bgColor = Colors.red;
@@ -3059,9 +3137,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                   bgColor = Color(0xFFEF9A9A);
                                   textColor = Colors.white;
                                 } else if (!isCurrentMonth) {
-                                  bgColor = Colors.grey[600] ?? Colors.grey;
-                                  opacity = 0.6;
-                                  textColor = Colors.white;
+                                  bgColor = isDark ? adaptiveSurfaceVariant(context) : (Colors.grey[200] ?? Colors.grey);
+                                  opacity = isDark ? 0.45 : 0.6;
+                                  textColor = adaptiveOnSurface(context).withValues(alpha: 0.7);
                                 }
                                 
                                 return Tooltip(
@@ -3069,14 +3147,14 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                   child: GestureDetector(
                                     onTap: () => _openAccountsForDay(day, month, year),
                                     child: Container(
-                                      decoration: BoxDecoration(
-                                        color: bgColor.withValues(alpha: opacity),
-                                        border: Border.all(
-                                          color: Colors.black,
-                                          width: 2.0,
-                                        ),
-                                        borderRadius: BorderRadius.circular(8.0),
-                                      ),
+                                          decoration: BoxDecoration(
+                                            color: bgColor.withValues(alpha: opacity),
+                                            border: Border.all(
+                                              color: cellBorderColor,
+                                              width: 2.0,
+                                            ),
+                                            borderRadius: BorderRadius.circular(8.0),
+                                          ),
                                       padding: EdgeInsets.all(1.0),
                                       child: Column(
                                         mainAxisAlignment: MainAxisAlignment.center,
@@ -3103,13 +3181,14 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                               padding: EdgeInsets.only(top: isSmallMobile ? 1 : 2),
                                               child: Text.rich(
                                                 TextSpan(
-                                                    children: [
-                                                      TextSpan(text: '${moneyFormat.format(previsto)}D'),
-                                                      TextSpan(
-                                                        text: ' [$previstoCount]',
-                                                        style: TextStyle(
-                                                          color: Colors.blue.shade700,
-                                                          fontWeight: FontWeight.w700,
+                                                  children: [
+                                                    TextSpan(text: '${moneyFormat.format(previsto)}D'),
+                                                    TextSpan(
+                                                      text: ' $previstoCount',
+                                                      style: TextStyle(
+                                                        fontSize: countFontSize,
+                                                        fontWeight: FontWeight.w700,
+                                                        color: Colors.black,
                                                       ),
                                                     ),
                                                   ],
@@ -3129,13 +3208,16 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                               padding: EdgeInsets.only(top: isSmallMobile ? 1 : 2),
                                               child: Text.rich(
                                                 TextSpan(
-                                                    children: [
-                                                      TextSpan(text: '${moneyFormat.format(lancado)}D'),
-                                                      TextSpan(
-                                                        text: ' [$lancadoCount]',
-                                                        style: TextStyle(
-                                                          color: Colors.red.shade700,
-                                                          fontWeight: FontWeight.w700,
+                                                  children: [
+                                                    TextSpan(
+                                                      text: '${moneyFormat.format(lancado)}D',
+                                                    ),
+                                                    TextSpan(
+                                                      text: ' $lancadoCount',
+                                                      style: TextStyle(
+                                                        fontSize: countFontSize,
+                                                        fontWeight: FontWeight.w700,
+                                                        color: Colors.black,
                                                       ),
                                                     ),
                                                   ],
@@ -3155,13 +3237,16 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                               padding: EdgeInsets.only(top: isSmallMobile ? 1 : 2),
                                               child: Text.rich(
                                                 TextSpan(
-                                                    children: [
-                                                      TextSpan(text: '${moneyFormat.format(recebimentos)}C'),
-                                                      TextSpan(
-                                                        text: ' [$recebimentosCount]',
-                                                        style: TextStyle(
-                                                          color: Colors.blue.shade700,
-                                                          fontWeight: FontWeight.w700,
+                                                  children: [
+                                                    TextSpan(
+                                                      text: '${moneyFormat.format(recebimentos)}C',
+                                                    ),
+                                                    TextSpan(
+                                                      text: ' $recebimentosCount',
+                                                      style: TextStyle(
+                                                        fontSize: countFontSize,
+                                                        fontWeight: FontWeight.w700,
+                                                        color: Colors.black,
                                                       ),
                                                     ),
                                                   ],
@@ -3968,6 +4053,14 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
 
                     Padding(
                       padding: const EdgeInsets.only(right: 8.0),
+                      child: _buildThemeToggleButton(
+                        iconColor: Theme.of(context).colorScheme.onSurface,
+                        iconSize: isMobile ? 28 : 24,
+                      ),
+                    ),
+
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
                       child: IconButton(
                         icon: const Icon(Icons.settings),
                         iconSize: isMobile ? 28 : 24,
@@ -4083,6 +4176,10 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                       tooltip: 'Calcular Datas',
                       color: Colors.white,
                       onPressed: () => _showDateCalculator(context),
+                    ),
+                    _buildThemeToggleButton(
+                      iconColor: Colors.white,
+                      iconSize: 24,
                     ),
 
                     IconButton(

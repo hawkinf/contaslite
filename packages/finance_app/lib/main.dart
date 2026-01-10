@@ -146,10 +146,12 @@ class _FinanceAppState extends State<FinanceApp> with WidgetsBindingObserver {
       colorSchemeSeed: Colors.blue,
       textTheme: GoogleFonts.robotoTextTheme(),
       scaffoldBackgroundColor: const Color(0xFFF5F5F5),
-      cardTheme: const CardThemeData(
+      cardTheme: CardThemeData(
         color: Colors.white,
         elevation: 2,
-        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        shadowColor: Colors.black.withValues(alpha: 0.25),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.blue.shade700,
@@ -170,10 +172,12 @@ class _FinanceAppState extends State<FinanceApp> with WidgetsBindingObserver {
       brightness: Brightness.dark,
       colorSchemeSeed: Colors.blue,
       scaffoldBackgroundColor: const Color(0xFF121212),
-      cardTheme: const CardThemeData(
-        color: Color(0xFF1E1E1E),
+      cardTheme: CardThemeData(
+        color: const Color(0xFF1E1E1E),
         elevation: 4,
-        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        shadowColor: Colors.white.withValues(alpha: 0.15),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       textTheme: GoogleFonts.robotoTextTheme(ThemeData.dark().textTheme).apply(
         bodyColor: Colors.white,
