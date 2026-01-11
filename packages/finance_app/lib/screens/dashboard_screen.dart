@@ -11,6 +11,7 @@ import '../models/account.dart';
 import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
 import '../utils/color_contrast.dart';
+import 'card_expenses_screen.dart';
 import '../utils/app_colors.dart';
 import '../utils/installment_utils.dart';
 import '../widgets/app_input_decoration.dart';
@@ -79,11 +80,19 @@ class _SeriesSummary {
 class DashboardScreen extends StatefulWidget {
   final String? typeNameFilter;
   final String? excludeTypeNameFilter;
+  final Color? appBarColorOverride;
+  final String? totalLabelOverride;
+  final String? totalForecastLabelOverride;
+  final String? emptyTextOverride;
 
   const DashboardScreen({
     super.key,
     this.typeNameFilter,
     this.excludeTypeNameFilter,
+    this.appBarColorOverride,
+    this.totalLabelOverride,
+    this.totalForecastLabelOverride,
+    this.emptyTextOverride,
   });
 
   @override
@@ -686,21 +695,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final fabRight = math.max(8.0, math.min(24.0, media.size.width * 0.02));
       final fabBottom = math.max(16.0, math.min(48.0, media.size.height * 0.08));
       final isDark = Theme.of(context).brightness == Brightness.dark;
-      final headerColor = isDark ? const Color(0xFF212121) : const Color(0xFFE3F2FD);
-      final totalColor = _isRecebimentosFilter
-          ? (isDark ? AppColors.primaryLight : AppColors.primary)
-          : (isDark ? AppColors.errorLight : AppColors.error);
-      final totalForecastColor = _isRecebimentosFilter
-          ? (isDark ? AppColors.primaryLight : AppColors.primary)
-          : (isDark ? AppColors.warningLight : AppColors.warningDark);
-      final totalLabel = _isRecebimentosFilter ? 'TOTAL RECEBIDO' : 'TOTAL PAGO';
-      final totalForecastLabel =
-          _isRecebimentosFilter ? 'TOTAL A RECEBER' : 'TOTAL A PAGAR';
-      final emptyText = _isRecebimentosFilter
-          ? 'Nenhuma conta a receber para este mês.'
-          : 'Nenhuma conta a pagar para este mês.';
-      final appBarBg =
-          _isRecebimentosFilter ? AppColors.success : AppColors.error;
+        final bool isCombined = widget.typeNameFilter == null && widget.excludeTypeNameFilter == null;
+        final headerColor = isCombined
+          ? const Color(0xFFEDE7D9)
+          : (isDark ? const Color(0xFF212121) : const Color(0xFFE3F2FD));
+        final totalColor = widget.totalLabelOverride != null
+          ? (isDark ? Colors.brown.shade200 : Colors.brown.shade700)
+          : (_isRecebimentosFilter
+            ? (isDark ? AppColors.primaryLight : AppColors.primary)
+            : (isDark ? AppColors.errorLight : AppColors.error));
+        final totalForecastColor = widget.totalForecastLabelOverride != null
+          ? (isDark ? Colors.brown.shade300 : Colors.brown.shade600)
+          : (_isRecebimentosFilter
+            ? (isDark ? AppColors.primaryLight : AppColors.primary)
+            : (isDark ? AppColors.warningLight : AppColors.warningDark));
+        final totalLabel = widget.totalLabelOverride ?? (_isRecebimentosFilter ? 'TOTAL RECEBIDO' : 'TOTAL PAGO');
+        final totalForecastLabel = widget.totalForecastLabelOverride ??
+          (_isRecebimentosFilter ? 'TOTAL A RECEBER' : 'TOTAL A PAGAR');
+        final emptyText = widget.emptyTextOverride ??
+          (_isRecebimentosFilter
+            ? 'Nenhuma conta a receber para este mês.'
+            : 'Nenhuma conta a pagar para este mês.');
+        final appBarBg = widget.appBarColorOverride ??
+          (_isRecebimentosFilter ? AppColors.success : AppColors.error);
       const appBarFg = Colors.white;
       final isSingleDayFilter = DateUtils.isSameDay(_startDate, _endDate);
       final PreferredSizeWidget appBarWidget = isSingleDayFilter
@@ -935,7 +952,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final smallDateSize = baseFontSize * 0.6;
         final weekdaySize = baseFontSize * 0.75;
         final statusSize = baseFontSize * 0.55;
-        final categorySize = baseFontSize * 0.7;
+        final categorySize = baseFontSize * 0.8;
         final descriptionSize = baseFontSize * 0.95;
         final badgeSize = baseFontSize * 0.65;
         final valuePreviewSize = baseFontSize * 0.75;
@@ -1016,7 +1033,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color textColor;
     Color moneyColor;
     Color subTextColor;
+    late Color typeColor;
     // customAccent removed (unused)
+
+    // Detectar tipo (pagar vs receber) para cor de borda/acento
+    final String? typeName = _typeNames[account.typeId]?.toLowerCase();
+    final bool isRecebimento = _isRecebimentosFilter || (typeName != null && typeName.contains('receb'));
+    final Color receberColor = Colors.lightBlue.shade300;
+    final Color pagarColor = Colors.red.shade300;
+
+    Color dayNumberColor;
 
     if (isCard) {
       Color userColor = (account.cardColor != null)
@@ -1027,44 +1053,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
       textColor = foregroundColorFor(userColor);
       subTextColor = textColor.withValues(alpha: 0.8);
       moneyColor = textColor;
+      typeColor = userColor;
+      dayNumberColor = Colors.red.shade700; // cartões também em vermelho
+    } else {
+      final int? accountColorValue = account.cardColor;
+      final bool usesCustomColor = accountColorValue != null;
+      final Color? customColor = usesCustomColor ? Color(accountColorValue) : null;
+      final Color accent = customColor ?? (isRecebimento ? receberColor : pagarColor);
+      containerBg = accent.withValues(alpha: 0.12);
+      cardColor = (customColor ?? Theme.of(context).cardColor).withValues(alpha: 0.97);
+      if (customColor != null) {
+        textColor = foregroundColorFor(customColor);
+        subTextColor = textColor.withValues(alpha: 0.8);
+        moneyColor = textColor;
       } else {
-        final int? accountColorValue = account.cardColor;
-        final bool usesCustomColor = accountColorValue != null;
-        final Color? customColor =
-            usesCustomColor ? Color(accountColorValue) : null;
-        containerBg = isAlertDay ? AppColors.errorDark : Colors.transparent;
-        cardColor =
-            customColor ?? (isAlertDay ? Colors.white : Theme.of(context).cardColor);
-        if (customColor != null) {
-          textColor = foregroundColorFor(customColor);
-          subTextColor = textColor.withValues(alpha: 0.8);
-          moneyColor = textColor;
+        textColor = isAlertDay
+            ? Colors.black87
+            : (Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black);
+        subTextColor = _adaptiveGreyTextColor(context, Colors.grey.shade600);
+        if (isAlertDay) {
+          textColor = Colors.white;
+          subTextColor = Colors.white70;
+          moneyColor = Colors.white;
+        } else if (isRecurrent) {
+          moneyColor = _adaptiveGreyTextColor(context, Colors.grey);
         } else {
-          textColor = isAlertDay
-              ? Colors.black87
-              : (Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black);
-          subTextColor = _adaptiveGreyTextColor(context, Colors.grey.shade600);
-          if (isAlertDay) {
-            textColor = Colors.white;
-            subTextColor = Colors.white70;
-            moneyColor = Colors.white;
-          } else if (isRecurrent) {
-            moneyColor = _adaptiveGreyTextColor(context, Colors.grey);
-          } else {
-            moneyColor = _isRecebimentosFilter
-                ? AppColors.successDark
-                : AppColors.errorDark;
-          }
-          if (Theme.of(context).brightness == Brightness.dark && !isRecurrent) {
-            moneyColor = _isRecebimentosFilter
-                ? Colors.lightGreenAccent
-                : Colors.redAccent;
-          }
-          if (isAlertDay && !isRecurrent && !_isRecebimentosFilter) {
-            moneyColor = AppColors.errorDark;
-          }
+          moneyColor = isRecebimento ? AppColors.successDark : AppColors.errorDark;
+        }
+        if (Theme.of(context).brightness == Brightness.dark && !isRecurrent) {
+          moneyColor = isRecebimento ? Colors.lightGreenAccent : Colors.redAccent;
+        }
+        if (isAlertDay && !isRecurrent && !isRecebimento) {
+          moneyColor = AppColors.errorDark;
         }
       }
+
+      // Guardar acento customizado para bordas e badges mais abaixo
+      // (usaremos accentColor derivado novamente na seção de construção do card)
+      typeColor = accent;
+      dayNumberColor = isRecebimento ? Colors.blue.shade700 : Colors.red.shade700;
+    }
+
+    final Color accentColor = typeColor;
 
     // Dados para Cartão
     final breakdown = isCard ? CardBreakdown.parse(account.observation) : const CardBreakdown(total: 0, installments: 0, oneOff: 0, subscriptions: 0);
@@ -1099,13 +1129,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final Color cardActionIconColor = Colors.grey.shade600;
     final Color cardActionIconBg = Colors.white.withValues(
         alpha: Theme.of(context).brightness == Brightness.light ? 0.85 : 0.75);
+    final Color originalLabelColor = isCard
+        ? textColor.withValues(alpha: 0.6)
+        : _adaptiveGreyTextColor(context, Colors.blueGrey.shade700);
+    final Color adjustedLabelColor = isCard
+        ? textColor.withValues(alpha: 0.82)
+        : (isAlertDay ? AppColors.errorDark : subTextColor);
     final installmentDisplay = resolveInstallmentDisplay(account);
     final Color installmentBadgeBg = installmentDisplay.isInstallment
-        ? Colors.deepPurple.shade50
-        : Colors.green.shade50;
-    final Color installmentBadgeTextColor = installmentDisplay.isInstallment
-        ? AppColors.cardPurple
-        : AppColors.successDark;
+      ? accentColor.withValues(alpha: 0.12)
+      : accentColor.withValues(alpha: 0.18);
+    final Color installmentBadgeTextColor = foregroundColorFor(installmentBadgeBg);
     final Widget installmentBadge = Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
@@ -1124,11 +1158,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         elevation: 2,
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: accentColor, width: 2.5),
+        ),
         child: InkWell(
           onTap: () async {
             if (isCard) {
-              await _openCardEditor(account);
+              await _openCardExpenses(account);
             } else {
               await _showEditSpecificDialog(account);
             }
@@ -1136,35 +1173,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Padding(
             padding: const EdgeInsets.all(10),
             child: Row(children: [
+              // Faixa de cor lateral para destacar tipo (pagar/receber/cartão)
+              Container(
+                width: 6,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: accentColor,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              const SizedBox(width: 10),
               
               // 1. COLUNA DATA
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(effectiveDate.day.toString().padLeft(2, '0'),
+                    Text(effectiveDate.day.toString().padLeft(2, '0'),
                       style: TextStyle(
-                          fontSize: dayNumberSize,
-                          fontWeight: FontWeight.bold,
-                          color: textColor,
-                          height: 1.0)),
+                        fontSize: dayNumberSize,
+                        fontWeight: FontWeight.bold,
+                        color: dayNumberColor,
+                        height: 1.0)),
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Column(
                       children: [
                         Text(
                           "Orig. ${DateFormat('dd/MM').format(originalDate)}",
-                                  style: TextStyle(
-                                    fontSize: smallDateSize,
-                                    color: isCard ? subTextColor : _adaptiveGreyTextColor(context, Colors.grey.shade600),
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                          style: TextStyle(
+                            fontSize: smallDateSize,
+                            color: originalLabelColor,
+                            fontWeight: FontWeight.w700,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
                         if (isAlertDay)
                           Text(
                             "Ajust. ${DateFormat('dd/MM').format(effectiveDate)}",
                             style: TextStyle(
                               fontSize: smallDateSize,
-                              color: isCard ? subTextColor : AppColors.errorDark,
+                              color: adjustedLabelColor,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -1261,6 +1309,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
               // 4. COLUNA VALOR E ESTATÍSTICAS
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                if (isCard) ...[
+                  Text(
+                    UtilBrasilFields.obterReal(breakdown.total > 0 ? breakdown.total : account.value),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: valueMainSize,
+                        color: moneyColor),
+                  ),
+                  if (isRecurrent)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Text(
+                        'PREVISTO',
+                        style: TextStyle(
+                          fontSize: smallDateSize,
+                          fontWeight: FontWeight.bold,
+                          color: _adaptiveGreyTextColor(context, Colors.grey.shade600),
+                        ),
+                      ),
+                    ),
+                ] else ...[
                 // Renderizar valor com diferenciação entre previsto e lançado
                 if (isRecurrent) ...[
                   // Se for lançamento, mostrar ambos (Previsto e Lançado)
@@ -1294,6 +1363,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           fontWeight: FontWeight.bold,
                           fontSize: valueMainSize,
                           color: moneyColor)),
+                ],
                 ],
                 // Indicador de pagamento com botão desfazer na mesma linha
                 if (account.id != null && _paymentInfo.containsKey(account.id))
@@ -1374,8 +1444,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(width: 6),
                     InkWell(
                         onTap: () => _showExpenseDialog(account),
-                        child: _actionIcon(Icons.add_shopping_cart,
-                            cardActionIconBg, cardActionIconColor, size: iconSize)),
+                        child: _actionIcon(Icons.rocket_launch,
+                          cardActionIconBg, cardActionIconColor, size: iconSize)),
                     const SizedBox(width: 6),
                     InkWell(
                       onTap: () => _showLaunchInvoiceDialog(account, t),
@@ -1574,6 +1644,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => CreditCardFormScreen(cardToEdit: account),
+      ),
+    );
+    if (mounted) {
+      _refresh();
+    }
+  }
+
+  Future<void> _openCardExpenses(Account account) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CardExpensesScreen(
+          card: account,
+          month: _startDate.month,
+          year: _startDate.year,
+        ),
       ),
     );
     if (mounted) {

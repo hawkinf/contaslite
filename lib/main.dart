@@ -1,5 +1,6 @@
 import 'package:finance_app/screens/account_types_screen.dart';
 import 'package:finance_app/screens/credit_card_screen.dart';
+import 'package:finance_app/screens/dashboard_screen.dart' as contas_dash;
 import 'package:finance_app/screens/bank_accounts_screen.dart';
 import 'package:finance_app/screens/payment_methods_screen.dart';
 import 'package:finance_app/screens/recebimentos_table_screen.dart';
@@ -359,6 +360,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
   // GlobalKeys para capturar screenshots dos calendários
   final GlobalKey _calendarGridKey = GlobalKey();
   final GlobalKey _annualCalendarKey = GlobalKey();
+  final GlobalKey<NavigatorState> _cardsNavigatorKey = GlobalKey<NavigatorState>();
 
   final List<int> availableYears = List.generate(11, (index) => DateTime.now().year - 5 + index);
 
@@ -375,17 +377,17 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     // Inicializar cidades ANTES de usar em outros métodos
     _initializeCities();
     _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 7, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) return;
-      if (_tabController.index == 0) {
+      if (_tabController.index <= 2) {
         if (_skipNextContasReset) {
           _skipNextContasReset = false;
         } else {
           _resetContasDateRangeIfSingleDay();
         }
       }
-      if (_tabController.index == 3 && mounted) {
+      if (_tabController.index == 4 && mounted) {
         setState(() {
           _monthlyTotalsFuture = _loadMonthlyTotals(_calendarMonth, _selectedYear);
         });
@@ -4102,6 +4104,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     controller: _tabController,
                     dividerColor: Colors.transparent,
                     tabs: const [
+                      Tab(text: 'Contas', icon: Icon(Icons.dashboard_customize)),
                       Tab(text: 'Contas a Pagar', icon: Icon(Icons.receipt_long)),
                       Tab(text: 'Contas a Receber', icon: Icon(Icons.savings)),
                       Tab(text: 'Cartőes', icon: Icon(Icons.credit_card)),
@@ -4116,13 +4119,31 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     child: TabBarView(
                       controller: _tabController,
                       children: [
-                        // ABA 1: CONTAS (pacote ../contas)
+                        // ABA 1: CONTAS (visão consolidada)
+                        const ContasResumoTab(),
+                        // ABA 2: CONTAS A PAGAR
                         const ContasTab(),
-                        // ABA 2: RECEBIMENTOS
+                        // ABA 3: RECEBIMENTOS
                         const RecebimentosTab(),
-                        // ABA 3: CARTÕES
-                        const CreditCardScreen(),
-                        // ABA 4: CALENDARIO
+                        // ABA 4: CARTÕES (navegação interna mantém as abas visíveis)
+                        PopScope(
+                          canPop: false,
+                          onPopInvokedWithResult: (didPop, result) {
+                            if (_cardsNavigatorKey.currentState?.canPop() ?? false) {
+                              _cardsNavigatorKey.currentState!.pop();
+                            } else if (!didPop) {
+                              Navigator.of(context).maybePop();
+                            }
+                          },
+                          child: Navigator(
+                            key: _cardsNavigatorKey,
+                            onGenerateRoute: (settings) => MaterialPageRoute(
+                              builder: (_) => const CreditCardScreen(),
+                              settings: settings,
+                            ),
+                          ),
+                        ),
+                        // ABA 5: CALENDARIO
                         SingleChildScrollView(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -4144,7 +4165,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                             ],
                           ),
                         ),
-                        // ABA 5: FERIADOS
+                        // ABA 6: FERIADOS
                         SingleChildScrollView(
                           child: FutureBuilder<List<Holiday>>(
                             future: _holidaysFuture,
@@ -4393,7 +4414,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                             },
                           ),
                         ),
-                        // ABA 6: TABELAS
+                        // ABA 7: TABELAS
                         const TablesScreen(),
 ],
                     ),
@@ -4413,6 +4434,101 @@ class ContasTab extends StatefulWidget {
 
   @override
   State<ContasTab> createState() => _ContasTabState();
+}
+
+class ContasResumoTab extends StatefulWidget {
+  const ContasResumoTab({super.key});
+
+  @override
+  State<ContasResumoTab> createState() => _ContasResumoTabState();
+}
+
+class _ContasResumoTabState extends State<ContasResumoTab> {
+  bool _ready = false;
+  Object? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      await configureContasDatabaseIfNeeded();
+
+      await contas_prefs.PrefsService.init();
+      contas_prefs.PrefsService.setEmbeddedMode(false);
+
+      try {
+        await contas_db.DatabaseInitializationService.instance.initializeDatabase();
+      } catch (_) {}
+
+      if (!mounted) return;
+      setState(() {
+        _ready = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _ready = true;
+        _error = e;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: 16),
+            Text('Carregando Contas...', style: Theme.of(context).textTheme.titleMedium),
+          ],
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+              const SizedBox(height: 12),
+              Text(
+                'Erro ao abrir o módulo Contas',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '$_error',
+                style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SizedBox.expand(
+      child: contas_dash.DashboardScreen(
+        appBarColorOverride: const Color(0xFF795548),
+        totalLabelOverride: 'TOTAL DO MÊS',
+        totalForecastLabelOverride: 'PREVISTO NO MÊS',
+        emptyTextOverride: 'Nenhuma conta, cartão ou recebimento neste mês.',
+        excludeTypeNameFilter: null,
+        typeNameFilter: null,
+      ),
+    );
+  }
 }
 
 class _ContasTabState extends State<ContasTab> {

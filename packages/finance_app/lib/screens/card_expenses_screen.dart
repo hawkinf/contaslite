@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:brasil_fields/brasil_fields.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../database/db_helper.dart';
 import '../models/account.dart';
 import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
 import '../utils/color_contrast.dart';
-import '../utils/app_colors.dart';
 import '../utils/installment_utils.dart';
 import '../widgets/new_expense_dialog.dart';
-import 'card_expense_edit_screen.dart';
-import '../widgets/date_range_app_bar.dart';
 
 class CardExpensesScreen extends StatefulWidget {
   final Account card; 
@@ -27,22 +25,33 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
   List<Account> _expenses = [];
   bool _isLoading = true;
   Map<int, InstallmentDisplay> _installmentById = {};
+  final Set<String> _activeFilters = {};
+  late final VoidCallback _dateRangeListener;
 
   @override
   void initState() {
     super.initState();
     _currentMonth = widget.month;
     _currentYear = widget.year;
+    _dateRangeListener = () {
+      final range = PrefsService.dateRangeNotifier.value;
+      final month = range.start.month;
+      final year = range.start.year;
+      if (month == _currentMonth && year == _currentYear) return;
+      setState(() {
+        _currentMonth = month;
+        _currentYear = year;
+      });
+      _loadExpenses();
+    };
+    PrefsService.dateRangeNotifier.addListener(_dateRangeListener);
     _loadExpenses();
   }
 
-  void _changeMonth(int offset) {
-    DateTime newDate = DateTime(_currentYear, _currentMonth + offset, 1);
-    setState(() {
-      _currentMonth = newDate.month;
-      _currentYear = newDate.year;
-    });
-    _loadExpenses();
+  @override
+  void dispose() {
+    PrefsService.dateRangeNotifier.removeListener(_dateRangeListener);
+    super.dispose();
   }
 
   Future<void> _openNewExpense() async {
@@ -152,133 +161,103 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final DateTime? adjustedDate = _getAdjustedDueDate();
-    final String weekdayLabel = adjustedDate != null ? DateFormat('EEEE', 'pt_BR').format(adjustedDate) : '';
-    final String dateLabel = adjustedDate != null
-        ? DateFormat("dd 'de' MMMM yyyy", 'pt_BR').format(adjustedDate)
-        : DateFormat('MMMM yyyy', 'pt_BR').format(DateTime(_currentYear, _currentMonth));
-    Color bgColor = (widget.card.cardColor != null) ? Color(widget.card.cardColor!) : AppColors.cardPurple;
-    final fgColor = foregroundColorFor(bgColor);
-
-    return ValueListenableBuilder<DateTimeRange>(
-      valueListenable: PrefsService.dateRangeNotifier,
-      builder: (context, range, _) {
-        return Scaffold(
-      appBar: DateRangeAppBar(
-          title: widget.card.description,
-          range: range,
-          onPrevious: () => PrefsService.shiftDateRange(-1),
-          onNext: () => PrefsService.shiftDateRange(1),
-          backgroundColor: bgColor,
-          foregroundColor: fgColor,
-        ),
-        floatingActionButton: FloatingActionButton.extended(
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
         heroTag: 'fabNewCardExpense',
         onPressed: _openNewExpense,
         backgroundColor: Colors.deepPurple,
-        icon: const Icon(Icons.add_shopping_cart),
+        icon: const Icon(Icons.rocket_launch),
         label: const Text('Lançar despesa'),
       ),
-      body: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  const Color(0xFFE3F2FD),
-                  const Color(0xFFBBDEFB).withValues(alpha: 0.5),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.blue.withValues(alpha: 0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                )
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFBBDEFB),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.chevron_left, color: AppColors.primary),
-                    onPressed: () => _changeMonth(-1),
-                    constraints: const BoxConstraints(minHeight: 40, minWidth: 40),
-                    padding: EdgeInsets.zero,
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.calendar_today, color: Colors.blue, size: 18),
-                          const SizedBox(width: 6),
-                          Text(
-                            dateLabel,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              color: Colors.black87,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                      if (weekdayLabel.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              weekdayLabel.toUpperCase(),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.blue,
-                              ),
-                            ),
-                          ),
+      body: Focus(
+        autofocus: true,
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
+            Navigator.of(context).maybePop();
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Column(
+          children: [
+            _buildSharedMonthHeader(),
+            _buildSummaryStrip(),
+            const SizedBox(height: 8),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _visibleExpenses.isEmpty
+                      ? const Center(child: Text('Nenhuma despesa nesta fatura.'))
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(8),
+                          itemCount: _visibleExpenses.length,
+                          itemBuilder: (context, index) {
+                            return _buildExpenseItem(_visibleExpenses[index]);
+                          },
                         ),
-                    ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSharedMonthHeader() {
+    final range = PrefsService.dateRangeNotifier.value;
+    final headerColor = Theme.of(context).colorScheme.primary;
+    final headerTextColor = Theme.of(context).colorScheme.onPrimary;
+    final monthLabel = DateFormat('MMMM yyyy', 'pt_BR').format(range.start).toUpperCase();
+
+    return Container(
+      color: headerColor,
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      child: Row(
+        children: [
+          const SizedBox(width: 48),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.chevron_left, color: headerTextColor),
+                  onPressed: () => PrefsService.shiftDateRange(-1),
+                  tooltip: 'Mês anterior',
+                ),
+                Text(
+                  monthLabel,
+                  style: TextStyle(
+                    color: headerTextColor,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFBBDEFB),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.chevron_right, color: AppColors.primary),
-                    onPressed: () => _changeMonth(1),
-                    constraints: const BoxConstraints(minHeight: 40, minWidth: 40),
-                    padding: EdgeInsets.zero,
-                  ),
+                IconButton(
+                  icon: Icon(Icons.chevron_right, color: headerTextColor),
+                  onPressed: () => PrefsService.shiftDateRange(1),
+                  tooltip: 'Próximo mês',
                 ),
               ],
             ),
           ),
-          _buildSummaryStrip(),
-          Expanded(child: _isLoading ? const Center(child: CircularProgressIndicator()) : _expenses.isEmpty ? const Center(child: Text('Nenhuma despesa nesta fatura.')) : ListView.builder(padding: const EdgeInsets.all(8), itemCount: _expenses.length, itemBuilder: (context, index) { return _buildExpenseItem(_expenses[index]); })),
+          IconButton(
+            icon: Icon(Icons.close, color: headerTextColor),
+            onPressed: () => Navigator.of(context).maybePop(),
+            tooltip: 'Fechar',
+          ),
         ],
       ),
-        );
-      },
     );
+  }
+
+  List<Account> get _visibleExpenses {
+    if (_activeFilters.isEmpty) return _expenses;
+    return _expenses.where((e) => _activeFilters.contains(_expenseTypeKey(e))).toList();
+  }
+
+  String _expenseTypeKey(Account e) {
+    if (e.isRecurrent) return 'recorrencia';
+    if (_isParcel(e)) return 'parcelado';
+    return 'avista';
   }
 
   Widget _buildSummaryStrip() {
@@ -301,40 +280,64 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     final parceladoColor = Colors.orange.shade700;
     const totalColor = Colors.blue;
 
-    Widget buildSummaryCard(String label, double value, Color color, IconData icon) {
-      return Expanded(
-        child: Card(
-          elevation: 1,
-          color: theme.cardTheme.color ?? cs.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-            side: BorderSide(color: color.withValues(alpha: 0.25), width: 1),
+    Widget buildSummaryCard(String label, double value, Color color, IconData icon, {String? filterKey}) {
+      final bool isActive = filterKey != null && _activeFilters.contains(filterKey);
+      final card = Card(
+        elevation: isActive ? 2 : 1,
+        color: theme.cardTheme.color ?? cs.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            color: isActive ? Colors.brown : color.withValues(alpha: 0.25),
+            width: isActive ? 2 : 1,
           ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(icon, color: color, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      label,
-                      style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, color: color, size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: color,
+                      fontWeight: FontWeight.w600,
                     ),
-                  ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                UtilBrasilFields.obterReal(value),
+                style: TextStyle(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  UtilBrasilFields.obterReal(value),
-                  style: TextStyle(color: cs.onSurface, fontWeight: FontWeight.w800, fontSize: 14),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
+        ),
+      );
+      if (filterKey == null) return Expanded(child: card);
+      return Expanded(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () => setState(() {
+            if (_activeFilters.contains(filterKey)) {
+              _activeFilters.remove(filterKey);
+            } else {
+              _activeFilters.add(filterKey);
+            }
+          }),
+          child: card,
         ),
       );
     }
@@ -348,11 +351,17 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
         children: [
           Row(
             children: [
-              buildSummaryCard('Assinatura', totalSubs, assinaturaColor, Icons.autorenew),
+              buildSummaryCard(
+                'Recorrência',
+                totalSubs,
+                assinaturaColor,
+                Icons.autorenew,
+                filterKey: 'recorrencia',
+              ),
               const SizedBox(width: 8),
-              buildSummaryCard('À Vista', totalVista, vistaColor, Icons.attach_money),
+              buildSummaryCard('À Vista', totalVista, vistaColor, Icons.attach_money, filterKey: 'avista'),
               const SizedBox(width: 8),
-              buildSummaryCard('Parcelado', totalParcel, parceladoColor, Icons.view_agenda),
+              buildSummaryCard('Parcelado', totalParcel, parceladoColor, Icons.view_agenda, filterKey: 'parcelado'),
             ],
           ),
           const SizedBox(height: 8),
@@ -390,6 +399,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
   Widget _buildExpenseItem(Account expense) {
     final bool isSubscription = expense.isRecurrent;
     final bool isParcel = _isParcel(expense);
+    final Color? customColor = expense.cardColor != null ? Color(expense.cardColor!) : null;
 
     DateTime? purchaseDate;
     if (expense.purchaseDate != null) {
@@ -403,11 +413,17 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     final String purchaseLabel = purchaseDate != null ? DateFormat('dd/MM/yyyy').format(purchaseDate) : 'Data indefinida';
 
     IconData typeIcon = isSubscription
-        ? Icons.autorenew
-        : (isParcel ? Icons.view_agenda : Icons.attach_money);
-    String typeLabel = isSubscription ? 'Assinatura' : (isParcel ? 'Parcelado' : 'À Vista');
+      ? Icons.autorenew
+      : (isParcel ? Icons.view_agenda : Icons.attach_money);
+    String typeLabel = isSubscription ? 'Recorrência' : (isParcel ? 'Parcelado' : 'À Vista');
     Color typeColor = isSubscription ? Colors.purple : (isParcel ? Colors.orange.shade700 : Colors.green.shade700);
-    Color borderColor = isSubscription ? Colors.purple : (isParcel ? Colors.orange.shade700 : Colors.green.shade700);
+    final Color accentColor = customColor ?? typeColor;
+    Color borderColor = accentColor;
+    final Color cardBackground = customColor != null
+      ? customColor.withValues(alpha: 0.15)
+      : (isSubscription ? Colors.purple.shade50 : Colors.white);
+    final Color badgeBgColor = customColor != null ? customColor.withValues(alpha: 0.12) : typeColor.withValues(alpha: 0.15);
+    final Color badgeTextColor = customColor != null ? foregroundColorFor(customColor) : typeColor;
 
     final InstallmentDisplay installmentDisplay = _installmentDisplayFor(expense);
     final int? currentInstallment = installmentDisplay.isInstallment ? installmentDisplay.index : null;
@@ -421,7 +437,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: borderColor, width: 3),
       ),
-      color: isSubscription ? Colors.purple.shade50 : Colors.white,
+      color: cardBackground,
       child: InkWell(
         onTap: () => _showEditDialog(expense),
         onLongPress: () => _showDetailsPopup(expense),
@@ -434,28 +450,37 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    width: 6,
+                    height: 48,
                     decoration: BoxDecoration(
-                      color: typeColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: typeColor.withValues(alpha: 0.1),
-                          blurRadius: 2,
-                          offset: const Offset(0, 1),
-                        )
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(typeIcon, color: typeColor, size: 18),
-                        const SizedBox(width: 6),
-                        Text(typeLabel, style: TextStyle(color: typeColor, fontWeight: FontWeight.w700, fontSize: 12)),
-                      ],
+                      color: accentColor,
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: badgeBgColor,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: accentColor.withValues(alpha: 0.1),
+                            blurRadius: 2,
+                            offset: const Offset(0, 1),
+                          )
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(typeIcon, color: badgeTextColor, size: 18),
+                          const SizedBox(width: 6),
+                          Text(typeLabel, style: TextStyle(color: badgeTextColor, fontWeight: FontWeight.w700, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,7 +511,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                                 child: Text(
                                   installmentDisplay.badgeText,
                                   style: TextStyle(
-                                    color: installmentDisplay.isInstallment ? typeColor : Colors.green.shade800,
+                                    color: installmentDisplay.isInstallment ? badgeTextColor : Colors.green.shade800,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 11,
                                   ),
@@ -799,14 +824,9 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     );
   }
   Future<void> _showEditDialog(Account expense) async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CardExpenseEditScreen(
-          expense: expense,
-          card: widget.card,
-        ),
-      ),
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (_) => NewExpenseDialog(card: widget.card, expenseToEdit: expense),
     );
 
     // Se retornou true, recarregar a lista de despesas
@@ -815,8 +835,8 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     }
   }
   Future<void> _confirmDelete(Account expense) async {
-    bool isParcel = RegExp(r'\(\d+/\d+\)').hasMatch(expense.description);
-    bool isSubscription = expense.recurrenceId != null || expense.isRecurrent;
+    final bool isParcel = (expense.installmentTotal ?? 1) > 1 || expense.purchaseUuid != null;
+    final bool isSubscription = expense.recurrenceId != null || expense.isRecurrent;
 
     if (isSubscription) {
       await showDialog(
@@ -975,52 +995,50 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(ctx);
-                // Confirmar antes de apagar
-                final confirmed = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx2) => AlertDialog(
-                    icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
-                    title: const Text('Confirmar Exclusão'),
-                    content: Text('Tem certeza que deseja apagar somente esta parcela de "${expense.description}"?'),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx2, false), child: const Text('Cancelar')),
-                      FilledButton(
-                        style: FilledButton.styleFrom(backgroundColor: Colors.red),
-                        onPressed: () => Navigator.pop(ctx2, true),
-                        child: const Text('Sim, Apagar'),
-                      ),
-                    ],
-                  ),
-                );
+                final confirmed = await _confirmSimpleDelete('somente esta parcela', expense.description);
                 if (confirmed != true) return;
                 await DatabaseHelper.instance.deleteAccount(expense.id!);
                 await _loadExpenses();
               },
-              child: const Text('Só esta parcela', style: TextStyle(color: Colors.orange)),
+              child: const Text('Somente esta', style: TextStyle(color: Colors.orange)),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final confirmed = await _confirmSimpleDelete('esta e futuras', expense.description);
+                if (confirmed != true) return;
+                if (expense.purchaseUuid != null) {
+                  final series = await DatabaseHelper.instance.readInstallmentSeriesByUuid(expense.purchaseUuid!);
+                  for (final acc in series) {
+                    final idx = acc.installmentIndex ?? 1;
+                    final currentIdx = expense.installmentIndex ?? 1;
+                    if (idx < currentIdx) continue;
+                    if (acc.id != null) {
+                      await DatabaseHelper.instance.deleteAccount(acc.id!);
+                    }
+                  }
+                } else {
+                  final baseDesc = expense.description.split('(')[0].trim();
+                  final series = await DatabaseHelper.instance.readInstallmentSeries(expense.cardId!, baseDesc, installmentTotal: expense.installmentTotal);
+                  for (final acc in series) {
+                    final idx = acc.installmentIndex ?? 1;
+                    final currentIdx = expense.installmentIndex ?? 1;
+                    if (idx < currentIdx) continue;
+                    if (acc.id != null) {
+                      await DatabaseHelper.instance.deleteAccount(acc.id!);
+                    }
+                  }
+                }
+                await _loadExpenses();
+              },
+              child: const Text('Essa e futuras'),
             ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () async {
                 Navigator.pop(ctx);
-                // Confirmar antes de apagar
-                final confirmed = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx2) => AlertDialog(
-                    icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
-                    title: const Text('Confirmar Exclusão'),
-                    content: Text('Tem certeza que deseja apagar a compra "${expense.description}" INTEIRA com todas as parcelas?\n\nEsta ação não pode ser desfeita.'),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx2, false), child: const Text('Cancelar')),
-                      FilledButton(
-                        style: FilledButton.styleFrom(backgroundColor: Colors.red),
-                        onPressed: () => Navigator.pop(ctx2, true),
-                        child: const Text('Sim, Apagar'),
-                      ),
-                    ],
-                  ),
-                );
+                final confirmed = await _confirmSimpleDelete('todas as parcelas', expense.description, strong: true);
                 if (confirmed != true) return;
-                
                 if (expense.purchaseUuid != null) {
                   await DatabaseHelper.instance.deleteInstallmentSeriesByUuid(expense.purchaseUuid!);
                 } else {
@@ -1029,7 +1047,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                 }
                 await _loadExpenses();
               },
-              child: const Text('Apagar Compra Inteira'),
+              child: const Text('Todas as parcelas'),
             ),
           ],
         ),
@@ -1058,6 +1076,25 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
       if (!mounted) return;
       await _loadExpenses();
     }
+  }
+
+  Future<bool?> _confirmSimpleDelete(String scope, String description, {bool strong = false}) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx2) => AlertDialog(
+        icon: Icon(Icons.warning_amber_rounded, color: strong ? Colors.red : Colors.orange, size: 48),
+        title: const Text('Confirmar Exclusão'),
+        content: Text('Tem certeza que deseja apagar $scope de "$description"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx2, false), child: const Text('Cancelar')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: strong ? Colors.red : Colors.orange),
+            onPressed: () => Navigator.pop(ctx2, true),
+            child: const Text('Sim, Apagar'),
+          ),
+        ],
+      ),
+    );
   }
 }
 // ignore_for_file: use_build_context_synchronously

@@ -40,6 +40,25 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
     });
   }
 
+  Widget _borderedIcon(
+    IconData icon, {
+    Color? iconColor,
+    Color? borderColor,
+    double size = 22,
+    EdgeInsets padding = const EdgeInsets.all(6),
+  }) {
+    final cIcon = iconColor ?? Colors.white;
+    final cBorder = borderColor ?? cIcon;
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: cBorder, width: 1.2),
+      ),
+      child: Icon(icon, color: cIcon, size: size),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<DateTimeRange>(
@@ -58,13 +77,13 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
             child: Padding(
               padding: EdgeInsets.only(right: fabRight, bottom: fabBottom),
               child: FloatingActionButton(
-              backgroundColor: AppColors.cardPurple,
-              foregroundColor: Colors.white,
-              onPressed: () async {
-                await showDialog(context: context, builder: (_) => const CreditCardFormScreen());
-                _loadCards();
-              },
-              child: const Icon(Icons.add),
+                backgroundColor: AppColors.cardPurple,
+                foregroundColor: Colors.white,
+                onPressed: () async {
+                  await showDialog(context: context, builder: (_) => const CreditCardFormScreen());
+                  _loadCards();
+                },
+                child: _borderedIcon(Icons.add, iconColor: Colors.white, borderColor: Colors.white),
               ),
             ),
           ),
@@ -258,18 +277,28 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
     Color bgColor = (widget.card.cardColor != null) ? Color(widget.card.cardColor!) : AppColors.cardPurpleDark;
     final fgColor = foregroundColorFor(bgColor);
 
-    List<Widget> detailsChildren = [
-        _buildDetailRow('Parcelado:', _installmentTotal, AppColors.installment, fgColor),
-        const SizedBox(height: 2),
-        _buildDetailRow('A Vista:', _oneOffTotal, AppColors.oneOff, fgColor)
+    final badges = <Widget>[
+      _buildBadge('Parcelado', _installmentTotal, AppColors.installment, fgColor),
+      _buildBadge('À vista', _oneOffTotal, AppColors.oneOff, fgColor),
     ];
     if (_subscriptionTotal > 0) {
-        detailsChildren.add(const SizedBox(height: 2));
-        detailsChildren.add(_buildDetailRow('Assinaturas:', _subscriptionTotal, AppColors.subscription, fgColor));
+      badges.add(_buildBadge('Assinaturas', _subscriptionTotal, AppColors.subscription, fgColor));
     }
-    detailsChildren.add(const SizedBox(height: 6));
-    detailsChildren.add(Text('PREVISÃO FATURA', style: TextStyle(color: fgColor, fontSize: 11, fontWeight: FontWeight.bold)));
-    detailsChildren.add(Text(UtilBrasilFields.obterReal(_currentInvoice), style: TextStyle(color: fgColor, fontSize: 24, fontWeight: FontWeight.bold)));
+
+    final headerBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(spacing: 6, runSpacing: 6, children: badges),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Text('Previsão da fatura', style: TextStyle(color: fgColor.withOpacity(0.8), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.15)),
+            const Spacer(),
+            Text(UtilBrasilFields.obterReal(_currentInvoice), style: TextStyle(color: fgColor, fontSize: 22, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ],
+    );
 
     return GestureDetector(
       onTap: _openExpenses,
@@ -280,12 +309,7 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: detailsChildren,
-                ),
-              ),
+              Expanded(child: headerBlock),
               const SizedBox(width: 8),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 160),
@@ -315,35 +339,82 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
               ),
             ],
           ),
-          const SizedBox(height: 11), Divider(color: fgColor.withOpacity(0.2)), 
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('VENCIMENTO', style: TextStyle(color: fgColor.withOpacity(0.8), fontSize: 10)), Text('Original: ${DateFormat('dd/MM/yyyy').format(dueDateBase)}', style: TextStyle(color: fgColor.withOpacity(0.95), fontSize: 11)), if (isAdjusted) Text('Ajustada: ${DateFormat('dd/MM/yyyy').format(displayDueDate)}', style: TextStyle(color: fgColor, fontSize: 11, fontWeight: FontWeight.bold))]), 
-            Row(children: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey.shade200,
-                foregroundColor: Colors.grey.shade600,
-                padding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
-                minimumSize: const Size(22, 22),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-              onPressed: _showNewExpenseDialog,
-              child: const Icon(Icons.add_shopping_cart, size: 14)),
-            IconButton(
-              icon: Icon(Icons.edit, color: Colors.grey.shade600),
-              tooltip: 'Editar Cartão',
-              onPressed: _editCard),
-            IconButton(
-              icon: Icon(Icons.delete, color: Colors.grey.shade600),
-              tooltip: 'Excluir Cartão',
-              onPressed: _confirmDelete),
-            ])
-          ])]))
+          const SizedBox(height: 8),
+          Divider(color: fgColor.withOpacity(0.18), height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: fgColor.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: fgColor.withOpacity(0.1)),
+                  ),
+                  child: Text(
+                    isAdjusted
+                        ? 'Vencimento: ${DateFormat('dd/MM/yyyy').format(displayDueDate)} (Ajustado • Original: ${DateFormat('dd/MM/yyyy').format(dueDateBase)})'
+                        : 'Vencimento: ${DateFormat('dd/MM/yyyy').format(dueDateBase)}',
+                    style: TextStyle(color: fgColor.withOpacity(0.9), fontSize: 12, fontWeight: FontWeight.w600),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _actionIcon(Icons.rocket_launch, 'Lançar despesa', _showNewExpenseDialog, fgColor),
+                  const SizedBox(width: 6),
+                  _actionIcon(Icons.edit, 'Editar Cartão', _editCard, fgColor),
+                  const SizedBox(width: 6),
+                  _actionIcon(Icons.delete, 'Excluir Cartão', _confirmDelete, fgColor),
+                ],
+              ),
+            ],
+          )
+        ]))
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, double value, Color color, Color baseColor) {
-    return Row(children: [Text(label, style: TextStyle(color: baseColor.withOpacity(0.8), fontSize: 10)), const SizedBox(width: 4), Text(UtilBrasilFields.obterReal(value), style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold))]);
+  Widget _buildBadge(String label, double value, Color accent, Color baseColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: baseColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: baseColor.withOpacity(0.1)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(width: 8, height: 8, decoration: BoxDecoration(color: accent, shape: BoxShape.circle)),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(color: baseColor.withOpacity(0.75), fontSize: 11, fontWeight: FontWeight.w600)),
+          const SizedBox(width: 8),
+          Text(UtilBrasilFields.obterReal(value), style: TextStyle(color: accent, fontSize: 12, fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  Widget _actionIcon(IconData icon, String tooltip, VoidCallback onPressed, Color baseColor) {
+    return IconButton(
+      icon: Icon(icon, size: 18),
+      tooltip: tooltip,
+      onPressed: onPressed,
+      style: IconButton.styleFrom(
+        backgroundColor: baseColor.withOpacity(0.07),
+        foregroundColor: baseColor.withOpacity(0.88),
+        minimumSize: const Size(34, 34),
+        padding: const EdgeInsets.all(7),
+        visualDensity: VisualDensity.compact,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: baseColor.withOpacity(0.12))),
+      ),
+    );
   }
   
   Future<void> _confirmDelete() async {

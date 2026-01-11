@@ -5,6 +5,7 @@ import '../models/bank_account.dart';
 import '../services/bank_service.dart';
 import '../widgets/app_input_decoration.dart';
 import '../services/prefs_service.dart';
+import '../utils/color_contrast.dart';
 
 class BankAccountsScreen extends StatefulWidget {
   const BankAccountsScreen({super.key});
@@ -284,14 +285,17 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
                                         shape: BoxShape.circle,
                                         border: Border.all(
                                           color: isSelected
-                                              ? Colors.black
+                                              ? foregroundColorFor(color)
                                               : Colors.grey.shade300,
                                           width: isSelected ? 3 : 1.5,
                                         ),
                                       ),
                                       child: isSelected
-                                          ? const Icon(Icons.check,
-                                              size: 18, color: Colors.white)
+                                          ? Icon(
+                                              Icons.check,
+                                              size: 18,
+                                              color: foregroundColorFor(color),
+                                            )
                                           : null,
                                     ),
                                   ),
