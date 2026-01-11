@@ -9,6 +9,7 @@ import '../models/account.dart';
 import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
 import '../utils/color_contrast.dart';
+import '../utils/app_colors.dart';
 import 'credit_card_form.dart';
 import 'card_expenses_screen.dart';
 import '../widgets/new_expense_dialog.dart'; // CORRIGIDO O IMPORT
@@ -57,7 +58,7 @@ class _CreditCardScreenState extends State<CreditCardScreen> {
             child: Padding(
               padding: EdgeInsets.only(right: fabRight, bottom: fabBottom),
               child: FloatingActionButton(
-              backgroundColor: Colors.purple.shade700,
+              backgroundColor: AppColors.cardPurple,
               foregroundColor: Colors.white,
               onPressed: () async {
                 await showDialog(context: context, builder: (_) => const CreditCardFormScreen());
@@ -230,9 +231,10 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
   }
 
   void _showNewExpenseDialog() async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => NewExpenseDialog(card: widget.card)),
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => NewExpenseDialog(card: widget.card),
     );
 
     if (result == true) {
@@ -253,17 +255,17 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
     DateTime displayDueDate = check.date;
     final bool isAdjusted = check.warning != null && !DateUtils.isSameDay(dueDateBase, displayDueDate);
     
-    Color bgColor = (widget.card.cardColor != null) ? Color(widget.card.cardColor!) : Colors.purple.shade900;
+    Color bgColor = (widget.card.cardColor != null) ? Color(widget.card.cardColor!) : AppColors.cardPurpleDark;
     final fgColor = foregroundColorFor(bgColor);
 
     List<Widget> detailsChildren = [
-        _buildDetailRow('Parcelado:', _installmentTotal, Colors.orangeAccent, fgColor),
+        _buildDetailRow('Parcelado:', _installmentTotal, AppColors.installment, fgColor),
         const SizedBox(height: 2),
-        _buildDetailRow('À Vista:', _oneOffTotal, Colors.lightBlueAccent, fgColor)
+        _buildDetailRow('A Vista:', _oneOffTotal, AppColors.oneOff, fgColor)
     ];
     if (_subscriptionTotal > 0) {
         detailsChildren.add(const SizedBox(height: 2));
-        detailsChildren.add(_buildDetailRow('Assinaturas:', _subscriptionTotal, Colors.purpleAccent, fgColor));
+        detailsChildren.add(_buildDetailRow('Assinaturas:', _subscriptionTotal, AppColors.subscription, fgColor));
     }
     detailsChildren.add(const SizedBox(height: 6));
     detailsChildren.add(Text('PREVISÃO FATURA', style: TextStyle(color: fgColor, fontSize: 11, fontWeight: FontWeight.bold)));
@@ -314,13 +316,28 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
             ],
           ),
           const SizedBox(height: 11), Divider(color: fgColor.withOpacity(0.2)), 
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('VENCIMENTO', style: TextStyle(color: fgColor.withOpacity(0.8), fontSize: 10)), Text('Original: ${DateFormat('dd/MM/yyyy').format(dueDateBase)}', style: TextStyle(color: fgColor.withOpacity(0.95), fontSize: 11)), if (isAdjusted) Text('Ajustada: ${DateFormat('dd/MM/yyyy').format(displayDueDate)}', style: TextStyle(color: fgColor, fontSize: 11, fontWeight: FontWeight.bold))]), 
-          Row(children: [
-            IconButton(icon: Icon(Icons.list_alt, color: fgColor, size: 18), tooltip: 'Ver Despesas', onPressed: _openExpenses), 
-            ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: fgColor, foregroundColor: bgColor, padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0), minimumSize: const Size(22, 22), tapTargetSize: MaterialTapTargetSize.shrinkWrap), onPressed: _showNewExpenseDialog, child: const Icon(Icons.add_shopping_cart, size: 14)), 
-            PopupMenuButton<String>(icon: Icon(Icons.more_vert, color: fgColor.withOpacity(0.8)), onSelected: (val) { if (val == 'edit') { _editCard(); } else if (val == 'delete') { _confirmDelete(); } }, itemBuilder: (context) => [const PopupMenuItem(value: 'edit', child: Text('Editar Cartão')), const PopupMenuItem(value: 'delete', child: Text('Excluir Cartão', style: TextStyle(color: Colors.red)))])
-          ])
-      ])]))
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('VENCIMENTO', style: TextStyle(color: fgColor.withOpacity(0.8), fontSize: 10)), Text('Original: ${DateFormat('dd/MM/yyyy').format(dueDateBase)}', style: TextStyle(color: fgColor.withOpacity(0.95), fontSize: 11)), if (isAdjusted) Text('Ajustada: ${DateFormat('dd/MM/yyyy').format(displayDueDate)}', style: TextStyle(color: fgColor, fontSize: 11, fontWeight: FontWeight.bold))]), 
+            Row(children: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey.shade200,
+                foregroundColor: Colors.grey.shade600,
+                padding:
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                minimumSize: const Size(22, 22),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              onPressed: _showNewExpenseDialog,
+              child: const Icon(Icons.add_shopping_cart, size: 14)),
+            IconButton(
+              icon: Icon(Icons.edit, color: Colors.grey.shade600),
+              tooltip: 'Editar Cartão',
+              onPressed: _editCard),
+            IconButton(
+              icon: Icon(Icons.delete, color: Colors.grey.shade600),
+              tooltip: 'Excluir Cartão',
+              onPressed: _confirmDelete),
+            ])
+          ])]))
       ),
     );
   }
@@ -331,14 +348,14 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
   
   Future<void> _confirmDelete() async {
     final confirm = await showDialog<bool>(
-      context: context, 
+      context: context,
       builder: (ctx) => AlertDialog(
-        icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
-        title: const Text('Confirmar Exclusão'), 
-        content: Text('Tem certeza que deseja excluir o cartão "${widget.card.description}"?\n\nIsso apagará também TODOS os lançamentos vinculados a ele.\n\nEsta ação não pode ser desfeita.'), 
+        icon: const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 48),
+        title: const Text('Confirmar Exclusao'),
+        content: Text('Tem certeza que deseja excluir o cartao "${widget.card.description}"?\n\nIsso apagara tambem TODOS os lancamentos vinculados a ele.\n\nEsta acao nao pode ser desfeita.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')), 
-          FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(ctx, true), child: const Text('Sim, Apagar'))
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          FilledButton(style: FilledButton.styleFrom(backgroundColor: AppColors.error), onPressed: () => Navigator.pop(ctx, true), child: const Text('Sim, Apagar'))
         ]
       )
     );

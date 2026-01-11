@@ -6,6 +6,7 @@ import '../database/db_helper.dart';
 import '../models/account.dart';
 import '../services/holiday_service.dart';
 import '../services/prefs_service.dart';
+import '../utils/app_colors.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -305,7 +306,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       color: Colors.white,
                     ),
                     selectedDecoration: BoxDecoration(
-                      color: isDark ? Colors.green.shade700 : Colors.green.shade500,
+                      color: isDark ? AppColors.successDark : Colors.green.shade500,
                       shape: BoxShape.circle,
                     ),
                     selectedTextStyle: TextStyle(
@@ -423,9 +424,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     Color valueColor;
     if (isRecebimento) {
-      valueColor = Colors.green.shade700;
+      valueColor = AppColors.successDark;
     } else if (isCard) {
-      valueColor = Colors.purple.shade700;
+      valueColor = AppColors.cardPurple;
     } else {
       valueColor = Colors.red.shade700;
     }
@@ -453,7 +454,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           child: Icon(leadingIcon,
               color: isCard && account.cardColor != null
                   ? Colors.white
-                  : (isRecebimento ? Colors.green.shade700 : Colors.red.shade700),
+                  : (isRecebimento ? AppColors.successDark : Colors.red.shade700),
               size: 20),
         ),
         title: Text(

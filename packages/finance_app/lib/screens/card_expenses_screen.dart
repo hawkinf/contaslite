@@ -6,6 +6,7 @@ import '../models/account.dart';
 import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
 import '../utils/color_contrast.dart';
+import '../utils/app_colors.dart';
 import '../utils/installment_utils.dart';
 import '../widgets/new_expense_dialog.dart';
 import 'card_expense_edit_screen.dart';
@@ -156,7 +157,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     final String dateLabel = adjustedDate != null
         ? DateFormat("dd 'de' MMMM yyyy", 'pt_BR').format(adjustedDate)
         : DateFormat('MMMM yyyy', 'pt_BR').format(DateTime(_currentYear, _currentMonth));
-    Color bgColor = (widget.card.cardColor != null) ? Color(widget.card.cardColor!) : Colors.purple.shade700;
+    Color bgColor = (widget.card.cardColor != null) ? Color(widget.card.cardColor!) : AppColors.cardPurple;
     final fgColor = foregroundColorFor(bgColor);
 
     return ValueListenableBuilder<DateTimeRange>(
@@ -185,8 +186,8 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Colors.blue.shade50,
-                  Colors.blue.shade100.withValues(alpha: 0.5),
+                  const Color(0xFFE3F2FD),
+                  const Color(0xFFBBDEFB).withValues(alpha: 0.5),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -203,12 +204,12 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade100,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFBBDEFB),
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    icon: Icon(Icons.chevron_left, color: Colors.blue.shade700),
+                    icon: const Icon(Icons.chevron_left, color: AppColors.primary),
                     onPressed: () => _changeMonth(-1),
                     constraints: const BoxConstraints(minHeight: 40, minWidth: 40),
                     padding: EdgeInsets.zero,
@@ -257,12 +258,12 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                   ),
                 ),
                 Container(
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade100,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFBBDEFB),
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    icon: Icon(Icons.chevron_right, color: Colors.blue.shade700),
+                    icon: const Icon(Icons.chevron_right, color: AppColors.primary),
                     onPressed: () => _changeMonth(1),
                     constraints: const BoxConstraints(minHeight: 40, minWidth: 40),
                     padding: EdgeInsets.zero,
@@ -630,7 +631,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                  children: [
                    Container(
                      padding: const EdgeInsets.all(8),
-                     color: Colors.blue.shade100,
+                     color: const Color(0xFFBBDEFB),
                      child: const Row(children: [Expanded(child: Text('Item', style: TextStyle(fontWeight: FontWeight.bold))), Expanded(child: Text('De', style: TextStyle(fontWeight: FontWeight.bold))), Expanded(child: Text('Para', style: TextStyle(fontWeight: FontWeight.bold)))]),
                    ),
                    Expanded(

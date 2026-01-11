@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 
 /// Padrão único para campos: outlined, label flutuante e ícone inicial.
 InputDecoration buildOutlinedInputDecoration({
@@ -32,7 +33,7 @@ InputDecoration buildOutlinedInputDecoration({
     border: baseBorder,
     enabledBorder: baseBorder,
     focusedBorder: baseBorder.copyWith(
-      borderSide: BorderSide(color: Colors.blue.shade700, width: 2),
+      borderSide: const BorderSide(color: AppColors.primary, width: 2),
     ),
   );
 }

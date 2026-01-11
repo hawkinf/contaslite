@@ -29,7 +29,11 @@
       "Bash(timeout 60 flutter pub get:*)",
       "Bash(timeout 120 flutter build:*)",
       "Bash(tasklist /FI \"IMAGENAME eq flutter_windows.exe\")",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(wc:*)",
+      "Bash(Get-ChildItem -Path \"c:\\\\flutter\\\\Contaslite\" -Filter \"*card_expense_form*\" -Recurse -File)",
+      "Bash(Where-Object { $_FullName -notlike \"*.history*\" })",
+      "Bash(Select-Object FullName)"
     ]
   }
 }

@@ -11,6 +11,7 @@ import '../models/account.dart';
 import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
 import '../utils/color_contrast.dart';
+import '../utils/app_colors.dart';
 import '../utils/installment_utils.dart';
 import '../widgets/app_input_decoration.dart';
 import '../widgets/new_expense_dialog.dart';
@@ -18,11 +19,9 @@ import '../widgets/payment_dialog.dart';
 import '../widgets/date_range_app_bar.dart';
 import '../widgets/single_day_app_bar.dart';
 import '../utils/card_utils.dart';
-import '../widgets/dialog_close_button.dart';
 import 'account_form_screen.dart';
 import 'recebimento_form_screen.dart';
 import 'credit_card_form.dart';
-import 'card_expenses_screen.dart';
 import 'account_edit_screen.dart';
 import 'recurrent_account_edit_screen.dart' as rec;
 
@@ -204,7 +203,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (includeFilter) {
       actions.add(
         IconButton(
-          icon: const Icon(Icons.filter_alt),
+          icon: _borderedIcon(Icons.filter_alt, size: 20),
           tooltip: 'Filtro de periodo',
           onPressed: _showFilterInfo,
         ),
@@ -687,13 +686,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final fabRight = math.max(8.0, math.min(24.0, media.size.width * 0.02));
       final fabBottom = math.max(16.0, math.min(48.0, media.size.height * 0.08));
       final isDark = Theme.of(context).brightness == Brightness.dark;
-      final headerColor = isDark ? Colors.grey.shade900 : Colors.blue.shade50;
+      final headerColor = isDark ? const Color(0xFF212121) : const Color(0xFFE3F2FD);
       final totalColor = _isRecebimentosFilter
-          ? (isDark ? Colors.lightBlueAccent : Colors.blue.shade700)
-          : (isDark ? Colors.redAccent : Colors.red.shade700);
+          ? (isDark ? AppColors.primaryLight : AppColors.primary)
+          : (isDark ? AppColors.errorLight : AppColors.error);
       final totalForecastColor = _isRecebimentosFilter
-          ? (isDark ? Colors.blueAccent : Colors.blue.shade700)
-          : (isDark ? Colors.orangeAccent : Colors.deepOrange.shade700);
+          ? (isDark ? AppColors.primaryLight : AppColors.primary)
+          : (isDark ? AppColors.warningLight : AppColors.warningDark);
       final totalLabel = _isRecebimentosFilter ? 'TOTAL RECEBIDO' : 'TOTAL PAGO';
       final totalForecastLabel =
           _isRecebimentosFilter ? 'TOTAL A RECEBER' : 'TOTAL A PAGAR';
@@ -701,7 +700,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ? 'Nenhuma conta a receber para este mês.'
           : 'Nenhuma conta a pagar para este mês.';
       final appBarBg =
-          _isRecebimentosFilter ? Colors.green.shade700 : Colors.red.shade700;
+          _isRecebimentosFilter ? AppColors.success : AppColors.error;
       const appBarFg = Colors.white;
       final isSingleDayFilter = DateUtils.isSameDay(_startDate, _endDate);
       final PreferredSizeWidget appBarWidget = isSingleDayFilter
@@ -711,7 +710,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               backgroundColor: appBarBg,
               foregroundColor: appBarFg,
               leading: IconButton(
-                icon: const Icon(Icons.arrow_back),
+                icon: _borderedIcon(Icons.arrow_back, size: 20),
                 tooltip: 'Voltar',
                 onPressed: () {
                   final monthStart = DateTime(_startDate.year, _startDate.month, 1);
@@ -875,13 +874,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     tooltip: _isRecebimentosFilter
                         ? 'Novo recebimento'
                         : 'Novo lancamento',
-                    backgroundColor: Colors.blue.shade800,
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     onPressed: _isRecebimentosFilter
                         ? _openRecebimentoForm
                         : _showQuickActions,
                     mini: isCompactFab,
-                    child: const Icon(Icons.add),
+                    child: _borderedIcon(
+                      Icons.add,
+                      iconColor: Colors.white,
+                      borderColor: Colors.white,
+                      size: isCompactFab ? 20 : 24,
+                      padding: const EdgeInsets.all(6),
+                    ),
                   ),
                 ),
               ),
@@ -901,7 +906,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              _borderedIcon(Icons.error_outline,
+                  size: 48, iconColor: Colors.red, padding: const EdgeInsets.all(8)),
               const SizedBox(height: 16),
               const Text('Erro ao carregar tela'),
               const SizedBox(height: 8),
@@ -1015,42 +1021,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (isCard) {
       Color userColor = (account.cardColor != null)
           ? Color(account.cardColor!)
-          : Colors.purple.shade900;
+          : AppColors.cardPurpleDark;
       cardColor = userColor;
       containerBg = Colors.transparent;
       textColor = foregroundColorFor(userColor);
       subTextColor = textColor.withValues(alpha: 0.8);
       moneyColor = textColor;
-    } else {
-      final int? accountColorValue = account.cardColor;
-      final bool usesCustomColor = accountColorValue != null;
-      final Color? customColor =
-          usesCustomColor ? Color(accountColorValue) : null;
-      containerBg = isAlertDay ? Colors.red.shade800 : Colors.transparent;
-      cardColor = customColor ?? (isAlertDay ? Colors.white : Theme.of(context).cardColor);
-      if (customColor != null) {
-        textColor = foregroundColorFor(customColor);
-        subTextColor = textColor.withValues(alpha: 0.8);
-        moneyColor = textColor;
       } else {
-        textColor = isAlertDay
-            ? Colors.black87
-            : (Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black);
-      subTextColor = _adaptiveGreyTextColor(context, Colors.grey.shade600);
-      if (isRecurrent) {
-        moneyColor = _adaptiveGreyTextColor(context, Colors.grey);
-      } else {
-          moneyColor =
-              _isRecebimentosFilter ? Colors.green.shade700 : Colors.red.shade700;
-        }
-        if (Theme.of(context).brightness == Brightness.dark && !isRecurrent) {
-          moneyColor = _isRecebimentosFilter ? Colors.lightGreenAccent : Colors.redAccent;
-        }
-        if (isAlertDay && !isRecurrent && !_isRecebimentosFilter) {
-          moneyColor = Colors.red.shade900;
+        final int? accountColorValue = account.cardColor;
+        final bool usesCustomColor = accountColorValue != null;
+        final Color? customColor =
+            usesCustomColor ? Color(accountColorValue) : null;
+        containerBg = isAlertDay ? AppColors.errorDark : Colors.transparent;
+        cardColor =
+            customColor ?? (isAlertDay ? Colors.white : Theme.of(context).cardColor);
+        if (customColor != null) {
+          textColor = foregroundColorFor(customColor);
+          subTextColor = textColor.withValues(alpha: 0.8);
+          moneyColor = textColor;
+        } else {
+          textColor = isAlertDay
+              ? Colors.black87
+              : (Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black);
+          subTextColor = _adaptiveGreyTextColor(context, Colors.grey.shade600);
+          if (isAlertDay) {
+            textColor = Colors.white;
+            subTextColor = Colors.white70;
+            moneyColor = Colors.white;
+          } else if (isRecurrent) {
+            moneyColor = _adaptiveGreyTextColor(context, Colors.grey);
+          } else {
+            moneyColor = _isRecebimentosFilter
+                ? AppColors.successDark
+                : AppColors.errorDark;
+          }
+          if (Theme.of(context).brightness == Brightness.dark && !isRecurrent) {
+            moneyColor = _isRecebimentosFilter
+                ? Colors.lightGreenAccent
+                : Colors.redAccent;
+          }
+          if (isAlertDay && !isRecurrent && !_isRecebimentosFilter) {
+            moneyColor = AppColors.errorDark;
+          }
         }
       }
-    }
 
     // Dados para Cartão
     final breakdown = isCard ? CardBreakdown.parse(account.observation) : const CardBreakdown(total: 0, installments: 0, oneOff: 0, subscriptions: 0);
@@ -1082,13 +1096,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         account.id != null ? _installmentSummaries[account.id!] : null;
     final bool isPaid =
         account.id != null && _paymentInfo.containsKey(account.id!);
+    final Color cardActionIconColor = Colors.grey.shade600;
+    final Color cardActionIconBg = Colors.white.withValues(
+        alpha: Theme.of(context).brightness == Brightness.light ? 0.85 : 0.75);
     final installmentDisplay = resolveInstallmentDisplay(account);
     final Color installmentBadgeBg = installmentDisplay.isInstallment
         ? Colors.deepPurple.shade50
         : Colors.green.shade50;
     final Color installmentBadgeTextColor = installmentDisplay.isInstallment
-        ? Colors.deepPurple.shade700
-        : Colors.green.shade700;
+        ? AppColors.cardPurple
+        : AppColors.successDark;
     final Widget installmentBadge = Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
@@ -1111,7 +1128,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: InkWell(
           onTap: () async {
             if (isCard) {
-              await _openCardExpenses(account);
+              await _openCardEditor(account);
             } else {
               await _showEditSpecificDialog(account);
             }
@@ -1147,7 +1164,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             "Ajust. ${DateFormat('dd/MM').format(effectiveDate)}",
                             style: TextStyle(
                               fontSize: smallDateSize,
-                              color: isCard ? subTextColor : Colors.red.shade700,
+                              color: isCard ? subTextColor : AppColors.errorDark,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -1300,12 +1317,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.undo, size: 12, color: Colors.orange.shade700),
+                                    _borderedIcon(Icons.undo,
+                                        size: 12,
+                                        iconColor: AppColors.warningDark,
+                                        padding: const EdgeInsets.all(2),
+                                        borderWidth: 1),
                                     const SizedBox(width: 3),
-                                    Text(
+                                    const Text(
                                       'Desfazer',
                                       style: TextStyle(
-                                        color: Colors.orange.shade700,
+                                        color: AppColors.warningDark,
                                         fontSize: 10,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -1320,7 +1341,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ? '*** RECEBIDO ***'
                                   : '*** PAGO ***',
                               style: TextStyle(
-                                color: Colors.green.shade700,
+                                color: AppColors.successDark,
                                 fontWeight: FontWeight.bold,
                                 fontSize: paidSize,
                               ),
@@ -1341,47 +1362,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Row(mainAxisSize: MainAxisSize.min, children: [
                   if (isCard) ...[
                     InkWell(
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  CreditCardFormScreen(cardToEdit: account),
-                            ),
-                          );
-                          _refresh();
-                        },
+                        onTap: () => _openCardEditor(account),
                         child: _actionIcon(Icons.edit,
-                            textColor.withValues(alpha: 0.2), textColor, size: iconSize)),
+                            cardActionIconBg, cardActionIconColor, size: iconSize)),
                     const SizedBox(width: 6),
                     InkWell(
                         onTap: isPaid ? null : () => _handlePayAction(account),
                         child: _actionIcon(Icons.payments, Colors.blue.shade50,
-                          Colors.blue.shade800,
+                          cardActionIconColor,
                           enabled: !isPaid, size: iconSize)),
                     const SizedBox(width: 6),
                     InkWell(
                         onTap: () => _showExpenseDialog(account),
                         child: _actionIcon(Icons.add_shopping_cart,
-                            textColor.withValues(alpha: 0.2), textColor, size: iconSize)),
+                            cardActionIconBg, cardActionIconColor, size: iconSize)),
                     const SizedBox(width: 6),
                     InkWell(
                       onTap: () => _showLaunchInvoiceDialog(account, t),
                       child: _actionIcon(Icons.description,
-                          Colors.orange.shade50, Colors.orange.shade700, size: iconSize),
+                          Colors.orange.shade50, cardActionIconColor, size: iconSize),
                     ),
                     const SizedBox(width: 6),
                     if (account.id != null)
                       InkWell(
                         onTap: () => _confirmDelete(account),
-                        child: _actionIcon(
-                            Icons.delete, Colors.red.shade50, Colors.red.shade800, size: iconSize),
+                        child: _borderedIcon(
+                          Icons.delete,
+                          size: iconSize,
+                          iconColor: Colors.grey.shade600,
+                          borderColor: Colors.grey.shade500,
+                          borderWidth: 1.5,
+                          padding: const EdgeInsets.all(5),
+                        ),
                       ),
                   ] else ...[
                     InkWell(
                         onTap: isPaid ? null : () => _handlePayAction(account),
                         child: _actionIcon(Icons.payments, Colors.blue.shade50,
-                            Colors.blue.shade800,
+                            AppColors.primary,
                             enabled: !isPaid, size: iconSize)),
                     const SizedBox(width: 8),
                     if (isRecurrent && !isLaunched)
@@ -1407,13 +1425,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             if (mounted) _showLaunchDialog(parentRecurrence);
                           },
                           child: _actionIcon(Icons.rocket_launch,
-                              Colors.green.shade50, Colors.green.shade800, size: iconSize)),
+                              Colors.green.shade50, AppColors.successDark, size: iconSize)),
                     if (isRecurrent && !isLaunched)
                       const SizedBox(width: 8),
                     InkWell(
                         onTap: () => _confirmDelete(account),
-                        child: _actionIcon(Icons.delete, Colors.red.shade50,
-                            Colors.red.shade800, size: iconSize)),
+                        child: _actionIcon(
+                          Icons.delete,
+                          Colors.red.shade50,
+                          Colors.grey.shade600,
+                          size: iconSize,
+                          borderColor: AppColors.errorDark,
+                          borderWidth: 1.3)),
                   ]
                 ]),
               ]),
@@ -1503,7 +1526,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _actionIcon(IconData icon, Color bg, Color iconColor,
-      {bool enabled = true, double size = 16}) {
+      {bool enabled = true,
+      double size = 16,
+      Color? borderColor,
+      double borderWidth = 1}) {
     final displayColor = enabled ? iconColor : iconColor.withValues(alpha: 0.4);
     final displayBg = enabled ? bg : bg.withValues(alpha: 0.3);
     return Opacity(
@@ -1511,33 +1537,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Container(
           padding: const EdgeInsets.all(5),
           decoration: BoxDecoration(
-              color: displayBg, borderRadius: BorderRadius.circular(4)),
+              color: displayBg,
+              borderRadius: BorderRadius.circular(4),
+              border: borderColor != null
+                  ? Border.all(color: borderColor, width: borderWidth)
+                  : null),
           child: Icon(icon, size: size, color: displayColor)),
     );
   }
 
-  Future<void> _openCardExpenses(Account account) async {
-    if (account.month == null || account.year == null) return;
-    final card = Account(
-      id: account.id,
-      typeId: account.typeId,
-      description: account.description.replaceAll('Fatura: ', ''),
-      value: 0,
-      dueDay: account.dueDay,
-      month: account.month,
-      year: account.year,
-      isRecurrent: account.isRecurrent,
-      payInAdvance: account.payInAdvance,
-      cardBrand: account.cardBrand,
-      cardBank: account.cardBank,
-      cardLimit: account.cardLimit,
-      cardColor: account.cardColor,
+  Widget _borderedIcon(
+    IconData icon, {
+    Color? iconColor,
+    double size = 20,
+    EdgeInsetsGeometry padding = const EdgeInsets.all(4),
+    Color? borderColor,
+    double borderWidth = 1.2,
+    BorderRadius? borderRadius,
+  }) {
+    final brightness = Theme.of(context).brightness;
+    final resolvedIconColor = iconColor ?? Colors.grey.shade600;
+    final resolvedBorderColor = borderColor ??
+      (brightness == Brightness.dark ? Colors.white : Colors.grey.shade600);
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        border: Border.all(color: resolvedBorderColor, width: borderWidth),
+        borderRadius: borderRadius ?? BorderRadius.circular(8),
+      ),
+      child: Icon(icon, size: size, color: resolvedIconColor),
     );
+  }
+
+  Future<void> _openCardEditor(Account account) async {
     await Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => CardExpensesScreen(
-                card: card, month: account.month!, year: account.year!)));
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreditCardFormScreen(cardToEdit: account),
+      ),
+    );
     if (mounted) {
       _refresh();
     }
@@ -1724,7 +1762,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: valueMainSize,
-                  color: Colors.red.shade700,
+                  color: AppColors.errorDark,
                 ),
               ),
               Text(
@@ -1732,7 +1770,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: TextStyle(
                   fontSize: smallTextSize * 0.8,
                   fontWeight: FontWeight.bold,
-                  color: Colors.red.shade700,
+                  color: AppColors.errorDark,
                 ),
               ),
             ],
@@ -1821,7 +1859,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Tooltip(
                     message: 'Copiar do Valor Médio',
                     child: IconButton(
-                      icon: const Icon(Icons.content_copy),
+                      icon: _borderedIcon(Icons.content_copy,
+                          size: 18, padding: const EdgeInsets.all(4)),
                       onPressed: () {
                         launchedValueController.text = averageController.text;
                       },
@@ -1847,7 +1886,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: () => Navigator.pop(ctx),
               child: const Text('Cancelar')),
           FilledButton.icon(
-            icon: const Icon(Icons.check),
+            icon: _borderedIcon(Icons.check, size: 18, iconColor: Colors.white),
             label: const Text('Gravar'),
             onPressed: () async {
               if (launchedValueController.text.isEmpty) {
@@ -2018,7 +2057,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: () => Navigator.pop(ctx),
               child: const Text('Cancelar')),
           FilledButton.icon(
-            icon: const Icon(Icons.check),
+            icon: _borderedIcon(Icons.check, size: 18, iconColor: Colors.white),
             label: const Text('Gravar'),
             onPressed: () async {
               if (valueController.text.isEmpty) return;
@@ -2225,7 +2264,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+          icon: _borderedIcon(Icons.warning_amber_rounded,
+              iconColor: Colors.orange, size: 48, padding: const EdgeInsets.all(6)),
           title: const Text('Confirmar Exclusão'),
           content: Text(confirmMessage),
           actions: [
@@ -2557,7 +2597,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final confirm = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+          icon: _borderedIcon(Icons.warning_amber_rounded,
+              iconColor: Colors.orange, size: 48, padding: const EdgeInsets.all(6)),
           title: const Text('Confirmar Exclusão'),
           content: Text('Tem certeza que deseja excluir "${acc.description}"?'),
           actions: [
@@ -2665,7 +2706,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _buildQuickAction(
                         icon: Icons.receipt_long,
                         label: 'Lançar Conta',
-                        color: Colors.blue.shade600,
+                        color: AppColors.primary,
                         size: tileSize,
                         iconSize: iconSize,
                         fontSize: fontSize,
@@ -2694,15 +2735,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ],
                                   ),
                                   clipBehavior: Clip.antiAlias,
-                                  child: Stack(
+                                  child: Column(
                                     children: [
-                                      const AccountFormScreen(),
-                                      Positioned(
-                                        top: 8,
-                                        right: 8,
-                                        child: DialogCloseButton(
-                                          onPressed: () => Navigator.pop(dialogContext),
+                                      // Header com botão de fechar
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            const Text(
+                                              'Nova Conta',
+                                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                            ),
+                                            IconButton(
+                                              icon: _borderedIcon(Icons.close,
+                                                  size: 20, padding: const EdgeInsets.all(4)),
+                                              onPressed: () => Navigator.pop(dialogContext),
+                                            ),
+                                          ],
                                         ),
+                                      ),
+                                      const Divider(height: 1),
+                                      // Formulário expandido
+                                      const Expanded(
+                                        child: AccountFormScreen(showAppBar: false),
                                       ),
                                     ],
                                   ),
@@ -2717,7 +2773,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _buildQuickAction(
                         icon: Icons.credit_card,
                         label: 'Despesa Cartão',
-                        color: Colors.deepPurple.shade500,
+                        color: AppColors.cardPurple,
                         size: tileSize,
                         iconSize: iconSize,
                         fontSize: fontSize,
@@ -2730,7 +2786,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _buildQuickAction(
                         icon: Icons.payments,
                         label: 'Lançar Pagamento',
-                        color: Colors.green.shade600,
+                        color: AppColors.success,
                         size: tileSize,
                         iconSize: iconSize,
                         fontSize: fontSize,
@@ -2782,7 +2838,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: fg, size: iconSize),
+            _borderedIcon(icon,
+                iconColor: fg,
+                size: iconSize,
+                padding: const EdgeInsets.all(4),
+                borderWidth: 1),
             const SizedBox(height: 8),
             Text(
               label,
@@ -2851,23 +2911,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   final card = cards[index];
                   final baseColor = card.cardColor != null
                       ? Color(card.cardColor!)
-                      : Colors.purple.shade700;
+                      : AppColors.cardPurple;
                   final dueDay =
                       card.dueDay.toString().padLeft(2, '0');
                   return ListTile(
                     onTap: () => Navigator.pop(ctx, card),
                     leading: CircleAvatar(
                       backgroundColor: baseColor,
-                      child: Icon(
+                      child: _borderedIcon(
                         Icons.credit_card,
-                        color: foregroundColorFor(baseColor),
+                        iconColor: foregroundColorFor(baseColor),
+                        size: 18,
+                        padding: const EdgeInsets.all(4),
+                        borderRadius: BorderRadius.circular(18),
                       ),
                     ),
                     title: Text(card.cardBank ?? card.description),
                     subtitle: Text(
                       '${card.cardBrand ?? 'Cartão'} • Vencimento dia $dueDay',
                     ),
-                    trailing: const Icon(Icons.chevron_right),
+                    trailing: _borderedIcon(Icons.chevron_right,
+                        size: 16, padding: const EdgeInsets.all(3)),
                   );
                 },
               ),

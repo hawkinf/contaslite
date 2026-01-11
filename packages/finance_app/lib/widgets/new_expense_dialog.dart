@@ -1,602 +1,430 @@
-import 'package:brasil_fields/brasil_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:brasil_fields/brasil_fields.dart';
 import 'package:intl/intl.dart';
-
 import '../database/db_helper.dart';
 import '../models/account.dart';
-import '../services/holiday_service.dart';
+import '../models/account_category.dart';
+import '../utils/app_colors.dart';
+import '../widgets/app_input_decoration.dart';
 import '../services/prefs_service.dart';
-import '../utils/color_contrast.dart';
-import '../utils/installment_utils.dart';
-import 'app_input_decoration.dart';
-import 'dialog_close_button.dart';
+import '../services/holiday_service.dart';
+import '../widgets/dialog_close_button.dart';
 
+/// Dialog flutuante para adicionar nova despesa em um cartao de credito.
 class NewExpenseDialog extends StatefulWidget {
   final Account card;
+  final Account? expenseToEdit;
 
-  const NewExpenseDialog({super.key, required this.card});
+  const NewExpenseDialog({
+    super.key,
+    required this.card,
+    this.expenseToEdit,
+  });
 
   @override
   State<NewExpenseDialog> createState() => _NewExpenseDialogState();
 }
 
 class _NewExpenseDialogState extends State<NewExpenseDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _descController = TextEditingController();
   final _valueController = TextEditingController();
-  final _establishmentController = TextEditingController();
-  final _noteController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _dateController = TextEditingController(text: DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now()));
+  final _purchaseDateController = TextEditingController();
+  final _installmentsQtyController = TextEditingController(text: '1');
 
-  final List<Color> _palette = const [
-    Color(0xFFFF0000),
-    Color(0xFFFFFF00),
-    Color(0xFF0000FF),
-    Color(0xFFFFA500),
-    Color(0xFF00FF00),
-    Color(0xFF800080),
-    Color(0xFFFFFFFF),
-    Color(0xFF000000),
-    Color(0xFF808080),
-    Color(0xFF8B4513),
-  ];
-
-  String _installmentType = 'À Vista';
-  DateTime? _selectedInvoiceMonth;
-  DateTime? _defaultInvoiceMonth;
-  List<DateTime> _invoiceOptions = [];
-  late int _selectedColor;
+  AccountCategory? _selectedCategory;
+  List<AccountCategory> _categorias = [];
+  bool _isSaving = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _selectedColor = widget.card.cardColor ?? Colors.indigo.toARGB32();
-    _refreshInvoiceTargets();
+    _loadInitialData();
   }
 
   @override
   void dispose() {
+    _descController.dispose();
     _valueController.dispose();
-    _establishmentController.dispose();
-    _noteController.dispose();
-    _descriptionController.dispose();
-    _dateController.dispose();
+    _purchaseDateController.dispose();
+    _installmentsQtyController.dispose();
     super.dispose();
   }
 
-  void _refreshInvoiceTargets() {
-    DateTime purchaseDate;
-    try {
-      purchaseDate = UtilData.obterDateTime(_dateController.text);
-    } catch (_) {
-      purchaseDate = DateTime.now();
-    }
-    final bestDay = widget.card.bestBuyDay ?? 1;
-    DateTime baseMonth = DateTime(purchaseDate.year, purchaseDate.month, 1);
-    if (purchaseDate.day >= bestDay) {
-      baseMonth = DateTime(baseMonth.year, baseMonth.month + 1, 1);
-    }
+  Future<void> _loadInitialData() async {
+    final categorias = await DatabaseHelper.instance.readAccountCategories(widget.card.typeId);
+    final now = DateTime.now();
+    _purchaseDateController.text = DateFormat('dd/MM/yyyy').format(now);
 
-    final options = List<DateTime>.generate(6, (i) {
-      final target = DateTime(baseMonth.year, baseMonth.month + i, 1);
-      return DateTime(target.year, target.month, 1);
-    });
-
+    if (!mounted) return;
     setState(() {
-      _invoiceOptions = options;
-      _defaultInvoiceMonth = options.isNotEmpty ? options.first : null;
-      final previous = _selectedInvoiceMonth;
-      if (previous != null) {
-        final match = options.where((opt) => _sameMonth(opt, previous)).toList();
-        _selectedInvoiceMonth = match.isNotEmpty ? match.first : options.first;
-      } else {
-        _selectedInvoiceMonth = options.first;
+      _categorias = categorias;
+      if (categorias.isNotEmpty) {
+        _selectedCategory = categorias.first;
+        _descController.text = categorias.first.categoria;
       }
+      _isLoading = false;
     });
   }
 
-  DateTime _invoiceMonthForInstallment(int installmentIndexZeroBased) {
-    final purchaseDate = UtilData.obterDateTime(_dateController.text);
-    final invoiceMonth = _selectedInvoiceMonth ??
-        _defaultInvoiceMonth ??
-        DateTime(purchaseDate.year, purchaseDate.month, 1);
-    return DateTime(invoiceMonth.year, invoiceMonth.month + installmentIndexZeroBased, 1);
-  }
-
-  DateTime _dueDateForInvoiceMonth(DateTime invoiceMonth) {
-    final dueDay = widget.card.dueDay;
-    final bestDay = widget.card.bestBuyDay ?? 1;
-    DateTime effectiveMonth = invoiceMonth;
-    if (dueDay < bestDay) {
-      effectiveMonth = DateTime(invoiceMonth.year, invoiceMonth.month + 1, 1);
-    }
-    final rawDate = DateTime(effectiveMonth.year, effectiveMonth.month, dueDay);
-    final city = PrefsService.cityNotifier.value;
-    final adjusted = HolidayService.adjustDateToBusinessDay(rawDate, city);
-    return adjusted.date;
-  }
-
-  int _getInstallments() {
-    if (_installmentType == 'À Vista') return 1;
-    if (_installmentType.toLowerCase().contains('assin')) return 1;
-    final match = RegExp(r'(\d+)x').firstMatch(_installmentType);
-    return match != null ? int.parse(match.group(1)!) : 1;
-  }
-
-  Future<void> _launchExpense() async {
-    if (_valueController.text.isEmpty) {
-      _showError('Informe o valor da despesa');
-      return;
-    }
-
-    double totalValue;
+  DateTime _parseDateString(String dateStr) {
     try {
-      totalValue = UtilBrasilFields.converterMoedaParaDouble(_valueController.text);
+      final parts = dateStr.split('/');
+      if (parts.length == 3) {
+        final day = int.parse(parts[0]);
+        final month = int.parse(parts[1]);
+        final year = int.parse(parts[2]);
+        final fullYear = year < 100 ? 2000 + year : year;
+        return DateTime(fullYear, month, day);
+      }
+    } catch (_) {}
+    return DateTime.now();
+  }
+
+  Future<void> _selectPurchaseDate() async {
+    DateTime initialDate;
+    try {
+      initialDate = _parseDateString(_purchaseDateController.text);
     } catch (_) {
-      _showError('Valor inválido');
+      initialDate = DateTime.now();
+    }
+
+    if (!mounted) return;
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      locale: const Locale('pt', 'BR'),
+    );
+
+    if (picked != null && mounted) {
+      _purchaseDateController.text = DateFormat('dd/MM/yyyy').format(picked);
+    }
+  }
+
+  DateTime _calculateDueDate(int month, int year) {
+    DateTime dueDate = DateTime(year, month, widget.card.dueDay);
+    final city = PrefsService.cityNotifier.value;
+
+    while (HolidayService.isWeekend(dueDate) || HolidayService.isHoliday(dueDate, city)) {
+      dueDate = dueDate.add(Duration(days: widget.card.payInAdvance ? -1 : 1));
+    }
+
+    return dueDate;
+  }
+
+  (int month, int year) _calculateInvoiceMonth(DateTime purchaseDate) {
+    final closingDay = widget.card.bestBuyDay ?? 1;
+
+    if (purchaseDate.day <= closingDay) {
+      return (purchaseDate.month, purchaseDate.year);
+    } else {
+      DateTime nextMonth = DateTime(purchaseDate.year, purchaseDate.month + 1, 1);
+      return (nextMonth.month, nextMonth.year);
+    }
+  }
+
+  Future<void> _saveExpense() async {
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preencha todos os campos obrigatorios.'), backgroundColor: AppColors.error),
+      );
       return;
     }
 
-    if (totalValue <= 0) {
-      _showError('Valor deve ser maior que zero');
-      return;
-    }
-
-    final purchaseDate = UtilData.obterDateTime(_dateController.text);
-    final startInvoiceMonth = _selectedInvoiceMonth ??
-      _defaultInvoiceMonth ??
-      DateTime(purchaseDate.year, purchaseDate.month, 1);
-    final normalizedStartInvoiceMonth = DateTime(startInvoiceMonth.year, startInvoiceMonth.month, 1);
-    final uid = DateTime.now().microsecondsSinceEpoch.toString();
+    setState(() => _isSaving = true);
 
     try {
-      final baseDescText = _descriptionController.text.trim().isNotEmpty
-          ? _descriptionController.text.trim()
-          : (widget.card.cardBank ?? 'Assinatura');
+      final value = UtilBrasilFields.converterMoedaParaDouble(_valueController.text);
+      final description = _descController.text.trim();
+      final purchaseDate = _parseDateString(_purchaseDateController.text);
+      final installments = int.tryParse(_installmentsQtyController.text) ?? 1;
+      final (invoiceMonth, invoiceYear) = _calculateInvoiceMonth(purchaseDate);
 
-      final isSubscription = _installmentType.toLowerCase().contains('assin');
-      final sanitizedDescription = cleanInstallmentDescription(baseDescText.trim());
+      final purchaseUuid = '${DateTime.now().millisecondsSinceEpoch}_${description.hashCode}';
+      final installmentValue = value / installments;
 
-      if (isSubscription) {
-        final firstDueDate = _dueDateForInvoiceMonth(normalizedStartInvoiceMonth);
-        final account = Account(
+      for (int i = 0; i < installments; i++) {
+        DateTime parcDate = DateTime(invoiceYear, invoiceMonth + i, 1);
+        final dueDate = _calculateDueDate(parcDate.month, parcDate.year);
+
+        String finalDesc = description;
+        if (installments > 1) {
+          finalDesc = '$description (${i + 1}/$installments)';
+        }
+
+        final expense = Account(
           typeId: widget.card.typeId,
-          description: sanitizedDescription,
-          value: totalValue,
-          dueDay: firstDueDate.day,
-          month: normalizedStartInvoiceMonth.month,
-          year: normalizedStartInvoiceMonth.year,
-          isRecurrent: true,
+          description: finalDesc,
+          value: installmentValue,
+          dueDay: dueDate.day,
+          month: parcDate.month,
+          year: parcDate.year,
+          isRecurrent: false,
           payInAdvance: widget.card.payInAdvance,
           cardId: widget.card.id,
-          observation: _noteController.text,
-          establishment: _establishmentController.text,
-          cardColor: _selectedColor,
-          purchaseUuid: uid,
-          purchaseDate: purchaseDate.toIso8601String(),
-          creationDate: DateTime.now().toIso8601String(),
+          purchaseDate: DateFormat('yyyy-MM-dd').format(purchaseDate),
+          purchaseUuid: purchaseUuid,
+          creationDate: DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()),
+          installmentIndex: installments > 1 ? i + 1 : null,
+          installmentTotal: installments > 1 ? installments : null,
         );
-        await DatabaseHelper.instance.createAccount(account);
-      } else {
-        final installments = _getInstallments();
-        final installmentValue = totalValue / installments;
 
-        for (int i = 0; i < installments; i++) {
-          // Importante: recalcula o vencimento de cada mês usando o dueDay do cartão.
-          // Não pode usar o dia já ajustado do primeiro mês, senão “carrega” o ajuste
-          // (ex.: caiu no fim de semana) para as próximas parcelas.
-          final installmentInvoiceMonth = _invoiceMonthForInstallment(i);
-          final adjustedDueDate = _dueDateForInvoiceMonth(installmentInvoiceMonth);
-          final account = Account(
-            typeId: widget.card.typeId,
-            description: sanitizedDescription,
-            value: installmentValue,
-            dueDay: adjustedDueDate.day,
-            month: installmentInvoiceMonth.month,
-            year: installmentInvoiceMonth.year,
-            isRecurrent: false,
-            payInAdvance: widget.card.payInAdvance,
-            cardId: widget.card.id,
-            observation: _noteController.text,
-            establishment: _establishmentController.text,
-            cardColor: _selectedColor,
-            purchaseUuid: uid,
-            purchaseDate: purchaseDate.toIso8601String(),
-            creationDate: DateTime.now().toIso8601String(),
-            installmentIndex: i + 1,
-            installmentTotal: installments,
-          );
-          await DatabaseHelper.instance.createAccount(account);
-        }
+        await DatabaseHelper.instance.createAccount(expense);
       }
 
-      if (mounted) {
-        Navigator.pop(context, true);
-      }
+      if (!mounted) return;
+      Navigator.pop(context, true);
     } catch (e) {
-      _showError('Erro ao lançar despesa: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao salvar: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
-  }
-
-  void _showError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red.shade700),
-    );
-  }
-
-  Future<void> _pickPurchaseDateTime() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-    );
-    if (date == null) return;
-
-    if (!mounted) return;
-
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (time == null || !mounted) return;
-
-    final dateTime = DateTime(date.year, date.month, date.day, time.hour, time.minute);
-    setState(() {
-      _dateController.text = DateFormat('dd/MM/yyyy HH:mm').format(dateTime);
-    });
-    _refreshInvoiceTargets();
   }
 
   @override
   Widget build(BuildContext context) {
-    final headerColor = Color(_selectedColor);
-    final onHeader = foregroundColorFor(headerColor);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nova despesa no cartão'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: DialogCloseButton(
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                gradient: LinearGradient(
-                  colors: [headerColor, headerColor.withValues(alpha: 0.85)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: headerColor.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.card.description,
-                    style: TextStyle(
-                      color: onHeader,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${widget.card.cardBrand ?? 'Bandeira'}  •  ${widget.card.cardBank ?? 'Emissor'}',
-                    style: TextStyle(color: onHeader.withValues(alpha: 0.8)),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _infoChip(label: 'Vencimento', value: 'Dia ${widget.card.dueDay}', color: onHeader),
-                      _infoChip(
-                        label: 'Melhor dia',
-                        value: 'Dia ${widget.card.bestBuyDay ?? widget.card.dueDay}',
-                        color: onHeader,
-                      ),
-                      if (widget.card.cardLimit != null)
-                        _infoChip(
-                          label: 'Limite',
-                          value: UtilBrasilFields.obterReal(widget.card.cardLimit!),
-                          color: onHeader,
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            _buildSectionTitle('Cor do lançamento'),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: _palette.map(_buildColorOption).toList(),
-            ),
-            const SizedBox(height: 24),
-            _buildSectionTitle('Dados da compra'),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _dateController,
-              readOnly: true,
-              onTap: _pickPurchaseDateTime,
-              decoration: buildOutlinedInputDecoration(
-                label: 'Data/Hora da compra',
-                icon: Icons.access_time,
-                suffixIcon: const Icon(Icons.edit_calendar_outlined),
-              ),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<DateTime>(
-              isExpanded: true,
-              key: ValueKey(_selectedInvoiceMonth?.millisecondsSinceEpoch ?? 0),
-              initialValue: _selectedInvoiceMonth != null && _invoiceOptions.isNotEmpty
-                  ? _invoiceOptions.firstWhere(
-                      (opt) => _sameMonth(opt, _selectedInvoiceMonth!),
-                      orElse: () => _selectedInvoiceMonth!,
-                    )
-                  : null,
-              decoration: buildOutlinedInputDecoration(
-                label: 'Fatura a ser lançada',
-                icon: Icons.receipt_long,
-                alignLabelWithHint: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-              ),
-              items: _invoiceOptions
-                  .map(
-                    (date) => DropdownMenuItem(
-                      value: date,
-                      child: _buildInvoiceDropdownLabel(date),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (val) {
-                if (val == null) return;
-                setState(() => _selectedInvoiceMonth = val);
-              },
-            ),
-            const SizedBox(height: 24),
-            _buildSectionTitle('Valores e parcelas'),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: TextField(
-                    controller: _valueController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      CentavosInputFormatter(moeda: true),
-                    ],
-                    decoration: buildOutlinedInputDecoration(
-                      label: 'Valor Total (R\$)',
-                      icon: Icons.attach_money,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: DropdownButtonFormField<String>(
-                    key: ValueKey(_installmentType),
-                    initialValue: _installmentType,
-                    decoration: buildOutlinedInputDecoration(
-                      label: 'Parcelamento',
-                      icon: Icons.layers,
-                    ),
-                    items: const [
-                      'À Vista',
-                      'Assinatura',
-                      '2x',
-                      '3x',
-                      '4x',
-                      '5x',
-                      '6x',
-                      '7x',
-                      '8x',
-                      '9x',
-                      '10x',
-                      '11x',
-                      '12x',
-                    ].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                    onChanged: (val) {
-                      if (val == null) return;
-                      setState(() => _installmentType = val);
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            _buildSectionTitle('Detalhes'),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _descriptionController,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: buildOutlinedInputDecoration(
-                label: 'Descrição (opcional)',
-                icon: Icons.label_outline,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _establishmentController,
-              textCapitalization: TextCapitalization.words,
-              decoration: buildOutlinedInputDecoration(
-                label: 'Estabelecimento (opcional)',
-                icon: Icons.store_mall_directory,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _noteController,
-              maxLines: 3,
-              decoration: buildOutlinedInputDecoration(
-                label: 'Observações (opcional)',
-                icon: Icons.note_alt_outlined,
-                alignLabelWithHint: true,
-              ),
-            ),
-            const SizedBox(height: 80),
-          ],
+    final screenSize = MediaQuery.of(context).size;
+    final viewInsets = MediaQuery.of(context).viewInsets;
+
+    final maxWidth = (screenSize.width * 0.95).clamp(320.0, 700.0);
+    final availableHeight = screenSize.height - viewInsets.bottom;
+    final maxHeight = (availableHeight * 0.9).clamp(420.0, 850.0);
+
+    if (_isLoading) {
+      return const Dialog(
+        child: SizedBox(
+          width: 200,
+          height: 100,
+          child: Center(child: CircularProgressIndicator()),
         ),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
+      );
+    }
+
+    return Dialog(
+      insetPadding: EdgeInsets.zero,
+      backgroundColor: Colors.transparent,
+      child: Center(
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: maxWidth,
+            maxHeight: maxHeight,
+          ),
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.close),
-                  label: const Text('Cancelar'),
-                  onPressed: () => Navigator.pop(context),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              // Cabecalho semelhante ao dialogo de contas
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade300),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Nova Despesa - ${widget.card.cardBank ?? "Cartao"}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    DialogCloseButton(
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              // Formulario
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Categoria
+                        if (_categorias.isNotEmpty) ...[
+                          DropdownButtonFormField<AccountCategory>(
+                            initialValue: _selectedCategory,
+                            decoration: buildOutlinedInputDecoration(
+                              label: 'Categoria',
+                              icon: Icons.category,
+                            ),
+                            items: _categorias.map((cat) => DropdownMenuItem(value: cat, child: Text(cat.categoria))).toList(),
+                            onChanged: (val) {
+                              setState(() {
+                                _selectedCategory = val;
+                                if (val != null) {
+                                  _descController.text = val.categoria;
+                                }
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        // Descricao
+                        TextFormField(
+                          controller: _descController,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: buildOutlinedInputDecoration(
+                            label: 'Descricao da Compra',
+                            icon: Icons.description_outlined,
+                          ),
+                          validator: (v) => v!.isEmpty ? 'Obrigatorio' : null,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Valor
+                        TextFormField(
+                          controller: _valueController,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly, CentavosInputFormatter(moeda: true)],
+                          decoration: buildOutlinedInputDecoration(
+                            label: 'Valor Total (R\$)',
+                            icon: Icons.attach_money,
+                          ),
+                          validator: (v) {
+                            if (v!.isEmpty) return 'Obrigatorio';
+                            try {
+                              final val = UtilBrasilFields.converterMoedaParaDouble(v);
+                              if (val <= 0) return 'Valor deve ser maior que zero';
+                            } catch (_) {
+                              return 'Valor invalido';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Data da Compra
+                        TextFormField(
+                          controller: _purchaseDateController,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly, DataInputFormatter()],
+                          decoration: buildOutlinedInputDecoration(
+                            label: 'Data da Compra',
+                            icon: Icons.calendar_today,
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.date_range, color: AppColors.primary),
+                              tooltip: 'Selecionar Data',
+                              onPressed: _selectPurchaseDate,
+                            ),
+                          ),
+                          validator: (v) {
+                            if (v!.isEmpty) return 'Obrigatorio';
+                            try {
+                              _parseDateString(v);
+                            } catch (_) {
+                              return 'Data invalida';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Quantidade de Parcelas
+                        TextFormField(
+                          controller: _installmentsQtyController,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          decoration: buildOutlinedInputDecoration(
+                            label: 'Quantidade de Parcelas',
+                            icon: Icons.format_list_numbered,
+                          ),
+                          validator: (v) {
+                            if (v!.isEmpty) return 'Obrigatorio';
+                            final qty = int.tryParse(v);
+                            if (qty == null || qty < 1 || qty > 48) return 'Entre 1 e 48 parcelas';
+                            return null;
+                          },
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: _launchExpense,
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
-                    backgroundColor: Colors.green.shade600,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              // Botoes
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: Colors.grey.shade300),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.close),
+                        label: const Text('Cancelar'),
+                        onPressed: _isSaving ? null : () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  icon: const Icon(Icons.check_circle, size: 24),
-                  label: const Text(
-                    'Gravar',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: AppColors.success,
+                          disabledBackgroundColor: AppColors.success.withValues(alpha: 0.6),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: _isSaving ? null : _saveExpense,
+                        icon: _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Icon(Icons.check_circle, size: 20),
+                        label: Text(
+                          _isSaving ? 'Gravando...' : 'Gravar',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  String _formatMonthTitle(DateTime date) {
-    final formatted = DateFormat('MMMM yyyy', 'pt_BR').format(date);
-    return formatted[0].toUpperCase() + formatted.substring(1);
-  }
-
-  Widget _buildInvoiceDropdownLabel(DateTime date) {
-    final month = _formatMonthTitle(date);
-    final dueDate = _dueDateForInvoiceMonth(date);
-    final due = DateFormat('dd/MM/yyyy').format(dueDate);
-    final days = dueDate.difference(DateTime.now()).inDays;
-    final isDefault = _defaultInvoiceMonth != null && _sameMonth(date, _defaultInvoiceMonth!);
-    final primaryColor = isDefault ? Colors.blue.shade800 : Colors.black87;
-
-    return Row(
-      children: [
-        if (isDefault) ...[
-          Icon(Icons.star, color: Colors.blue.shade600, size: 16),
-          const SizedBox(width: 4),
-        ],
-        Flexible(
-          child: Text(
-            '$month — vence em $due (${days}d)',
-            style: TextStyle(
-              fontWeight: isDefault ? FontWeight.w700 : FontWeight.w500,
-              color: primaryColor,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-
-  bool _sameMonth(DateTime a, DateTime b) => a.year == b.year && a.month == b.month;
-
-  Widget _infoChip({required String label, required String value, required Color color}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: TextStyle(
-            color: color.withValues(alpha: 0.8),
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildColorOption(Color color) {
-    final isSelected = _selectedColor == color.toARGB32();
-    return InkWell(
-      onTap: () => setState(() => _selectedColor = color.toARGB32()),
-      borderRadius: BorderRadius.circular(26),
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: isSelected ? foregroundColorFor(color) : Colors.grey.shade300,
-            width: isSelected ? 3 : 1.5,
-          ),
-        ),
-        child: isSelected
-            ? Icon(
-                Icons.check,
-                size: 20,
-                color: foregroundColorFor(color),
-              )
-            : null,
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
-        color: Colors.grey.shade800,
       ),
     );
   }

@@ -3,6 +3,7 @@ import 'package:brasil_fields/brasil_fields.dart';
 import '../database/db_helper.dart';
 import '../services/prefs_service.dart';
 import '../models/account.dart';
+import '../utils/app_colors.dart';
 import 'account_form_screen.dart';
 import '../widgets/date_range_app_bar.dart';
 
@@ -68,7 +69,7 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: isRecurrent ? Colors.grey.shade200 : Colors.blue.shade100,
+                    color: isRecurrent ? Colors.grey.shade200 : const Color(0xFFBBDEFB),
                     borderRadius: BorderRadius.circular(8)
                   ),
                   child: Column(
@@ -139,7 +140,7 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: isRecurrent ? Colors.grey : Colors.green.shade700
+                        color: isRecurrent ? Colors.grey : AppColors.successDark
                       ),
                     ),
                     if (!isRecurrent && acc.id != null && _paymentInfo.containsKey(acc.id))
@@ -148,10 +149,10 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text(
+                            const Text(
                               '*** PAGO ***',
                               style: TextStyle(
-                                color: Colors.green.shade700,
+                                color: AppColors.successDark,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 10,
                               ),
@@ -175,10 +176,10 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
+                              color: const Color(0xFFE3F2FD),
                               borderRadius: BorderRadius.circular(4)
                             ),
-                            child: Icon(Icons.edit, size: 20, color: Colors.blue.shade800),
+                            child: const Icon(Icons.edit, size: 20, color: AppColors.primary),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -187,10 +188,10 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: Colors.red.shade50,
+                              color: const Color(0xFFFFEBEE),
                               borderRadius: BorderRadius.circular(4)
                             ),
-                            child: Icon(Icons.delete, size: 20, color: Colors.red.shade800),
+                            child: const Icon(Icons.delete, size: 20, color: AppColors.errorDark),
                           ),
                         ),
                       ],
@@ -208,12 +209,7 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
       final result = await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => Scaffold(
-            appBar: AppBar(
-              title: const Text('Editar Conta'),
-            ),
-            body: AccountFormScreen(accountToEdit: account),
-          ),
+          builder: (_) => AccountFormScreen(accountToEdit: account),
         ),
       );
       if (result == true) {
@@ -334,8 +330,8 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
     }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final headerColor = isDark ? Colors.grey.shade900 : Colors.blue.shade50;
-    final totalColor = isDark ? Colors.greenAccent : Colors.blue.shade900;
+    final headerColor = isDark ? Colors.grey.shade900 : const Color(0xFFE3F2FD);
+    final totalColor = isDark ? Colors.greenAccent : AppColors.primaryDark;
     final media = MediaQuery.of(context);
     final isCompact = media.size.height < 640 || media.size.width < 360;
     final headerPadding = isCompact ? 10.0 : 16.0;

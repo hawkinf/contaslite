@@ -6,6 +6,7 @@ import '../database/db_helper.dart';
 import '../models/account.dart';
 import '../models/account_category.dart';
 import '../utils/color_contrast.dart';
+import '../utils/app_colors.dart';
 import '../utils/installment_utils.dart';
 import '../widgets/app_input_decoration.dart';
 import '../services/prefs_service.dart';
@@ -198,7 +199,7 @@ class _CardExpenseEditScreenState extends State<CardExpenseEditScreen> {
 
   @override
   Widget build(BuildContext context) {
-    Color bgColor = (widget.card.cardColor != null) ? Color(widget.card.cardColor!) : Colors.purple.shade700;
+    Color bgColor = (widget.card.cardColor != null) ? Color(widget.card.cardColor!) : AppColors.cardPurple;
     final fgColor = foregroundColorFor(bgColor);
 
     return ValueListenableBuilder<DateTimeRange>(
@@ -298,7 +299,7 @@ class _CardExpenseEditScreenState extends State<CardExpenseEditScreen> {
                     label: 'Data',
                     icon: Icons.calendar_today,
                     suffixIcon: IconButton(
-                      icon: Icon(Icons.date_range, color: Colors.blue.shade700),
+                      icon: const Icon(Icons.date_range, color: AppColors.primary),
                       tooltip: 'Selecionar Data',
                       onPressed: _selectDate,
                     ),
@@ -359,8 +360,8 @@ class _CardExpenseEditScreenState extends State<CardExpenseEditScreen> {
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
-                  backgroundColor: Colors.green.shade600,
-                  disabledBackgroundColor: Colors.green.shade600.withValues(alpha: 0.6),
+                  backgroundColor: AppColors.success,
+                  disabledBackgroundColor: AppColors.success.withValues(alpha: 0.6),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

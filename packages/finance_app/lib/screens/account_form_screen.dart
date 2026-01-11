@@ -12,6 +12,7 @@ import '../models/account_category.dart';
 import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
 import '../utils/color_contrast.dart';
+import '../utils/app_colors.dart';
 import 'account_types_screen.dart';
 import 'recebimentos_table_screen.dart';
 import '../widgets/app_input_decoration.dart';
@@ -50,6 +51,7 @@ class AccountFormScreen extends StatefulWidget {
   final bool lockTypeSelection;
   final bool useInstallmentDropdown;
   final bool isRecebimento;
+  final bool showAppBar; // Controla se mostra AppBar (false para Dialog)
 
   const AccountFormScreen({
     super.key,
@@ -58,6 +60,7 @@ class AccountFormScreen extends StatefulWidget {
     this.lockTypeSelection = false,
     this.useInstallmentDropdown = false,
     this.isRecebimento = false,
+    this.showAppBar = true, // Por padrão mostra AppBar
   });
 
   @override
@@ -523,7 +526,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     if (_selectedType?.id == null) {
       if (mounted && !_isDisposed) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_typeSelectMessage), backgroundColor: Colors.orange),
+          SnackBar(content: Text(_typeSelectMessage), backgroundColor: AppColors.warning),
         );
       }
       return;
@@ -673,7 +676,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('Erro ao selecionar data: $e'),
-              backgroundColor: Colors.red),
+              backgroundColor: AppColors.error),
         );
       }
     }
@@ -737,7 +740,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erro ao selecionar data: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -853,10 +856,10 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             .then((_) => _loadInitialData()),
         child: Container(
           padding: const EdgeInsets.all(16),
-          color: Colors.orange.shade50,
+          color: AppColors.warningBackground,
           child: Row(
             children: [
-              const Icon(Icons.warning, color: Colors.orange),
+              const Icon(Icons.warning, color: AppColors.warning),
               const SizedBox(width: 8),
               Text(_missingTypesMessage),
             ],
@@ -912,7 +915,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             icon: const Icon(Icons.category),
             label: const Text('Acessar Categorias'),
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.blue.shade700,
+              backgroundColor: AppColors.primary,
             ),
             onPressed: _showCategoriesDialog,
           ),
@@ -958,7 +961,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           icon: const Icon(Icons.category),
           label: const Text('Acessar Categorias'),
           style: FilledButton.styleFrom(
-            backgroundColor: Colors.blue.shade700,
+            backgroundColor: AppColors.primary,
           ),
           onPressed: _showCategoriesDialog,
         ),
@@ -1070,7 +1073,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             icon: Icons.calendar_month,
             hintText: "dd/mm/aa",
             suffixIcon: IconButton(
-              icon: Icon(Icons.date_range, color: Colors.blue.shade700),
+              icon: Icon(Icons.date_range, color: AppColors.primary),
               tooltip: 'Selecionar Data',
               onPressed: () => _selectDate(_dateController),
             ),
@@ -1264,10 +1267,10 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                             padding: const EdgeInsets.only(top: 14),
                             child: CircleAvatar(
                                 radius: 12,
-                                backgroundColor: Colors.blue.shade100,
+                                backgroundColor: const Color(0xFFBBDEFB),
                                 child: Text("${item.index}",
                                     style: TextStyle(
-                                        color: Colors.blue.shade900,
+                                        color: AppColors.primaryDark,
                                         fontSize: 11))),
                           ),
                           const SizedBox(width: 8),
@@ -1333,7 +1336,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                                   keyboardType: TextInputType.number,
                                   textAlign: TextAlign.end,
                                   style: TextStyle(
-                                      color: Colors.blue.shade800,
+                                      color: AppColors.primary,
                                       fontWeight: FontWeight.bold),
                                   decoration: buildOutlinedInputDecoration(
                                     label: 'Valor',
@@ -1523,6 +1526,212 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     ]);
   }
 
+  // Widget com o conteúdo do formulário (scrollável)
+  Widget _buildFormContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Card com seleção de cor
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildColorPaletteSection(),
+                    const SizedBox(height: 20),
+                    _buildLaunchTypeSelector(),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Card com tipo, categoria e descrição
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTypeDropdown(),
+                    const SizedBox(height: 20),
+                    // Campo de Categoria (se houver categorias cadastradas)
+                    if (_categorias.isNotEmpty)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildFieldWithIcon(
+                            icon: Icons.label,
+                            label: 'Categoria',
+                            child: DropdownButtonFormField<AccountCategory>(
+                              value: _getValidatedSelectedCategory(),
+                              decoration: buildOutlinedInputDecoration(
+                                label: 'Categoria',
+                                icon: Icons.label,
+                              ),
+                              validator: (val) => val == null
+                                  ? 'Selecione uma categoria'
+                                  : null,
+                              items: _categorias
+                                  .map((cat) => DropdownMenuItem(
+                                        value: cat,
+                                        child: Text(widget.isRecebimento
+                                            ? _childDisplayName(cat.categoria)
+                                            : cat.categoria),
+                                      ))
+                                  .toList(),
+                              onChanged: (val) {
+                                setState(() {
+                                  _selectedCategory = val;
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    _buildFieldWithIcon(
+                      icon: Icons.description_outlined,
+                      label: _descriptionLabel,
+                      child: TextFormField(
+                        controller: _descController,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: buildOutlinedInputDecoration(
+                          label: _descriptionLabel,
+                          icon: Icons.description_outlined,
+                        ),
+                        validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Card com dados específicos do modo
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: _entryMode == 0
+                    ? _buildAvulsaMode()
+                    : _buildRecurrentMode(),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Card com observações
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: _buildFieldWithIcon(
+                  icon: Icons.note,
+                  label: 'Observações (Opcional)',
+                  child: TextFormField(
+                    controller: _observationController,
+                    decoration: buildOutlinedInputDecoration(
+                      label: 'Observações (Opcional)',
+                      icon: Icons.note,
+                      alignLabelWithHint: true,
+                    ),
+                    maxLines: 3,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Widget com os botões de ação
+  Widget _buildActionButtons() {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.close),
+                  label: const Text('Cancelar'),
+                  onPressed: _isSaving ? null : () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
+                    backgroundColor: AppColors.success,
+                    disabledBackgroundColor: AppColors.success.withOpacity(0.6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: _isSaving ? null : _saveAccount,
+                  icon: _isSaving
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2.5))
+                      : const Icon(Icons.check_circle, size: 24),
+                  label: Text(
+                    _isSaving ? "Gravando..." : _saveButtonLabel(),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Se está carregando dados iniciais, mostrar loading indicator
@@ -1542,213 +1751,31 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       );
     }
 
-    return ValueListenableBuilder<DateTimeRange>(
-      valueListenable: PrefsService.dateRangeNotifier,
-      builder: (context, range, _) {
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-              // Card com seleção de cor
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildColorPaletteSection(),
-                      const SizedBox(height: 20),
-                      _buildLaunchTypeSelector(),
-                    ],
-                  ),
-                ),
-              ),
+    final appBarTitle = widget.accountToEdit != null 
+        ? (widget.isRecebimento ? 'Editar Recebimento' : 'Editar Conta')
+        : (widget.isRecebimento ? 'Novo Recebimento' : 'Nova Conta');
 
-              const SizedBox(height: 20),
+    // Se não mostrar AppBar (usado em Dialog), retorna Column simples
+    if (!widget.showAppBar) {
+      return Column(
+        children: [
+          Expanded(child: _buildFormContent()),
+          _buildActionButtons(),
+        ],
+      );
+    }
 
-              // Card com tipo, categoria e descrição
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildTypeDropdown(),
-                      const SizedBox(height: 20),
-                      // Campo de Categoria (se houver categorias cadastradas)
-                      if (_categorias.isNotEmpty)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildFieldWithIcon(
-                              icon: Icons.label,
-                              label: 'Categoria',
-                              child: DropdownButtonFormField<AccountCategory>(
-                                value: _getValidatedSelectedCategory(),
-                                decoration: buildOutlinedInputDecoration(
-                                  label: 'Categoria',
-                                  icon: Icons.label,
-                                ),
-                                validator: (val) => val == null
-                                    ? 'Selecione uma categoria'
-                                    : null,
-                                items: _categorias
-                                    .map((cat) => DropdownMenuItem(
-                                          value: cat,
-                                          child: Text(widget.isRecebimento
-                                              ? _childDisplayName(cat.categoria)
-                                              : cat.categoria),
-                                        ))
-                                    .toList(),
-                                onChanged: (val) {
-                                  setState(() {
-                                    _selectedCategory = val;
-                                    // Não preencher automaticamente a descrição
-                                  });
-                                },
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                          ],
-                        ),
-                      _buildFieldWithIcon(
-                        icon: Icons.description_outlined,
-                        label: _descriptionLabel,
-                        child: TextFormField(
-                          controller: _descController,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: buildOutlinedInputDecoration(
-                            label: _descriptionLabel,
-                            icon: Icons.description_outlined,
-                          ),
-                          validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Card com dados específicos do modo
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: _entryMode == 0
-                      ? _buildAvulsaMode()
-                      : _buildRecurrentMode(),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Card com observações
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: _buildFieldWithIcon(
-                    icon: Icons.note,
-                    label: 'Observações (Opcional)',
-                    child: TextFormField(
-                      controller: _observationController,
-                      decoration: buildOutlinedInputDecoration(
-                        label: 'Observações (Opcional)',
-                        icon: Icons.note,
-                        alignLabelWithHint: true,
-                      ),
-                      maxLines: 3,
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-                ],
-              ),
-            ),
-          ),
-          // Botões FIXOS na parte inferior usando bottomNavigationBar
-          bottomNavigationBar: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.close),
-                        label: const Text('Cancelar'),
-                        onPressed: _isSaving ? null : () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
-                          backgroundColor: Colors.green.shade600,
-                          disabledBackgroundColor: Colors.green.shade600.withOpacity(0.6),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: _isSaving ? null : _saveAccount,
-                        icon: _isSaving
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2.5))
-                            : const Icon(Icons.check_circle, size: 24),
-                        label: Text(
-                          _isSaving ? "Gravando..." : _saveButtonLabel(),
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+    // Se mostrar AppBar (página completa), usa Scaffold
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(appBarTitle),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: _buildFormContent(),
+      bottomNavigationBar: _buildActionButtons(),
     );
   }
 
@@ -1775,7 +1802,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             child: const Text('Essa e as futuras'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.green),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.success),
             onPressed: () => Navigator.pop(ctx, 3),
             child: const Text('Todas as parcelas'),
           ),
@@ -1833,7 +1860,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     if (!_formKey.currentState!.validate() || _selectedType == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text("Preencha todos os campos obrigatórios."),
-          backgroundColor: Colors.red));
+          backgroundColor: AppColors.error));
       return;
     }
 
@@ -2119,7 +2146,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
               content: Text("Conta atualizada com sucesso!"),
-              backgroundColor: Colors.green));
+              backgroundColor: AppColors.success));
           Navigator.pop(context, true);
         }
         return;
@@ -2132,7 +2159,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content: Text("Valor médio é obrigatório para recorrências."),
-                backgroundColor: Colors.red));
+                backgroundColor: AppColors.error));
           }
           setState(() => _isSaving = false);
           return;
@@ -2150,7 +2177,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content: Text("Informe um ano de início válido (>= 2000)."),
-                backgroundColor: Colors.red));
+                backgroundColor: AppColors.error));
           }
           setState(() => _isSaving = false);
           return;
@@ -2266,7 +2293,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content: Text(
                     "Erro: Não foi possível gerar parcelas. Verifique se data e valor estão preenchidos."),
-                backgroundColor: Colors.red));
+                backgroundColor: AppColors.error));
           }
           setState(() => _isSaving = false);
           return;
@@ -2297,7 +2324,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                     content: Text("Erro na data: $e"),
-                    backgroundColor: Colors.red),
+                    backgroundColor: AppColors.error),
               );
             }
             setState(() => _isSaving = false);
@@ -2332,14 +2359,14 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text("Contas lançadas com sucesso!"),
-            backgroundColor: Colors.green));
+            backgroundColor: AppColors.success));
         Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text("Erro ao salvar: $e"), backgroundColor: Colors.red),
+              content: Text("Erro ao salvar: $e"), backgroundColor: AppColors.error),
         );
       }
     } finally {
@@ -2402,7 +2429,7 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('Digite uma categoria'),
-            backgroundColor: Colors.orange),
+            backgroundColor: AppColors.warning),
       );
       return;
     }
@@ -2415,7 +2442,7 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('Esta categoria já existe'),
-              backgroundColor: Colors.red),
+              backgroundColor: AppColors.error),
         );
       }
       return;
@@ -2445,7 +2472,7 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text('Cancelar')),
           FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.error),
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('Deletar')),
         ],
@@ -2508,7 +2535,7 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
               label: const Text('Adicionar'),
               onPressed: _addCategory,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade700,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 10),
               ),

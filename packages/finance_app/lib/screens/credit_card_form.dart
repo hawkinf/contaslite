@@ -6,6 +6,7 @@ import '../models/account_type.dart';
 import '../models/account_category.dart';
 import '../models/account.dart';
 import '../utils/color_contrast.dart';
+import '../utils/app_colors.dart';
 import '../widgets/app_input_decoration.dart';
 import '../services/prefs_service.dart';
 import '../widgets/date_range_app_bar.dart';
@@ -339,7 +340,7 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
-                        backgroundColor: Colors.green.shade600,
+                        backgroundColor: AppColors.success,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),

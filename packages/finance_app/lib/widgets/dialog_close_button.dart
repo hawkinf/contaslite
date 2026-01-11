@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_colors.dart';
 
 class DialogCloseButton extends StatelessWidget {
   const DialogCloseButton({super.key, required this.onPressed});
@@ -16,7 +17,7 @@ class DialogCloseButton extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: Colors.red.shade700,
+            color: AppColors.errorDark,
             shape: BoxShape.circle,
             border: Border.all(color: Colors.black, width: 1.6),
           ),

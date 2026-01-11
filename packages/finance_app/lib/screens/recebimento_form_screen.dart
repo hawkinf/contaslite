@@ -36,18 +36,35 @@ class RecebimentoFormScreen extends StatelessWidget {
             ],
           ),
           clipBehavior: Clip.antiAlias,
-          child: Stack(
+          child: Column(
             children: [
-              const AccountFormScreen(
-                typeNameFilter: 'Recebimentos',
-                lockTypeSelection: true,
-                isRecebimento: true,
+              // Cabeçalho com título e botão fechar
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Novo Recebimento',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    DialogCloseButton(
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
               ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: DialogCloseButton(
-                  onPressed: () => Navigator.pop(context),
+              const Divider(height: 1),
+              // Formulário
+              const Expanded(
+                child: AccountFormScreen(
+                  typeNameFilter: 'Recebimentos',
+                  lockTypeSelection: true,
+                  isRecebimento: true,
+                  showAppBar: false,
                 ),
               ),
             ],

@@ -1,5 +1,10 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'holiday_service.dart';
 import '../models/database_config.dart';
 
@@ -35,7 +40,7 @@ class PrefsService {
   }
 
   static Future<void> init() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _safePrefs();
 
     // Tema
     final isDark = prefs.getBool('isDark') ?? false;
@@ -75,13 +80,13 @@ class PrefsService {
   }
 
   static Future<void> saveTheme(bool isDark) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _safePrefs();
     await prefs.setBool('isDark', isDark);
     themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
   }
 
   static Future<void> saveLocation(String region, String city) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _safePrefs();
     await prefs.setString('region', region);
     await prefs.setString('city', city);
     regionNotifier.value = region;
@@ -98,7 +103,7 @@ class PrefsService {
   }
 
 static Future<void> saveDateRange(DateTime start, DateTime end) async {
-    final prefs = await SharedPreferences.getInstance();
+  final prefs = await _safePrefs();
     await prefs.setString('startDate', start.toIso8601String());
     await prefs.setString('endDate', end.toIso8601String());
     dateRangeNotifier.value = DateTimeRange(start: start, end: end);
@@ -114,7 +119,7 @@ static Future<void> saveDateRange(DateTime start, DateTime end) async {
   }
 
   static Future<({DateTime start, DateTime end})> loadDateRange() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _safePrefs();
     String? startStr = prefs.getString('startDate');
     String? endStr = prefs.getString('endDate');
 
@@ -132,31 +137,31 @@ static Future<void> saveDateRange(DateTime start, DateTime end) async {
   // --- DATABASE PROTECTION SETTINGS ---
 
   static Future<void> saveAutoBackupEnabled(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _safePrefs();
     await prefs.setBool('db_auto_backup_enabled', enabled);
     autoBackupEnabled = enabled;
   }
 
   static Future<void> saveAskBackupOnStartup(bool ask) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _safePrefs();
     await prefs.setBool('db_ask_backup_on_startup', ask);
     askBackupOnStartup = ask;
   }
 
   static Future<void> saveIntegrityCheckInterval(int days) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _safePrefs();
     await prefs.setInt('db_integrity_check_interval', days);
     integrityCheckIntervalDays = days;
   }
 
   static Future<void> saveBackupRetentionCount(int count) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _safePrefs();
     await prefs.setInt('db_backup_retention_count', count);
     backupRetentionCount = count;
   }
 
   static Future<void> saveLastIntegrityCheck(DateTime dateTime) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _safePrefs();
     await prefs.setString('db_last_integrity_check', dateTime.toIso8601String());
     lastIntegrityCheck = dateTime;
   }
@@ -172,7 +177,7 @@ static Future<void> saveDateRange(DateTime start, DateTime end) async {
 
   // PostgreSQL Database Configuration
   static Future<DatabaseConfig> loadDatabaseConfig() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _safePrefs();
     final configJson = prefs.getString('db_config');
 
     if (configJson == null) {
@@ -218,7 +223,7 @@ static Future<void> saveDateRange(DateTime start, DateTime end) async {
   }
 
   static Future<void> saveDatabaseConfig(DatabaseConfig config) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _safePrefs();
     // Usar formato simples para compatibilidade
     final configString =
         '${config.host}|${config.port}|${config.database}|${config.username}|${config.password}|${config.enabled}';
@@ -226,7 +231,34 @@ static Future<void> saveDateRange(DateTime start, DateTime end) async {
   }
 
   static Future<void> clearDatabaseConfig() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _safePrefs();
     await prefs.remove('db_config');
+  }
+
+  // Obtém SharedPreferences com recuperação automática em caso de corrupção
+  static Future<SharedPreferences> _safePrefs() async {
+    try {
+      return await SharedPreferences.getInstance();
+    } on FormatException catch (e) {
+      debugPrint('🔧 SharedPreferences corrompido, limpando arquivo: $e');
+      await _clearCorruptedPrefsFile();
+      return await SharedPreferences.getInstance();
+    }
+  }
+
+  static Future<void> _clearCorruptedPrefsFile() async {
+    if (kIsWeb) return; // Web não usa arquivo local
+    if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
+
+    try {
+      final supportDir = await getApplicationSupportDirectory();
+      final prefsFile = File('${supportDir.path}/shared_preferences.json');
+      if (await prefsFile.exists()) {
+        await prefsFile.delete();
+        debugPrint('🔧 shared_preferences.json removido para recriação');
+      }
+    } catch (e) {
+      debugPrint('🔧 Falha ao limpar shared_preferences.json: $e');
+    }
   }
 }
