@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import '../services/holiday_service.dart';
 import '../services/prefs_service.dart';
+import '../services/auth_service.dart';
+import '../services/sync_service.dart';
+import '../models/user.dart';
+import '../database/sync_helpers.dart';
 import '../widgets/backup_dialog.dart';
 import 'database_screen.dart';
 import 'database_settings_screen.dart';
+import 'login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -201,6 +206,257 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return isDark ? Colors.white : Colors.black;
   }
 
+  Widget _buildAccountSection() {
+    return ValueListenableBuilder<User?>(
+      valueListenable: AuthService.instance.currentUserNotifier,
+      builder: (context, user, _) {
+        if (user == null) {
+          return _buildLoginPrompt();
+        }
+        return _buildUserInfo(user);
+      },
+    );
+  }
+
+  Widget _buildLoginPrompt() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.cloud_off_outlined,
+            size: 48,
+            color: Colors.grey[500],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Modo Offline',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Faça login para sincronizar seus dados entre dispositivos',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: _goToLogin,
+            icon: const Icon(Icons.login),
+            label: const Text('Fazer Login'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserInfo(User user) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Conta',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.indigo,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    child: Text(
+                      user.initials,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user.displayName,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          user.email,
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _confirmLogout,
+                    icon: const Icon(Icons.logout),
+                    tooltip: 'Sair',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Status de sincronização
+              ValueListenableBuilder<SyncState>(
+                valueListenable: SyncService.instance.syncStateNotifier,
+                builder: (context, syncState, _) {
+                  return _buildSyncStatus(syncState);
+                },
+              ),
+              const SizedBox(height: 12),
+              // Botão de sincronização manual
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _manualSync,
+                  icon: const Icon(Icons.sync),
+                  label: const Text('Sincronizar Agora'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSyncStatus(SyncState state) {
+    IconData icon;
+    Color color;
+    String text;
+
+    switch (state) {
+      case SyncState.idle:
+        icon = Icons.cloud_done;
+        color = Colors.green;
+        text = 'Sincronizado';
+        break;
+      case SyncState.syncing:
+        icon = Icons.sync;
+        color = Colors.blue;
+        text = 'Sincronizando...';
+        break;
+      case SyncState.error:
+        icon = Icons.cloud_off;
+        color = Colors.red;
+        text = 'Erro na sincronização';
+        break;
+      case SyncState.offline:
+        icon = Icons.cloud_off_outlined;
+        color = Colors.grey;
+        text = 'Offline';
+        break;
+    }
+
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(color: color, fontWeight: FontWeight.w500),
+        ),
+      ],
+    );
+  }
+
+  void _goToLogin() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
+  }
+
+  Future<void> _confirmLogout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sair da conta'),
+        content: const Text(
+          'Deseja realmente sair? Seus dados locais serão mantidos, '
+          'mas não serão mais sincronizados.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Sair'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await AuthService.instance.logout();
+      await SyncService.instance.resetSync();
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+        );
+      }
+    }
+  }
+
+  Future<void> _manualSync() async {
+    final result = await SyncService.instance.fullSync();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.success
+                ? 'Sincronização concluída!'
+                : 'Erro: ${result.error}',
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -247,6 +503,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const Divider(height: 40, thickness: 1),
+
+          // Seção de Conta
+          _buildAccountSection(),
+          const SizedBox(height: 24),
+
           const Text(
             'Localização (Feriados)',
             style: TextStyle(

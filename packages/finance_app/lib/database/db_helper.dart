@@ -8,6 +8,7 @@ import '../models/account_category.dart';
 import '../models/bank_account.dart';
 import '../models/payment_method.dart';
 import '../models/payment.dart';
+import 'sync_helpers.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -67,7 +68,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 12,
+      version: 13,
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
         debugPrint('🔄 Iniciando migração de banco de dados v$oldVersion→v$newVersion...');
@@ -209,11 +210,156 @@ class DatabaseHelper {
 
     await db.execute('CREATE INDEX IF NOT EXISTS idx_payments_account_id ON payments(account_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(payment_date)');
+
+    // Tabela de metadados de sincronização
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sync_metadata (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        table_name TEXT NOT NULL UNIQUE,
+        last_sync_at TEXT,
+        last_server_timestamp TEXT,
+        user_id TEXT
+      )
+    ''');
+
+    // Tabela de sessão do usuário
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS user_session (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        user_id TEXT NOT NULL,
+        email TEXT NOT NULL,
+        name TEXT,
+        access_token TEXT,
+        refresh_token TEXT,
+        token_expires_at TEXT,
+        logged_in_at TEXT
+      )
+    ''');
   }
 
   // ========== MIGRAÇÃO DE BANCO (v1 → v2) ==========
 
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    // Migração v13: Adicionar suporte a sincronização multi-usuário
+    if (oldVersion < 13) {
+      debugPrint('🔄 Executando migração v13: Adicionando suporte a sincronização...');
+      try {
+        // Adicionar colunas de sync em accounts
+        try {
+          await db.execute('ALTER TABLE accounts ADD COLUMN server_id TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE accounts ADD COLUMN sync_status INTEGER DEFAULT 0');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE accounts ADD COLUMN updated_at TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE accounts ADD COLUMN last_synced_at TEXT');
+        } catch (_) {}
+
+        // Adicionar colunas de sync em account_types
+        try {
+          await db.execute('ALTER TABLE account_types ADD COLUMN server_id TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE account_types ADD COLUMN sync_status INTEGER DEFAULT 0');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE account_types ADD COLUMN updated_at TEXT');
+        } catch (_) {}
+
+        // Adicionar colunas de sync em account_descriptions
+        try {
+          await db.execute('ALTER TABLE account_descriptions ADD COLUMN server_id TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE account_descriptions ADD COLUMN sync_status INTEGER DEFAULT 0');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE account_descriptions ADD COLUMN updated_at TEXT');
+        } catch (_) {}
+
+        // Adicionar colunas de sync em banks
+        try {
+          await db.execute('ALTER TABLE banks ADD COLUMN server_id TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE banks ADD COLUMN sync_status INTEGER DEFAULT 0');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE banks ADD COLUMN updated_at TEXT');
+        } catch (_) {}
+
+        // Adicionar colunas de sync em payment_methods
+        try {
+          await db.execute('ALTER TABLE payment_methods ADD COLUMN server_id TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE payment_methods ADD COLUMN sync_status INTEGER DEFAULT 0');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE payment_methods ADD COLUMN updated_at TEXT');
+        } catch (_) {}
+
+        // Adicionar colunas de sync em payments
+        try {
+          await db.execute('ALTER TABLE payments ADD COLUMN server_id TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE payments ADD COLUMN sync_status INTEGER DEFAULT 0');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE payments ADD COLUMN updated_at TEXT');
+        } catch (_) {}
+
+        // Criar tabela de metadados de sync
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS sync_metadata (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            table_name TEXT NOT NULL UNIQUE,
+            last_sync_at TEXT,
+            last_server_timestamp TEXT,
+            user_id TEXT
+          )
+        ''');
+
+        // Criar tabela de sessão do usuário
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS user_session (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            user_id TEXT NOT NULL,
+            email TEXT NOT NULL,
+            name TEXT,
+            access_token TEXT,
+            refresh_token TEXT,
+            token_expires_at TEXT,
+            logged_in_at TEXT
+          )
+        ''');
+
+        // Criar índices para sync
+        try {
+          await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_sync_status ON accounts(sync_status)');
+        } catch (_) {}
+        try {
+          await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_server_id ON accounts(server_id)');
+        } catch (_) {}
+
+        // Marcar todos os registros existentes como pendentes de criação no servidor
+        await db.execute('UPDATE accounts SET sync_status = 1 WHERE sync_status IS NULL OR sync_status = 0');
+        await db.execute('UPDATE account_types SET sync_status = 1 WHERE sync_status IS NULL OR sync_status = 0');
+        await db.execute('UPDATE account_descriptions SET sync_status = 1 WHERE sync_status IS NULL OR sync_status = 0');
+        await db.execute('UPDATE banks SET sync_status = 1 WHERE sync_status IS NULL OR sync_status = 0');
+        await db.execute('UPDATE payment_methods SET sync_status = 1 WHERE sync_status IS NULL OR sync_status = 0');
+        await db.execute('UPDATE payments SET sync_status = 1 WHERE sync_status IS NULL OR sync_status = 0');
+
+        debugPrint('✓ Migração v13 concluída com sucesso');
+      } catch (e) {
+        debugPrint('❌ Erro na migração v13: $e');
+      }
+    }
+
     if (oldVersion < 12) {
       debugPrint('🔄 Executando migração v12: adicionando categoryId em accounts...');
       try {
@@ -1438,5 +1584,261 @@ class DatabaseHelper {
       where: 'recurrenceId = ? AND (year > ? OR (year = ? AND month >= ?))',
       whereArgs: [parentId, fromYear, fromYear, fromMonth],
     );
+  }
+
+  // ========== MÉTODOS COM SYNC TRACKING ==========
+
+  /// Cria uma conta com tracking de sincronização
+  Future<int> createAccountWithSync(Account account) async {
+    final db = await database;
+    final map = account.toMap();
+    map['sync_status'] = SyncStatus.pendingCreate.value;
+    map['updated_at'] = DateTime.now().toIso8601String();
+    return await db.insert('accounts', map);
+  }
+
+  /// Atualiza uma conta com tracking de sincronização
+  Future<int> updateAccountWithSync(Account account) async {
+    final db = await database;
+    final map = account.toMap();
+    // Só marca como pendingUpdate se já estava synced
+    final current = await getAccountById(account.id);
+    if (current != null) {
+      final currentStatus = await _getAccountSyncStatus(account.id!);
+      if (currentStatus == SyncStatus.synced) {
+        map['sync_status'] = SyncStatus.pendingUpdate.value;
+      }
+      // Se já está pending, mantém o status atual
+    }
+    map['updated_at'] = DateTime.now().toIso8601String();
+    return await db.update(
+      'accounts',
+      map,
+      where: 'id = ?',
+      whereArgs: [account.id],
+    );
+  }
+
+  /// Deleta uma conta com soft delete para sincronização
+  Future<int> deleteAccountWithSync(int id) async {
+    final db = await database;
+    final currentStatus = await _getAccountSyncStatus(id);
+
+    // Se ainda não foi sincronizado (pendingCreate), pode deletar direto
+    if (currentStatus == SyncStatus.pendingCreate) {
+      return await db.delete('accounts', where: 'id = ?', whereArgs: [id]);
+    }
+
+    // Se já está no servidor, marca para exclusão
+    return await db.update(
+      'accounts',
+      {
+        'sync_status': SyncStatus.pendingDelete.value,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Obtém o status de sync de uma conta
+  Future<SyncStatus> _getAccountSyncStatus(int id) async {
+    final db = await database;
+    final result = await db.query(
+      'accounts',
+      columns: ['sync_status'],
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (result.isEmpty) return SyncStatus.synced;
+    return SyncStatus.fromValue(result.first['sync_status'] as int?);
+  }
+
+  /// Busca registros pendentes de sincronização
+  Future<List<Map<String, dynamic>>> getPendingRecords(String table) async {
+    final db = await database;
+    return await db.query(
+      table,
+      where: 'sync_status != ?',
+      whereArgs: [SyncStatus.synced.value],
+    );
+  }
+
+  /// Busca registros pendentes de criação
+  Future<List<Map<String, dynamic>>> getPendingCreates(String table) async {
+    final db = await database;
+    return await db.query(
+      table,
+      where: 'sync_status = ?',
+      whereArgs: [SyncStatus.pendingCreate.value],
+    );
+  }
+
+  /// Busca registros pendentes de atualização
+  Future<List<Map<String, dynamic>>> getPendingUpdates(String table) async {
+    final db = await database;
+    return await db.query(
+      table,
+      where: 'sync_status = ?',
+      whereArgs: [SyncStatus.pendingUpdate.value],
+    );
+  }
+
+  /// Busca registros pendentes de exclusão
+  Future<List<Map<String, dynamic>>> getPendingDeletes(String table) async {
+    final db = await database;
+    return await db.query(
+      table,
+      where: 'sync_status = ?',
+      whereArgs: [SyncStatus.pendingDelete.value],
+    );
+  }
+
+  /// Marca registro como sincronizado
+  Future<void> markAsSynced(String table, int localId, String serverId) async {
+    final db = await database;
+    await db.update(
+      table,
+      {
+        'sync_status': SyncStatus.synced.value,
+        'server_id': serverId,
+        'last_synced_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [localId],
+    );
+  }
+
+  /// Aplica dados do servidor (server wins)
+  Future<void> applyServerData(String table, Map<String, dynamic> serverData) async {
+    final db = await database;
+    final serverId = serverData['id'] as String?;
+    if (serverId == null) return;
+
+    // Buscar registro local pelo server_id
+    final local = await db.query(
+      table,
+      where: 'server_id = ?',
+      whereArgs: [serverId],
+      limit: 1,
+    );
+
+    serverData['sync_status'] = SyncStatus.synced.value;
+    serverData['last_synced_at'] = DateTime.now().toIso8601String();
+    serverData['server_id'] = serverId;
+    serverData.remove('id'); // Remover ID do servidor
+
+    if (local.isEmpty) {
+      // Novo registro do servidor
+      await db.insert(table, serverData);
+    } else {
+      // Atualizar registro existente (server wins)
+      await db.update(
+        table,
+        serverData,
+        where: 'server_id = ?',
+        whereArgs: [serverId],
+      );
+    }
+  }
+
+  /// Deleta registro que foi deletado no servidor
+  Future<void> deleteByServerId(String table, String serverId) async {
+    final db = await database;
+    await db.delete(table, where: 'server_id = ?', whereArgs: [serverId]);
+  }
+
+  /// Remove registros marcados para exclusão após sync
+  Future<void> purgePendingDeletes(String table) async {
+    final db = await database;
+    await db.delete(
+      table,
+      where: 'sync_status = ?',
+      whereArgs: [SyncStatus.pendingDelete.value],
+    );
+  }
+
+  // ========== SYNC METADATA ==========
+
+  /// Obtém metadados de sync para uma tabela
+  Future<SyncMetadata?> getSyncMetadata(String tableName) async {
+    final db = await database;
+    final result = await db.query(
+      'sync_metadata',
+      where: 'table_name = ?',
+      whereArgs: [tableName],
+      limit: 1,
+    );
+    if (result.isEmpty) return null;
+    return SyncMetadata.fromMap(result.first);
+  }
+
+  /// Atualiza metadados de sync para uma tabela
+  Future<void> updateSyncMetadata(
+    String tableName,
+    String serverTimestamp, {
+    String? userId,
+  }) async {
+    final db = await database;
+    final existing = await getSyncMetadata(tableName);
+
+    final data = {
+      'table_name': tableName,
+      'last_sync_at': DateTime.now().toIso8601String(),
+      'last_server_timestamp': serverTimestamp,
+      if (userId != null) 'user_id': userId,
+    };
+
+    if (existing == null) {
+      await db.insert('sync_metadata', data);
+    } else {
+      await db.update(
+        'sync_metadata',
+        data,
+        where: 'table_name = ?',
+        whereArgs: [tableName],
+      );
+    }
+  }
+
+  /// Limpa metadados de sync (usado no logout)
+  Future<void> clearSyncMetadata() async {
+    final db = await database;
+    await db.delete('sync_metadata');
+  }
+
+  /// Conta registros pendentes de sync
+  Future<int> countPendingSync() async {
+    final db = await database;
+    int total = 0;
+    for (final table in SyncTables.all) {
+      try {
+        final result = await db.rawQuery(
+          'SELECT COUNT(*) as count FROM $table WHERE sync_status != ?',
+          [SyncStatus.synced.value],
+        );
+        total += (result.first['count'] as int?) ?? 0;
+      } catch (_) {
+        // Tabela pode não existir ainda
+      }
+    }
+    return total;
+  }
+
+  /// Reseta todos os status de sync para pendingCreate
+  Future<void> resetAllSyncStatus() async {
+    final db = await database;
+    for (final table in SyncTables.all) {
+      try {
+        await db.update(
+          table,
+          {'sync_status': SyncStatus.pendingCreate.value, 'server_id': null},
+        );
+      } catch (_) {
+        // Tabela pode não existir
+      }
+    }
+    await clearSyncMetadata();
   }
 }

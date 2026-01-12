@@ -7,8 +7,10 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'services/prefs_service.dart';
 import 'services/database_initialization_service.dart';
+import 'services/auth_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/database_migration_screen.dart';
+import 'screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,8 +53,17 @@ void main() async {
       migrationRequired = true;
     }
 
+    // Inicializar serviço de autenticação
+    debugPrint('🔐 Inicializando AuthService...');
+    await AuthService.instance.initialize();
+    final isAuthenticated = AuthService.instance.isAuthenticated;
+    debugPrint('✓ AuthService inicializado (autenticado: $isAuthenticated)');
+
     debugPrint('📲 Executando app...');
-    runApp(FinanceApp(migrationRequired: migrationRequired));
+    runApp(FinanceApp(
+      migrationRequired: migrationRequired,
+      showLogin: !isAuthenticated,
+    ));
   } catch (e, st) {
     debugPrint('🔴 ERRO FATAL NA INICIALIZAÇÃO: $e');
     debugPrintStack(stackTrace: st);
@@ -63,11 +74,13 @@ void main() async {
 class FinanceApp extends StatefulWidget {
   final bool migrationRequired;
   final int initialTabIndex;
+  final bool showLogin;
 
   const FinanceApp({
     super.key,
     this.migrationRequired = false,
     this.initialTabIndex = 0,
+    this.showLogin = false,
   });
 
   @override
@@ -133,7 +146,9 @@ class _FinanceAppState extends State<FinanceApp> with WidgetsBindingObserver {
 
           home: widget.migrationRequired
               ? const DatabaseMigrationScreen()
-              : HomeScreen(initialTabIndex: widget.initialTabIndex),
+              : widget.showLogin
+                  ? const LoginScreen()
+                  : HomeScreen(initialTabIndex: widget.initialTabIndex),
         );
       },
     );
