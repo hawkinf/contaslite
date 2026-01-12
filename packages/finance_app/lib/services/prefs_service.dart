@@ -179,8 +179,10 @@ static Future<void> saveDateRange(DateTime start, DateTime end) async {
   static Future<DatabaseConfig> loadDatabaseConfig() async {
     final prefs = await _safePrefs();
     final configJson = prefs.getString('db_config');
+    debugPrint('🔧 [PrefsService] Carregando config, raw: $configJson');
 
     if (configJson == null) {
+      debugPrint('🔧 [PrefsService] Nenhuma config encontrada, retornando padrão');
       // Retornar configuração padrão vazia
       return DatabaseConfig(
         host: '',
@@ -193,23 +195,37 @@ static Future<void> saveDateRange(DateTime start, DateTime end) async {
     }
 
     try {
-      // Decodificar JSON
-      final List<dynamic> decoded = Uri.decodeComponent(configJson)
-          .split('|')
-          .asMap()
-          .entries
-          .map((e) => e.value)
-          .toList();
+      // Decodificar formato key:value|key:value
+      final Map<String, dynamic> configMap = {};
+      final pairs = Uri.decodeComponent(configJson).split('|');
+      debugPrint('🔧 [PrefsService] Pares encontrados: $pairs');
+      
+      for (final pair in pairs) {
+        // Usar indexOf para encontrar o primeiro ':' e dividir ali
+        final colonIndex = pair.indexOf(':');
+        if (colonIndex > 0) {
+          final key = pair.substring(0, colonIndex);
+          final value = pair.substring(colonIndex + 1);
+          
+          // Converter valores
+          if (key == 'port') {
+            configMap[key] = int.tryParse(value) ?? 5432;
+          } else if (key == 'enabled') {
+            configMap[key] = value == 'true';
+          } else if (value == 'null') {
+            configMap[key] = null;
+          } else {
+            configMap[key] = value;
+          }
+        }
+      }
 
-      return DatabaseConfig.fromJson({
-        'host': decoded[0],
-        'port': int.tryParse(decoded[1] ?? '5432') ?? 5432,
-        'database': decoded[2],
-        'username': decoded[3],
-        'password': decoded[4],
-        'enabled': decoded.length > 5 ? decoded[5] == 'true' : false,
-      });
+      debugPrint('🔧 [PrefsService] ConfigMap decodificado: $configMap');
+      final config = DatabaseConfig.fromJson(configMap);
+      debugPrint('🔧 [PrefsService] Config final: apiUrl=${config.apiUrl}');
+      return config;
     } catch (e) {
+      debugPrint('Erro ao carregar config do banco: $e');
       // Se houver erro ao decodificar, retornar configuração vazia
       return DatabaseConfig(
         host: '',
@@ -224,10 +240,15 @@ static Future<void> saveDateRange(DateTime start, DateTime end) async {
 
   static Future<void> saveDatabaseConfig(DatabaseConfig config) async {
     final prefs = await _safePrefs();
-    // Usar formato simples para compatibilidade
-    final configString =
-        '${config.host}|${config.port}|${config.database}|${config.username}|${config.password}|${config.enabled}';
+    // Salvar como JSON para incluir apiUrl
+    final configMap = config.toJson();
+    debugPrint('🔧 [PrefsService] Salvando config: $configMap');
+    final configString = configMap.entries
+        .map((e) => '${e.key}:${e.value}')
+        .join('|');
+    debugPrint('🔧 [PrefsService] String serializada: $configString');
     await prefs.setString('db_config', configString);
+    debugPrint('🔧 [PrefsService] Config salva com sucesso');
   }
 
   static Future<void> clearDatabaseConfig() async {

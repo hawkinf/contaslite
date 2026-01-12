@@ -29,6 +29,7 @@ import 'widgets/date_calculator_dialog.dart';
 import 'package:finance_app/main.dart' as contas_app;
 import 'package:finance_app/services/database_initialization_service.dart' as contas_db;
 import 'package:finance_app/services/prefs_service.dart' as contas_prefs;
+import 'package:finance_app/services/auth_service.dart' as contas_auth;
 
 import 'contas_bootstrap.dart';
 
@@ -95,6 +96,9 @@ void main() async {
   await initializeDateFormatting('pt_BR', null);
   Intl.defaultLocale = 'pt_BR';
   await contas_prefs.PrefsService.init();
+
+  // Garantir que o módulo financeiro restaure sessão salva (tokens e usuário)
+  await contas_auth.AuthService.instance.initialize();
 
   runApp(const MyApp());
 }

@@ -92,8 +92,12 @@ class User {
 
   /// Cria instância a partir de JSON da API
   factory User.fromJson(Map<String, dynamic> json) {
+    // ID pode vir como int ou String do servidor
+    final dynamic rawId = json['id'];
+    final String? id = rawId?.toString();
+    
     return User(
-      id: json['id'] as String?,
+      id: id,
       email: json['email'] as String,
       name: json['name'] as String?,
       createdAt: json['created_at'] != null

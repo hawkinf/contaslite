@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import 'home_screen.dart';
+import '../services/prefs_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -22,7 +22,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _errorMessage;
 
   @override
+  void initState() {
+    super.initState();
+    AuthService.instance.authStateNotifier.addListener(_onAuthStateChanged);
+  }
+
+  void _onAuthStateChanged() {
+    final authState = AuthService.instance.authStateNotifier.value;
+    if (authState == AuthState.authenticated && mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  @override
   void dispose() {
+    AuthService.instance.authStateNotifier.removeListener(_onAuthStateChanged);
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -38,6 +52,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _errorMessage = null;
     });
 
+    // Recarregar configuração da API antes de tentar registrar
+    final config = await PrefsService.loadDatabaseConfig();
+    if (config.apiUrl != null && config.apiUrl!.isNotEmpty) {
+      AuthService.instance.setApiUrl(config.apiUrl!);
+    }
+
     final result = await AuthService.instance.register(
       _emailController.text.trim(),
       _passwordController.text,
@@ -47,11 +67,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
 
     if (result.success) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-        (route) => false,
-      );
+      // Não precisa fazer navigator, o ValueListenableBuilder do FinanceApp vai detectar
+      // a mudança no authStateNotifier e renderizar HomeScreen automaticamente
+      debugPrint('✅ Registro bem-sucedido, aguardando redirecionamento...');
     } else {
       setState(() {
         _isLoading = false;

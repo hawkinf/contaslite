@@ -68,9 +68,19 @@ class AuthService {
     try {
       // Carregar URL da API das configurações
       final config = await PrefsService.loadDatabaseConfig();
-      if (config.enabled && config.host.isNotEmpty) {
-        _apiBaseUrl = config.apiUrl ?? 'http://${config.host}:8080';
+      
+      // Priorizar apiUrl se estiver configurada
+      if (config.apiUrl != null && config.apiUrl!.isNotEmpty) {
+        _apiBaseUrl = config.apiUrl;
+      } else if (config.enabled && config.host.isNotEmpty) {
+        _apiBaseUrl = 'http://${config.host}:3000';
+      } else {
+        // URL padrão se nada estiver configurado
+        _apiBaseUrl = 'http://contaslite.hawk.com.br:3000';
+        debugPrint('⚠️  Nenhuma URL configurada, usando padrão: $_apiBaseUrl');
       }
+
+      debugPrint('🔧 AuthService inicializado com URL: $_apiBaseUrl');
 
       // Tentar restaurar sessão
       await restoreSession();
@@ -92,14 +102,31 @@ class AuthService {
       final user = await SecureCredentialStorage.loadUser();
 
       if (tokens == null || user == null) {
+        debugPrint('🔐 Nenhuma sessão salva encontrada');
         authStateNotifier.value = AuthState.unauthenticated;
         return;
       }
 
+      debugPrint('🔐 Sessão encontrada para: ${user.email}');
+      debugPrint('🔐 Token expira em: ${tokens.expiresAt}');
+      debugPrint('🔐 Agora: ${DateTime.now()}');
+      debugPrint('🔐 Token expirado: ${tokens.isExpired}');
+
       // Verificar se token expirou
       if (tokens.isExpired) {
+        debugPrint('🔐 Token expirado, tentando refresh...');
         // Tentar refresh
         if (!tokens.isRefreshExpired) {
+          debugPrint('🔐 Refresh token ainda válido');
+          
+          // Garantir que temos a URL da API
+          if (_apiBaseUrl == null || _apiBaseUrl!.isEmpty) {
+            debugPrint('⚠️  URL da API não configurada, não é possível fazer refresh');
+            debugPrint('⚠️  Usuário precisará fazer login novamente');
+            await logout();
+            return;
+          }
+          
           final refreshed = await _refreshTokenInternal(tokens.refreshToken);
           if (refreshed) {
             currentUserNotifier.value = user;
@@ -107,7 +134,11 @@ class AuthService {
             _startRefreshTimer();
             debugPrint('✅ Sessão restaurada via refresh token');
             return;
+          } else {
+            debugPrint('❌ Falha ao fazer refresh do token');
           }
+        } else {
+          debugPrint('🔐 Refresh token também expirado');
         }
         // Refresh falhou ou expirou
         await logout();
@@ -119,18 +150,33 @@ class AuthService {
       currentUserNotifier.value = user;
       authStateNotifier.value = AuthState.authenticated;
       _startRefreshTimer();
-      debugPrint('✅ Sessão restaurada com sucesso');
-    } catch (e) {
+      debugPrint('✅ Sessão restaurada com sucesso para: ${user.email}');
+    } catch (e, st) {
       debugPrint('❌ Erro ao restaurar sessão: $e');
+      debugPrint('Stack trace: $st');
       authStateNotifier.value = AuthState.unauthenticated;
     }
   }
 
   /// Registra um novo usuário
   Future<AuthResult> register(String email, String password, {String? name}) async {
-    if (_apiBaseUrl == null) {
+    // Tentar recarregar a URL da API se não estiver configurada
+    if (_apiBaseUrl == null || _apiBaseUrl!.isEmpty) {
+      try {
+        final config = await PrefsService.loadDatabaseConfig();
+        if (config.apiUrl != null && config.apiUrl!.isNotEmpty) {
+          _apiBaseUrl = config.apiUrl;
+        }
+      } catch (e) {
+        // Ignora erro de carregamento
+      }
+    }
+
+    if (_apiBaseUrl == null || _apiBaseUrl!.isEmpty) {
       return AuthResult.failed(
-        'Servidor não configurado. Configure nas configurações do banco de dados.',
+        'Servidor não configurado.\n\n'
+        'Vá em Configurações → Banco de Dados e preencha:\n'
+        'URL da API: http://contaslite.hawk.com.br:3000',
         errorCode: 'NO_SERVER',
       );
     }
@@ -139,6 +185,9 @@ class AuthService {
     errorNotifier.value = null;
 
     try {
+      // Garantir que httpClient existe
+      _httpClient ??= http.Client();
+      
       final response = await _httpClient!
           .post(
             Uri.parse('$_apiBaseUrl/api/auth/register'),
@@ -187,7 +236,11 @@ class AuthService {
 
   /// Faz login com email e senha
   Future<AuthResult> login(String email, String password) async {
+    debugPrint('🔐 Tentando login para: $email');
+    debugPrint('🔐 URL da API: $_apiBaseUrl');
+    
     if (_apiBaseUrl == null) {
+      debugPrint('❌ URL da API não configurada!');
       return AuthResult.failed(
         'Servidor não configurado. Configure nas configurações do banco de dados.',
         errorCode: 'NO_SERVER',
@@ -198,6 +251,11 @@ class AuthService {
     errorNotifier.value = null;
 
     try {
+      // Garantir que httpClient existe
+      _httpClient ??= http.Client();
+      
+      debugPrint('🔐 Enviando requisição para: $_apiBaseUrl/api/auth/login');
+      
       final response = await _httpClient!
           .post(
             Uri.parse('$_apiBaseUrl/api/auth/login'),
@@ -209,19 +267,25 @@ class AuthService {
           )
           .timeout(const Duration(seconds: 30));
 
+      debugPrint('🔐 Resposta recebida: ${response.statusCode}');
+
       if (response.statusCode == 200) {
+        debugPrint('✅ Login bem-sucedido, processando resposta...');
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         await _handleAuthSuccess(data);
         return AuthResult.successful();
       } else if (response.statusCode == 401) {
+        debugPrint('❌ Credenciais inválidas');
         authStateNotifier.value = AuthState.error;
         errorNotifier.value = 'Email ou senha incorretos';
         return AuthResult.failed('Email ou senha incorretos', errorCode: 'INVALID_CREDENTIALS');
       } else if (response.statusCode == 404) {
+        debugPrint('❌ Usuário não encontrado');
         authStateNotifier.value = AuthState.error;
         errorNotifier.value = 'Usuário não encontrado';
         return AuthResult.failed('Usuário não encontrado', errorCode: 'USER_NOT_FOUND');
       } else {
+        debugPrint('❌ Erro do servidor: ${response.statusCode}');
         final error = 'Erro no servidor: ${response.statusCode}';
         authStateNotifier.value = AuthState.error;
         errorNotifier.value = error;
@@ -249,6 +313,9 @@ class AuthService {
     // Tentar notificar servidor (opcional, não bloqueia logout local)
     if (_tokens != null && _apiBaseUrl != null) {
       try {
+        // Garantir que httpClient existe
+        _httpClient ??= http.Client();
+        
         await _httpClient!
             .post(
               Uri.parse('$_apiBaseUrl/api/auth/logout'),
@@ -293,31 +360,65 @@ class AuthService {
   /// Processa resposta de sucesso de login/registro
   Future<void> _handleAuthSuccess(Map<String, dynamic> data) async {
     try {
+      debugPrint('🔍 [AuthService] Resposta do servidor: $data');
+      
       // Extrair tokens
       final tokens = AuthTokens.fromJson(data);
       _tokens = tokens;
+      debugPrint('🔍 [AuthService] Tokens extraídos - Expira em: ${tokens.expiresAt}');
 
-      // Extrair usuário
+      // Extrair usuário - pode vir em data['user'] ou direto em data
       final userData = data['user'] as Map<String, dynamic>?;
-      final user = userData != null
-          ? User.fromJson(userData)
-          : User(email: data['email'] as String? ?? '');
+      final User user;
+      
+      if (userData != null) {
+        user = User.fromJson(userData);
+      } else if (data.containsKey('email')) {
+        // Email pode estar diretamente na raiz
+        final dynamic rawId = data['id'];
+        user = User(
+          id: rawId?.toString(),
+          email: data['email'] as String,
+          name: data['name'] as String?,
+        );
+      } else {
+        throw Exception('Dados de usuário não encontrados na resposta');
+      }
+
+      debugPrint('🔍 [AuthService] Usuário extraído: ${user.email} (ID: ${user.id})');
 
       // Salvar de forma segura
+      debugPrint('💾 Salvando tokens no storage...');
       await SecureCredentialStorage.saveTokens(tokens);
+      debugPrint('💾 Salvando usuário no storage...');
       await SecureCredentialStorage.saveUser(user);
+      debugPrint('✅ Credenciais salvas com sucesso');
+
+      // Verificar se foram salvos corretamente
+      final savedTokens = await SecureCredentialStorage.loadTokens();
+      final savedUser = await SecureCredentialStorage.loadUser();
+      debugPrint('🔍 Verificação - Tokens salvos: ${savedTokens != null}');
+      debugPrint('🔍 Verificação - Usuário salvo: ${savedUser?.email}');
 
       // Atualizar estado
+      debugPrint('🔐 Atualizando currentUserNotifier...');
       currentUserNotifier.value = user;
+      
+      debugPrint('🔐 Atualizando authStateNotifier para: AuthState.authenticated');
       authStateNotifier.value = AuthState.authenticated;
+      debugPrint('🔐 authStateNotifier atualizado com sucesso');
+      
       errorNotifier.value = null;
 
       // Iniciar timer de refresh
+      debugPrint('🔐 Iniciando timer de refresh...');
       _startRefreshTimer();
+      debugPrint('🔐 Timer de refresh iniciado');
 
       debugPrint('✅ Autenticação bem sucedida: ${user.email}');
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('❌ Erro ao processar resposta de auth: $e');
+      debugPrint('Stack trace: $stackTrace');
       authStateNotifier.value = AuthState.error;
       errorNotifier.value = 'Erro ao processar resposta do servidor';
       rethrow;
@@ -329,6 +430,9 @@ class AuthService {
     if (_apiBaseUrl == null) return false;
 
     try {
+      // Garantir que httpClient existe
+      _httpClient ??= http.Client();
+      
       final response = await _httpClient!
           .post(
             Uri.parse('$_apiBaseUrl/api/auth/refresh'),
@@ -392,6 +496,43 @@ class AuthService {
           'Erro desconhecido';
     } catch (e) {
       return 'Erro desconhecido';
+    }
+  }
+
+  /// Exclui todos os dados do usuário no servidor
+  Future<bool> deleteAllUserData() async {
+    if (_apiBaseUrl == null) {
+      throw Exception('Servidor não configurado');
+    }
+
+    if (_tokens == null) {
+      throw Exception('Usuário não autenticado');
+    }
+
+    try {
+      _httpClient ??= http.Client();
+
+      final response = await _httpClient!
+          .delete(
+            Uri.parse('$_apiBaseUrl/api/user/data'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ${_tokens!.accessToken}',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ Dados do servidor excluídos com sucesso');
+        return true;
+      } else {
+        final error = _parseError(response.body);
+        debugPrint('❌ Erro ao excluir dados: $error');
+        throw Exception(error);
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao excluir dados do servidor: $e');
+      rethrow;
     }
   }
 

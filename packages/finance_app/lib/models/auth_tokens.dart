@@ -72,19 +72,33 @@ class AuthTokens {
       if (value is String) {
         return DateTime.parse(value);
       } else if (value is int) {
-        // Se for timestamp em segundos
-        return DateTime.fromMillisecondsSinceEpoch(value * 1000);
+        // Se for timestamp em segundos ou duração em segundos
+        if (value > 1000000000) {
+          // Timestamp (maior que 1 bilhão = depois de 2001)
+          return DateTime.fromMillisecondsSinceEpoch(value * 1000);
+        } else {
+          // Duração em segundos (expiresIn)
+          return DateTime.now().add(Duration(seconds: value));
+        }
       }
       // Fallback: 1 hora a partir de agora
       return DateTime.now().add(const Duration(hours: 1));
     }
 
+    // Aceitar tanto camelCase (accessToken) quanto snake_case (access_token)
+    final accessToken = (json['accessToken'] ?? json['access_token']) as String?;
+    final refreshToken = (json['refreshToken'] ?? json['refresh_token']) as String?;
+    
+    if (accessToken == null || refreshToken == null) {
+      throw Exception('Tokens não encontrados na resposta: $json');
+    }
+
     return AuthTokens(
-      accessToken: json['access_token'] as String,
-      refreshToken: json['refresh_token'] as String,
-      expiresAt: parseExpiry(json['expires_at'] ?? json['expires_in']),
-      refreshExpiresAt: json['refresh_expires_at'] != null
-          ? parseExpiry(json['refresh_expires_at'])
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      expiresAt: parseExpiry(json['expires_at'] ?? json['expiresIn'] ?? json['expires_in']),
+      refreshExpiresAt: json['refresh_expires_at'] != null || json['refreshExpiresAt'] != null
+          ? parseExpiry(json['refresh_expires_at'] ?? json['refreshExpiresAt'])
           : null,
     );
   }

@@ -34,7 +34,7 @@ dependencies:
 
   # Segurança e Criptografia
   crypto: ^3.0.3
-  flutter_secure_storage: ^9.0.0
+  # flutter_secure_storage: ^9.0.0  # Removido temporariamente - ATL não disponível no Windows
 
   # Exportação PDF
   pdf: ^3.11.0

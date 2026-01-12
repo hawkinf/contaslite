@@ -241,7 +241,51 @@ class _SyncMenuSheet extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: () async {
                   Navigator.pop(context);
-                  await SyncService.instance.fullSync();
+                  
+                  try {
+                    final messenger = ScaffoldMessenger.of(context);
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Row(
+                          children: [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Text('Sincronizando...'),
+                          ],
+                        ),
+                        duration: Duration(hours: 1),
+                      ),
+                    );
+                    
+                    await SyncService.instance.fullSync();
+                    
+                    messenger.hideCurrentSnackBar();
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('✅ Sincronização concluída com sucesso!'),
+                        backgroundColor: Colors.green,
+                        duration: Duration(seconds: 3),
+                      ),
+                    );
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('❌ Erro na sincronização: ${e.toString()}'),
+                          backgroundColor: Colors.red,
+                          duration: const Duration(seconds: 5),
+                        ),
+                      );
+                    }
+                  }
                 },
                 icon: const Icon(Icons.sync),
                 label: const Text('Sincronizar Agora'),

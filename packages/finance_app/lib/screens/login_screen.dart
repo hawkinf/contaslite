@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/prefs_service.dart';
 import 'register_screen.dart';
-import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,10 +20,30 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _errorMessage;
 
   @override
+  void initState() {
+    super.initState();
+    // Observar mudanças no estado de autenticação
+    AuthService.instance.authStateNotifier.addListener(_onAuthStateChanged);
+  }
+
+  @override
   void dispose() {
+    AuthService.instance.authStateNotifier.removeListener(_onAuthStateChanged);
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _onAuthStateChanged() {
+    final authState = AuthService.instance.authStateNotifier.value;
+    debugPrint('🏠 [LoginScreen] AuthState mudou para: $authState');
+    
+    // Se foi autenticado, fechar a tela de login
+    if (authState == AuthState.authenticated && mounted) {
+      debugPrint('🏠 [LoginScreen] Usuario autenticado, fechando tela de login');
+      // Pop LoginScreen para voltar ao FinanceApp que renderizará HomeScreen
+      Navigator.of(context).pop();
+    }
   }
 
   Future<void> _login() async {
@@ -34,18 +54,26 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = null;
     });
 
+    // Recarregar configuração da API antes de tentar login
+    final config = await PrefsService.loadDatabaseConfig();
+    if (config.apiUrl != null && config.apiUrl!.isNotEmpty) {
+      AuthService.instance.setApiUrl(config.apiUrl!);
+    }
+
+    debugPrint('🏠 [LoginScreen] Iniciando login...');
     final result = await AuthService.instance.login(
       _emailController.text.trim(),
       _passwordController.text,
     );
 
+    debugPrint('🏠 [LoginScreen] Login retornou: success=${result.success}');
+
     if (!mounted) return;
 
     if (result.success) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      // Não precisa fazer navigator aqui - _onAuthStateChanged vai cuidar disso
+      debugPrint('✅ Login bem-sucedido, aguardando redirecionamento...');
+      // Manter _isLoading = true para bloquear interações
     } else {
       setState(() {
         _isLoading = false;
@@ -61,19 +89,21 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _skipLogin() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+          tooltip: 'Voltar',
+        ),
+        title: const Text('Contas Lite'),
+        elevation: 0,
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -254,20 +284,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         Expanded(child: Divider(color: Colors.grey[400])),
                       ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Botão para usar offline
-                    OutlinedButton.icon(
-                      onPressed: _isLoading ? null : _skipLogin,
-                      icon: const Icon(Icons.offline_bolt_outlined),
-                      label: const Text('Usar sem conta (offline)'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
                     ),
                     const SizedBox(height: 16),
 

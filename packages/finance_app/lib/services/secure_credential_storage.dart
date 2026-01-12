@@ -1,20 +1,10 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/auth_tokens.dart';
 import '../models/user.dart';
 
-/// Armazenamento seguro para credenciais e tokens usando flutter_secure_storage
+/// Armazenamento seguro para credenciais e tokens
+/// No Windows/Web usa SharedPreferences (não requer flutter_secure_storage)
 class SecureCredentialStorage {
-  static const _storage = FlutterSecureStorage(
-    aOptions: AndroidOptions(
-      encryptedSharedPreferences: true,
-    ),
-    iOptions: IOSOptions(
-      accessibility: KeychainAccessibility.first_unlock_this_device,
-    ),
-    wOptions: WindowsOptions(),
-    lOptions: LinuxOptions(),
-  );
-
   // Chaves de armazenamento
   static const _keyAccessToken = 'auth_access_token';
   static const _keyRefreshToken = 'auth_refresh_token';
@@ -26,14 +16,15 @@ class SecureCredentialStorage {
 
   /// Salva tokens de autenticação de forma segura
   static Future<void> saveTokens(AuthTokens tokens) async {
+    final prefs = await SharedPreferences.getInstance();
     await Future.wait([
-      _storage.write(key: _keyAccessToken, value: tokens.accessToken),
-      _storage.write(key: _keyRefreshToken, value: tokens.refreshToken),
-      _storage.write(key: _keyTokenExpiry, value: tokens.expiresAt.toIso8601String()),
+      prefs.setString(_keyAccessToken, tokens.accessToken),
+      prefs.setString(_keyRefreshToken, tokens.refreshToken),
+      prefs.setString(_keyTokenExpiry, tokens.expiresAt.toIso8601String()),
       if (tokens.refreshExpiresAt != null)
-        _storage.write(
-          key: _keyRefreshExpiry,
-          value: tokens.refreshExpiresAt!.toIso8601String(),
+        prefs.setString(
+          _keyRefreshExpiry,
+          tokens.refreshExpiresAt!.toIso8601String(),
         ),
     ]);
   }
@@ -41,10 +32,11 @@ class SecureCredentialStorage {
   /// Carrega tokens de autenticação
   static Future<AuthTokens?> loadTokens() async {
     try {
-      final accessToken = await _storage.read(key: _keyAccessToken);
-      final refreshToken = await _storage.read(key: _keyRefreshToken);
-      final expiryStr = await _storage.read(key: _keyTokenExpiry);
-      final refreshExpiryStr = await _storage.read(key: _keyRefreshExpiry);
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString(_keyAccessToken);
+      final refreshToken = prefs.getString(_keyRefreshToken);
+      final expiryStr = prefs.getString(_keyTokenExpiry);
+      final refreshExpiryStr = prefs.getString(_keyRefreshExpiry);
 
       if (accessToken == null || refreshToken == null || expiryStr == null) {
         return null;
@@ -66,21 +58,23 @@ class SecureCredentialStorage {
 
   /// Salva informações do usuário de forma segura
   static Future<void> saveUser(User user) async {
+    final prefs = await SharedPreferences.getInstance();
     await Future.wait([
-      if (user.id != null) _storage.write(key: _keyUserId, value: user.id),
-      _storage.write(key: _keyUserEmail, value: user.email),
-      if (user.name != null) _storage.write(key: _keyUserName, value: user.name),
+      if (user.id != null) prefs.setString(_keyUserId, user.id!),
+      prefs.setString(_keyUserEmail, user.email),
+      if (user.name != null) prefs.setString(_keyUserName, user.name!),
     ]);
   }
 
   /// Carrega informações do usuário
   static Future<User?> loadUser() async {
     try {
-      final email = await _storage.read(key: _keyUserEmail);
+      final prefs = await SharedPreferences.getInstance();
+      final email = prefs.getString(_keyUserEmail);
       if (email == null) return null;
 
-      final id = await _storage.read(key: _keyUserId);
-      final name = await _storage.read(key: _keyUserName);
+      final id = prefs.getString(_keyUserId);
+      final name = prefs.getString(_keyUserName);
 
       return User(
         id: id,
@@ -94,28 +88,31 @@ class SecureCredentialStorage {
 
   /// Limpa todos os dados de autenticação
   static Future<void> clearAll() async {
+    final prefs = await SharedPreferences.getInstance();
     await Future.wait([
-      _storage.delete(key: _keyAccessToken),
-      _storage.delete(key: _keyRefreshToken),
-      _storage.delete(key: _keyTokenExpiry),
-      _storage.delete(key: _keyRefreshExpiry),
-      _storage.delete(key: _keyUserId),
-      _storage.delete(key: _keyUserEmail),
-      _storage.delete(key: _keyUserName),
+      prefs.remove(_keyAccessToken),
+      prefs.remove(_keyRefreshToken),
+      prefs.remove(_keyTokenExpiry),
+      prefs.remove(_keyRefreshExpiry),
+      prefs.remove(_keyUserId),
+      prefs.remove(_keyUserEmail),
+      prefs.remove(_keyUserName),
     ]);
   }
 
   /// Verifica se existem credenciais salvas
   static Future<bool> hasCredentials() async {
-    final token = await _storage.read(key: _keyAccessToken);
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_keyAccessToken);
     return token != null;
   }
 
   /// Atualiza apenas o access token (após refresh)
   static Future<void> updateAccessToken(String newToken, DateTime newExpiry) async {
+    final prefs = await SharedPreferences.getInstance();
     await Future.wait([
-      _storage.write(key: _keyAccessToken, value: newToken),
-      _storage.write(key: _keyTokenExpiry, value: newExpiry.toIso8601String()),
+      prefs.setString(_keyAccessToken, newToken),
+      prefs.setString(_keyTokenExpiry, newExpiry.toIso8601String()),
     ]);
   }
 }

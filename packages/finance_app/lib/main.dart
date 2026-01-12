@@ -144,11 +144,29 @@ class _FinanceAppState extends State<FinanceApp> with WidgetsBindingObserver {
           // TEMA ESCURO
           darkTheme: _buildDarkTheme(),
 
-          home: widget.migrationRequired
-              ? const DatabaseMigrationScreen()
-              : widget.showLogin
-                  ? const LoginScreen()
-                  : HomeScreen(initialTabIndex: widget.initialTabIndex),
+          home: ValueListenableBuilder<AuthState>(
+            valueListenable: AuthService.instance.authStateNotifier,
+            builder: (context, authState, _) {
+              if (widget.migrationRequired) {
+                return const DatabaseMigrationScreen();
+              }
+              
+              // Mostrar login se não autenticado ou em estado de erro
+              if (authState == AuthState.unauthenticated || authState == AuthState.error) {
+                return const LoginScreen();
+              }
+              
+              // Se ainda está verificando, mostrar tela de carregamento
+              if (authState == AuthState.checking) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              
+              // Autenticado com sucesso
+              return HomeScreen(initialTabIndex: widget.initialTabIndex);
+            },
+          ),
         );
       },
     );

@@ -41,9 +41,15 @@ class SyncService {
 
     // Carregar URL da API das configurações
     final config = await PrefsService.loadDatabaseConfig();
-    if (config.enabled && config.host.isNotEmpty) {
-      _apiBaseUrl = config.apiUrl ?? 'http://${config.host}:8080';
+    
+    // Priorizar apiUrl se estiver configurada
+    if (config.apiUrl != null && config.apiUrl!.isNotEmpty) {
+      _apiBaseUrl = config.apiUrl;
+    } else if (config.enabled && config.host.isNotEmpty) {
+      _apiBaseUrl = 'http://${config.host}:8080';
     }
+
+    debugPrint('🔧 SyncService inicializado com URL: $_apiBaseUrl');
 
     // Verificar conectividade inicial
     final connectivity = await Connectivity().checkConnectivity();
@@ -88,6 +94,15 @@ class SyncService {
 
   /// Executa sincronização completa (pull + push)
   Future<SyncResult> fullSync() async {
+    // Recarregar URL da API se não estiver configurada
+    if (_apiBaseUrl == null) {
+      final config = await PrefsService.loadDatabaseConfig();
+      if (config.apiUrl != null && config.apiUrl!.isNotEmpty) {
+        _apiBaseUrl = config.apiUrl;
+        debugPrint('🔧 SyncService: URL recarregada: $_apiBaseUrl');
+      }
+    }
+    
     if (!_canSync()) {
       return SyncResult.failed('Não é possível sincronizar no momento');
     }
@@ -144,6 +159,15 @@ class SyncService {
 
   /// Executa sincronização incremental (apenas mudanças desde último sync)
   Future<SyncResult> incrementalSync() async {
+    // Recarregar URL da API se não estiver configurada
+    if (_apiBaseUrl == null) {
+      final config = await PrefsService.loadDatabaseConfig();
+      if (config.apiUrl != null && config.apiUrl!.isNotEmpty) {
+        _apiBaseUrl = config.apiUrl;
+        debugPrint('🔧 SyncService: URL recarregada: $_apiBaseUrl');
+      }
+    }
+    
     if (!_canSync()) {
       return SyncResult.failed('Não é possível sincronizar no momento');
     }
@@ -431,6 +455,25 @@ class SyncService {
   /// Retorna quantidade de registros pendentes de sync
   Future<int> getPendingCount() async {
     return await _db.countPendingSync();
+  }
+
+  /// Retorna o status da sincronização
+  Future<Map<String, dynamic>> getSyncStatus() async {
+    final pendingCount = await getPendingCount();
+    final lastSync = lastSyncNotifier.value;
+    final isEnabled = _apiBaseUrl != null && _apiBaseUrl!.isNotEmpty;
+    
+    // Estatísticas fictícias por enquanto (pode ser implementado com contadores reais)
+    return {
+      'lastSync': lastSync != null 
+          ? '${lastSync.day}/${lastSync.month}/${lastSync.year} às ${lastSync.hour}:${lastSync.minute.toString().padLeft(2, '0')}'
+          : 'Nunca',
+      'pendingCount': pendingCount,
+      'pushedCount': 0, // Contador será implementado na próxima versão
+      'pulledCount': 0, // Contador será implementado na próxima versão
+      'syncEnabled': isEnabled,
+      'syncState': syncStateNotifier.value.toString(),
+    };
   }
 
   /// Reseta todos os dados de sync (usado no logout)
