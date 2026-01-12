@@ -37,17 +37,35 @@ class DatabaseInitializationService {
       debugPrint('[DB INIT] Tipos de conta encontrados: $typeCount');
       debugPrint('[DB INIT] Formas de pagamento encontradas: $methodCount');
 
-      // SOMENTE popular dados padrão se o banco estiver VAZIO (primeiro uso)
-      // Não recriar categorias em todo startup - isso sobrescreve edições do usuário!
-      if (typeCount == 0 && methodCount == 0) {
-        debugPrint('[DB INIT] Banco vazio detectado. Inicializando com categorias padrao...');
+      // Verificar se falta o tipo "Recebimentos" (evita lista vazia na aba de recebimentos)
+      bool missingRecebimentosType = true;
+      try {
+        final existingTypes = await db.readAllTypes();
+        missingRecebimentosType = !existingTypes.any(
+          (t) => t.name.trim().toUpperCase() ==
+              DefaultAccountCategoriesService.recebimentosName.toUpperCase(),
+        );
+        if (missingRecebimentosType) {
+          debugPrint('[DB INIT] ⚠️ Tipo "${DefaultAccountCategoriesService.recebimentosName}" ausente.');
+        }
+      } catch (e) {
+        debugPrint('[DB INIT] ?? Erro ao ler tipos de conta: $e');
+        missingRecebimentosType = true;
+      }
+
+      final needsTypes = typeCount == 0 || missingRecebimentosType;
+      final needsPaymentMethods = methodCount == 0;
+
+      // Popular dados padrão se faltar tipos base ou formas de pagamento
+      if (needsTypes || needsPaymentMethods) {
+        debugPrint('[DB INIT] Reforçando dados padrão (tipos ou formas de pagamento ausentes)...');
         await populateDefaultData();
 
         typeCount = await db.countAccountTypes();
         methodCount = await db.countPaymentMethods(onlyActive: false);
-        debugPrint('[DB INIT] Banco de dados inicializado com sucesso!');
+        debugPrint('[DB INIT] Banco de dados inicializado/ajustado com sucesso!');
       } else {
-        debugPrint('[DB INIT] Banco ja possui dados. Pulando populacao automatica.');
+        debugPrint('[DB INIT] Banco já possui tipos e formas de pagamento. Pulando população automática.');
       }
 
       // Validar integridade do banco (skip por agora - pode travar em algumas situa‡äes)
