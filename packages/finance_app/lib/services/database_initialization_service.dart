@@ -99,14 +99,18 @@ class DatabaseInitializationService {
       // Criar tipos padrao com suas categorias
       for (final typeName in categoriesMap.keys) {
         final normalizedName = typeName.trim().toUpperCase();
-        final typeId =
-            typeIdByName[normalizedName] ?? await db.createType(AccountType(name: typeName));
-        if (!typeIdByName.containsKey(normalizedName)) {
+        int typeId;
+        
+        if (typeIdByName.containsKey(normalizedName)) {
+          typeId = typeIdByName[normalizedName]!;
+          debugPrint('  -> Tipo "$typeName" ja existe (ID: $typeId)');
+        } else {
+          // Obter o ícone apropriado para esta categoria
+          final logo = DefaultAccountCategoriesService.getLogoForCategory(typeName);
+          typeId = await db.createType(AccountType(name: typeName, logo: logo));
           typeIdByName[normalizedName] = typeId;
           typesCreated++;
-          debugPrint('  -> Tipo "$typeName" criado (ID: $typeId)');
-        } else {
-          debugPrint('  -> Tipo "$typeName" ja existe (ID: $typeId)');
+          debugPrint('  -> Tipo "$typeName" criado (ID: $typeId) com logo "$logo"');
         }
 
         final subcategories = categoriesMap[typeName]!;

@@ -103,6 +103,17 @@ class AuthService {
 
       if (tokens == null || user == null) {
         debugPrint('🔐 Nenhuma sessão salva encontrada');
+        final savedCredentials = await SecureCredentialStorage.loadSavedCredentials();
+        if (savedCredentials != null) {
+          debugPrint('🔐 Credenciais salvas encontradas, tentando auto-login...');
+          final result = await login(savedCredentials.email, savedCredentials.password);
+          if (result.success) {
+            debugPrint('✅ Auto-login concluído com sucesso');
+            return;
+          }
+          debugPrint('❌ Falha no auto-login com credenciais salvas');
+        }
+
         authStateNotifier.value = AuthState.unauthenticated;
         return;
       }
@@ -203,6 +214,7 @@ class AuthService {
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         await _handleAuthSuccess(data);
+        await SecureCredentialStorage.saveCredentials(email, password);
         return AuthResult.successful();
       } else if (response.statusCode == 409) {
         authStateNotifier.value = AuthState.error;
@@ -273,6 +285,7 @@ class AuthService {
         debugPrint('✅ Login bem-sucedido, processando resposta...');
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         await _handleAuthSuccess(data);
+        await SecureCredentialStorage.saveCredentials(email, password);
         return AuthResult.successful();
       } else if (response.statusCode == 401) {
         debugPrint('❌ Credenciais inválidas');
@@ -330,8 +343,8 @@ class AuthService {
       }
     }
 
-    // Limpar dados locais
-    await SecureCredentialStorage.clearAll();
+    // Limpar tokens, mas manter email/senha salvos para auto-login
+    await SecureCredentialStorage.clearTokensOnly();
     _tokens = null;
     currentUserNotifier.value = null;
     authStateNotifier.value = AuthState.unauthenticated;

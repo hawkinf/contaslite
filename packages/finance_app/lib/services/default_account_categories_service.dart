@@ -16,6 +16,151 @@ class DefaultAccountCategoriesService {
   static const String recebimentosName = 'Recebimentos';
   static const String recebimentosChildSeparator = '||';
 
+  // Mapa de ícones/emojis para as categorias pai
+  static const Map<String, String> categoryLogos = {
+    'Alimentação': '🍔',
+    'Moradia/Consumo': '🏠',
+    'Saúde': '🏥',
+    'Assinaturas e Serviços Digitais': '📱',
+    'Lazer/Viagens': '✈️',
+    'Lazer e Viagens': '✈️',
+    'Cartões de Crédito': '💳',
+    'Veículo': '🚗',
+    'Educação': '📚',
+    'Dívidas': '💰',
+    'Dívidas e Obrigações Financeiras': '💰',
+    'Família e Pets': '👨‍👩‍👧‍👦',
+    'Recebimentos': '💵',
+    'Despesas Operacionais': '🏢',
+    'Despesas Operacionais / Moradia': '🏢',
+    'Pessoal': '👥',
+    'Impostos e Tributos': '📄',
+    'Financeiras': '🏦',
+    'Financeiro Geral': '🏦',
+    'Fornecedores': '📦',
+    'Comunicação': '📞',
+    'Tecnologia': '💻',
+  };
+
+  // Mapa inteligente: keywords -> emojis para categorias filhas
+  static const Map<String, String> subcategoryLogos = {
+    // Alimentação
+    'Açougue': '🥩',
+    'Padaria': '🥖',
+    'Supermercado': '🛒',
+    'Restaurante': '🍽️',
+    'Lanche': '🍕',
+    'Café': '☕',
+    'Bar': '🍺',
+    'Delivery': '🚚',
+    
+    // Salários e receitas
+    'Salário': '💼',
+    'Férias': '✈️',
+    'Bônus': '🎁',
+    'PLR': '📊',
+    'Pró-Labore': '💼',
+    'Adiantamento': '➡️',
+    'Abono': '✅',
+    
+    // Benefícios
+    'Aposentadoria': '👨',
+    'INSS': '🏛️',
+    'Pensão': '👩',
+    'Previdência': '🛡️',
+    'Auxílio': '🆘',
+    
+    // Receitas de vendas e serviços
+    'Venda': '🛒',
+    'Marketplace': '🏪',
+    'PIX': '💸',
+    'Cartão': '💳',
+    'Serviço': '🔧',
+    'Consultoria': '💡',
+    'Contrato': '📋',
+    'Instalação': '🔨',
+    'Manutenção': '🔩',
+    'Suporte': '🆘',
+    
+    // Autônomo e trabalho
+    'Autônomo': '👤',
+    'Bicos': '💪',
+    'Freelance': '💻',
+    'Comissão': '📈',
+    'Diária': '📅',
+    'Honorário': '⚖️',
+    
+    // Aluguel e imóveis
+    'Aluguel': '🏠',
+    'Arrendamento': '🏢',
+    'Comercial': '🏬',
+    'Residencial': '🏘️',
+    'Garagem': '🅿️',
+    'Equipamento': '⚙️',
+    'Água': '💧',
+    'Luz': '💡',
+    'Energia': '⚡',
+    'Gás': '🔥',
+    'Internet': '🌐',
+    'Condomínio': '🏢',
+    'IPTU': '📋',
+    'Reforma': '🔨',
+    'Seguro': '🛡️',
+    
+    // Saúde
+    'Academia': '🏋️',
+    'Consulta': '👨',
+    'Dentista': '🦷',
+    'Exame': '🔬',
+    'Farmácia': '💊',
+    'Plano': '📋',
+    'Terapia': '🧘',
+    
+    // Investimentos e finanças
+    'Rendimento': '📈',
+    'Dividendo': '💰',
+    'Juros': '🏦',
+    'Cashback': '💵',
+    'Investimento': '📊',
+    
+    // Reembolsos e ajustes
+    'Reembolso': '↩️',
+    'Devolução': '📦',
+    'Estorno': '❌',
+    'Ajuste': '⚖️',
+    'Acerto': '✅',
+    'Médico': '⚕️',
+    'Restituição': '✔️',
+    'IRPF': '📄',
+    'Indenização': '⚠️',
+    'Ganho': '🎯',
+    'Venda de Bens': '💎',
+    'Outros': '❓',
+  };
+
+  /// Retorna o ícone/emoji apropriado para uma categoria
+  static String? getLogoForCategory(String categoryName) {
+    return categoryLogos[categoryName];
+  }
+
+  /// Retorna um ícone baseado em keywords na descrição da subcategoria
+  static String? getLogoForSubcategory(String subcategoryName) {
+    if (subcategoryName.isEmpty) return '❓';
+    
+    // Converter para lowercase para comparação insensível a caso
+    final lowerName = subcategoryName.toLowerCase();
+    
+    // Procurar por keywords no mapa
+    for (final entry in subcategoryLogos.entries) {
+      if (lowerName.contains(entry.key.toLowerCase())) {
+        return entry.value;
+      }
+    }
+    
+    // Se nenhuma keyword encontrada, retornar genérico
+    return '📌';
+  }
+
   // Subcategorias de Recebimentos para Pessoa Física
   static const Map<String, List<String>> recebimentosChildDefaultsPF = {
     'Salário/Pró-Labore': [

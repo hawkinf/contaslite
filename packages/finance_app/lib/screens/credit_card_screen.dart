@@ -164,6 +164,7 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
   double _installmentTotal = 0.0;
   double _oneOffTotal = 0.0;
   double _subscriptionTotal = 0.0;
+  double _launchedTotal = 0.0;
 
   @override
   void initState() {
@@ -244,7 +245,8 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
         _installmentTotal = sumInst;
         _oneOffTotal = sumOneOff;
         _subscriptionTotal = sumSubs;
-        _currentInvoice = sumInst + sumOneOff + sumSubs;
+        _launchedTotal = sumInst + sumOneOff;
+        _currentInvoice = _launchedTotal + sumSubs; // previsto = lançado + recorrentes ainda não lançadas
       });
     }
   }
@@ -277,24 +279,53 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
     Color bgColor = (widget.card.cardColor != null) ? Color(widget.card.cardColor!) : AppColors.cardPurpleDark;
     final fgColor = foregroundColorFor(bgColor);
 
-    final badges = <Widget>[
-      _buildBadge('Parcelado', _installmentTotal, AppColors.installment, fgColor),
-      _buildBadge('À vista', _oneOffTotal, AppColors.oneOff, fgColor),
-    ];
-    if (_subscriptionTotal > 0) {
-      badges.add(_buildBadge('Assinaturas', _subscriptionTotal, AppColors.subscription, fgColor));
-    }
-
-    final headerBlock = Column(
+    final headerBlock = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(spacing: 6, runSpacing: 6, children: badges),
-        const SizedBox(height: 8),
-        Row(
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTotalLine('Recorrentes', _subscriptionTotal, AppColors.subscription, fgColor),
+              const SizedBox(height: 6),
+              _buildTotalLine('Parcelados', _installmentTotal, AppColors.installment, fgColor),
+              const SizedBox(height: 6),
+              _buildTotalLine('À vista', _oneOffTotal, AppColors.oneOff, fgColor),
+              const SizedBox(height: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    UtilBrasilFields.obterReal(_launchedTotal),
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Previsto: ${UtilBrasilFields.obterReal(_currentInvoice)}',
+                    style: TextStyle(
+                      color: fgColor.withOpacity(0.6),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text('Previsão da fatura', style: TextStyle(color: fgColor.withOpacity(0.8), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.15)),
-            const Spacer(),
-            Text(UtilBrasilFields.obterReal(_currentInvoice), style: TextStyle(color: fgColor, fontSize: 22, fontWeight: FontWeight.bold)),
+            Text('Total', style: TextStyle(color: fgColor.withOpacity(0.78), fontSize: 12, fontWeight: FontWeight.w700)),
+            Text(
+              UtilBrasilFields.obterReal(_currentInvoice),
+              style: const TextStyle(color: Colors.redAccent, fontSize: 24, fontWeight: FontWeight.w900),
+            ),
           ],
         ),
       ],
@@ -316,19 +347,133 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
+                    // Conta Pai - Conta Filha
                     Text(
-                      widget.card.cardBank ?? 'Banco',
-                      style: TextStyle(color: fgColor, fontWeight: FontWeight.bold, fontSize: 15),
+                      widget.card.description,
+                      style: TextStyle(
+                        color: fgColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                       textAlign: TextAlign.right,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    // Marca do Cartão (opcional)
                     if ((widget.card.cardBrand ?? '').isNotEmpty)
-                      Text(
-                        widget.card.cardBrand ?? '',
-                        style: TextStyle(color: fgColor.withOpacity(0.8), fontSize: 10, fontStyle: FontStyle.italic),
-                        textAlign: TextAlign.right,
-                        overflow: TextOverflow.ellipsis,
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          widget.card.cardBrand ?? '',
+                          style: TextStyle(
+                            color: fgColor.withOpacity(0.7),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.right,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
+                    // Banco Emissor com logo
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (widget.card.cardBrand?.toUpperCase() == 'MASTERCARD')
+                          const Padding(
+                            padding: EdgeInsets.only(right: 6),
+                            child: SizedBox(
+                              width: 28,
+                              height: 18,
+                              child: Stack(
+                                children: [
+                                  Positioned(
+                                    left: 0,
+                                    top: 0,
+                                    child: SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Color(0xFFEB001B),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    child: SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Color(0xFFF79E1B),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        else if (widget.card.cardBrand?.toUpperCase() == 'VISA')
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: Container(
+                              width: 32,
+                              height: 18,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1434CB),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                              child: Stack(
+                                children: [
+                                  Positioned(
+                                    top: 2,
+                                    left: 2,
+                                    child: Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFFFA200),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        else if ((widget.card.cardBrand?.toUpperCase().contains('AMEX') ?? false) ||
+                                 (widget.card.cardBrand?.toUpperCase().contains('AMERICAN') ?? false))
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: Container(
+                              width: 28,
+                              height: 18,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF006FCF),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ),
+                        Expanded(
+                          child: Text(
+                            widget.card.cardBank ?? 'Banco',
+                            style: TextStyle(
+                              color: fgColor.withOpacity(0.75),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.right,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                     if (widget.card.cardLimit != null && widget.card.cardLimit! > 0) ...[
                       const SizedBox(height: 6),
                       Text('LIMITE', style: TextStyle(color: fgColor.withOpacity(0.8), fontSize: 9)),
@@ -380,24 +525,27 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
     );
   }
 
-  Widget _buildBadge(String label, double value, Color accent, Color baseColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: baseColor.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: baseColor.withOpacity(0.1)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(width: 8, height: 8, decoration: BoxDecoration(color: accent, shape: BoxShape.circle)),
-          const SizedBox(width: 6),
-          Text(label, style: TextStyle(color: baseColor.withOpacity(0.75), fontSize: 11, fontWeight: FontWeight.w600)),
-          const SizedBox(width: 8),
-          Text(UtilBrasilFields.obterReal(value), style: TextStyle(color: accent, fontSize: 12, fontWeight: FontWeight.w700)),
-        ],
-      ),
+  Widget _buildTotalLine(String label, double value, Color accent, Color baseColor) {
+    return Row(
+      children: [
+        Text(label, style: TextStyle(color: baseColor.withOpacity(0.8), fontSize: 12, fontWeight: FontWeight.w700)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: baseColor.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: baseColor.withOpacity(0.12)),
+            ),
+            child: Text(
+              UtilBrasilFields.obterReal(value),
+              style: TextStyle(color: accent, fontSize: 13, fontWeight: FontWeight.w800),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

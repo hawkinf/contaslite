@@ -68,7 +68,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 13,
+      version: 14,
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
         debugPrint('🔄 Iniciando migração de banco de dados v$oldVersion→v$newVersion...');
@@ -103,7 +103,8 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE account_types (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL UNIQUE
+        name TEXT NOT NULL UNIQUE,
+        logo TEXT
       )
     ''');
 
@@ -113,6 +114,7 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         accountId INTEGER NOT NULL,
         description TEXT NOT NULL,
+        logo TEXT,
         FOREIGN KEY (accountId) REFERENCES account_types (id) ON DELETE CASCADE
       )
     ''');
@@ -140,6 +142,7 @@ class DatabaseHelper {
         cardLimit REAL,
         cardColor INTEGER,
         cardId INTEGER,
+        logo TEXT,
         observation TEXT,
         establishment TEXT,
         purchaseUuid TEXT,
@@ -240,6 +243,31 @@ class DatabaseHelper {
   // ========== MIGRAÇÃO DE BANCO (v1 → v2) ==========
 
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    // Migração v14: Adicionar campo logo nas contas
+    if (oldVersion < 14) {
+      debugPrint('🔄 Executando migração v14: Adicionando campo logo...');
+      try {
+        // Adicionar coluna logo em account_types
+        try {
+          await db.execute('ALTER TABLE account_types ADD COLUMN logo TEXT');
+        } catch (_) {}
+        
+        // Adicionar coluna logo em accounts
+        try {
+          await db.execute('ALTER TABLE accounts ADD COLUMN logo TEXT');
+        } catch (_) {}
+        
+        // Adicionar coluna logo em account_descriptions
+        try {
+          await db.execute('ALTER TABLE account_descriptions ADD COLUMN logo TEXT');
+        } catch (_) {}
+        
+        debugPrint('✓ Migração v14 concluída');
+      } catch (e) {
+        debugPrint('❌ Erro na migração v14: $e');
+      }
+    }
+
     // Migração v13: Adicionar suporte a sincronização multi-usuário
     if (oldVersion < 13) {
       debugPrint('🔄 Executando migração v13: Adicionando suporte a sincronização...');
@@ -809,9 +837,10 @@ class DatabaseHelper {
     final dataToUpdate = {
       'accountId': categoria.accountId,
       'description': categoria.categoria,
+      'logo': categoria.logo, // ✅ INCLUINDO O LOGO!
     };
 
-    debugPrint('[DB] UPDATE categoria ID=${categoria.id}: "${categoria.categoria}"');
+    debugPrint('[DB] UPDATE categoria ID=${categoria.id}: "${categoria.categoria}", logo=${categoria.logo}');
 
     final rowsAffected = await db.update(
       'account_descriptions',

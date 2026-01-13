@@ -13,6 +13,8 @@ class SecureCredentialStorage {
   static const _keyUserId = 'auth_user_id';
   static const _keyUserEmail = 'auth_user_email';
   static const _keyUserName = 'auth_user_name';
+  static const _keySavedEmail = 'auth_saved_email';
+  static const _keySavedPassword = 'auth_saved_password';
 
   /// Salva tokens de autenticação de forma segura
   static Future<void> saveTokens(AuthTokens tokens) async {
@@ -97,6 +99,49 @@ class SecureCredentialStorage {
       prefs.remove(_keyUserId),
       prefs.remove(_keyUserEmail),
       prefs.remove(_keyUserName),
+      prefs.remove(_keySavedEmail),
+      prefs.remove(_keySavedPassword),
+    ]);
+  }
+
+  /// Limpa apenas os tokens, preservando credenciais salvas
+  static Future<void> clearTokensOnly() async {
+    final prefs = await SharedPreferences.getInstance();
+    await Future.wait([
+      prefs.remove(_keyAccessToken),
+      prefs.remove(_keyRefreshToken),
+      prefs.remove(_keyTokenExpiry),
+      prefs.remove(_keyRefreshExpiry),
+      prefs.remove(_keyUserId),
+      prefs.remove(_keyUserEmail),
+      prefs.remove(_keyUserName),
+    ]);
+  }
+
+  /// Salva email/senha para auto-login
+  static Future<void> saveCredentials(String email, String password) async {
+    final prefs = await SharedPreferences.getInstance();
+    await Future.wait([
+      prefs.setString(_keySavedEmail, email.trim()),
+      prefs.setString(_keySavedPassword, password),
+    ]);
+  }
+
+  /// Carrega credenciais salvas
+  static Future<({String email, String password})?> loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final email = prefs.getString(_keySavedEmail);
+    final password = prefs.getString(_keySavedPassword);
+    if (email == null || password == null) return null;
+    return (email: email, password: password);
+  }
+
+  /// Limpa credenciais salvas (email/senha)
+  static Future<void> clearSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    await Future.wait([
+      prefs.remove(_keySavedEmail),
+      prefs.remove(_keySavedPassword),
     ]);
   }
 

@@ -1140,6 +1140,211 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final Color cardActionIconColor = Colors.grey.shade600;
     final Color cardActionIconBg = Colors.white.withValues(
         alpha: Theme.of(context).brightness == Brightness.light ? 0.85 : 0.75);
+    Widget? buildCardBrandBadge(String? brand) {
+      final normalized = (brand ?? '').trim().toUpperCase();
+      if (normalized.isEmpty) return null;
+
+      if (normalized == 'VISA') {
+        return Container(
+          width: 50,
+          height: 24,
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A1F71),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          alignment: Alignment.center,
+          child: const Text(
+            'VISA',
+            style: TextStyle(
+              color: Color(0xFFFCC419),
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.0,
+            ),
+          ),
+        );
+      }
+
+      if (normalized == 'AMEX' || normalized == 'AMERICAN EXPRESS' || normalized == 'AMERICANEXPRESS') {
+        return Container(
+          width: 64,
+          height: 28,
+          decoration: BoxDecoration(
+            color: const Color(0xFF016FD0),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          alignment: Alignment.center,
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'AMERICAN',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                  height: 1.0,
+                ),
+              ),
+              Text(
+                'EXPRESS',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.3,
+                  height: 1.0,
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      if (normalized == 'MASTER' || normalized == 'MASTERCARD' || normalized == 'MASTER CARD') {
+        return Container(
+          width: 54,
+          height: 24,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: Colors.black.withValues(alpha: 0.1), width: 1),
+          ),
+          alignment: Alignment.center,
+          child: SizedBox(
+            width: 30,
+            height: 18,
+            child: Stack(
+              children: [
+                Align(
+                  alignment: const Alignment(-0.3, 0),
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEB001B),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: const Alignment(0.3, 0),
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF79E1B),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 7,
+                    height: 16,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF2661B),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      if (normalized == 'ELO') {
+        return SizedBox(
+          width: 54,
+          height: 26,
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: Stack(
+                    children: [
+                      Transform.rotate(
+                        angle: -0.6,
+                        child: Align(
+                          alignment: Alignment.topLeft,
+                          child: Container(
+                            width: 14,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF7C400),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Transform.rotate(
+                        angle: 0.6,
+                        child: Align(
+                          alignment: Alignment.bottomLeft,
+                          child: Container(
+                            width: 14,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0066B3),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Transform.rotate(
+                        angle: 2.2,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Container(
+                            width: 14,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE53935),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  'elo',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          normalized,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    }
+
+    final Widget? brandBadge = isCard ? buildCardBrandBadge(account.cardBrand) : null;
     final installmentDisplay = resolveInstallmentDisplay(account);
     final Color installmentBadgeBg = installmentDisplay.isInstallment
         ? accentColor.withValues(alpha: 0.12)
@@ -1359,7 +1564,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
           const SizedBox(height: 10),
-          Align(alignment: Alignment.centerRight, child: actionButtons),
+          Row(
+            children: [
+              if (brandBadge != null) Padding(padding: const EdgeInsets.only(right: 12), child: brandBadge),
+              const Spacer(),
+              actionButtons,
+            ],
+          ),
         ],
       );
     }
@@ -1571,9 +1782,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                   const SizedBox(height: 10),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: actionButtons,
+                  Row(
+                    children: [
+                      if (brandBadge != null)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: brandBadge,
+                        ),
+                      const Spacer(),
+                      actionButtons,
+                    ],
                   ),
                 ],
               ),

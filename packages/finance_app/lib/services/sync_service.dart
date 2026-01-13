@@ -66,6 +66,27 @@ class SyncService {
     _apiBaseUrl = url;
   }
 
+  /// Força reavaliação de conectividade e tenta voltar ao estado online
+  Future<bool> forceConnectivityCheck({bool triggerSync = true}) async {
+    final connectivity = await Connectivity().checkConnectivity();
+    if (connectivity == ConnectivityResult.none) {
+      syncStateNotifier.value = SyncState.offline;
+      debugPrint('📴 Force check: ainda offline');
+      return false;
+    }
+
+    // Temos conexão: voltar para idle e, opcionalmente, sincronizar
+    syncStateNotifier.value = SyncState.idle;
+    debugPrint('📶 Force check: conexão detectada, estado idle');
+
+    if (triggerSync && AuthService.instance.isAuthenticated) {
+      // Não bloquear caller; best-effort
+      unawaited(incrementalSync());
+    }
+
+    return true;
+  }
+
   /// Inicia sincronização em background
   void startBackgroundSync({Duration interval = const Duration(minutes: 5)}) {
     stopBackgroundSync();

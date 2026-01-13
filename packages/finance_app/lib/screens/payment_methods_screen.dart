@@ -17,6 +17,44 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   late Future<List<PaymentMethod>> _futurePaymentMethods;
   bool _isPopulating = false;
 
+  static const int _fallbackIconCode = 0xe25a; // payments
+  static const List<IconData> _iconPalette = [
+    Icons.credit_card,
+    Icons.account_balance_wallet,
+    Icons.attach_money,
+    Icons.payments,
+    Icons.pix,
+    Icons.qr_code,
+    Icons.account_balance,
+    Icons.receipt_long,
+    Icons.wallet,
+    Icons.shopping_bag,
+    Icons.money_outlined,
+  ];
+
+  IconData _inferIcon(String name, String type) {
+    final text = '${name.toLowerCase()} ${type.toLowerCase()}';
+    if (text.contains('credito') || text.contains('crédito') || text.contains('credit')) {
+      return Icons.credit_card;
+    }
+    if (text.contains('debito') || text.contains('débito') || text.contains('debit')) {
+      return Icons.account_balance;
+    }
+    if (text.contains('pix') || text.contains('qr')) {
+      return Icons.pix;
+    }
+    if (text.contains('dinheiro') || text.contains('cash')) {
+      return Icons.attach_money;
+    }
+    if (text.contains('boleto')) {
+      return Icons.receipt_long;
+    }
+    if (text.contains('transfer') || text.contains('bank')) {
+      return Icons.account_balance_wallet;
+    }
+    return const IconData(_fallbackIconCode, fontFamily: 'MaterialIcons');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -63,13 +101,14 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   void _showPaymentMethodDialog({PaymentMethod? method}) {
     showDialog(
       context: context,
-        builder: (context) {
+      builder: (context) {
         final isEditing = method != null;
         final nameController = TextEditingController(text: method?.name ?? '');
         final typeController = TextEditingController(text: method?.type ?? '');
         final usageNotifier = ValueNotifier<PaymentMethodUsage>(
           method?.usage ?? PaymentMethodUsage.pagamentosRecebimentos,
         );
+        int selectedIconCode = method?.iconCode ?? _inferIcon(nameController.text, typeController.text).codePoint;
         // Tipos disponíveis (pode ser ajustado conforme necessidade)
         const paymentTypes = ['CASH', 'PIX', 'BANK_DEBIT', 'CREDIT_CARD'];
 
@@ -99,7 +138,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                       ],
                     ),
                     padding: const EdgeInsets.all(24),
-                    child: Column(
+                    child: StatefulBuilder(
+                      builder: (context, setStateDialog) {
+                        return Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -163,6 +204,64 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                             }
                           },
                         ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  IconData(selectedIconCode, fontFamily: 'MaterialIcons'),
+                                  color: Colors.grey.shade800,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(Icons.edit),
+                                  label: const Text('Alterar ícone'),
+                                  onPressed: () async {
+                                    final picked = await showModalBottomSheet<int>(
+                                      context: context,
+                                      builder: (ctx) => SafeArea(
+                                        child: GridView.builder(
+                                          padding: const EdgeInsets.all(16),
+                                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                            crossAxisCount: 4,
+                                            mainAxisSpacing: 12,
+                                            crossAxisSpacing: 12,
+                                            childAspectRatio: 1,
+                                          ),
+                                          itemCount: _iconPalette.length,
+                                          itemBuilder: (_, index) {
+                                            final icon = _iconPalette[index];
+                                            return InkWell(
+                                              onTap: () => Navigator.pop(ctx, icon.codePoint),
+                                              borderRadius: BorderRadius.circular(12),
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade100,
+                                                  borderRadius: BorderRadius.circular(12),
+                                                ),
+                                                child: Icon(icon, size: 28, color: Colors.grey.shade800),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    );
+                                    if (picked != null) {
+                                      setStateDialog(() => selectedIconCode = picked);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
                         const SizedBox(height: 24),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
@@ -177,6 +276,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                 final name = nameController.text.trim();
                                 final type = typeController.text.trim();
                                 final usage = usageNotifier.value;
+                                final iconCode = selectedIconCode != 0
+                                  ? selectedIconCode
+                                  : _inferIcon(name, type).codePoint;
 
                                 if (name.isEmpty) {
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -218,11 +320,11 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                                     PaymentMethod(
                                       name: name,
                                       type: type,
-                                      iconCode: 0xe25a, // Ícone padrão
-	                                      requiresBank: false,
-	                                      isActive: true,
-	                                      usage: usage,
-	                                    ),
+                                      iconCode: iconCode,
+                                      requiresBank: false,
+                                      isActive: true,
+                                      usage: usage,
+                                    ),
                                   );
                                 }
 
@@ -235,6 +337,8 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           ],
                         ),
                       ],
+                        );
+                      },
                     ),
                   ),
                   Positioned(
@@ -345,6 +449,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   itemBuilder: (context, index) {
                     final method = methods[index];
                     final statusColor = method.isActive ? Colors.green : Colors.red;
+                    final displayIcon = method.iconCode != _fallbackIconCode
+                        ? method.icon
+                        : _inferIcon(method.name, method.type);
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
@@ -357,6 +464,12 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           padding: const EdgeInsets.all(16),
                           child: Row(
                             children: [
+                              CircleAvatar(
+                                radius: 22,
+                                backgroundColor: Colors.grey.shade100,
+                                child: Icon(displayIcon, color: Colors.grey.shade800),
+                              ),
+                              const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,

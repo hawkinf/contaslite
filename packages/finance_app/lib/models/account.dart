@@ -23,6 +23,7 @@ class Account {
 
   // Campos para rastreamento
   final int? cardId;
+  final String? logo;
   final String? observation;
   final String? establishment;
   final String? purchaseUuid;
@@ -50,6 +51,7 @@ class Account {
     this.cardLimit,
     this.cardColor,
     this.cardId,
+    this.logo,
     this.observation,
     this.establishment,
     this.purchaseUuid,
@@ -112,6 +114,7 @@ class Account {
     double? cardLimit,
     int? cardColor,
     int? cardId,
+    String? logo,
     String? observation,
     String? establishment,
     String? purchaseUuid,
@@ -139,6 +142,7 @@ class Account {
       cardLimit: cardLimit ?? this.cardLimit,
       cardColor: cardColor ?? this.cardColor,
       cardId: cardId ?? this.cardId,
+      logo: logo ?? this.logo,
       observation: observation ?? this.observation,
       establishment: establishment ?? this.establishment,
       purchaseUuid: purchaseUuid ?? this.purchaseUuid,
@@ -169,6 +173,7 @@ class Account {
       'cardLimit': cardLimit,
       'cardColor': cardColor,
       'cardId': cardId,
+      'logo': logo,
       'observation': observation,
       'establishment': establishment,
       'purchaseUuid': purchaseUuid,
@@ -199,6 +204,7 @@ class Account {
       cardLimit: map['cardLimit'] != null ? (map['cardLimit'] as num).toDouble() : null,
       cardColor: map['cardColor'] as int?,
       cardId: map['cardId'] as int?,
+      logo: map['logo'] as String?,
       observation: map['observation'] as String?,
       establishment: map['establishment'] as String?,
       purchaseUuid: map['purchaseUuid'] as String?,

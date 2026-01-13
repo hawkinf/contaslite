@@ -3,6 +3,7 @@ import '../database/db_helper.dart';
 import '../models/account_category.dart';
 import '../models/account_type.dart';
 import '../widgets/app_input_decoration.dart';
+import '../widgets/icon_picker_dialog.dart';
 import '../services/prefs_service.dart';
 import '../services/credit_card_brand_service.dart';
 import '../services/default_account_categories_service.dart';
@@ -38,6 +39,106 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
     setState(() => isLoading = false);
   }
 
+  /// Atribui ícones inteligentes baseados na descrição de cada categoria
+  /// Garantindo que não haja repetição dentro do mesmo tipo pai
+  Future<void> _assignIntelligentLogos() async {
+    try {
+      int updatedTypes = 0;
+      int updatedCategories = 0;
+      
+      debugPrint('🎨 [ATRIBUIR LOGOS INTELIGENTES] Iniciando...');
+      
+      // Para cada tipo de conta
+      for (final type in types) {
+        // 1. Atribuir logo ao tipo pai
+        final parentLogo = DefaultAccountCategoriesService.getLogoForCategory(type.name);
+        if (parentLogo != null && (type.logo == null || type.logo!.isEmpty)) {
+          final updatedType = AccountType(id: type.id, name: type.name, logo: parentLogo);
+          await DatabaseHelper.instance.updateType(updatedType);
+          updatedTypes++;
+          debugPrint('🎨 [TIPO] ${type.name} → logo=$parentLogo');
+        }
+        
+        // 2. Buscar as categorias filhas deste tipo
+        if (type.id != null) {
+          final categories = await DatabaseHelper.instance.readAccountCategories(type.id!);
+          final Set<String> usedLogos = {parentLogo ?? ''}; // Já usa o logo do pai
+          
+          debugPrint('  📋 ${categories.length} categorias para ${type.name}');
+          
+          // Para cada categoria filha
+          for (final category in categories) {
+            // Buscar um ícone baseado na descrição da categoria
+            String? childLogo = DefaultAccountCategoriesService.getLogoForSubcategory(category.categoria);
+            
+            // Se o ícone já foi usado, tentar outro
+            if (childLogo != null && usedLogos.contains(childLogo)) {
+              debugPrint('    ⚠️  Logo $childLogo já usado, procurando alternativa...');
+              // Tentar usar um logo genérico diferente
+              childLogo = _findAlternativeLogo(category.categoria, usedLogos);
+            }
+            
+            // SEMPRE atualizar o logo da categoria filha (mesmo que já tenha um)
+            if (childLogo != null) {
+              usedLogos.add(childLogo);
+              final updatedCategory = category.copyWith(logo: childLogo);
+              await DatabaseHelper.instance.updateAccountCategory(updatedCategory);
+              updatedCategories++;
+              debugPrint('    ✅ ${category.categoria} → logo=$childLogo');
+            }
+          }
+        }
+      }
+      
+      final total = updatedTypes + updatedCategories;
+      debugPrint('🎨 [RESULTADO] $updatedTypes tipos, $updatedCategories categorias = $total total');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              total > 0 
+                ? '$updatedCategories categorias com ícones atribuídos!'
+                : 'Todas as categorias já têm ícones!'
+            ),
+            backgroundColor: total > 0 ? Colors.green : Colors.orange,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      
+      await refreshData();
+    } catch (e) {
+      debugPrint('❌ [ERRO] Erro ao atribuir logos inteligentes: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao atribuir ícones: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Encontra um ícone alternativo para uma categoria, garantindo que não se repita
+  String? _findAlternativeLogo(String categoryName, Set<String> usedLogos) {
+    // Lista de ícones alternativos em ordem de preferência
+    final alternativeLogos = [
+      '🏷️', '📌', '🎯', '✨', '💫', '🌟', '⭐', '✅', '📍', '🔖',
+      '📊', '📈', '📉', '💹', '📐', '📏', '⏱️', '⏰', '🕐', '🕑',
+      '🎪', '🎨', '🎭', '🎬', '🎤', '🎧', '🎵', '🎶', '🎸', '🎹',
+    ];
+    
+    for (final logo in alternativeLogos) {
+      if (!usedLogos.contains(logo)) {
+        return logo;
+      }
+    }
+    
+    return null; // Se todos os ícones foram usados
+  }
+  
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<DateTimeRange>(
@@ -46,18 +147,6 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
         return Scaffold(
           appBar: AppBar(
             title: const Text('Contas a Pagar'),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.info_outline),
-                tooltip: 'Popular com padrões',
-                onPressed: _populateDefaults,
-              ),
-            ],
-          ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => _showTypeDialog(),
-            label: const Text('Novo Item'),
-            icon: const Icon(Icons.add),
           ),
           body: SafeArea(
             child: isLoading
@@ -120,7 +209,18 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
             rows: types.map((type) {
               return DataRow(cells: [
               DataCell(
-                Text(type.name, style: const TextStyle(fontWeight: FontWeight.w500)),
+                Row(
+                  children: [
+                    if (type.logo != null && type.logo!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: Text(type.logo!, style: const TextStyle(fontSize: 18)),
+                      ),
+                    Expanded(
+                      child: Text(type.name, style: const TextStyle(fontWeight: FontWeight.w500)),
+                    ),
+                  ],
+                ),
                 onTap: () => _showTypeDialog(typeToEdit: type),
               ),
               DataCell(
@@ -157,6 +257,7 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
   Future<void> _showTypeDialog({AccountType? typeToEdit}) async {
     final isEditing = typeToEdit != null;
     final controller = TextEditingController(text: isEditing ? typeToEdit.name : '');
+    final logoController = TextEditingController(text: isEditing ? (typeToEdit.logo ?? '') : '');
     
     await showDialog(
       context: context,
@@ -186,6 +287,39 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
                 ),
               ),
               
+              const SizedBox(height: 16),
+              
+              // Campo de Logo com botão para abrir picker
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: logoController,
+                      decoration: buildOutlinedInputDecoration(
+                        label: 'Logo (emoji ou texto)',
+                        icon: Icons.image,
+                        hintText: 'Ex: 🍔 ou 💳',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  FilledButton.icon(
+                    onPressed: () async {
+                      final selectedIcon = await showIconPickerDialog(
+                        context,
+                        initialIcon: logoController.text.isNotEmpty ? logoController.text : null,
+                      );
+                      if (selectedIcon != null) {
+                        logoController.text = selectedIcon;
+                        setState(() {});
+                      }
+                    },
+                    icon: const Icon(Icons.palette),
+                    label: const Text('Picker'),
+                  ),
+                ],
+              ),
+              
               const SizedBox(height: 24),
               
               // Botões
@@ -200,6 +334,7 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
                   FilledButton(
                     onPressed: () async {
                       String name = controller.text.trim();
+                      String logo = logoController.text.trim();
                       if (name.isNotEmpty) {
                         if (!isEditing || (isEditing && name.toUpperCase() != typeToEdit.name.toUpperCase())) {
                            bool exists = await DatabaseHelper.instance.checkAccountTypeExists(name);
@@ -212,10 +347,10 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
                         }
 
                         if (isEditing) {
-                          final updatedType = AccountType(id: typeToEdit.id, name: name);
+                          final updatedType = AccountType(id: typeToEdit.id, name: name, logo: logo.isEmpty ? null : logo);
                           await DatabaseHelper.instance.updateType(updatedType);
                         } else {
-                          await DatabaseHelper.instance.createType(AccountType(name: name));
+                          await DatabaseHelper.instance.createType(AccountType(name: name, logo: logo.isEmpty ? null : logo));
                         }
                         
                         if (context.mounted) Navigator.pop(context);
@@ -244,7 +379,7 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
         typeName: type.name,
         categorias: categorias,
         onCategoriasUpdated: () {
-          // Refresh não necessário aqui, mas pode adicionar se quiser
+          refreshData();
         },
       ),
     );
@@ -337,7 +472,11 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
       if (typeIdByName.containsKey(normalizedName)) {
         typeId = typeIdByName[normalizedName]!;
       } else {
-        typeId = await DatabaseHelper.instance.createType(AccountType(name: typeName));
+        // Obter o ícone apropriado para esta categoria
+        final logo = DefaultAccountCategoriesService.getLogoForCategory(typeName);
+        typeId = await DatabaseHelper.instance.createType(
+          AccountType(name: typeName, logo: logo),
+        );
         typeIdByName[normalizedName] = typeId;
         typesCreated++;
       }
@@ -402,6 +541,9 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
       );
     }
 
+    // SEMPRE atualizar ícones de TODOS os tipos e categorias (novos E existentes)
+    await _assignIntelligentLogos();
+    
     refreshData();
   }
 }
@@ -435,6 +577,15 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
     _categorias = List.from(widget.categorias);
     // Carregar bandeiras se for cartão
     _loadCreditCardBrandsIfNeeded();
+  }
+
+  Future<void> _reloadCategories() async {
+    final categorias = await DatabaseHelper.instance.readAccountCategories(widget.typeId);
+    if (mounted) {
+      setState(() {
+        _categorias = categorias;
+      });
+    }
   }
 
   Future<void> _loadCreditCardBrandsIfNeeded() async {
@@ -481,27 +632,49 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
     }
 
     final subcategories = defaultCategories[widget.typeName]!;
+    final parentLogo = DefaultAccountCategoriesService.getLogoForCategory(widget.typeName);
+    final Set<String> usedLogos = {parentLogo ?? ''}; // Evitar repetir o logo do pai
+    
+    debugPrint('🎨 _loadDefaultCategories: tipo=${widget.typeName}, parentLogo=$parentLogo');
     int addedCount = 0;
+    int updatedCount = 0;
 
     for (final subcategory in subcategories) {
-      final exists = await DatabaseHelper.instance
-          .checkAccountCategoryExists(widget.typeId, subcategory);
-      if (!exists) {
+      // Buscar logo inteligente baseado na descrição da subcategoria
+      String? childLogo = DefaultAccountCategoriesService.getLogoForSubcategory(subcategory);
+      
+      // Se o logo já foi usado, procurar alternativa
+      if (childLogo != null && usedLogos.contains(childLogo)) {
+        childLogo = _findAlternativeLogo(subcategory, usedLogos);
+      }
+      
+      // Adicionar à lista de logos usados
+      if (childLogo != null) {
+        usedLogos.add(childLogo);
+      }
+      
+      // Buscar categoria no BANCO (não apenas na lista em memória)
+      final categoriesFromDb = await DatabaseHelper.instance.readAccountCategories(widget.typeId);
+      final existingCategory = categoriesFromDb.firstWhere(
+        (cat) => cat.categoria.toLowerCase().trim() == subcategory.toLowerCase().trim(),
+        orElse: () => AccountCategory(accountId: widget.typeId, categoria: ''),
+      );
+      
+      if (existingCategory.id != null) {
+        // Categoria existe - ATUALIZAR o logo
+        final updated = existingCategory.copyWith(logo: childLogo);
+        await DatabaseHelper.instance.updateAccountCategory(updated);
+        debugPrint('🎨 Atualizando categoria: $subcategory com logo=$childLogo');
+        updatedCount++;
+      } else {
+        // Categoria NÃO existe - CRIAR
         final categoria = AccountCategory(
           accountId: widget.typeId,
           categoria: subcategory,
+          logo: childLogo,
         );
-        final id =
-            await DatabaseHelper.instance.createAccountCategory(categoria);
-        setState(() {
-          _categorias.add(
-            AccountCategory(
-              id: id,
-              accountId: widget.typeId,
-              categoria: subcategory,
-            ),
-          );
-        });
+        debugPrint('🎨 Criando categoria: $subcategory com logo=$childLogo');
+        await DatabaseHelper.instance.createAccountCategory(categoria);
         addedCount++;
       }
     }
@@ -510,16 +683,34 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            addedCount > 0
-                ? '$addedCount subcategorias adicionadas!'
-                : 'Todas as subcategorias já existem!',
+            addedCount > 0 || updatedCount > 0
+                ? '$addedCount criadas, $updatedCount atualizadas!'
+                : 'Todas as subcategorias já estão configuradas!',
           ),
-          backgroundColor: addedCount > 0 ? Colors.green : Colors.orange,
+          backgroundColor: (addedCount > 0 || updatedCount > 0) ? Colors.green : Colors.orange,
         ),
       );
     }
 
+    await _reloadCategories();
     widget.onCategoriasUpdated();
+  }
+
+  /// Encontra um ícone alternativo garantindo que não se repita
+  String? _findAlternativeLogo(String categoryName, Set<String> usedLogos) {
+    final alternativeLogos = [
+      '🏷️', '📌', '🎯', '✨', '💫', '🌟', '⭐', '✅', '📍', '🔖',
+      '📊', '📈', '📉', '💹', '📐', '📏', '⏱️', '⏰', '🕐', '🕑',
+      '🎪', '🎨', '🎭', '🎬', '🎤', '🎧', '🎵', '🎶', '🎸', '🎹',
+    ];
+    
+    for (final logo in alternativeLogos) {
+      if (!usedLogos.contains(logo)) {
+        return logo;
+      }
+    }
+    
+    return null;
   }
 
   Future<void> _addCategory() async {
@@ -541,59 +732,119 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
       return;
     }
 
-    final categoria = AccountCategory(accountId: widget.typeId, categoria: text);
-    final id = await DatabaseHelper.instance.createAccountCategory(categoria);
+    // Obter logo do tipo/categoria pai
+    final logo = DefaultAccountCategoriesService.getLogoForCategory(widget.typeName);
+    
+    final categoria = AccountCategory(
+      accountId: widget.typeId,
+      categoria: text,
+      logo: logo,
+    );
+    await DatabaseHelper.instance.createAccountCategory(categoria);
 
-    setState(() {
-      _categorias.add(AccountCategory(id: id, accountId: widget.typeId, categoria: text));
-      _newCategoriaController.clear();
-    });
-
+    _newCategoriaController.clear();
+    await _reloadCategories();
     widget.onCategoriasUpdated();
   }
 
   Future<void> _editCategory(AccountCategory category) async {
     final controller = TextEditingController(text: category.categoria);
+    final logoController = TextEditingController(text: category.logo ?? '');
 
-    final newName = await showDialog<String>(
+    final result = await showDialog<Map<String, String>>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Editar Categoria'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Nome da categoria',
-            border: OutlineInputBorder(),
-          ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Nome da categoria',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: logoController,
+                    decoration: const InputDecoration(
+                      labelText: 'Logo (emoji ou texto)',
+                      hintText: 'Ex: 🍔 ou 💳',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                FilledButton.icon(
+                  onPressed: () async {
+                    final selectedIcon = await showIconPickerDialog(
+                      context,
+                      initialIcon: logoController.text.isNotEmpty ? logoController.text : null,
+                    );
+                    if (selectedIcon != null) {
+                      logoController.text = selectedIcon;
+                    }
+                  },
+                  icon: const Icon(Icons.palette),
+                  label: const Text('Picker'),
+                ),
+              ],
+            ),
+          ],
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            onPressed: () {
+              final name = controller.text.trim();
+              final logo = logoController.text.trim();
+              Navigator.pop(ctx, {'name': name, 'logo': logo});
+            },
             child: const Text('Salvar'),
           ),
         ],
       ),
     );
 
-    if (newName != null && newName.isNotEmpty && newName != category.categoria) {
-      debugPrint('[EDIT] Editando categoria: ID=${category.id}, de "${category.categoria}" para "$newName"');
-
-      // Verificar se o novo nome já existe (excluindo o registro atual)
-      final exists = await DatabaseHelper.instance.checkAccountCategoryExists(widget.typeId, newName);
-      if (exists) {
-        debugPrint('[EDIT] Nome "$newName" já existe!');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Uma categoria com este nome já existe'), backgroundColor: Colors.red),
-          );
-        }
+    if (result != null && result['name']!.isNotEmpty) {
+      final newName = result['name']!;
+      final newLogo = result['logo']!.isEmpty ? null : result['logo'];
+      
+      // Só atualizar se houve mudança no nome OU no logo
+      final nameChanged = newName != category.categoria;
+      final logoChanged = newLogo != category.logo;
+      
+      if (!nameChanged && !logoChanged) {
+        debugPrint('[EDIT] Nenhuma mudança detectada, pulando update');
         controller.dispose();
+        logoController.dispose();
         return;
       }
+      
+      debugPrint('[EDIT] Editando categoria: ID=${category.id}, de "${category.categoria}" para "$newName", logo: $newLogo');
 
-      final updated = category.copyWith(categoria: newName);
+      // Verificar se o novo nome já existe (excluindo o registro atual)
+      if (nameChanged) {
+        final exists = await DatabaseHelper.instance.checkAccountCategoryExists(widget.typeId, newName);
+        if (exists) {
+          debugPrint('[EDIT] Nome "$newName" já existe!');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Uma categoria com este nome já existe'), backgroundColor: Colors.red),
+            );
+          }
+          controller.dispose();
+          logoController.dispose();
+          return;
+        }
+      }
+
+      final updated = category.copyWith(categoria: newName, logo: newLogo);
       debugPrint('[EDIT] Chamando updateAccountCategory com ID=${updated.id}');
       final rowsAffected = await DatabaseHelper.instance.updateAccountCategory(updated);
       debugPrint('[EDIT] Resultado do update: $rowsAffected linhas');
@@ -608,6 +859,7 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
       widget.onCategoriasUpdated();
     }
     controller.dispose();
+    logoController.dispose();
   }
 
   Future<void> _deleteCategory(int id) async {
@@ -629,9 +881,7 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
 
     if (confirm == true) {
       await DatabaseHelper.instance.deleteAccountCategory(id);
-      setState(() {
-        _categorias.removeWhere((d) => d.id! == id);
-      });
+      await _reloadCategories();
       widget.onCategoriasUpdated();
     }
   }
@@ -676,6 +926,55 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
       );
     }
 
+    widget.onCategoriasUpdated();
+  }
+
+  // ignore: unused_element
+  Future<void> _removeDuplicates() async {
+    final Map<String, List<AccountCategory>> grouped = {};
+    
+    // Agrupar por nome
+    for (final cat in _categorias) {
+      final key = cat.categoria.toLowerCase().trim();
+      if (!grouped.containsKey(key)) {
+        grouped[key] = [];
+      }
+      grouped[key]!.add(cat);
+    }
+    
+    int deletedCount = 0;
+    
+    // Para cada grupo, manter apenas o primeiro e deletar os demais
+    for (final entry in grouped.entries) {
+      if (entry.value.length > 1) {
+        // Ordenar por ID (manter o mais antigo)
+        entry.value.sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
+        
+        // Deletar duplicatas (todos exceto o primeiro)
+        for (int i = 1; i < entry.value.length; i++) {
+          if (entry.value[i].id != null) {
+            await DatabaseHelper.instance.deleteAccountCategory(entry.value[i].id!);
+            deletedCount++;
+            debugPrint('🗑️ Deletada duplicata: ${entry.value[i].categoria} (id=${entry.value[i].id})');
+          }
+        }
+      }
+    }
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            deletedCount > 0
+                ? '$deletedCount duplicatas removidas!'
+                : 'Nenhuma duplicata encontrada!',
+          ),
+          backgroundColor: deletedCount > 0 ? Colors.green : Colors.orange,
+        ),
+      );
+    }
+    
+    await _reloadCategories();
     widget.onCategoriasUpdated();
   }
 
@@ -788,10 +1087,21 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Expanded(
-                                child: Text(
-                                  cat.categoria,
-                                  style: const TextStyle(fontSize: 14, color: Colors.black87),
-                                  overflow: TextOverflow.ellipsis,
+                                child: Row(
+                                  children: [
+                                    if (cat.logo != null && cat.logo!.isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(right: 8.0),
+                                        child: Text(cat.logo!, style: const TextStyle(fontSize: 16)),
+                                      ),
+                                    Expanded(
+                                      child: Text(
+                                        cat.categoria,
+                                        style: const TextStyle(fontSize: 14, color: Colors.black87),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                               IconButton(
