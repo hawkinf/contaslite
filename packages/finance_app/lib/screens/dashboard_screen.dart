@@ -102,7 +102,6 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _isInlineEditing = false;
   bool _isNavigating = false;
-  bool _compactMode = false;
 
   Future<void>? _activeLoad;
   bool _pendingReload = false;
@@ -219,32 +218,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       );
     }
-    actions.add(
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Compacto',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            Switch.adaptive(
-              value: _compactMode,
-              onChanged: (value) => setState(() => _compactMode = value),
-              thumbColor: WidgetStateProperty.all(Colors.white),
-              trackColor: WidgetStateProperty.resolveWith(
-                (states) => states.contains(WidgetState.selected) ? Colors.white70 : Colors.white38,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
     return actions;
   }
 
@@ -1053,7 +1026,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color containerBg;
     Color cardColor;
     Color textColor;
-    Color moneyColor;
     Color subTextColor;
     late Color typeColor;
 
@@ -1065,16 +1037,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color dayNumberColor;
 
     if (isCard) {
-      Color userColor = (account.cardColor != null)
+        Color userColor = (account.cardColor != null)
           ? Color(account.cardColor!)
           : AppColors.cardPurpleDark;
-      cardColor = userColor;
-      containerBg = Colors.transparent;
-      textColor = foregroundColorFor(userColor);
-      subTextColor = textColor.withValues(alpha: 0.8);
-      moneyColor = textColor;
-      typeColor = userColor;
-      dayNumberColor = Colors.red.shade700;
+        cardColor = userColor;
+        containerBg = Colors.transparent;
+        textColor = foregroundColorFor(userColor);
+        subTextColor = textColor.withValues(alpha: 0.8);
+        // ...existing code...
+        typeColor = userColor;
+        dayNumberColor = Colors.red.shade700;
     } else {
       final int? accountColorValue = account.cardColor;
       final bool usesCustomColor = accountColorValue != null;
@@ -1082,6 +1054,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final Color accent = customColor ?? (isRecebimento ? receberColor : pagarColor);
       containerBg = accent.withValues(alpha: 0.12);
       cardColor = (customColor ?? Theme.of(context).cardColor).withValues(alpha: 0.97);
+      // ...existing code...
       if (customColor != null) {
         textColor = foregroundColorFor(customColor);
         subTextColor = textColor.withValues(alpha: 0.8);
@@ -1466,115 +1439,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-    if (_compactMode) {
-      return buildCardBody(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 6,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: accentColor,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    effectiveDate.day.toString().padLeft(2, '0'),
-                    style: TextStyle(
-                      fontSize: dayNumberSize * 1.1,
-                      fontWeight: FontWeight.w900,
-                      color: dayNumberColor,
-                      height: 1.0,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    DateFormat('dd/MM').format(effectiveDate),
-                    style: TextStyle(
-                      fontSize: smallDateSize,
-                      fontWeight: FontWeight.w600,
-                      color: subTextColor,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${_typeNames[account.typeId] ?? 'Outros'} / ${(categoryChild != null && categoryChild.isNotEmpty) ? categoryChild : '-'}',
-                      style: TextStyle(
-                        fontSize: descriptionSize,
-                        fontWeight: FontWeight.bold,
-                        color: textColor,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          'PREVISTO: ',
-                          style: TextStyle(
-                            fontSize: smallDateSize,
-                            fontWeight: FontWeight.bold,
-                            color: _adaptiveGreyTextColor(context, Colors.grey.shade700),
-                          ),
-                        ),
-                        Text(
-                          UtilBrasilFields.obterReal(previstoValue),
-                          style: TextStyle(
-                            fontSize: valuePreviewSize,
-                            fontWeight: FontWeight.w700,
-                            color: moneyColor,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'LANÇADO: ',
-                          style: TextStyle(
-                            fontSize: smallDateSize,
-                            fontWeight: FontWeight.bold,
-                            color: _adaptiveGreyTextColor(context, Colors.grey.shade700),
-                          ),
-                        ),
-                        Text(
-                          lancadoValue == null ? '--' : UtilBrasilFields.obterReal(lancadoValue),
-                          style: TextStyle(
-                            fontSize: valuePreviewSize,
-                            fontWeight: FontWeight.w700,
-                            color: lancadoValue == null ? _adaptiveGreyTextColor(context, Colors.grey.shade500) : moneyColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              if (brandBadge != null) Padding(padding: const EdgeInsets.only(right: 12), child: brandBadge),
-              const Spacer(),
-              actionButtons,
-            ],
-          ),
-        ],
-      );
-    }
-
     final bool dateAdjusted = originalDate != effectiveDate;
     final String effectiveLabel = DateFormat('dd/MM').format(effectiveDate);
     final String originalLabel = DateFormat('dd/MM').format(originalDate);
@@ -1647,28 +1511,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            Text(
-                              cleanedDescription.isNotEmpty ? cleanedDescription : account.description,
-                              style: TextStyle(
-                                fontSize: descriptionSize,
-                                fontWeight: FontWeight.w700,
-                                color: textColor,
+                            Expanded(
+                              child: Text(
+                                '${widget.typeNameFilter ?? _typeNames[account.typeId] ?? 'Outro'} - ${categoryChild?.replaceAll(RegExp(r'^Fatura: *'), '') ?? account.description}',
+                                style: TextStyle(
+                                  fontSize: categorySize,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(width: 8),
                             Text(
-                              (_typeNames[account.typeId] ?? 'Outro') + (categoryChild != null ? ' • $categoryChild' : ''),
+                              lancadoValue == null ? UtilBrasilFields.obterReal(previstoValue) : UtilBrasilFields.obterReal(lancadoValue),
                               style: TextStyle(
-                                fontSize: categorySize,
-                                color: subTextColor,
+                                fontSize: valueMainSize,
+                                fontWeight: FontWeight.w800,
+                                color: isRecebimento ? Colors.blue.shade700 : Colors.red.shade700,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
@@ -1678,45 +1542,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         installmentBadge,
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Text(
-                        'PREVISTO',
-                        style: TextStyle(
-                          fontSize: smallDateSize,
-                          fontWeight: FontWeight.bold,
-                          color: _adaptiveGreyTextColor(context, Colors.grey.shade700),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        UtilBrasilFields.obterReal(previstoValue),
-                        style: TextStyle(
-                          fontSize: valuePreviewSize,
-                          fontWeight: FontWeight.w700,
-                          color: moneyColor,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Text(
-                        'LANÇADO',
-                        style: TextStyle(
-                          fontSize: smallDateSize,
-                          fontWeight: FontWeight.bold,
-                          color: _adaptiveGreyTextColor(context, Colors.grey.shade700),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        lancadoValue == null ? '--' : UtilBrasilFields.obterReal(lancadoValue),
-                        style: TextStyle(
-                          fontSize: valueMainSize,
-                          fontWeight: FontWeight.w800,
-                          color: lancadoValue == null ? _adaptiveGreyTextColor(context, Colors.grey.shade500) : moneyColor,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 4),
+                  Text(
+                    cleanedDescription.isNotEmpty ? cleanedDescription : account.description,
+                    style: TextStyle(
+                      fontSize: descriptionSize,
+                      fontWeight: FontWeight.w600,
+                      color: subTextColor,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   if (installmentDisplay.isInstallment)
                     Padding(
