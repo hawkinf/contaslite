@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:finance_app/widgets/mastercard_logo.dart';
 import 'dart:math' as math;
 import 'package:brasil_fields/brasil_fields.dart';
 import '../database/db_helper.dart';
@@ -382,42 +383,7 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
                         if (widget.card.cardBrand?.toUpperCase() == 'MASTERCARD')
                           const Padding(
                             padding: EdgeInsets.only(right: 6),
-                            child: SizedBox(
-                              width: 28,
-                              height: 18,
-                              child: Stack(
-                                children: [
-                                  Positioned(
-                                    left: 0,
-                                    top: 0,
-                                    child: SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: Color(0xFFEB001B),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    right: 0,
-                                    top: 0,
-                                    child: SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: Color(0xFFF79E1B),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            child: MastercardLogo(width: 28, height: 18),
                           )
                         else if (widget.card.cardBrand?.toUpperCase() == 'VISA')
                           Padding(

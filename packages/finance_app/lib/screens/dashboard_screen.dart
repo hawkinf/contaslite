@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:finance_app/widgets/mastercard_logo.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import '../database/db_helper.dart';
 import '../models/account.dart';
@@ -115,7 +116,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _datesInitialized = false;
   List<Account> _displayList = [];
   Map<int, String> _typeNames = {};
+  Map<int, String> _typeLogos = {};
   Map<int, String> _categoryNames = {};
+  Map<int, String> _categoryLogos = {};
   bool _isLoading = false;
   double _totalPeriod = 0.0;
   double _totalForecast = 0.0;
@@ -307,9 +310,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         DatabaseHelper.instance.readAllCards(),
       );
       final typeMap = {for (var t in types) t.id!: t.name};
+      final typeLogoMap = {
+        for (final t in types)
+          if (t.id != null && (t.logo?.trim().isNotEmpty ?? false))
+            t.id!: t.logo!.trim(),
+      };
       final categoryMap = {
         for (final c in categories)
           if (c.id != null) c.id!: c.categoria,
+      };
+      final categoryLogoMap = {
+        for (final c in categories)
+          if (c.id != null && (c.logo?.trim().isNotEmpty ?? false))
+            c.id!: c.logo!.trim(),
       };
 
       debugPrint('📋 Tipos no banco: ${types.map((t) => '${t.name}(id: ${t.id})').join(', ')}');
@@ -645,7 +658,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         setState(() {
           _displayList = processedList;
           _typeNames = typeMap;
+          _typeLogos = typeLogoMap;
           _categoryNames = categoryMap;
+          _categoryLogos = categoryLogoMap;
           _totalPeriod = totalPaid;
           _totalForecast = totalRemaining;
           _installmentSummaries = installmentSummaries;
@@ -1058,7 +1073,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (customColor != null) {
         textColor = foregroundColorFor(customColor);
         subTextColor = textColor.withValues(alpha: 0.8);
-        moneyColor = textColor;
       } else {
         textColor = isAlertDay
             ? Colors.black87
@@ -1067,17 +1081,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (isAlertDay) {
           textColor = Colors.white;
           subTextColor = Colors.white70;
-          moneyColor = Colors.white;
         } else if (isRecurrent) {
-          moneyColor = _adaptiveGreyTextColor(context, Colors.grey);
         } else {
-          moneyColor = isRecebimento ? AppColors.successDark : AppColors.errorDark;
         }
         if (Theme.of(context).brightness == Brightness.dark && !isRecurrent) {
-          moneyColor = isRecebimento ? Colors.lightGreenAccent : Colors.redAccent;
         }
         if (isAlertDay && !isRecurrent && !isRecebimento) {
-          moneyColor = AppColors.errorDark;
         }
       }
 
@@ -1095,17 +1104,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final double? lancadoValue = (!isCard && isRecurrent && account.recurrenceId == null)
         ? null
         : account.value;
+    final String lancadoDisplay =
+        UtilBrasilFields.obterReal(lancadoValue ?? previstoValue);
+    final String previstoDisplay = UtilBrasilFields.obterReal(previstoValue);
+    final bool showPrevisto =
+        lancadoValue != null && previstoValue != lancadoValue;
 
     final cleanedDescription =
-        cleanAccountDescription(account).replaceAll('Fatura: ', '');
+        cleanAccountDescription(account).replaceAll('Fatura: ', '').trim();
     final rawCategory = (account.categoryId != null)
         ? _categoryNames[account.categoryId!]
         : null;
+    final String? parentLogo = _typeLogos[account.typeId];
+    final String? childLogo =
+        account.categoryId != null ? _categoryLogos[account.categoryId!] : null;
     final categoryChild = rawCategory == null
         ? null
         : (rawCategory.contains('||')
             ? rawCategory.split('||').last.trim()
             : rawCategory.trim());
+    final sanitizedCategoryChild =
+        categoryChild?.replaceAll(RegExp(r'^Fatura:\s*'), '').trim();
+    final fallbackDescription = (cleanedDescription.isNotEmpty
+            ? cleanedDescription
+            : account.description)
+        .trim();
+    final labelSource = sanitizedCategoryChild?.isNotEmpty == true
+        ? sanitizedCategoryChild!
+        : fallbackDescription;
+    final labelSegments = labelSource
+        .split(RegExp(r'\s*-\s*'))
+        .map((segment) => segment.trim())
+        .where((segment) => segment.isNotEmpty)
+        .toList();
+    final inferredChildLabel =
+        labelSegments.isNotEmpty ? labelSegments.last : labelSource;
+    final childLabel = (account.cardBrand?.trim().isNotEmpty == true)
+        ? account.cardBrand!.trim()
+        : inferredChildLabel;
+    final secondaryDescription = (account.cardBank?.trim().isNotEmpty == true)
+        ? account.cardBank!.trim()
+        : fallbackDescription;
     final installmentSummary =
         account.id != null ? _installmentSummaries[account.id!] : null;
     final bool isPaid =
@@ -1184,46 +1223,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             border: Border.all(color: Colors.black.withValues(alpha: 0.1), width: 1),
           ),
           alignment: Alignment.center,
-          child: SizedBox(
-            width: 30,
-            height: 18,
-            child: Stack(
-              children: [
-                Align(
-                  alignment: const Alignment(-0.3, 0),
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFEB001B),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-                Align(
-                  alignment: const Alignment(0.3, 0),
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF79E1B),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-                Align(
-                  alignment: Alignment.center,
-                  child: Container(
-                    width: 7,
-                    height: 16,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF2661B),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          child: const MastercardLogo(width: 30, height: 18),
         );
       }
 
@@ -1443,9 +1443,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final String effectiveLabel = DateFormat('dd/MM').format(effectiveDate);
     final String originalLabel = DateFormat('dd/MM').format(originalDate);
     final String weekdayLabel = DateFormat('EEE', 'pt_BR').format(effectiveDate).toUpperCase();
+    final Widget? parentIcon = (parentLogo?.isNotEmpty ?? false)
+        ? Text(parentLogo!, style: TextStyle(fontSize: categorySize * 0.95))
+        : null;
+    final Widget? childIcon = isCard
+        ? brandBadge
+        : ((childLogo?.isNotEmpty ?? false)
+            ? Text(childLogo!, style: TextStyle(fontSize: categorySize * 0.9))
+            : null);
+    final Widget? headerChildIcon = childIcon == null
+        ? null
+        : SizedBox(
+            height: categorySize * 1.1,
+            child: FittedBox(fit: BoxFit.scaleDown, child: childIcon),
+          );
 
     return buildCardBody(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
       children: [
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1471,7 +1485,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     height: 1.0,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   weekdayLabel,
                   style: TextStyle(
@@ -1480,26 +1494,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 if (dateAdjusted) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
-                    'Orig. $originalLabel',
+                    '($originalLabel)',
                     style: TextStyle(
                       fontSize: smallDateSize,
                       color: _adaptiveGreyTextColor(context, Colors.grey.shade600),
-                      decoration: TextDecoration.lineThrough,
-                      decorationColor: _adaptiveGreyTextColor(context, Colors.grey.shade400),
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 1),
+                  Text(
+                    effectiveLabel,
+                    style: TextStyle(
+                      fontSize: smallDateSize,
+                      fontWeight: FontWeight.w600,
+                      color: _adaptiveGreyTextColor(context, Colors.grey.shade700),
                     ),
                   ),
                 ],
-                const SizedBox(height: 2),
-                Text(
-                  effectiveLabel,
-                  style: TextStyle(
-                    fontSize: smallDateSize,
-                    fontWeight: FontWeight.w600,
-                    color: _adaptiveGreyTextColor(context, Colors.grey.shade700),
-                  ),
-                ),
               ],
             ),
             const SizedBox(width: 12),
@@ -1513,26 +1526,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Expanded(
                         child: Row(
                           children: [
+                            if (parentIcon != null) ...[
+                              parentIcon,
+                              const SizedBox(width: 6),
+                            ],
                             Expanded(
-                              child: Text(
-                                '${widget.typeNameFilter ?? _typeNames[account.typeId] ?? 'Outro'} - ${categoryChild?.replaceAll(RegExp(r'^Fatura: *'), '') ?? account.description}',
-                                style: TextStyle(
-                                  fontSize: categorySize,
-                                  fontWeight: FontWeight.bold,
-                                  color: textColor,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '${widget.typeNameFilter ?? _typeNames[account.typeId] ?? 'Outro'} - $childLabel',
+                                      style: TextStyle(
+                                        fontSize: categorySize,
+                                        fontWeight: FontWeight.bold,
+                                        color: textColor,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (headerChildIcon != null) ...[
+                                    const SizedBox(width: 6),
+                                    headerChildIcon,
+                                  ],
+                                ],
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              lancadoValue == null ? UtilBrasilFields.obterReal(previstoValue) : UtilBrasilFields.obterReal(lancadoValue),
-                              style: TextStyle(
-                                fontSize: valueMainSize,
-                                fontWeight: FontWeight.w800,
-                                color: isRecebimento ? Colors.blue.shade700 : Colors.red.shade700,
-                              ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  lancadoDisplay,
+                                  style: TextStyle(
+                                    fontSize: valueMainSize,
+                                    fontWeight: FontWeight.w800,
+                                    color: isRecebimento
+                                        ? Colors.blue.shade700
+                                        : Colors.red.shade700,
+                                  ),
+                                ),
+                                if (showPrevisto)
+                                  Text(
+                                    'Previsto: $previstoDisplay',
+                                    style: TextStyle(
+                                      fontSize: valueMainSize * 0.7,
+                                      fontWeight: FontWeight.w600,
+                                      color: _adaptiveGreyTextColor(
+                                          context, Colors.grey.shade600),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ],
                         ),
@@ -1542,16 +1586,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         installmentBadge,
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    cleanedDescription.isNotEmpty ? cleanedDescription : account.description,
-                    style: TextStyle(
-                      fontSize: descriptionSize,
-                      fontWeight: FontWeight.w600,
-                      color: subTextColor,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            if (isCard && brandBadge != null) ...[
+                              brandBadge,
+                              const SizedBox(width: 8),
+                            ],
+                            Expanded(
+                              child: Text(
+                                secondaryDescription.isNotEmpty
+                                    ? secondaryDescription
+                                    : account.description,
+                                style: TextStyle(
+                                  fontSize: descriptionSize,
+                                  fontWeight: FontWeight.w600,
+                                  color: subTextColor,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      actionButtons,
+                    ],
                   ),
                   if (installmentDisplay.isInstallment)
                     Padding(
@@ -1616,18 +1680,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ],
                       ),
                     ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      if (brandBadge != null)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: brandBadge,
-                        ),
-                      const Spacer(),
-                      actionButtons,
-                    ],
-                  ),
+                  const SizedBox(height: 2),
                 ],
               ),
             ),
