@@ -68,7 +68,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 15,
+      version: 16,
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
         debugPrint('🔄 Iniciando migração de banco de dados v$oldVersion→v$newVersion...');
@@ -184,13 +184,14 @@ class DatabaseHelper {
       CREATE TABLE payment_methods (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE,
-	        type TEXT NOT NULL,
-	        icon_code INTEGER NOT NULL,
-	        requires_bank INTEGER NOT NULL DEFAULT 0,
-	        usage INTEGER NOT NULL DEFAULT 2,
-	        is_active INTEGER NOT NULL DEFAULT 1
-	      )
-	    ''');
+        type TEXT NOT NULL,
+        icon_code INTEGER NOT NULL,
+        requires_bank INTEGER NOT NULL DEFAULT 0,
+        usage INTEGER NOT NULL DEFAULT 2,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        logo TEXT
+      )
+    ''');
 
     // Tabela de pagamentos
     await db.execute('''
@@ -240,9 +241,20 @@ class DatabaseHelper {
     ''');
   }
 
-  // ========== MIGRAÇÃO DE BANCO (v1 → v2) ==========
+  // ========== MIGRAÇÃO DE BANCO ==========
 
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    // Migração v16: Adicionar campo logo em payment_methods
+    if (oldVersion < 16) {
+      debugPrint('🔄 Executando migração v16: Adicionando campo logo em payment_methods...');
+      try {
+        await db.execute('ALTER TABLE payment_methods ADD COLUMN logo TEXT');
+        debugPrint('✓ Migração v16 concluída');
+      } catch (e) {
+        debugPrint('⚠️ Coluna logo já existe ou erro: $e');
+      }
+    }
+
     // Migração v14: Adicionar campo logo nas contas
     if (oldVersion < 14) {
       debugPrint('🔄 Executando migração v14: Adicionando campo logo...');

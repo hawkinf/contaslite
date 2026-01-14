@@ -72,8 +72,9 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
 
     final monthLabel =
         DateFormat('MMMM yyyy', 'pt_BR').format(range.start).toUpperCase();
+    final effectiveForegroundColor = foregroundColor ?? Theme.of(context).appBarTheme.foregroundColor ?? Colors.white;
     final defaultMonthStyle = monthStyle ??
-        const TextStyle(fontSize: 24, fontWeight: FontWeight.bold);
+        TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: effectiveForegroundColor);
 
     return AppBar(
       centerTitle: centerTitle ?? true,
@@ -95,7 +96,7 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               IconButton(
-                icon: const Icon(Icons.chevron_left, size: 28),
+                icon: Icon(Icons.chevron_left, size: 28, color: effectiveForegroundColor),
                 onPressed: onPrevious,
                 tooltip: 'Mês anterior',
               ),
@@ -109,7 +110,7 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.chevron_right, size: 28),
+                icon: Icon(Icons.chevron_right, size: 28, color: effectiveForegroundColor),
                 onPressed: onNext,
                 tooltip: 'Próximo mês',
               ),

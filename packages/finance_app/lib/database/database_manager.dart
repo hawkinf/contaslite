@@ -173,6 +173,14 @@ class DatabaseManager {
     }
   }
 
+  /// Força modo offline (usado em fluxos de logout/login)
+  void forceOffline() {
+    _database = _sqlite;
+    _databaseTypeNotifier.value = 'sqlite';
+    _isOnlineNotifier.value = false;
+    debugPrint('🔌 Forçado para offline');
+  }
+
   /// Fecha ambas as conexões
   Future<void> close() async {
     try {

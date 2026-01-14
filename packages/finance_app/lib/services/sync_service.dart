@@ -501,7 +501,7 @@ class SyncService {
   Future<void> resetSync() async {
     stopBackgroundSync();
     await _db.resetAllSyncStatus();
-    syncStateNotifier.value = SyncState.idle;
+    syncStateNotifier.value = SyncState.offline;
     syncProgressNotifier.value = 0.0;
     lastErrorNotifier.value = null;
     lastSyncNotifier.value = null;

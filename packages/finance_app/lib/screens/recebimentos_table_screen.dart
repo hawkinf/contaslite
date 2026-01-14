@@ -92,12 +92,12 @@ class _RecebimentosTableScreenState extends State<RecebimentosTableScreen> {
     try {
       int updatedType = 0;
       int updatedCategories = 0;
-      
+
       debugPrint('🎨 [RECEBIMENTOS - ATRIBUIR LOGOS INTELIGENTES] Iniciando...');
-      
+
       if (_recebimentosType == null || _recebimentosType!.id == null) return;
-      
-      // 1. Atribuir logo ao tipo pai
+
+      // 1. Atribuir logo ao tipo pai (Recebimentos)
       final parentLogo = DefaultAccountCategoriesService.getLogoForCategory(_recebimentosType!.name);
       if (parentLogo != null && (_recebimentosType!.logo == null || _recebimentosType!.logo!.isEmpty)) {
         final updatedTypeObj = AccountType(id: _recebimentosType!.id, name: _recebimentosType!.name, logo: parentLogo);
@@ -105,42 +105,51 @@ class _RecebimentosTableScreenState extends State<RecebimentosTableScreen> {
         updatedType++;
         debugPrint('🎨 [TIPO] ${_recebimentosType!.name} → logo=$parentLogo');
       }
-      
+
       // 2. Buscar as categorias filhas deste tipo
       final categories = await DatabaseHelper.instance.readAccountCategories(_recebimentosType!.id!);
-      final Set<String> usedLogos = {parentLogo ?? ''}; // Já usa o logo do pai
-      
+
       debugPrint('  📋 ${categories.length} categorias para ${_recebimentosType!.name}');
-      
-      // Para cada categoria filha
+
+      // Para cada categoria (pode ser pai ou filho de Recebimentos)
       for (final category in categories) {
-        // Buscar um ícone baseado na descrição da categoria
-        String? childLogo = DefaultAccountCategoriesService.getLogoForSubcategory(category.categoria);
-        
-        // Se o ícone já foi usado, tentar outro
-        if (childLogo != null && usedLogos.contains(childLogo)) {
-          debugPrint('    ⚠️  Logo $childLogo já usado, procurando alternativa...');
-          childLogo = _findAlternativeLogo(category.categoria, usedLogos);
+        String? childLogo;
+
+        // Verificar se é uma categoria pai (sem ||) ou filho (com ||)
+        final separator = DefaultAccountCategoriesService.recebimentosChildSeparator;
+        if (category.categoria.contains(separator)) {
+          // É um filho - extrair nome do pai e do filho
+          final parts = category.categoria.split(separator);
+          final recebimentoParentName = parts[0].trim();
+          final recebimentoChildName = parts[1].trim();
+
+          // Usar o método específico para filhos de Recebimentos
+          childLogo = DefaultAccountCategoriesService.getLogoForRecebimentosFilho(
+            recebimentoParentName,
+            recebimentoChildName,
+          );
+          debugPrint('    📦 Filho: "$recebimentoChildName" (pai: $recebimentoParentName) → $childLogo');
+        } else {
+          // É uma categoria pai de Recebimentos (ex: Salário/Pró-Labore, Vendas, etc.)
+          childLogo = DefaultAccountCategoriesService.getLogoForRecebimentosPai(category.categoria);
+          debugPrint('    📁 Pai: "${category.categoria}" → $childLogo');
         }
-        
-        // SEMPRE atualizar o logo da categoria filha (mesmo que já tenha um)
-        if (childLogo != null) {
-          usedLogos.add(childLogo);
-          final updatedCategory = category.copyWith(logo: childLogo);
-          await DatabaseHelper.instance.updateAccountCategory(updatedCategory);
-          updatedCategories++;
-          debugPrint('    ✅ ${category.categoria} → logo=$childLogo');
-        }
+
+        // SEMPRE atualizar o logo da categoria (mesmo que já tenha um)
+        final updatedCategory = category.copyWith(logo: childLogo);
+        await DatabaseHelper.instance.updateAccountCategory(updatedCategory);
+        updatedCategories++;
+        debugPrint('    ✅ ${category.categoria} → logo=$childLogo');
       }
-      
+
       final total = updatedType + updatedCategories;
       debugPrint('🎨 [RESULTADO] $updatedType tipo, $updatedCategories categorias = $total total');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              total > 0 
+              total > 0
                 ? '$updatedCategories categorias com ícones atribuídos!'
                 : 'Todas as categorias já têm ícones!'
             ),
@@ -149,7 +158,7 @@ class _RecebimentosTableScreenState extends State<RecebimentosTableScreen> {
           ),
         );
       }
-      
+
       await refreshData();
     } catch (e) {
       debugPrint('❌ [ERRO] Erro ao atribuir logos inteligentes: $e');
@@ -164,23 +173,6 @@ class _RecebimentosTableScreenState extends State<RecebimentosTableScreen> {
     }
   }
 
-  /// Encontra um ícone alternativo para uma categoria, garantindo que não se repita
-  String? _findAlternativeLogo(String categoryName, Set<String> usedLogos) {
-    final alternativeLogos = [
-      '🏷️', '📌', '🎯', '✨', '💫', '🌟', '⭐', '✅', '📍', '🔖',
-      '📊', '📈', '📉', '💹', '📐', '📏', '⏱️', '⏰', '🕐', '🕑',
-      '🎪', '🎨', '🎭', '🎬', '🎤', '🎧', '🎵', '🎶', '🎸', '🎹',
-    ];
-    
-    for (final logo in alternativeLogos) {
-      if (!usedLogos.contains(logo)) {
-        return logo;
-      }
-    }
-    
-    return null;
-  }
-  
   @override
   Widget build(BuildContext context) {
     if (widget.asDialog) {
@@ -734,11 +726,13 @@ class _RecebimentosTableScreenState extends State<RecebimentosTableScreen> {
     final existingCategories = await DatabaseHelper.instance.readAccountCategories(typeId);
     final existingNames = {for (final cat in existingCategories) cat.categoria.toUpperCase()};
 
-    // Criar categorias pai e filhas
+    // Criar categorias pai e filhas com ícones
     for (final parent in recebimentosDefaults.keys) {
       if (!existingNames.contains(parent.toUpperCase())) {
+        // Obter ícone para a categoria pai de Recebimentos
+        final parentLogo = DefaultAccountCategoriesService.getLogoForRecebimentosPai(parent);
         await DatabaseHelper.instance.createAccountCategory(
-          AccountCategory(accountId: typeId, categoria: parent),
+          AccountCategory(accountId: typeId, categoria: parent, logo: parentLogo),
         );
         categoriesCreated++;
       }
@@ -746,8 +740,10 @@ class _RecebimentosTableScreenState extends State<RecebimentosTableScreen> {
       for (final child in recebimentosDefaults[parent]!) {
         final fullName = defaultService.buildRecebimentosChildName(parent, child);
         if (!existingNames.contains(fullName.toUpperCase())) {
+          // Obter ícone para o filho de Recebimentos
+          final childLogo = DefaultAccountCategoriesService.getLogoForRecebimentosFilho(parent, child);
           await DatabaseHelper.instance.createAccountCategory(
-            AccountCategory(accountId: typeId, categoria: fullName),
+            AccountCategory(accountId: typeId, categoria: fullName, logo: childLogo),
           );
           categoriesCreated++;
         }
@@ -1051,8 +1047,14 @@ class _RecebimentosTableScreenState extends State<RecebimentosTableScreen> {
       for (final child in recebimentosDefaults[parentName]!) {
         final fullName = defaultService.buildRecebimentosChildName(parentName, child);
         if (!existingNames.contains(fullName.toUpperCase())) {
+          // Obter ícone específico para este filho
+          final childLogo = DefaultAccountCategoriesService.getLogoForRecebimentosFilho(parentName, child);
           await DatabaseHelper.instance.createAccountCategory(
-            AccountCategory(accountId: _recebimentosType!.id!, categoria: fullName),
+            AccountCategory(
+              accountId: _recebimentosType!.id!,
+              categoria: fullName,
+              logo: childLogo,
+            ),
           );
           categoriesCreated++;
         }

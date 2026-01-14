@@ -1,0 +1,514 @@
+Launching lib\main.dart on Windows in debug mode...
+Building Windows application...                                    15,6s
+ÔêÜ Built build\windows\x64\runner\Debug\contaslite.exe
+­ƒùä´©Å Banco de dados (desktop): C:\Users\hawk\Documents\ContasLite\Database
+Ô£à Janela inicializada e mostrada com sucesso
+­ƒöº [PrefsService] Carregando config, raw: host:localhost|port:5432|database:default|username:user|password:|enabled:true|apiUrl:http://contaslite.hawk.com.br:3000
+­ƒöº [PrefsService] Pares encontrados: [host:localhost, port:5432, database:default, username:user, password:, enabled:true, apiUrl:http://contaslite.hawk.com.br:3000]
+­ƒöº [PrefsService] ConfigMap decodificado: {host: localhost, port: 5432, database: default, username: user, password: , enabled: true, apiUrl: http://contaslite.hawk.com.br:3000}
+­ƒöº [PrefsService] Config final: apiUrl=http://contaslite.hawk.com.br:3000
+­ƒöº AuthService inicializado com URL: http://contaslite.hawk.com.br:3000
+­ƒöÉ Sess├úo encontrada para: hawkinf@gmail.com
+­ƒöÉ Token expira em: 2026-01-14 14:38:16.534084
+­ƒöÉ Agora: 2026-01-14 13:49:21.461032
+­ƒöÉ Token expirado: false
+ÔÅ░ Refresh token agendado para: 43 minutos
+Ô£à Sess├úo restaurada com sucesso para: hawkinf@gmail.com
+­ƒöº [PrefsService] Carregando config, raw: host:localhost|port:5432|database:default|username:user|password:|enabled:true|apiUrl:http://contaslite.hawk.com.br:3000
+­ƒöº [PrefsService] Pares encontrados: [host:localhost, port:5432, database:default, username:user, password:, enabled:true, apiUrl:http://contaslite.hawk.com.br:3000]
+­ƒöº [PrefsService] ConfigMap decodificado: {host: localhost, port: 5432, database: default, username: user, password: , enabled: true, apiUrl: http://contaslite.hawk.com.br:3000}
+­ƒöº [PrefsService] Config final: apiUrl=http://contaslite.hawk.com.br:3000
+­ƒöº SyncService inicializado com URL: http://contaslite.hawk.com.br:3000
+[DB INIT] Iniciando verificacao do banco de dados...
+Syncing files to device Windows...                              
+[DB INIT] Tipos de conta encontrados: 17
+[DB INIT] Formas de pagamento encontradas: 6
+[DB INIT] Banco j├í possui tipos e formas de pagamento. Pulando popula├º├úo autom├ítica.
+[DB INIT] ValidaÔÇí├åo de integridade skipped durante inicializaÔÇí├åo
+[DB INIT] Banco pronto com 17 tipo(s) e 6 forma(s) (244ms).
+ÔÅ│ DashboardScreen: _loadData start (#1)
+ÔÅ│ DashboardScreen: readAllAccountsRaw (#1)
+Ô£à DashboardScreen: readAllAccountsRaw ok (83ms) (#1)
+ÔÅ│ DashboardScreen: readAllTypes (#1)
+Ô£à DashboardScreen: readAllTypes ok (90ms) (#1)
+ÔÅ│ DashboardScreen: readAllAccountCategories (#1)
+Ô£à DashboardScreen: readAllAccountCategories ok (95ms) (#1)
+ÔÅ│ DashboardScreen: readAllCards (#1)
+Ô£à DashboardScreen: readAllCards ok (156ms) (#1)
+­ƒôï Tipos no banco: Alimenta├º├úo(id: 1), Assinaturas e Servi├ºos Digitais(id: 2), Cart├Áes de Cr├®dito(id: 3), Comunica├º├úo(id: 4), Despesas Operacionais / Moradia(id: 5), D├¡vidas e Obriga├º├Áes Financeiras(id: 6), Educa├º├úo(id: 7), Fam├¡lia e Pets(id: 8), Financeiro Geral(id: 9), Fornecedores(id: 10), Impostos e Tributos(id: 11), Lazer e Viagens(id: 12), Pessoal(id: 13), Recebimentos(id: 17), Sa├║de(id: 14), Tecnologia(id: 15), Ve├¡culo(id: 16)
+­ƒôï Total de contas: 37
+­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_1, description=Aluguel Otica
+­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_2, description=Aluguel Otica
+­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_3, description=Aluguel Otica
+­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_4, description=Aluguel Otica
+­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_5, description=Aluguel Otica
+­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_6, description=Aluguel Otica
+­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_7, description=Aluguel Otica
+­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_8, description=Aluguel Otica
+­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_9, description=Aluguel Otica
+­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_10, description=Aluguel Otica
+­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_11, description=Aluguel Otica
+­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_12, description=Aluguel Otica
+­ƒöì launchedIndex completo: {25: {25_2026_1, 25_2026_2, 25_2026_3, 25_2026_4, 25_2026_5, 25_2026_6, 25_2026_7, 25_2026_8, 25_2026_9, 25_2026_10, 25_2026_11, 25_2026_12}}
+­ƒôè normalExpenses 15 contas:
+   - Houter (id=1, recId=null, isRec=false, instTotal=1, 2026_1)
+   - Cal├ºada (id=2, recId=null, isRec=false, instTotal=1, 2026_1)
+   - Receber emprestimo (id=3, recId=null, isRec=false, instTotal=1, 2026_1)
+   - Aluguel Otica (id=26, recId=25, isRec=false, instTotal=null, 2026_1)
+   - Aluguel Otica (id=27, recId=25, isRec=false, instTotal=null, 2026_2)
+   - Aluguel Otica (id=28, recId=25, isRec=false, instTotal=null, 2026_3)
+   - Aluguel Otica (id=29, recId=25, isRec=false, instTotal=null, 2026_4)
+   - Aluguel Otica (id=30, recId=25, isRec=false, instTotal=null, 2026_5)
+   - Aluguel Otica (id=31, recId=25, isRec=false, instTotal=null, 2026_6)
+   - Aluguel Otica (id=32, recId=25, isRec=false, instTotal=null, 2026_7)
+   - Aluguel Otica (id=33, recId=25, isRec=false, instTotal=null, 2026_8)
+   - Aluguel Otica (id=34, recId=25, isRec=false, instTotal=null, 2026_9)
+   - Aluguel Otica (id=35, recId=25, isRec=false, instTotal=null, 2026_10)
+   - Aluguel Otica (id=36, recId=25, isRec=false, instTotal=null, 2026_11)
+   - Aluguel Otica (id=37, recId=25, isRec=false, instTotal=null, 2026_12)
+­ƒôï Adicionando 4 contas do m├¬s 2026_1:
+   - Houter (id=1, recurrenceId=null, value=1217.0)
+   - Cal├ºada (id=2, recurrenceId=null, value=223.12)
+   - Receber emprestimo (id=3, recurrenceId=null, value=1400.0)
+   - Aluguel Otica (id=26, recurrenceId=25, value=0.0)
+­ƒöÄ Verificando recorr├¬ncia: Aluguel Otica (id=25), launchKey=25_2026_1
+   launchedIndex[25] = {25_2026_1, 25_2026_2, 25_2026_3, 25_2026_4, 25_2026_5, 25_2026_6, 25_2026_7, 25_2026_8, 25_2026_9, 25_2026_10, 25_2026_11, 25_2026_12}
+   wasLaunched=true, value=0.0
+Ô£à PULANDO recorr├¬ncia PAI pois foi lan├ºada: Aluguel Otica (id=25)
+Syncing files to device Windows...                                 188ms
+
+Flutter run key commands.
+r Hot reload. 
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on Windows is available at: http://127.0.0.1:35179/tE-1cvQAutE=/
+The Flutter DevTools debugger and profiler on Windows is available at: http://127.0.0.1:35179/tE-1cvQAutE=/devtools/?uri=ws://127.0.0.1:35179/tE-1cvQAutE=/ws
+­ƒôè Antes de filtros: 8 contas
+   Detalhes: Houter(id=1,rec=false,recId=null), Cal├ºada(id=2,rec=false,recId=null), Receber emprestimo(id=3,rec=false,recId=null), Aluguel Otica(id=26,rec=false,recId=25), Fatura: BB - ELO(id=24,rec=true,recId=null), Fatura: Bradesco - AMEX(id=23,rec=true,recId=null), Fatura: Itaucard - MASTERCARD(id=4,rec=true,recId=null), Fatura: Itaucard - VISA(id=22,rec=true,recId=null)
+­ƒôè Depois de filtros: 8 contas
+ÔÅ│ DashboardScreen: buildInstallmentSummaries (#1)
+Ô£à DashboardScreen: buildInstallmentSummaries ok (223ms) (#1)
+ÔÅ│ DashboardScreen: getPaymentsForAccountsByMonth (#1)
+Ô£à DashboardScreen: getPaymentsForAccountsByMonth ok (236ms) (#1)
+ÔÅ│ DashboardScreen: getPaymentsSumForAccountsByMonth (#1)
+Ô£à DashboardScreen: getPaymentsSumForAccountsByMonth ok (239ms) (#1)
+Ô£à DashboardScreen: _loadData end (#1) isLoading=false items=8
+­ƒÄ┤ _buildAccountCard chamado: account="Fatura: Itaucard - MASTERCARD", typeId=3, typeName="Cart├Áes de Cr├®dito"
+­ƒÄ┤ _buildAccountCard chamado: account="Fatura: BB - ELO", typeId=3, typeName="Cart├Áes de Cr├®dito"
+­ƒÄ┤ _buildAccountCard chamado: account="Fatura: Itaucard - VISA", typeId=3, typeName="Cart├Áes de Cr├®dito"
+­ƒÄ┤ _buildAccountCard chamado: account="Aluguel Otica", typeId=17, typeName="Recebimentos"
+­ƒÄ┤ _buildAccountCard chamado: account="Receber emprestimo", typeId=5, typeName="Despesas Operacionais / Moradia"
+­ƒÄ┤ _buildAccountCard chamado: account="Fatura: Bradesco - AMEX", typeId=3, typeName="Cart├Áes de Cr├®dito"
+­ƒÄ┤ _buildAccountCard chamado: account="Houter", typeId=10, typeName="Fornecedores"
+­ƒÄ┤ _buildAccountCard chamado: account="Cal├ºada", typeId=9, typeName="Financeiro Geral"
+­ƒº¡ Navega├º├úo: _showEditSpecificDialog INICIO para id=2, desc="Cal├ºada"
+­ƒº¡ Navega├º├úo: Abrindo AccountEditScreen
+­ƒº¡ Navega├º├úo: push route...
+­ƒº¡ AccountEditScreen.build chamado
+­ƒº¡ AccountEditScreen aguardando _isRecebimentoFuture...
+­ƒÄ┤ _buildAccountCard chamado: account="Fatura: Itaucard - MASTERCARD", typeId=3, typeName="Cart├Áes de Cr├®dito"
+­ƒÄ┤ _buildAccountCard chamado: account="Fatura: BB - ELO", typeId=3, typeName="Cart├Áes de Cr├®dito"
+­ƒÄ┤ _buildAccountCard chamado: account="Fatura: Itaucard - VISA", typeId=3, typeName="Cart├Áes de Cr├®dito"
+­ƒÄ┤ _buildAccountCard chamado: account="Aluguel Otica", typeId=17, typeName="Recebimentos"
+­ƒÄ┤ _buildAccountCard chamado: account="Receber emprestimo", typeId=5, typeName="Despesas Operacionais / Moradia"
+­ƒÄ┤ _buildAccountCard chamado: account="Fatura: Bradesco - AMEX", typeId=3, typeName="Cart├Áes de Cr├®dito"
+­ƒÄ┤ _buildAccountCard chamado: account="Houter", typeId=10, typeName="Fornecedores"
+­ƒÄ┤ _buildAccountCard chamado: account="Cal├ºada", typeId=9, typeName="Financeiro Geral"
+­ƒº¡ AccountEditScreen pronto. isRecebimento=false
+­ƒôï EDITANDO CONTA: Cal├ºada
+   - isRecurrent: false
+   - recurrenceId: null
+   - month: 1, year: 2026
+ÔØî _entryMode setado para 0 (Avulsa) - n├úo ├® recorrente
+­ƒÅù´©Å AccountFormScreen.build IN├ìCIO
+­ƒÅù´©Å AccountFormScreen.build: Mostrando loading indicator (_isLoadingData=true)
+ÔÅ│ AccountFormScreen: _loadInitialData...
+Ô£à AccountFormScreen: _loadInitialData ok (4ms)
+ÔÅ│ AccountFormScreen: _loadPreferences...
+Ô£à AccountFormScreen: _loadPreferences ok (1ms)
+ÔÅ│ AccountFormScreen: _onMainDateChanged (init)...
+Ô£à AccountFormScreen: _onMainDateChanged conclu├¡do
+­ƒÅù´©Å AccountFormScreen.build IN├ìCIO
+­ƒÅù´©Å AccountFormScreen.build: Dados carregados, construindo UI
+  - widget.accountToEdit: Cal├ºada
+  - widget.isRecebimento: false
+  - _selectedType: Despesas Operacionais / Moradia
+  - _selectedCategory: Multas
+­ƒÅù´©Å AccountFormScreen.build: appBarTitle="Editar Conta"
+­ƒÅù´©Å AccountFormScreen.build: Modo Scaffold (showAppBar=true)
+­ƒÅù´©Å AccountFormScreen.build FIM - retornando Scaffold
+­ƒÅù´©Å _buildFormContent IN├ìCIO
+­ƒÄ¿ _buildColorPaletteSection
+­ƒôØ _buildLaunchTypeSelector (_entryMode=0)
+­ƒôª _buildTypeDropdown (types: 15, selected: Despesas Operacionais / Moradia)
+
+ÔòÉÔòÉÔòí EXCEPTION CAUGHT BY RENDERING LIBRARY Ôò×ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+The following assertion was thrown during performLayout():
+RenderFlex children have non-zero flex but incoming width constraints are unbounded.
+When a row is in a parent that does not provide a finite width constraint, for example if it is in a
+horizontal scrollable, it will try to shrink-wrap its children along the horizontal axis. Setting a
+flex on a child (e.g. using Expanded) indicates that the child is to expand to fill the remaining
+space in the horizontal direction.
+These two directives are mutually exclusive. If a parent is to shrink-wrap its child, the child
+cannot simultaneously expand to fit its parent.
+Consider setting mainAxisSize to MainAxisSize.min and using FlexFit.loose fits for the flexible
+children (using Flexible rather than Expanded). This will allow the flexible children to size
+themselves to less than the infinite remaining space they would otherwise be forced to take, and
+then will cause the RenderFlex to shrink-wrap the children rather than expanding to fit the maximum
+constraints provided by the parent.
+If this message did not help you determine the problem, consider using debugDumpRenderTree():
+  https://flutter.dev/to/debug-render-layer
+  https://api.flutter.dev/flutter/rendering/debugDumpRenderTree.html
+The affected RenderFlex is:
+  RenderFlex#ac50c relayoutBoundary=up7 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE(creator: Row ÔåÉ Align ÔåÉ ConstrainedBox ÔåÉ Semantics ÔåÉ DropdownMenuItem<AccountCategory> ÔåÉ _FocusInheritedScope ÔåÉ Focus ÔåÉ ExcludeFocus ÔåÉ IgnorePointer ÔåÉ _Visibility ÔåÉ _VisibilityScope ÔåÉ Visibility ÔåÉ Ôï», parentData: offset=Offset(0.0, 0.0) (can use size), constraints: BoxConstraints(0.0<=w<=Infinity, 0.0<=h<=24.0), size: MISSING, direction: horizontal, mainAxisAlignment: start, mainAxisSize: max, crossAxisAlignment: center, textDirection: ltr, verticalDirection: down, spacing: 0.0)
+The creator information is set to:
+  Row ÔåÉ Align ÔåÉ ConstrainedBox ÔåÉ Semantics ÔåÉ DropdownMenuItem<AccountCategory> ÔåÉ
+  _FocusInheritedScope ÔåÉ Focus ÔåÉ ExcludeFocus ÔåÉ IgnorePointer ÔåÉ _Visibility ÔåÉ _VisibilityScope ÔåÉ
+  Visibility ÔåÉ Ôï»
+The nearest ancestor providing an unbounded width constraint is: RenderFlex#78982 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE:
+  creator: Row ÔåÉ Padding ÔåÉ SizedBox ÔåÉ DefaultTextStyle ÔåÉ _Decorator ÔåÉ InputDecorator ÔåÉ Listener ÔåÉ
+    _GestureSemantics ÔåÉ RawGestureDetector ÔåÉ GestureDetector ÔåÉ MouseRegion ÔåÉ Semantics ÔåÉ Ôï»
+  parentData: offset=Offset(0.0, 0.0) (can use size)
+  constraints: BoxConstraints(w=878.4, h=24.0)
+  size: MISSING
+  direction: horizontal
+  mainAxisAlignment: spaceBetween
+  mainAxisSize: min
+  crossAxisAlignment: center
+  textDirection: ltr
+  verticalDirection: down
+  spacing: 0.0
+See also: https://flutter.dev/unbounded-constraints
+If none of the above helps enough to fix this problem, please don't hesitate to file a bug:
+  https://github.com/flutter/flutter/issues/new?template=02_bug.yml
+
+The relevant error-causing widget was:
+  Row
+  Row:file:///C:/flutter/Contaslite/packages/finance_app/lib/screens/account_form_screen.dart:1622:48
+
+When the exception was thrown, this was the stack:
+#0      RenderFlex.performLayout.<anonymous closure> (package:flutter/src/rendering/flex.dart:1252:9)
+#1      RenderFlex.performLayout (package:flutter/src/rendering/flex.dart:1255:6)
+#2      RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#3      RenderPositionedBox.performLayout (package:flutter/src/rendering/shifted_box.dart:465:14)
+#4      RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#5      RenderConstrainedBox.performLayout (package:flutter/src/rendering/proxy_box.dart:293:14)
+#6      RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#7      RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#8      RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#9      RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#10     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#11     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#12     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#13     ChildLayoutHelper.layoutChild (package:flutter/src/rendering/layout_helper.dart:62:11)
+#14     RenderStack._computeSize (package:flutter/src/rendering/stack.dart:645:43)
+#15     RenderStack.performLayout (package:flutter/src/rendering/stack.dart:680:12)
+#16     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#17     ChildLayoutHelper.layoutChild (package:flutter/src/rendering/layout_helper.dart:62:11)
+#18     RenderFlex._computeSizes (package:flutter/src/rendering/flex.dart:1161:28)
+#19     RenderFlex.performLayout (package:flutter/src/rendering/flex.dart:1257:32)
+#20     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#21     RenderPadding.performLayout (package:flutter/src/rendering/shifted_box.dart:243:12)
+#22     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#23     RenderConstrainedBox.performLayout (package:flutter/src/rendering/proxy_box.dart:293:14)
+#24     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#25     ChildLayoutHelper.layoutChild (package:flutter/src/rendering/layout_helper.dart:62:11)
+#26     _RenderDecoration._layout (package:flutter/src/material/input_decorator.dart:1070:67)
+#27     _RenderDecoration.performLayout (package:flutter/src/material/input_decorator.dart:1379:44)
+#28     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#29     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#30     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#31     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#32     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#33     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#34     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#35     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#36     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#37     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#38     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#39     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#40     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#41     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#42     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#43     ChildLayoutHelper.layoutChild (package:flutter/src/rendering/layout_helper.dart:62:11)
+#44     RenderFlex._computeSizes (package:flutter/src/rendering/flex.dart:1161:28)
+#45     RenderFlex.performLayout (package:flutter/src/rendering/flex.dart:1257:32)
+#46     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#47     ChildLayoutHelper.layoutChild (package:flutter/src/rendering/layout_helper.dart:62:11)
+#48     RenderFlex._computeSizes (package:flutter/src/rendering/flex.dart:1161:28)
+#49     RenderFlex.performLayout (package:flutter/src/rendering/flex.dart:1257:32)
+#50     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#51     RenderPadding.performLayout (package:flutter/src/rendering/shifted_box.dart:243:12)
+#52     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#53     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#54     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#55     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#56     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#57     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#58     RenderCustomPaint.performLayout (package:flutter/src/rendering/custom_paint.dart:574:11)
+#59     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#60     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#61     _RenderCustomClip.performLayout (package:flutter/src/rendering/proxy_box.dart:1481:11)
+#62     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#63     RenderPadding.performLayout (package:flutter/src/rendering/shifted_box.dart:243:12)
+#64     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#65     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#66     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#67     ChildLayoutHelper.layoutChild (package:flutter/src/rendering/layout_helper.dart:62:11)
+#68     RenderFlex._computeSizes (package:flutter/src/rendering/flex.dart:1161:28)
+#69     RenderFlex.performLayout (package:flutter/src/rendering/flex.dart:1257:32)
+#70     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#71     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#72     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#73     RenderPadding.performLayout (package:flutter/src/rendering/shifted_box.dart:243:12)
+#74     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#75     _RenderSingleChildViewport.performLayout (package:flutter/src/widgets/single_child_scroll_view.dart:502:14)
+#76     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#77     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#78     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#79     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#80     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#81     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#82     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#83     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#84     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#85     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#86     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#87     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#88     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#89     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#90     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#91     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#92     RenderCustomPaint.performLayout (package:flutter/src/rendering/custom_paint.dart:574:11)
+#93     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#94     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#95     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#96     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#97     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#98     RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#99     RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#100    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#101    RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#102    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#103    RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#104    MultiChildLayoutDelegate.layoutChild (package:flutter/src/rendering/custom_layout.dart:180:12)
+#105    _ScaffoldLayout.performLayout (package:flutter/src/material/scaffold.dart:1112:7)
+#106    MultiChildLayoutDelegate._callPerformLayout (package:flutter/src/rendering/custom_layout.dart:249:7)
+#107    RenderCustomMultiChildLayoutBox.performLayout (package:flutter/src/rendering/custom_layout.dart:420:14)
+#108    RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#109    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#110    RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#111    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#112    _RenderCustomClip.performLayout (package:flutter/src/rendering/proxy_box.dart:1481:11)
+#113    RenderObject.layout (package:flutter/src/rendering/object.dart:2775:7)
+#114    RenderProxyBoxMixin.performLayout (package:flutter/src/rendering/proxy_box.dart:115:18)
+#115    RenderObject._layoutWithoutResize (package:flutter/src/rendering/object.dart:2623:7)
+#116    PipelineOwner.flushLayout (package:flutter/src/rendering/object.dart:1170:18)
+#117    PipelineOwner.flushLayout (package:flutter/src/rendering/object.dart:1183:15)
+#118    RendererBinding.drawFrame (package:flutter/src/rendering/binding.dart:629:23)
+#119    WidgetsBinding.drawFrame (package:flutter/src/widgets/binding.dart:1264:13)
+#120    RendererBinding._handlePersistentFrameCallback (package:flutter/src/rendering/binding.dart:495:5)
+#121    SchedulerBinding._invokeFrameCallback (package:flutter/src/scheduler/binding.dart:1434:15)
+#122    SchedulerBinding.handleDrawFrame (package:flutter/src/scheduler/binding.dart:1347:9)
+#123    SchedulerBinding._handleDrawFrame (package:flutter/src/scheduler/binding.dart:1200:5)
+#124    _invoke (dart:ui/hooks.dart:356:13)
+#125    PlatformDispatcher._drawFrame (dart:ui/platform_dispatcher.dart:444:5)
+#126    _drawFrame (dart:ui/hooks.dart:328:31)
+
+The following RenderObject was being processed when the exception was fired: RenderFlex#ac50c relayoutBoundary=up7 NEEDS-LAYOUT NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE:
+  creator: Row ÔåÉ Align ÔåÉ ConstrainedBox ÔåÉ Semantics ÔåÉ DropdownMenuItem<AccountCategory> ÔåÉ
+    _FocusInheritedScope ÔåÉ Focus ÔåÉ ExcludeFocus ÔåÉ IgnorePointer ÔåÉ _Visibility ÔåÉ _VisibilityScope ÔåÉ
+    Visibility ÔåÉ Ôï»
+  parentData: offset=Offset(0.0, 0.0) (can use size)
+  constraints: BoxConstraints(0.0<=w<=Infinity, 0.0<=h<=24.0)
+  size: MISSING
+  direction: horizontal
+  mainAxisAlignment: start
+  mainAxisSize: max
+  crossAxisAlignment: center
+  textDirection: ltr
+  verticalDirection: down
+  spacing: 0.0
+This RenderObject had the following descendants (showing up to depth 5):
+    child 1: RenderParagraph#a299b NEEDS-LAYOUT NEEDS-PAINT
+      text: TextSpan
+    child 2: RenderConstrainedBox#1fb9e NEEDS-LAYOUT NEEDS-PAINT
+    child 3: RenderParagraph#6f1fa NEEDS-LAYOUT NEEDS-PAINT
+      text: TextSpan
+ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+
+Another exception was thrown: RenderBox was not laid out: RenderFlex#ac50c relayoutBoundary=up7 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderPositionedBox#53386 relayoutBoundary=up6 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderConstrainedBox#04fed relayoutBoundary=up5 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderSemanticsAnnotations#af883 relayoutBoundary=up4 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderIgnorePointer#16c7b relayoutBoundary=up3 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: _RenderVisibility#32473 relayoutBoundary=up2 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderIndexedStack#4a51f relayoutBoundary=up1 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderFlex#78982 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderPadding#6ff13 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderConstrainedBox#06f03 relayoutBoundary=up35 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: _RenderDecoration#57691 relayoutBoundary=up34 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderPointerListener#d52ac relayoutBoundary=up33 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderSemanticsGestureHandler#ba8db relayoutBoundary=up32 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderMouseRegion#d164a relayoutBoundary=up31 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderSemanticsAnnotations#2bdec relayoutBoundary=up30 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderSemanticsAnnotations#e4e62 relayoutBoundary=up29 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderSemanticsAnnotations#b7ff1 relayoutBoundary=up28 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderSemanticsAnnotations#7b1fe relayoutBoundary=up27 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderFlex#c6106 relayoutBoundary=up26 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderFlex#047af relayoutBoundary=up25 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderPadding#31f15 relayoutBoundary=up24 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderSemanticsAnnotations#2e2ac relayoutBoundary=up23 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: _RenderInkFeatures#554ca relayoutBoundary=up22 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderCustomPaint#30468 relayoutBoundary=up21 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderPhysicalShape#d60c2 relayoutBoundary=up20 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderPadding#94b24 relayoutBoundary=up19 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderSemanticsAnnotations#aa7ae relayoutBoundary=up18 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderFlex#83348 relayoutBoundary=up17 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderSemanticsAnnotations#340f9 relayoutBoundary=up16 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderPadding#cc600 relayoutBoundary=up15 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: _RenderSingleChildViewport#0a64d relayoutBoundary=up14 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderIgnorePointer#a3eb6 relayoutBoundary=up13 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderSemanticsAnnotations#63ca3 relayoutBoundary=up12 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderPointerListener#85084 relayoutBoundary=up11 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderSemanticsGestureHandler#28ab4 relayoutBoundary=up10 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderPointerListener#493f0 relayoutBoundary=up9 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: _RenderScrollSemantics#c353e relayoutBoundary=up8 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderRepaintBoundary#0feba relayoutBoundary=up7 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderCustomPaint#b922c relayoutBoundary=up6 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderMouseRegion#5d1e1 relayoutBoundary=up5 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderPointerListener#37962 relayoutBoundary=up4 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderSemanticsGestureHandler#54c1b relayoutBoundary=up3 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderPointerListener#6fd6d relayoutBoundary=up2 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: RenderBox was not laid out: RenderRepaintBoundary#4913d relayoutBoundary=up1 NEEDS-PAINT NEEDS-COMPOSITING-BITS-UPDATE
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: RenderBox was not laid out: RenderRepaintBoundary#4913d relayoutBoundary=up1 NEEDS-PAINT
+Another exception was thrown: 'package:flutter/src/rendering/mouse_tracker.dart': Failed assertion: line 199 pos 12: '!_debugDuringDeviceUpdate': is not true.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: 'package:flutter/src/rendering/mouse_tracker.dart': Failed assertion: line 199 pos 12: '!_debugDuringDeviceUpdate': is not true.
+Another exception was thrown: 'package:flutter/src/rendering/mouse_tracker.dart': Failed assertion: line 199 pos 12: '!_debugDuringDeviceUpdate': is not true.
+Another exception was thrown: 'package:flutter/src/rendering/mouse_tracker.dart': Failed assertion: line 199 pos 12: '!_debugDuringDeviceUpdate': is not true.
+Another exception was thrown: 'package:flutter/src/rendering/mouse_tracker.dart': Failed assertion: line 199 pos 12: '!_debugDuringDeviceUpdate': is not true.
+Another exception was thrown: 'package:flutter/src/rendering/mouse_tracker.dart': Failed assertion: line 199 pos 12: '!_debugDuringDeviceUpdate': is not true.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: Cannot hit test a render box that has never been laid out.
+Another exception was thrown: 'package:flutter/src/rendering/mouse_tracker.dart': Failed assertion: line 199 pos 12: '!_debugDuringDeviceUpdate': is not true.
+Another exception was thrown: 'package:flutter/src/rendering/mouse_tracker.dart': Failed assertion: line 199 pos 12: '!_debugDuringDeviceUpdate': is not true.
+Lost connection to device.

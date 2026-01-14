@@ -1,7 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../database/db_helper.dart';
 import '../models/payment_method.dart';
 import '../services/database_initialization_service.dart';
+import '../services/default_account_categories_service.dart';
 import '../widgets/app_input_decoration.dart';
 import '../services/prefs_service.dart';
 import '../widgets/dialog_close_button.dart';
@@ -75,8 +78,13 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     if (_isPopulating) return;
     setState(() => _isPopulating = true);
     try {
+      // Primeiro popula os métodos padrão
       await DatabaseInitializationService.instance
           .populatePaymentMethods(DatabaseHelper.instance);
+
+      // Depois atribui logos inteligentes aos métodos existentes sem logo
+      await _assignIntelligentLogos();
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -95,6 +103,23 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
       );
     } finally {
       if (mounted) setState(() => _isPopulating = false);
+    }
+  }
+
+  /// Atribui logos (emojis) inteligentes a todos os métodos de pagamento
+  /// que ainda não têm logo definido.
+  Future<void> _assignIntelligentLogos() async {
+    final db = DatabaseHelper.instance;
+    final methods = await db.readPaymentMethods(onlyActive: false);
+
+    for (final method in methods) {
+      // Atribui logo se estiver vazio ou nulo
+      if (method.logo == null || method.logo!.isEmpty) {
+        final logo = DefaultAccountCategoriesService.getLogoForPaymentMethod(method.name);
+        if (logo.isNotEmpty) {
+          await db.updatePaymentMethod(method.copyWith(logo: logo));
+        }
+      }
     }
   }
 
@@ -390,19 +415,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
         return Scaffold(
       appBar: AppBar(
           title: const Text('Formas de Pagamento/Recebimento'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.auto_awesome),
-              tooltip: 'Popular com padrões',
-              onPressed: _isPopulating ? null : _populateDefaults,
-            ),
-          ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showPaymentMethodDialog(),
-        label: const Text('Novo Item'),
-        icon: const Icon(Icons.add),
-      ),
       body: Column(
         children: [
           Padding(
@@ -411,11 +424,26 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
               children: [
                 const Spacer(),
                 FilledButton.icon(
+                  onPressed: () => _showPaymentMethodDialog(),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Novo Item'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.blue.shade800,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    shape: const StadiumBorder(),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                FilledButton.icon(
                   onPressed: _isPopulating ? null : _populateDefaults,
                   icon: const Icon(Icons.auto_awesome),
                   label: const Text('Popular'),
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.amber.shade700,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    shape: const StadiumBorder(),
                   ),
                 ),
               ],
@@ -443,100 +471,140 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
 
                 final methods = snapshot.data!;
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: methods.length,
-                  itemBuilder: (context, index) {
-                    final method = methods[index];
-                    final statusColor = method.isActive ? Colors.green : Colors.red;
-                    final displayIcon = method.iconCode != _fallbackIconCode
-                        ? method.icon
-                        : _inferIcon(method.name, method.type);
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    const horizontalPadding = 16.0;
+                    const verticalPadding = 16.0;
+                    const spacing = 12.0;
+                    const targetCardWidth = 320.0;
+
+                    final usableWidth = constraints.maxWidth - (horizontalPadding * 2);
+                    final usableHeight = constraints.maxHeight - (verticalPadding * 2);
+                    final crossAxisCount =
+                        math.max(1, (usableWidth / targetCardWidth).floor());
+                    final rows = (methods.length + crossAxisCount - 1) ~/ crossAxisCount;
+                    final totalSpacing = spacing * math.max(0, rows - 1);
+                    final availableForCards =
+                        math.max(0.0, usableHeight - totalSpacing);
+                    final rawCardHeight =
+                        rows > 0 ? availableForCards / rows : usableHeight;
+                    final cardHeight = rawCardHeight > 0 ? rawCardHeight : 1.0;
 
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Card(
-                        elevation: 1,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: horizontalPadding,
+                        vertical: verticalPadding,
+                      ),
+                      child: GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: methods.length,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          crossAxisSpacing: spacing,
+                          mainAxisSpacing: spacing,
+                          mainAxisExtent: cardHeight,
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 22,
-                                backgroundColor: Colors.grey.shade100,
-                                child: Icon(displayIcon, color: Colors.grey.shade800),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      method.name,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: statusColor.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  method.isActive ? 'Ativo' : 'Inativo',
-                                  style: TextStyle(
-                                    color: statusColor,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                        itemBuilder: (context, index) {
+                          final method = methods[index];
+                          final statusColor =
+                              method.isActive ? Colors.green : Colors.red;
+                          final displayIcon = method.iconCode != _fallbackIconCode
+                              ? method.icon
+                              : _inferIcon(method.name, method.type);
+                          final hasEmojiLogo =
+                              method.logo != null && method.logo!.isNotEmpty;
+
+                          return Card(
+                            elevation: 1,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
                                 children: [
-                                  Tooltip(
-                                    message: 'Editar',
-                                    child: IconButton(
-                                      icon: const Icon(
-                                        Icons.edit,
-                                        color: Colors.blue,
-                                      ),
-                                      onPressed: () =>
-                                          _showPaymentMethodDialog(method: method),
-                                      iconSize: 24,
+                                  CircleAvatar(
+                                    radius: 22,
+                                    backgroundColor: Colors.grey.shade100,
+                                    child: hasEmojiLogo
+                                        ? Text(
+                                            method.logo!,
+                                            style: const TextStyle(fontSize: 24),
+                                          )
+                                        : Icon(displayIcon,
+                                            color: Colors.grey.shade800),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          method.name,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  Tooltip(
-                                    message: 'Deletar',
-                                    child: IconButton(
-                                      icon: const Icon(
-                                        Icons.delete,
-                                        color: Colors.red,
-                                      ),
-                                      onPressed: () => _deletePaymentMethod(method),
-                                      iconSize: 24,
+                                  const SizedBox(width: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
                                     ),
+                                    decoration: BoxDecoration(
+                                      color: statusColor.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      method.isActive ? 'Ativo' : 'Inativo',
+                                      style: TextStyle(
+                                        color: statusColor,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Tooltip(
+                                        message: 'Editar',
+                                        child: IconButton(
+                                          icon: const Icon(
+                                            Icons.edit,
+                                            color: Colors.blue,
+                                          ),
+                                          onPressed: () => _showPaymentMethodDialog(
+                                              method: method),
+                                          iconSize: 24,
+                                        ),
+                                      ),
+                                      Tooltip(
+                                        message: 'Deletar',
+                                        child: IconButton(
+                                          icon: const Icon(
+                                            Icons.delete,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () =>
+                                              _deletePaymentMethod(method),
+                                          iconSize: 24,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
-                        ),
+                            ),
+                          );
+                        },
                       ),
                     );
                   },

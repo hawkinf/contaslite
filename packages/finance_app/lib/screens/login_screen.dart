@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/prefs_service.dart';
+import '../services/secure_credential_storage.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -18,12 +19,25 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _errorMessage;
+  bool _rememberCredentials = false;
 
   @override
   void initState() {
     super.initState();
     // Observar mudanças no estado de autenticação
     AuthService.instance.authStateNotifier.addListener(_onAuthStateChanged);
+    _prefillSavedCredentials();
+  }
+
+  Future<void> _prefillSavedCredentials() async {
+    final saved = await SecureCredentialStorage.loadSavedCredentials();
+    if (saved != null && mounted) {
+      setState(() {
+        _emailController.text = saved.email;
+        _passwordController.text = saved.password;
+        _rememberCredentials = true;
+      });
+    }
   }
 
   @override
@@ -71,6 +85,14 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (result.success) {
+      if (_rememberCredentials) {
+        await SecureCredentialStorage.saveCredentials(
+          _emailController.text.trim(),
+          _passwordController.text,
+        );
+      } else {
+        await SecureCredentialStorage.clearSavedCredentials();
+      }
       // Não precisa fazer navigator aqui - _onAuthStateChanged vai cuidar disso
       debugPrint('✅ Login bem-sucedido, aguardando redirecionamento...');
       // Manter _isLoading = true para bloquear interações
@@ -228,6 +250,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                     ),
                     const SizedBox(height: 24),
+
+                    // Salvar credenciais
+                    CheckboxListTile(
+                      value: _rememberCredentials,
+                      onChanged: _isLoading
+                          ? null
+                          : (val) => setState(() => _rememberCredentials = val ?? true),
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Salvar as credenciais'),
+                      controlAffinity: ListTileControlAffinity.leading,
+                    ),
+                    const SizedBox(height: 8),
 
                     // Botão Login
                     SizedBox(

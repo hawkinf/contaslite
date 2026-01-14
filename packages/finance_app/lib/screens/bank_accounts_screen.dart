@@ -426,213 +426,216 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
       valueListenable: PrefsService.dateRangeNotifier,
       builder: (context, range, _) {
         return Scaffold(
-      appBar: AppBar(
-          title: const Text('Bancos'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.payments),
-              tooltip: 'Lançar pagamento',
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Selecione um banco para usar no pagamento.'),
+          appBar: AppBar(
+            title: const Text('Bancos'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.payments),
+                tooltip: 'Lançar pagamento',
+                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Selecione um banco para usar no pagamento.'),
+                  ),
                 ),
               ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.add),
-              tooltip: 'Adicionar Banco',
-              onPressed: _openForm,
-            ),
-          ],
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-        icon: const Icon(Icons.add),
-        label: const Text('Novo Banco'),
-        onPressed: _banks.isEmpty && !_loading
-            ? () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content:
-                          Text('Carregando lista de bancos, tente novamente.')),
-                )
-            : () => _openForm(),
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-              ? Center(
-                  child: Text(
-                    'Nenhum banco salvo.\nToque em "Novo Banco" para adicionar.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey.shade700),
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _items.length,
-                  itemBuilder: (context, index) {
-                    final bank = _items[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Card(
-                        elevation: 1,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          '${_formatBankCode(bank.code)} - ${bank.name}',
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Color(bank.color)
-                                                .withValues(alpha: 0.15),
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                            border: Border.all(
-                                              color: Color(bank.color)
-                                                  .withValues(alpha: 0.4),
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            bank.description,
-                                            style: TextStyle(
-                                              color: Color(bank.color),
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 13,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  SizedBox(
-                                    width: 90,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          'Agência',
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            color:
-                                                Colors.grey.shade600,
-                                            fontWeight: FontWeight.w600,
-                                            letterSpacing: 0.3,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          bank.agency,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  SizedBox(
-                                    width: 90,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          'Conta',
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            color:
-                                                Colors.grey.shade600,
-                                            fontWeight: FontWeight.w600,
-                                            letterSpacing: 0.3,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          bank.account,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Column(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.center,
-                                    children: [
-                                      Tooltip(
-                                        message: 'Editar',
-                                        child: IconButton(
-                                          icon: const Icon(
-                                            Icons.edit,
-                                            color: Colors.blue,
-                                          ),
-                                          onPressed: () =>
-                                              _openForm(bank: bank),
-                                          iconSize: 22,
+            ],
+          ),
+          body: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                  children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Row(
+                    children: [
+                      const Spacer(),
+                      FilledButton.icon(
+                        onPressed: (_banks.isEmpty && !_loading)
+                            ? () => ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          'Carregando lista de bancos, tente novamente.',
                                         ),
                                       ),
-                                      Tooltip(
-                                        message: 'Deletar',
-                                        child: IconButton(
-                                          icon: const Icon(
-                                            Icons.delete,
-                                            color: Colors.red,
-                                          ),
-                                          onPressed: bank.id != null
-                                              ? () => _deleteBank(
-                                                  bank.id!)
-                                              : null,
-                                          iconSize: 22,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
+                                    )
+                                : _openForm,
+                            icon: const Icon(Icons.add),
+                            label: const Text('Novo Banco'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.blue.shade800,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 18, vertical: 14),
+                              shape: const StadiumBorder(),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    );
-                  },
+                    ),
+                    Expanded(
+                      child: _items.isEmpty
+                          ? Center(
+                              child: Text(
+                                'Nenhum banco salvo.\nUse "Novo Banco" para adicionar.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.grey.shade700),
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _items.length,
+                              itemBuilder: (context, index) {
+                                final bank = _items[index];
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: Card(
+                                    elevation: 1,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  children: [
+                                                    Text(
+                                                      '${_formatBankCode(bank.code)} - ${bank.name}',
+                                                      style: const TextStyle(
+                                                        fontSize: 16,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                    const SizedBox(height: 6),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(
+                                                        horizontal: 12,
+                                                        vertical: 6,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color: Color(bank.color).withValues(alpha: 0.15),
+                                                        borderRadius: BorderRadius.circular(8),
+                                                        border: Border.all(
+                                                          color: Color(bank.color).withValues(alpha: 0.4),
+                                                          width: 1,
+                                                        ),
+                                                      ),
+                                                      child: Text(
+                                                        bank.description,
+                                                        style: TextStyle(
+                                                          color: Color(bank.color),
+                                                          fontWeight: FontWeight.w600,
+                                                          fontSize: 13,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 16),
+                                              SizedBox(
+                                                width: 90,
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  children: [
+                                                    Text(
+                                                      'Agência',
+                                                      style: TextStyle(
+                                                        fontSize: 9,
+                                                        color: Colors.grey.shade600,
+                                                        fontWeight: FontWeight.w600,
+                                                        letterSpacing: 0.3,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      bank.agency,
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                      textAlign: TextAlign.center,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              SizedBox(
+                                                width: 90,
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  children: [
+                                                    Text(
+                                                      'Conta',
+                                                      style: TextStyle(
+                                                        fontSize: 9,
+                                                        color: Colors.grey.shade600,
+                                                        fontWeight: FontWeight.w600,
+                                                        letterSpacing: 0.3,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      bank.account,
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                      textAlign: TextAlign.center,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Tooltip(
+                                                    message: 'Editar',
+                                                    child: IconButton(
+                                                      icon: const Icon(
+                                                        Icons.edit,
+                                                        color: Colors.blue,
+                                                      ),
+                                                      onPressed: () => _openForm(bank: bank),
+                                                      iconSize: 22,
+                                                    ),
+                                                  ),
+                                                  Tooltip(
+                                                    message: 'Deletar',
+                                                    child: IconButton(
+                                                      icon: const Icon(
+                                                        Icons.delete,
+                                                        color: Colors.red,
+                                                      ),
+                                                      onPressed: bank.id != null
+                                                          ? () => _deleteBank(bank.id!)
+                                                          : null,
+                                                      iconSize: 22,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
                 ),
         );
       },

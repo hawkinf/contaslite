@@ -13,6 +13,7 @@ import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
 import '../utils/color_contrast.dart';
 import '../utils/app_colors.dart';
+import '../utils/formatters.dart';
 import 'account_types_screen.dart';
 import 'recebimentos_table_screen.dart';
 import '../widgets/app_input_decoration.dart';
@@ -233,16 +234,18 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       // Remove non-digits
       String digitsOnly = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
 
-      // Limit to 6 digits (ddmmyy)
-      if (digitsOnly.length > 6) {
-        digitsOnly = digitsOnly.substring(0, 6);
+      // Accept up to 8 digits (ddmmyyyy) but also allow 4 (ddmm)
+      if (digitsOnly.length > 8) {
+        digitsOnly = digitsOnly.substring(0, 8);
       }
 
-      // Format: dd/mm/yy
+      // Format: dd/mm or dd/mm/yy or dd/mm/yyyy
       String formatted = '';
       for (int i = 0; i < digitsOnly.length; i++) {
         formatted += digitsOnly[i];
-        if ((i == 1 || i == 3) && i < digitsOnly.length - 1) {
+        if (i == 1 && digitsOnly.length > 2) {
+          formatted += '/';
+        } else if (i == 3 && digitsOnly.length > 4) {
           formatted += '/';
         }
       }
@@ -375,11 +378,19 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
     // Carregar dados após a tela ser renderizada (não bloqueia a UI)
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final sw = Stopwatch()..start();
+      debugPrint('⏳ AccountFormScreen: _loadInitialData...');
       await _loadInitialData();
+      debugPrint('✅ AccountFormScreen: _loadInitialData ok (${sw.elapsedMilliseconds}ms)');
+      sw.reset();
+      debugPrint('⏳ AccountFormScreen: _loadPreferences...');
       await _loadPreferences();
+      debugPrint('✅ AccountFormScreen: _loadPreferences ok (${sw.elapsedMilliseconds}ms)');
       // Only update installments if editing an existing account with values
       if (widget.accountToEdit != null && _totalValueController.text.isNotEmpty) {
+        debugPrint('⏳ AccountFormScreen: _onMainDateChanged (init)...');
         _onMainDateChanged(_dateController.text);
+        debugPrint('✅ AccountFormScreen: _onMainDateChanged concluído');
       }
       if (mounted) {
         setState(() {
@@ -390,6 +401,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   }
 
   Future<void> _loadCategories() async {
+    debugPrint('🔧 _loadCategories: _selectedType=${_selectedType?.name} (id=${_selectedType?.id})');
+    debugPrint('🔧 _loadCategories: widget.isRecebimento=${widget.isRecebimento}');
+    
     if (_selectedType?.id == null) {
       if (mounted) {
         setState(() {
@@ -403,6 +417,8 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
     final categorias =
         await DatabaseHelper.instance.readAccountCategories(_selectedType!.id!);
+    
+    debugPrint('🔧 _loadCategories: categorias carregadas: ${categorias.length}');
 
     if (!mounted) return;
 
@@ -412,6 +428,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         final editing = widget.accountToEdit;
         if (editing != null) {
           final desiredId = editing.categoryId;
+          debugPrint('🔧 _loadCategories (não-Recebimento): desiredId=$desiredId');
           AccountCategory? resolved;
           if (desiredId != null) {
             for (final category in categorias) {
@@ -430,6 +447,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               }
             }
           }
+          debugPrint('🔧 _loadCategories (não-Recebimento): resolved=${resolved?.categoria}');
           if (resolved != null) _selectedCategory = resolved;
         }
       });
@@ -500,12 +518,22 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         _parentCategorias = parents;
         _selectedParentCategoria = selectedParent;
         _categorias = filteredChildren;
+        
+        // Se temos uma categoria desejada (editando conta existente)
         if (desiredCategory != null) {
-          _selectedCategory = desiredCategory;
-        }
-        if (_selectedCategory != null &&
-            !_categorias.any((c) => c.id == _selectedCategory!.id)) {
-          _selectedCategory = null;
+          // Verificar se está nos filhos filtrados
+          if (filteredChildren.any((c) => c.id == desiredCategory!.id)) {
+            _selectedCategory = desiredCategory;
+          } else {
+            // Se não estiver, pode ser porque o pai mudou - manter null
+            _selectedCategory = null;
+          }
+        } else {
+          // Se não há categoria desejada, verificar se a selecionada atual ainda é válida
+          if (_selectedCategory != null &&
+              !_categorias.any((c) => c.id == _selectedCategory!.id)) {
+            _selectedCategory = null;
+          }
         }
       });
     }
@@ -546,6 +574,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   }
 
   Future<void> _loadInitialData() async {
+    debugPrint('🔧 _loadInitialData: widget.isRecebimento=${widget.isRecebimento}');
+    debugPrint('🔧 _loadInitialData: widget.accountToEdit=${widget.accountToEdit?.id}, typeId=${widget.accountToEdit?.typeId}, categoryId=${widget.accountToEdit?.categoryId}');
+    
     final types = await DatabaseHelper.instance.readAllTypes();
 
     final baseTypes =
@@ -568,6 +599,8 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           .toList();
     }
 
+    debugPrint('🔧 _loadInitialData: filteredTypes=${filteredTypes.length}');
+
     if (!mounted) return;
 
     setState(() {
@@ -578,7 +611,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         try {
           resolvedType = filteredTypes
               .firstWhere((t) => t.id == widget.accountToEdit!.typeId);
+          debugPrint('🔧 _loadInitialData: resolvedType encontrado: ${resolvedType.name} (id=${resolvedType.id})');
         } catch (_) {
+          debugPrint('⚠️ _loadInitialData: typeId ${widget.accountToEdit!.typeId} não encontrado em filteredTypes!');
           resolvedType = filteredTypes.isNotEmpty ? filteredTypes.first : null;
         }
       } else if (filteredTypes.isNotEmpty) {
@@ -590,6 +625,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       }
 
       _selectedType = resolvedType;
+      debugPrint('🔧 _loadInitialData: _selectedType=${_selectedType?.name}');
     });
     await _loadCategories();
   }
@@ -849,6 +885,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   }
 
   Widget _buildTypeDropdown() {
+    debugPrint('📦 _buildTypeDropdown (types: ${_typesList.length}, selected: ${_selectedType?.name})');
     if (_typesList.isEmpty) {
       return InkWell(
         onTap: () => Navigator.push(context,
@@ -881,16 +918,40 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                 icon: Icons.account_balance_wallet,
               ),
               items: _parentCategorias
-                  .map((cat) =>
-                      DropdownMenuItem(value: cat, child: Text(cat.categoria)))
+                  .map((cat) => DropdownMenuItem(
+                        value: cat,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              cat.logo ?? '📁',
+                              style: const TextStyle(fontSize: 18),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(cat.categoria),
+                          ],
+                        ),
+                      ))
                   .toList(),
+              selectedItemBuilder: (BuildContext context) {
+                return _parentCategorias
+                    .map((cat) => Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('${cat.logo ?? '📁'} ${cat.categoria}'),
+                        ))
+                    .toList();
+              },
               onChanged: (val) {
+                debugPrint('🔄 Categoria pai alterada: ${val?.categoria}');
                 setState(() {
                   _selectedParentCategoria = val;
                   _selectedCategory = null;
                   _categorias = [];
                 });
-                _loadCategories();
+                _loadCategories().then((_) {
+                  debugPrint('✅ Categorias filhas carregadas: ${_categorias.length}');
+                  debugPrint('   Lista: ${_categorias.map((c) => c.categoria).join(", ")}');
+                });
               },
               validator: (val) => val == null ? _typeSelectErrorMessage : null,
             ),
@@ -935,8 +996,29 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               icon: Icons.account_balance_wallet,
             ),
             items: _typesList
-                .map((t) => DropdownMenuItem(value: t, child: Text(t.name)))
+                .map((t) => DropdownMenuItem(
+                      value: t,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            t.logo ?? '📁',
+                            style: const TextStyle(fontSize: 18),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(t.name),
+                        ],
+                      ),
+                    ))
                 .toList(),
+            selectedItemBuilder: (BuildContext context) {
+              return _typesList
+                  .map((t) => Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('${t.logo ?? '📁'} ${t.name}'),
+                      ))
+                  .toList();
+            },
             onChanged: widget.lockTypeSelection ? null : (val) => _onTypeChanged(val),
             validator: (val) => val == null ? _typeSelectErrorMessage : null,
           ),
@@ -970,6 +1052,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   }
 
   Widget _buildColorPaletteSection() {
+    debugPrint('🎨 _buildColorPaletteSection');
     return Wrap(
       spacing: 12,
       runSpacing: 10,
@@ -1006,6 +1089,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   }
 
   Widget _buildLaunchTypeSelector() {
+    debugPrint('📝 _buildLaunchTypeSelector (_entryMode=$_entryMode)');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1528,92 +1612,147 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
   // Widget com o conteúdo do formulário (scrollável)
   Widget _buildFormContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Card com seleção de cor
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildColorPaletteSection(),
-                    const SizedBox(height: 20),
-                    _buildLaunchTypeSelector(),
-                  ],
+    try {
+      debugPrint('🏗️ _buildFormContent INÍCIO');
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Card com seleção de cor
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildColorPaletteSection(),
+                      const SizedBox(height: 20),
+                      _buildLaunchTypeSelector(),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-            // Card com tipo, categoria e descrição
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildTypeDropdown(),
-                    const SizedBox(height: 20),
-                    // Campo de Categoria (se houver categorias cadastradas)
-                    if (_categorias.isNotEmpty)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildFieldWithIcon(
-                            icon: Icons.label,
-                            label: 'Categoria',
-                            child: DropdownButtonFormField<AccountCategory>(
-                              value: _getValidatedSelectedCategory(),
-                              decoration: buildOutlinedInputDecoration(
-                                label: 'Categoria',
-                                icon: Icons.label,
-                              ),
-                              validator: (val) => val == null
-                                  ? 'Selecione uma categoria'
-                                  : null,
-                              items: _categorias
-                                  .map((cat) => DropdownMenuItem(
+              // Card com tipo, categoria e descrição
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildTypeDropdown(),
+                      const SizedBox(height: 20),
+                      // Campo de Categoria (se houver categorias cadastradas)
+                      if (_categorias.isNotEmpty)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildFieldWithIcon(
+                              icon: Icons.label,
+                              label: 'Categoria',
+                              child: DropdownButtonFormField<AccountCategory>(
+                                value: _getValidatedSelectedCategory(),
+                                decoration: buildOutlinedInputDecoration(
+                                  label: 'Categoria',
+                                  icon: Icons.label,
+                                ),
+                                validator: (val) => val == null
+                                    ? 'Selecione uma categoria'
+                                    : null,
+                                items: _categorias
+                                    .map((cat) {
+                                      final displayText = widget.isRecebimento
+                                          ? _childDisplayName(cat.categoria)
+                                          : cat.categoria;
+                                      return DropdownMenuItem(
                                         value: cat,
-                                        child: Text(widget.isRecebimento
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              cat.logo ?? '📁',
+                                              style: const TextStyle(fontSize: 18),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(displayText),
+                                          ],
+                                        ),
+                                      );
+                                    })
+                                    .toList(),
+                                selectedItemBuilder: (BuildContext context) {
+                                  return _categorias
+                                      .map((cat) {
+                                        final displayText = widget.isRecebimento
                                             ? _childDisplayName(cat.categoria)
-                                            : cat.categoria),
-                                      ))
-                                  .toList(),
-                              onChanged: (val) {
-                                setState(() {
-                                  _selectedCategory = val;
-                                });
-                              },
+                                            : cat.categoria;
+                                        return Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text('${cat.logo ?? '📁'} $displayText'),
+                                        );
+                                      })
+                                      .toList();
+                                },
+                                onChanged: (val) {
+                                  debugPrint('🎯 Categoria filha selecionada: ${val?.categoria}');
+                                  setState(() {
+                                    _selectedCategory = val;
+                                  });
+                                },
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 20),
-                        ],
-                      ),
-                    _buildFieldWithIcon(
-                      icon: Icons.description_outlined,
-                      label: _descriptionLabel,
-                      child: TextFormField(
-                        controller: _descController,
-                        textCapitalization: TextCapitalization.sentences,
-                        decoration: buildOutlinedInputDecoration(
-                          label: _descriptionLabel,
-                          icon: Icons.description_outlined,
+                            const SizedBox(height: 20),
+                          ],
+                        )
+                      else if (widget.isRecebimento && _selectedParentCategoria != null)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.warningBackground,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.info_outline, color: AppColors.warning, size: 20),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Nenhuma categoria filha encontrada para "${_selectedParentCategoria!.categoria}". Cadastre categorias filhas primeiro.',
+                                      style: const TextStyle(fontSize: 13),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
                         ),
-                        validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
+                      _buildFieldWithIcon(
+                        icon: Icons.description_outlined,
+                        label: _descriptionLabel,
+                        child: TextFormField(
+                          controller: _descController,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: buildOutlinedInputDecoration(
+                            label: _descriptionLabel,
+                            icon: Icons.description_outlined,
+                          ),
+                          validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
                       ),
                     ),
                   ],
@@ -1665,7 +1804,21 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           ],
         ),
       ),
-    );
+      );
+    } catch (e, stackTrace) {
+      debugPrint('❌ CRASH em _buildFormContent: $e');
+      debugPrint('Stack trace:\n$stackTrace');
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error, color: Colors.red, size: 48),
+            const SizedBox(height: 16),
+            Text('Erro ao construir formulário:\n$e'),
+          ],
+        ),
+      );
+    }
   }
 
   // Widget com os botões de ação
@@ -1734,49 +1887,81 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Se está carregando dados iniciais, mostrar loading indicator
-    if (_isLoadingData) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    try {
+      debugPrint('🏗️ AccountFormScreen.build INÍCIO');
+      
+      // Se está carregando dados iniciais, mostrar loading indicator
+      if (_isLoadingData) {
+        debugPrint('🏗️ AccountFormScreen.build: Mostrando loading indicator (_isLoadingData=true)');
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                'Carregando formulário...',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        );
+      }
+
+      debugPrint('🏗️ AccountFormScreen.build: Dados carregados, construindo UI');
+      debugPrint('  - widget.accountToEdit: ${widget.accountToEdit?.description}');
+      debugPrint('  - widget.isRecebimento: ${widget.isRecebimento}');
+      debugPrint('  - _selectedType: ${_selectedType?.name}');
+      debugPrint('  - _selectedCategory: ${_selectedCategory?.categoria}');
+      
+      final appBarTitle = widget.accountToEdit != null 
+          ? (widget.isRecebimento ? 'Editar Recebimento' : 'Editar Conta')
+          : (widget.isRecebimento ? 'Novo Recebimento' : 'Nova Conta');
+
+      debugPrint('🏗️ AccountFormScreen.build: appBarTitle="$appBarTitle"');
+
+      // Se não mostrar AppBar (usado em Dialog), retorna Column simples
+      if (!widget.showAppBar) {
+        debugPrint('🏗️ AccountFormScreen.build: Modo Dialog (showAppBar=false)');
+        return Column(
           children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text(
-              'Carregando formulário...',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            Expanded(child: _buildFormContent()),
+            _buildActionButtons(),
           ],
+        );
+      }
+
+      // Se mostrar AppBar (página completa), usa Scaffold
+      debugPrint('🏗️ AccountFormScreen.build: Modo Scaffold (showAppBar=true)');
+      debugPrint('🏗️ AccountFormScreen.build FIM - retornando Scaffold');
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(appBarTitle),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: _buildFormContent(),
+        bottomNavigationBar: _buildActionButtons(),
+      );
+    } catch (e, stackTrace) {
+      debugPrint('❌ CRASH em AccountFormScreen.build: $e');
+      debugPrint('Stack trace:\n$stackTrace');
+      return Scaffold(
+        appBar: AppBar(title: const Text('Erro')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error, color: Colors.red, size: 48),
+              const SizedBox(height: 16),
+              Text('Erro ao carregar formulário:\n$e'),
+            ],
+          ),
         ),
       );
     }
-
-    final appBarTitle = widget.accountToEdit != null 
-        ? (widget.isRecebimento ? 'Editar Recebimento' : 'Editar Conta')
-        : (widget.isRecebimento ? 'Novo Recebimento' : 'Nova Conta');
-
-    // Se não mostrar AppBar (usado em Dialog), retorna Column simples
-    if (!widget.showAppBar) {
-      return Column(
-        children: [
-          Expanded(child: _buildFormContent()),
-          _buildActionButtons(),
-        ],
-      );
-    }
-
-    // Se mostrar AppBar (página completa), usa Scaffold
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(appBarTitle),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: _buildFormContent(),
-      bottomNavigationBar: _buildActionButtons(),
-    );
   }
 
   Future<int?> _showInstallmentScopeDialog(Account acc) async {
@@ -1840,11 +2025,19 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       return;
     }
 
+    // NÃO sobrescrever o tipo se está editando uma conta existente
+    if (widget.accountToEdit != null) {
+      debugPrint('🔧 _loadPreferences: Pulando (está editando conta existente)');
+      return;
+    }
+
     // Carregar tipo preferido (usando _typesList já carregado em _loadInitialData)
     final typeId = prefs.getInt('last_account_type_id');
     if (typeId != null && _typesList.isNotEmpty) {
-      _selectedType = _typesList.firstWhere((t) => t.id == typeId,
+      final foundType = _typesList.firstWhere((t) => t.id == typeId,
           orElse: () => _typesList.first);
+      debugPrint('🔧 _loadPreferences: Carregando preferência - typeId=$typeId, tipo=${foundType.name}');
+      _selectedType = foundType;
       await _loadCategories();
     }
 
@@ -2071,7 +2264,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           // Editar avulsa/parcelada - Extract date from form
             DateTime editDate = DateTime.now();
             try {
-              editDate = UtilData.obterDateTime(_dateController.text);
+              // Normalizar data para completar com ano corrente se necessário
+              final normalizedDate = DateFormatter.normalizeDate(_dateController.text);
+              editDate = UtilData.obterDateTime(normalizedDate);
             } catch (e) {
               final year = acc.year ?? DateTime.now().year;
               final month = acc.month ?? DateTime.now().month;
@@ -2304,7 +2499,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           double val = UtilBrasilFields.converterMoedaParaDouble(
               _totalValueController.text);
           try {
-            DateTime dt = UtilData.obterDateTime(_dateController.text);
+            // Normalizar data para completar com ano corrente se necessário
+            final normalizedDate = DateFormatter.normalizeDate(_dateController.text);
+            DateTime dt = UtilData.obterDateTime(normalizedDate);
             final acc = Account(
               typeId: _selectedType!.id!,
               categoryId: _selectedCategory?.id,

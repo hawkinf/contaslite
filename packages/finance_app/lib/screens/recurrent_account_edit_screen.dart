@@ -11,6 +11,8 @@ import '../widgets/app_input_decoration.dart';
 import '../widgets/payment_dialog.dart';
 import '../services/prefs_service.dart';
 import '../widgets/date_range_app_bar.dart';
+import '../utils/app_colors.dart';
+import 'recebimentos_table_screen.dart';
 
 enum _RecurrentEditScope { thisOnly, thisAndFuture, all }
 
@@ -29,6 +31,7 @@ class RecurrentAccountEditScreen extends StatefulWidget {
 
 class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen> {
   final _formKey = GlobalKey<FormState>();
+  bool _isDisposed = false;
 
   late TextEditingController _descController;
   late TextEditingController _valueController;
@@ -43,8 +46,13 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
   List<AccountType> _typesList = [];
   AccountType? _selectedType;
 
+  List<AccountCategory> _parentCategorias = [];
+  AccountCategory? _selectedParentCategoria;
+  
   List<AccountCategory> _categorias = [];
   AccountCategory? _selectedCategory;
+  
+  static const String _recebimentosChildSeparator = '||';
 
   final List<Color> _colors = const [
     Color(0xFFFF0000),
@@ -232,6 +240,8 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
     if (_selectedType?.id == null) {
       if (mounted) {
         setState(() {
+          _parentCategorias = [];
+          _selectedParentCategoria = null;
           _categorias = [];
           _selectedCategory = null;
         });
@@ -240,12 +250,125 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
     }
 
     final cats = await DatabaseHelper.instance.readAccountCategories(_selectedType!.id!);
-    if (mounted) {
+    
+    if (!mounted) return;
+
+    // Para Recebimentos, separar em categorias pai e filha
+    if (widget.isRecebimento) {
+      final parents = <AccountCategory>[];
+      final children = <AccountCategory>[];
+      for (final cat in cats) {
+        if (cat.categoria.contains(_recebimentosChildSeparator)) {
+          children.add(cat);
+        } else {
+          parents.add(cat);
+        }
+      }
+      parents.sort((a, b) => a.categoria.compareTo(b.categoria));
+
+      // Usar a categoria pai já selecionada (que foi atualizada no setState)
+      AccountCategory? selectedParent = _selectedParentCategoria;
+      
+      // Se nenhuma categoria pai está selecionada, tentar usar da conta
+      if (selectedParent == null && _parentAccount.categoryId != null) {
+        final catName = cats
+            .where((c) => c.id == _parentAccount.categoryId)
+            .firstOrNull
+            ?.categoria;
+        if (catName != null) {
+          final parentName = catName.contains(_recebimentosChildSeparator)
+              ? catName.split(_recebimentosChildSeparator).first.trim()
+              : catName;
+          for (final parent in parents) {
+            if (parent.categoria.trim() == parentName) {
+              selectedParent = parent;
+              break;
+            }
+          }
+        }
+      }
+      
+      if (selectedParent == null && parents.isNotEmpty) {
+        selectedParent = parents.first;
+      }
+
+      final filteredChildren = selectedParent == null
+          ? <AccountCategory>[]
+          : children
+              .where((child) =>
+                  child.categoria.startsWith(
+                      '${selectedParent!.categoria}$_recebimentosChildSeparator'))
+              .toList()
+            ..sort((a, b) => a.categoria.compareTo(b.categoria));
+
       setState(() {
-        _categorias = cats;
-        _selectedCategory = null;
+        _parentCategorias = parents;
+        _selectedParentCategoria = selectedParent;
+        _categorias = filteredChildren;
+        
+        // Selecionar categoria filha se houver uma na conta
+        if (_parentAccount.categoryId != null) {
+          try {
+            _selectedCategory = cats.firstWhere((c) => c.id == _parentAccount.categoryId);
+            if (!_categorias.any((c) => c.id == _selectedCategory!.id)) {
+              _selectedCategory = null;
+            }
+          } catch (_) {
+            _selectedCategory = null;
+          }
+        }
       });
+      return;
     }
+
+    // Para não-Recebimentos, apenas carregar categorias normalmente
+    setState(() {
+      _categorias = cats;
+      _selectedCategory = null;
+    });
+  }
+  
+    Future<void> _showCategoriesDialog() async {
+    if (_isDisposed) return;
+
+    if (widget.isRecebimento) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const RecebimentosTableScreen()),
+      );
+      if (_isDisposed) return;
+      await _loadCategories();
+      return;
+    }
+
+    if (_selectedType?.id == null) {
+      if (mounted && !_isDisposed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Selecione um tipo antes de gerenciar categorias'),
+            backgroundColor: AppColors.warning,
+          ),
+        );
+      }
+      return;
+    }
+
+    await _loadCategories();
+
+    if (!mounted || _isDisposed) return;
+    await showDialog(
+      context: context,
+      builder: (ctx) => _CategoriasDialog(
+        typeId: _selectedType!.id!,
+        categorias: _categorias,
+        onCategoriasUpdated: _loadCategories,
+      ),
+    );
+  }
+
+String _childDisplayName(String raw) {
+    if (!raw.contains(_recebimentosChildSeparator)) return raw;
+    return raw.split(_recebimentosChildSeparator).last.trim();
   }
 
   Future<void> _saveAccount() async {
@@ -567,6 +690,7 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
 
   @override
   void dispose() {
+    _isDisposed = true;
     _descController.dispose();
     _valueController.dispose();
     _averageValueController.dispose();
@@ -668,27 +792,126 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
 
               const SizedBox(height: 20),
 
-              // Tipo da conta
-              DropdownButtonFormField<AccountType>(
-                initialValue: _selectedType,
-                decoration: buildOutlinedInputDecoration(
-                  label: widget.isRecebimento
-                      ? 'Tipo de Recebimento'
-                      : 'Tipo da Conta',
-                  icon: Icons.account_balance_wallet,
+              // Para Recebimentos: Categoria Pai (Tipo de Recebimento)
+              if (widget.isRecebimento && _parentCategorias.isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    DropdownButtonFormField<AccountCategory>(
+                      initialValue: _selectedParentCategoria,
+                      decoration: buildOutlinedInputDecoration(
+                        label: 'Tipo de Recebimento',
+                        icon: Icons.account_balance_wallet,
+                      ),
+                      items: _parentCategorias
+                          .map((cat) => DropdownMenuItem(
+                                value: cat,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      cat.logo ?? '📁',
+                                      style: const TextStyle(fontSize: 18),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(cat.categoria),
+                                  ],
+                                ),
+                              ))
+                          .toList(),
+                      selectedItemBuilder: (BuildContext context) {
+                        return _parentCategorias
+                            .map((cat) => Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text('${cat.logo ?? '📁'} ${cat.categoria}'),
+                                ))
+                            .toList();
+                      },
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedParentCategoria = val;
+                          _selectedCategory = null;
+                          _categorias = [];
+                        });
+                        _loadCategories();
+                      },
+                      validator: (val) => val == null ? 'Selecione um tipo de recebimento' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Gerenciar Categorias',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    FilledButton.icon(
+                      icon: const Icon(Icons.category),
+                      label: const Text('Acessar Categorias'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.blue.shade700,
+                      ),
+                      onPressed: _showCategoriesDialog,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                )
+              // Para não-Recebimentos: Tipo da Conta normal
+              else if (!widget.isRecebimento)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    DropdownButtonFormField<AccountType>(
+                      initialValue: _selectedType,
+                      decoration: buildOutlinedInputDecoration(
+                        label: 'Tipo da Conta',
+                        icon: Icons.account_balance_wallet,
+                      ),
+                      items: _typesList
+                          .map((t) => DropdownMenuItem(
+                                value: t,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      t.logo ?? '📁',
+                                      style: const TextStyle(fontSize: 18),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(t.name),
+                                  ],
+                                ),
+                              ))
+                          .toList(),
+                      selectedItemBuilder: (BuildContext context) {
+                        return _typesList
+                            .map((t) => Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text('${t.logo ?? '📁'} ${t.name}'),
+                                ))
+                            .toList();
+                      },
+                      onChanged: (val) async {
+                        setState(() {
+                          _selectedType = val;
+                          _selectedCategory = null;
+                        });
+                        await _loadCategories();
+                      },
+                      validator: (val) => val == null ? 'Selecione um tipo' : null,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                 ),
-                items: _typesList.map((t) => DropdownMenuItem(value: t, child: Text(t.name))).toList(),
-                onChanged: (val) async {
-                  setState(() {
-                    _selectedType = val;
-                    _selectedCategory = null;
-                  });
-                  await _loadCategories();
-                },
-                validator: (val) => val == null ? 'Selecione um tipo' : null,
-              ),
 
-              const SizedBox(height: 12),
 
               if (_categorias.isNotEmpty)
                 DropdownButtonFormField<AccountCategory>(
@@ -697,7 +920,40 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
                     label: 'Categoria',
                     icon: Icons.label,
                   ),
-                  items: _categorias.map((cat) => DropdownMenuItem(value: cat, child: Text(cat.categoria))).toList(),
+                  items: _categorias
+                      .map((cat) {
+                        final displayText = widget.isRecebimento
+                            ? _childDisplayName(cat.categoria)
+                            : cat.categoria;
+                        return DropdownMenuItem(
+                          value: cat,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                cat.logo ?? '📁',
+                                style: const TextStyle(fontSize: 18),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(displayText),
+                            ],
+                          ),
+                        );
+                      })
+                      .toList(),
+                  selectedItemBuilder: (BuildContext context) {
+                    return _categorias
+                        .map((cat) {
+                          final displayText = widget.isRecebimento
+                              ? _childDisplayName(cat.categoria)
+                              : cat.categoria;
+                          return Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text('${cat.logo ?? '📁'} $displayText'),
+                          );
+                        })
+                        .toList();
+                  },
                   onChanged: (val) => setState(() => _selectedCategory = val),
                 ),
 
@@ -970,6 +1226,158 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, color: iconColor, size: 18),
+      ),
+    );
+  }
+}
+
+class _CategoriasDialog extends StatefulWidget {
+  final int typeId;
+  final List<AccountCategory> categorias;
+  final VoidCallback onCategoriasUpdated;
+
+  const _CategoriasDialog({
+    required this.typeId,
+    required this.categorias,
+    required this.onCategoriasUpdated,
+  });
+
+  @override
+  State<_CategoriasDialog> createState() => _CategoriasDialogState();
+}
+
+class _CategoriasDialogState extends State<_CategoriasDialog> {
+  late List<AccountCategory> _categorias;
+  final _newCategoriaController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _categorias = List.from(widget.categorias);
+  }
+
+  @override
+  void dispose() {
+    _newCategoriaController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _addCategory() async {
+    final text = _newCategoriaController.text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Digite uma categoria'),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+      return;
+    }
+
+    final exists = await DatabaseHelper.instance.checkAccountCategoryExists(widget.typeId, text);
+    if (exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Esta categoria já existe'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    final categoria = AccountCategory(accountId: widget.typeId, categoria: text);
+    final id = await DatabaseHelper.instance.createAccountCategory(categoria);
+
+    setState(() {
+      _categorias.add(AccountCategory(id: id, accountId: widget.typeId, categoria: text));
+      _newCategoriaController.clear();
+    });
+
+    widget.onCategoriasUpdated();
+  }
+
+  Future<void> _deleteCategory(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Deletar Categoria?'),
+        content: const Text('Deseja remover esta categoria?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Deletar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await DatabaseHelper.instance.deleteAccountCategory(id);
+      setState(() {
+        _categorias.removeWhere((d) => d.id == id);
+      });
+      widget.onCategoriasUpdated();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: const Color(0xFFF5F5F5),
+      child: Container(
+        width: 400,
+        constraints: const BoxConstraints(maxHeight: 600),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Gerenciar Categorias',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _newCategoriaController,
+              decoration: InputDecoration(
+                labelText: 'Nova Categoria',
+                prefixIcon: const Icon(Icons.add),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onSubmitted: (_) => _addCategory(),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _addCategory,
+              icon: const Icon(Icons.save),
+              label: const Text('Adicionar'),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: _categorias.isEmpty
+                  ? const Center(child: Text('Nenhuma categoria cadastrada'))
+                  : ListView.builder(
+                      itemCount: _categorias.length,
+                      itemBuilder: (context, index) {
+                        final cat = _categorias[index];
+                        return Card(
+                          child: ListTile(
+                            leading: Text(cat.logo ?? '📂', style: const TextStyle(fontSize: 18)),
+                            title: Text(cat.categoria),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: cat.id != null ? () => _deleteCategory(cat.id!) : null,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

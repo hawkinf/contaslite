@@ -122,15 +122,23 @@ class DatabaseInitializationService {
         for (final subcategory in subcategories) {
           final normalizedSub = subcategory.trim().toUpperCase();
           if (existingNames.contains(normalizedSub)) continue;
+
+          // Obter o ícone específico para esta subcategoria dentro da categoria pai
+          final subcategoryLogo = DefaultAccountCategoriesService.getLogoForSubcategoryInCategory(
+            typeName,
+            subcategory,
+          );
+
           final category = AccountCategory(
             accountId: typeId,
             categoria: subcategory,
+            logo: subcategoryLogo,
           );
           await db.createAccountCategory(category);
           existingNames.add(normalizedSub);
           categoriesCreated++;
           addedForType++;
-          debugPrint('    -> Subcategoria: "$subcategory"');
+          debugPrint('    -> Subcategoria: "$subcategory" ($subcategoryLogo)');
         }
 
         if (normalizedName ==
@@ -140,13 +148,19 @@ class DatabaseInitializationService {
             final parentName = entry.key;
             final parentNormalized = parentName.trim().toUpperCase();
             if (!existingNames.contains(parentNormalized)) {
+              // Obter ícone para a subcategoria pai de Recebimentos
+              final parentLogo = DefaultAccountCategoriesService.getLogoForRecebimentosPai(parentName);
               await db.createAccountCategory(
-                AccountCategory(accountId: typeId, categoria: parentName),
+                AccountCategory(
+                  accountId: typeId,
+                  categoria: parentName,
+                  logo: parentLogo,
+                ),
               );
               existingNames.add(parentNormalized);
               categoriesCreated++;
               addedForType++;
-              debugPrint('    -> Subcategoria: "$parentName"');
+              debugPrint('    -> Subcategoria: "$parentName" ($parentLogo)');
             }
 
             for (final child in entry.value) {
@@ -154,13 +168,21 @@ class DatabaseInitializationService {
                   defaultService.buildRecebimentosChildName(parentName, child);
               final fullNormalized = fullName.trim().toUpperCase();
               if (existingNames.contains(fullNormalized)) continue;
+
+              // Obter ícone para o filho de Recebimentos
+              final childLogo = DefaultAccountCategoriesService.getLogoForRecebimentosFilho(parentName, child);
+
               await db.createAccountCategory(
-                AccountCategory(accountId: typeId, categoria: fullName),
+                AccountCategory(
+                  accountId: typeId,
+                  categoria: fullName,
+                  logo: childLogo,
+                ),
               );
               existingNames.add(fullNormalized);
               categoriesCreated++;
               addedForType++;
-              debugPrint('      -> Filho: "$child"');
+              debugPrint('      -> Filho: "$child" ($childLogo)');
             }
           }
         }
@@ -196,6 +218,7 @@ class DatabaseInitializationService {
         requiresBank: false,
         isActive: true,
         usage: PaymentMethodUsage.pagamentos,
+        logo: '💳',
       ),
       PaymentMethod(
         name: 'Crédito em conta',
@@ -204,6 +227,7 @@ class DatabaseInitializationService {
         requiresBank: true,
         isActive: true,
         usage: PaymentMethodUsage.recebimentos,
+        logo: '🏦',
       ),
       PaymentMethod(
         name: 'Dinheiro',
@@ -212,6 +236,7 @@ class DatabaseInitializationService {
         requiresBank: false,
         isActive: true,
         usage: PaymentMethodUsage.pagamentosRecebimentos,
+        logo: '💵',
       ),
       PaymentMethod(
         name: 'Débito C/C',
@@ -220,6 +245,7 @@ class DatabaseInitializationService {
         requiresBank: true,
         isActive: true,
         usage: PaymentMethodUsage.pagamentos,
+        logo: '🏧',
       ),
       PaymentMethod(
         name: 'Internet Banking',
@@ -228,6 +254,7 @@ class DatabaseInitializationService {
         requiresBank: true,
         isActive: true,
         usage: PaymentMethodUsage.pagamentos,
+        logo: '🌐',
       ),
       PaymentMethod(
         name: 'PIX',
@@ -236,6 +263,7 @@ class DatabaseInitializationService {
         requiresBank: true,
         isActive: true,
         usage: PaymentMethodUsage.pagamentosRecebimentos,
+        logo: '⚡',
       ),
     ];
 

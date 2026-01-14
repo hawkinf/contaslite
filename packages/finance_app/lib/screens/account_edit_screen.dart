@@ -35,16 +35,19 @@ class _AccountEditScreenState extends State<AccountEditScreen> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('🧭 AccountEditScreen.build chamado');
     return FutureBuilder<bool>(
       future: _isRecebimentoFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
+          debugPrint('🧭 AccountEditScreen aguardando _isRecebimentoFuture...');
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
         final isRecebimento = snapshot.data ?? false;
+        debugPrint('🧭 AccountEditScreen pronto. isRecebimento=$isRecebimento');
         // AccountFormScreen agora tem seu próprio Scaffold com AppBar e bottomNavigationBar
         return AccountFormScreen(
           accountToEdit: widget.account,

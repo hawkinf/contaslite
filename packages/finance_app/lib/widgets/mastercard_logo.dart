@@ -6,45 +6,18 @@ class MastercardLogo extends StatelessWidget {
 
   const MastercardLogo({
     super.key,
-    this.width = 28,
-    this.height = 18,
+    this.width = 55,
+    this.height = 35,
   });
 
   @override
   Widget build(BuildContext context) {
-    final circleSize = height;
-    final overlap = circleSize * 0.55;
-    return SizedBox(
+    return Image.asset(
+      'assets/icons/cc_mc.png',
+      package: 'finance_app',
       width: width,
       height: height,
-      child: Stack(
-        children: [
-          Positioned(
-            left: 0,
-            top: 0,
-            child: Container(
-              width: circleSize,
-              height: circleSize,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Color(0xFFEB001B),
-              ),
-            ),
-          ),
-          Positioned(
-            left: overlap,
-            top: 0,
-            child: Container(
-              width: circleSize,
-              height: circleSize,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFF79E1B).withValues(alpha: 0.85),
-              ),
-            ),
-          ),
-        ],
-      ),
+      fit: BoxFit.contain,
     );
   }
 }

@@ -1,0 +1,1131 @@
+[ +393 ms] Unable to locate an Android SDK.
+[   +9 ms] Artifact Instance of 'MaterialFonts' is not required, skipping update.
+[        ] Artifact Instance of 'GradleWrapper' is not required, skipping update.
+[        ] Artifact Instance of 'AndroidGenSnapshotArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'AndroidInternalBuildArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterWebSdk' is not required, skipping update.
+[        ] Artifact Instance of 'LegacyCanvasKitRemover' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterSdk' is not required, skipping update.
+[        ] Artifact Instance of 'WindowsEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerDebugSymbols' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FontSubsetArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'PubDependencies' is not required, skipping update.
+[        ] executing: [C:\Users\hawk\flutter/] git -c log.showSignature=false log HEAD -n 1 --pretty=format:%ad --date=iso
+[  +95 ms] Exit code 0 from: git -c log.showSignature=false log HEAD -n 1 --pretty=format:%ad --date=iso
+[        ] 2025-12-11 11:50:07 -0500
+[  +33 ms] Artifact Instance of 'AndroidGenSnapshotArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'AndroidInternalBuildArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterWebSdk' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterEngineStamp' is not required, skipping update.
+[        ] Artifact Instance of 'LegacyCanvasKitRemover' is not required, skipping update.
+[   +2 ms] Artifact Instance of 'WindowsEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerDebugSymbols' is not required, skipping update.
+[ +120 ms] Artifact Instance of 'AndroidGenSnapshotArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'AndroidInternalBuildArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IOSEngineArtifacts' is not required, skipping update.
+[   +3 ms] Artifact Instance of 'FlutterEngineStamp' is not required, skipping update.
+[   +4 ms] Artifact Instance of 'MacOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerDebugSymbols' is not required, skipping update.
+[  +43 ms] Connected devices:
+[ +129 ms] Windows (desktop) ÔÇó windows ÔÇó windows-x64    ÔÇó Microsoft Windows [vers├åo 10.0.19045.6216]
+[        ] Chrome (web)      ÔÇó chrome  ÔÇó web-javascript ÔÇó Google Chrome 143.0.7499.193
+[        ] Edge (web)        ÔÇó edge    ÔÇó web-javascript ÔÇó Microsoft Edge 143.0.3650.75
+[        ] [1]: Windows (windows)
+[        ] [2]: Chrome (chrome)
+[        ] [3]: Edge (edge)
+[   +1 ms] Please choose one (or "q" to quit)
+[        ] : 
+[+5235 ms] 1
+[  +10 ms] Skipping pub get: version match.
+[  +60 ms] Found plugin window_manager at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\window_manager-0.5.1\
+[   +5 ms] Found plugin screen_retriever at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever-0.2.0\
+[   +1 ms] Found plugin screen_retriever_windows at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever_windows-0.2.0\
+[   +4 ms] Found plugin screen_retriever_macos at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever_macos-0.2.0\
+[   +2 ms] Found plugin screen_retriever_linux at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever_linux-0.2.0\
+[  +20 ms] Found plugin shared_preferences at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences-2.5.4\
+[   +2 ms] Found plugin shared_preferences_windows at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_windows-2.4.1\
+[   +3 ms] Found plugin path_provider_windows at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_windows-2.3.0\
+[   +4 ms] Found plugin shared_preferences_web at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_web-2.4.3\
+[   +5 ms] Found plugin shared_preferences_linux at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_linux-2.4.1\
+[   +2 ms] Found plugin path_provider_linux at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_linux-2.2.1\
+[   +3 ms] Found plugin shared_preferences_foundation at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_foundation-2.5.6\
+[   +2 ms] Found plugin shared_preferences_android at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_android-2.4.18\
+[   +2 ms] Found plugin printing at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\printing-5.14.2\
+[  +16 ms] Found plugin path_provider at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider-2.1.5\
+[   +1 ms] Found plugin path_provider_foundation at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_foundation-2.5.1\
+[   +1 ms] Found plugin path_provider_android at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_android-2.2.22\
+[  +12 ms] Found plugin sqflite at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\sqflite-2.4.2\
+[   +3 ms] Found plugin sqflite_darwin at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\sqflite_darwin-2.4.2\
+[   +2 ms] Found plugin sqflite_android at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\sqflite_android-2.4.2+2\
+[   +3 ms] Found plugin file_picker at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\file_picker-10.3.8\
+[   +3 ms] Found plugin flutter_plugin_android_lifecycle at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_plugin_android_lifecycle-2.0.33\
+[   +4 ms] Found plugin desktop_drop at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\desktop_drop-0.5.0\
+[   +1 ms] Found plugin connectivity_plus at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\connectivity_plus-5.0.2\
+[  +48 ms] Found plugin window_manager at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\window_manager-0.5.1\
+[   +1 ms] Found plugin screen_retriever at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever-0.2.0\
+[   +1 ms] Found plugin screen_retriever_windows at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever_windows-0.2.0\
+[   +3 ms] Found plugin screen_retriever_macos at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever_macos-0.2.0\
+[   +1 ms] Found plugin screen_retriever_linux at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever_linux-0.2.0\
+[  +15 ms] Found plugin shared_preferences at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences-2.5.4\
+[   +1 ms] Found plugin shared_preferences_windows at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_windows-2.4.1\
+[   +2 ms] Found plugin path_provider_windows at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_windows-2.3.0\
+[   +2 ms] Found plugin shared_preferences_web at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_web-2.4.3\
+[   +2 ms] Found plugin shared_preferences_linux at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_linux-2.4.1\
+[   +1 ms] Found plugin path_provider_linux at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_linux-2.2.1\
+[   +2 ms] Found plugin shared_preferences_foundation at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_foundation-2.5.6\
+[   +1 ms] Found plugin shared_preferences_android at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_android-2.4.18\
+[   +1 ms] Found plugin printing at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\printing-5.14.2\
+[  +11 ms] Found plugin path_provider at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider-2.1.5\
+[   +1 ms] Found plugin path_provider_foundation at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_foundation-2.5.1\
+[   +1 ms] Found plugin path_provider_android at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_android-2.2.22\
+[   +6 ms] Found plugin sqflite at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\sqflite-2.4.2\
+[   +2 ms] Found plugin sqflite_darwin at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\sqflite_darwin-2.4.2\
+[   +1 ms] Found plugin sqflite_android at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\sqflite_android-2.4.2+2\
+[   +1 ms] Found plugin file_picker at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\file_picker-10.3.8\
+[   +1 ms] Found plugin flutter_plugin_android_lifecycle at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_plugin_android_lifecycle-2.0.33\
+[   +2 ms] Found plugin desktop_drop at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\desktop_drop-0.5.0\
+[   +1 ms] Found plugin connectivity_plus at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\connectivity_plus-5.0.2\
+[  +12 ms] Skipping generating web_plugin_registrant.dart because it is up-to-date.
+[  +22 ms] Found plugin window_manager at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\window_manager-0.5.1\
+[   +1 ms] Found plugin screen_retriever at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever-0.2.0\
+[        ] Found plugin screen_retriever_windows at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever_windows-0.2.0\
+[   +2 ms] Found plugin screen_retriever_macos at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever_macos-0.2.0\
+[        ] Found plugin screen_retriever_linux at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever_linux-0.2.0\
+[  +12 ms] Found plugin shared_preferences at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences-2.5.4\
+[        ] Found plugin shared_preferences_windows at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_windows-2.4.1\
+[   +1 ms] Found plugin path_provider_windows at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_windows-2.3.0\
+[   +2 ms] Found plugin shared_preferences_web at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_web-2.4.3\
+[   +1 ms] Found plugin shared_preferences_linux at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_linux-2.4.1\
+[        ] Found plugin path_provider_linux at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_linux-2.2.1\
+[   +1 ms] Found plugin shared_preferences_foundation at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_foundation-2.5.6\
+[        ] Found plugin shared_preferences_android at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_android-2.4.18\
+[        ] Found plugin printing at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\printing-5.14.2\
+[  +10 ms] Found plugin path_provider at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider-2.1.5\
+[   +1 ms] Found plugin path_provider_foundation at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_foundation-2.5.1\
+[        ] Found plugin path_provider_android at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_android-2.2.22\
+[   +5 ms] Found plugin sqflite at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\sqflite-2.4.2\
+[   +1 ms] Found plugin sqflite_darwin at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\sqflite_darwin-2.4.2\
+[        ] Found plugin sqflite_android at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\sqflite_android-2.4.2+2\
+[   +1 ms] Found plugin file_picker at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\file_picker-10.3.8\
+[   +2 ms] Found plugin flutter_plugin_android_lifecycle at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_plugin_android_lifecycle-2.0.33\
+[   +2 ms] Found plugin desktop_drop at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\desktop_drop-0.5.0\
+[   +1 ms] Found plugin connectivity_plus at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\connectivity_plus-5.0.2\
+[   +7 ms] Generating C:\flutter\Contaslite\android\app\src\main\java\io\flutter\plugins\GeneratedPluginRegistrant.java
+[   +1 ms] Skipping generating GeneratedPluginRegistrant.java because it is up-to-date.
+[   +4 ms] Skipping generating generated_plugin_registrant.h because it is up-to-date.
+[   +1 ms] Skipping generating generated_plugin_registrant.cc because it is up-to-date.
+[   +1 ms] Skipping generating generated_plugins.cmake because it is up-to-date.
+[   +1 ms] Skipping generating generated_plugin_registrant.h because it is up-to-date.
+[   +1 ms] Skipping generating generated_plugin_registrant.cc because it is up-to-date.
+[   +1 ms] Skipping generating generated_plugins.cmake because it is up-to-date.
+[   +2 ms] Skipping generating GeneratedPluginRegistrant.h because it is up-to-date.
+[   +1 ms] Skipping generating GeneratedPluginRegistrant.m because it is up-to-date.
+[   +1 ms] Skipping generating GeneratedPluginRegistrant.swift because it is up-to-date.
+[ +120 ms] Initializing file store
+[   +9 ms] Skipping target: gen_localizations
+[   +2 ms] gen_dart_plugin_registrant: Starting due to {InvalidatedReasonKind.inputChanged: The following inputs have updated contents: C:\flutter\Contaslite\.dart_tool\package_config.json,C:\flutter\Contaslite\.dart_tool\flutter_build\dart_plugin_registrant.dart}
+[  +34 ms] Found plugin window_manager at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\window_manager-0.5.1\
+[   +1 ms] Found plugin screen_retriever at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever-0.2.0\
+[        ] Found plugin screen_retriever_windows at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever_windows-0.2.0\
+[   +3 ms] Found plugin screen_retriever_macos at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever_macos-0.2.0\
+[        ] Found plugin screen_retriever_linux at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever_linux-0.2.0\
+[  +11 ms] Found plugin shared_preferences at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences-2.5.4\
+[   +1 ms] Found plugin shared_preferences_windows at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_windows-2.4.1\
+[   +2 ms] Found plugin path_provider_windows at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_windows-2.3.0\
+[   +2 ms] Found plugin shared_preferences_web at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_web-2.4.3\
+[   +1 ms] Found plugin shared_preferences_linux at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_linux-2.4.1\
+[   +1 ms] Found plugin path_provider_linux at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_linux-2.2.1\
+[   +1 ms] Found plugin shared_preferences_foundation at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_foundation-2.5.6\
+[        ] Found plugin shared_preferences_android at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_android-2.4.18\
+[   +1 ms] Found plugin printing at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\printing-5.14.2\
+[  +10 ms] Found plugin path_provider at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider-2.1.5\
+[   +1 ms] Found plugin path_provider_foundation at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_foundation-2.5.1\
+[        ] Found plugin path_provider_android at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_android-2.2.22\
+[   +5 ms] Found plugin sqflite at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\sqflite-2.4.2\
+[   +1 ms] Found plugin sqflite_darwin at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\sqflite_darwin-2.4.2\
+[   +1 ms] Found plugin sqflite_android at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\sqflite_android-2.4.2+2\
+[   +1 ms] Found plugin file_picker at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\file_picker-10.3.8\
+[   +1 ms] Found plugin flutter_plugin_android_lifecycle at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_plugin_android_lifecycle-2.0.33\
+[   +3 ms] Found plugin desktop_drop at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\desktop_drop-0.5.0\
+[   +1 ms] Found plugin connectivity_plus at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\connectivity_plus-5.0.2\
+[  +12 ms] Skipping generating dart_plugin_registrant.dart because it is up-to-date.
+[        ] gen_dart_plugin_registrant: Complete
+[   +3 ms] Skipping target: _composite
+[   +1 ms] complete
+[   +3 ms] Launching lib\main.dart on Windows in debug mode...
+[   +3 ms] C:\Users\hawk\flutter\bin\cache\dart-sdk\bin\dartaotruntime.exe C:\Users\hawk\flutter\bin\cache\dart-sdk\bin\snapshots\frontend_server_aot.dart.snapshot --sdk-root C:\Users\hawk\flutter\bin\cache\artifacts\engine\common\flutter_patched_sdk/ --incremental --target=flutter --experimental-emit-debug-metadata -DFLUTTER_VERSION=3.38.5 -DFLUTTER_CHANNEL=stable -DFLUTTER_GIT_URL=https://github.com/flutter/flutter.git -DFLUTTER_FRAMEWORK_REVISION=f6ff1529fd -DFLUTTER_ENGINE_REVISION=1527ae0ec5 -DFLUTTER_DART_VERSION=3.10.4 --output-dill C:\Users\hawk\AppData\Local\Temp\flutter_tools.7872886b\flutter_tool.28eec81c\app.dill --packages C:\flutter\Contaslite\.dart_tool\package_config.json -Ddart.vm.profile=false -Ddart.vm.product=false --enable-asserts --track-widget-creation --filesystem-scheme org-dartlang-root --initialize-from-dill build\6ab642d2d29d49c7c5f5a6d85fcef46b.cache.dill.track.dill --source file:///C:/flutter/Contaslite/.dart_tool/flutter_build/dart_plugin_registrant.dart --source package:flutter/src/dart_plugin_registrant.dart -Dflutter.dart_plugin_registrant=file:///C:/flutter/Contaslite/.dart_tool/flutter_build/dart_plugin_registrant.dart --verbosity=error --enable-experiment=alternative-invalidation-strategy
+[  +23 ms] executing: C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe -format json -products * -utf8 -latest -version 16 -requires Microsoft.VisualStudio.Workload.NativeDesktop Microsoft.VisualStudio.Component.VC.Tools.x86.x64 Microsoft.VisualStudio.Component.VC.CMake.Project
+[  +65 ms] Exit code 0 from: C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe -format json -products * -utf8 -latest -version 16 -requires Microsoft.VisualStudio.Workload.NativeDesktop Microsoft.VisualStudio.Component.VC.Tools.x86.x64 Microsoft.VisualStudio.Component.VC.CMake.Project
+[        ] []
+[        ] executing: C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe -format json -products * -utf8 -latest -version 16 -requires Microsoft.VisualStudio.Workload.VCTools Microsoft.VisualStudio.Component.VC.Tools.x86.x64 Microsoft.VisualStudio.Component.VC.CMake.Project
+[  +61 ms] Exit code 0 from: C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe -format json -products * -utf8 -latest -version 16 -requires Microsoft.VisualStudio.Workload.VCTools Microsoft.VisualStudio.Component.VC.Tools.x86.x64 Microsoft.VisualStudio.Component.VC.CMake.Project
+[        ] [
+             {
+               "instanceId": "2dc8a5b7",
+               "installDate": "2025-11-24T03:07:51Z",
+               "installationName": "VisualStudio/18.0.2+11222.15",
+               "installationPath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools",
+               "installationVersion": "18.0.11222.15",
+               "productId": "Microsoft.VisualStudio.Product.BuildTools",
+               "productPath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\Common7\\Tools\\LaunchDevCmd.bat",
+               "state": 4294967295,
+               "isComplete": true,
+               "isLaunchable": true,
+               "isPrerelease": false,
+               "isRebootRequired": false,
+               "displayName": "Visual Studio Build Tools 2026",
+               "description": "Ferramentas essenciais de MSBuild e compilador ÔÇô n├úo┬á├® necess├írio usar IDE.",
+               "channelId": "VisualStudio.18.Release",
+               "channelUri": "https://aka.ms/vs/18/stable/channel",
+               "enginePath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\resources\\app\\ServiceHub\\Services\\Microsoft.VisualStudio.Setup.Service",
+               "installedChannelId": "VisualStudio.18.Release",
+               "installedChannelUri": "https://aka.ms/vs/18/stable/channel",
+               "releaseNotes": "https://docs.microsoft.com/en-us/visualstudio/releases/18/release-notes-v18.0#18.0.2",
+               "resolvedInstallationPath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools",
+               "thirdPartyNotices": "https://go.microsoft.com/fwlink/?LinkId=661480",
+               "updateDate": "2025-11-25T11:58:03.5919343Z",
+               "catalog": {
+                 "buildBranch": "d18.0",
+                 "buildVersion": "18.0.11222.15",
+                 "featureReleaseMonth": "11",
+                 "featureReleaseYear": "2025",
+                 "id": "VisualStudio/18.0.2+11222.15",
+                 "includeBuildVersionInDisplayVersion": "False",
+                 "localBuild": "build-lab",
+                 "manifestName": "VisualStudio",
+                 "manifestType": "installer",
+                 "productDisplayVersion": "18.0.2",
+                 "productLine": "Dev18",
+                 "productLineVersion": "18",
+                 "productMilestone": "RTW",
+                 "productMilestoneIsPreRelease": "False",
+                 "productName": "Visual Studio",
+                 "productPatchVersion": "2",
+                 "productPreReleaseMilestoneSuffix": "1.0",
+                 "productRelease": "RTW",
+                 "productSemanticVersion": "18.0.2+11222.15",
+                 "requiredEngineVersion": "4.0.2166.47498"
+               },
+               "properties": {
+                 "appLocalWPF": "false",
+                 "campaignId": "",
+                 "channelManifestId": "VisualStudio.18.Release/18.0.2+11222.15",
+                 "includeRecommended": "0",
+                 "nickname": "",
+                 "setupEngineFilePath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\setup.exe"
+               }
+             }
+           ]
+[   +3 ms] Building Windows application...
+[  +10 ms] <- compile package:contas_app/main.dart
+[        ] executing: C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe -S C:\flutter\Contaslite\windows -B C:\flutter\Contaslite\build\windows\x64 -G Visual Studio 18 2026 -A x64 -DFLUTTER_TARGET_PLATFORM=windows-x64
+[  +82 ms] -- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.19045.
+[  +34 ms] -- Downloading/updating pdfium
+[  +66 ms] -- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.19045.
+[ +664 ms] -- Configuring done (0.7s)
+[  +56 ms] -- Generating done (0.1s)
+[   +2 ms] -- Build files have been written to: C:/flutter/Contaslite/build/windows/x64/pdfium-download
+[ +177 ms] VersÔö£├║o do MSBuild 18.0.5+e22287bf1 para .NET Framework
+[ +612 ms] -- Configuring done (1.6s)
+[ +246 ms] -- Generating done (0.2s)
+[   +3 ms] -- Build files have been written to: C:/flutter/Contaslite/build/windows/x64
+[  +37 ms] executing: C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe --build C:\flutter\Contaslite\build\windows\x64 --config Debug --target INSTALL --verbose
+[ +119 ms] Change Dir: 'C:/flutter/Contaslite/build/windows/x64'
+[        ] Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" INSTALL.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=18.0 /v:n
+[ +117 ms] Vers├úo do MSBuild 18.0.5+e22287bf1 para .NET Framework
+[ +113 ms] Compila├º├úo de 14/01/2026 10:33:13 iniciada.
+[ +208 ms] Projeto "C:\flutter\Contaslite\build\windows\x64\INSTALL.vcxproj" no n├│ 1 (destinos padr├úo).
+[        ] O projeto "C:\flutter\Contaslite\build\windows\x64\INSTALL.vcxproj" (1) est├í compilando "C:\flutter\Contaslite\build\windows\x64\ZERO_CHECK.vcxproj" (2) no n├│ 1 (destinos padr├úo).
+[        ] PrepareForBuild:
+[        ]   A sa├¡da estruturada est├í habilitada. A formata├º├úo do diagn├│stico do compilador refletir├í a hierarquia de erros. Consulte https://aka.ms/cpp/structured-output para obter mais detalhes.
+[   +5 ms] InitializeBuildStatus:
+[        ]   Criando "x64\Debug\ZERO_CHECK\ZERO_CHECK.tlog\unsuccessfulbuild" porque "AlwaysCreate" foi especificado.
+[        ]   Tocando "x64\Debug\ZERO_CHECK\ZERO_CHECK.tlog\unsuccessfulbuild".
+[  +19 ms] CustomBuild:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[  +43 ms] FinalizeBuildStatus:
+[        ]   Excluindo o arquivo "x64\Debug\ZERO_CHECK\ZERO_CHECK.tlog\unsuccessfulbuild".
+[        ]   Tocando "x64\Debug\ZERO_CHECK\ZERO_CHECK.tlog\ZERO_CHECK.lastbuildstate".
+[   +1 ms] Projeto de compila├º├úo pronto "C:\flutter\Contaslite\build\windows\x64\ZERO_CHECK.vcxproj" (destinos padr├úo).
+[ +118 ms] O projeto "C:\flutter\Contaslite\build\windows\x64\INSTALL.vcxproj" (1) est├í compilando "C:\flutter\Contaslite\build\windows\x64\ALL_BUILD.vcxproj" (3) no n├│ 1 (destinos padr├úo).
+[        ] O projeto "C:\flutter\Contaslite\build\windows\x64\ALL_BUILD.vcxproj" (3) est├í compilando "C:\flutter\Contaslite\build\windows\x64\plugins\connectivity_plus\connectivity_plus_plugin.vcxproj" (4) no n├│ 1 (destinos padr├úo).
+[        ] O projeto "C:\flutter\Contaslite\build\windows\x64\plugins\connectivity_plus\connectivity_plus_plugin.vcxproj" (4) est├í compilando "C:\flutter\Contaslite\build\windows\x64\flutter\flutter_assemble.vcxproj" (5) no n├│ 1 (destinos padr├úo).
+[        ] PrepareForBuild:
+[        ]   A sa├¡da estruturada est├í habilitada. A formata├º├úo do diagn├│stico do compilador refletir├í a hierarquia de erros. Consulte https://aka.ms/cpp/structured-output para obter mais detalhes.
+[   +1 ms] InitializeBuildStatus:
+[        ]   Criando "x64\Debug\flutter_assemble\flutter_assemble.tlog\unsuccessfulbuild" porque "AlwaysCreate" foi especificado.
+[        ]   Tocando "x64\Debug\flutter_assemble\flutter_assemble.tlog\unsuccessfulbuild".
+[   +7 ms] CustomBuild:
+[        ]   "O build de 'C:\flutter\Contaslite\build\windows\x64\CMakeFiles\f2d5769489afb707536a217c2ad8f075\flutter_assemble.rule' depende de 'C:\FLUTTER\CONTASLITE\WINDOWS\FLUTTER\EPHEMERAL\FLUTTER_WINDOWS.DLL', que ├® gerado pelo build de 'C:\flutter\Contaslite\build\windows\x64\CMakeFiles\56a5ad5f10640ad8d4138816ee365d61\flutter_windows.dll.rule'. Os itens n├úo podem ser compilados em paralelo."
+[ +124 ms]   Generating C:/flutter/Contaslite/windows/flutter/ephemeral/flutter_windows.dll, C:/flutter/Contaslite/windows/flutter/ephemeral/flutter_export.h, C:/flutter/Contaslite/windows/flutter/ephemeral/flutter_windows.h, C:/flutter/Contaslite/windows/flutter/ephemeral/flutter_messenger.h, C:/flutter/Contaslite/windows/flutter/ephemeral/flutter_plugin_registrar.h, C:/flutter/Contaslite/windows/flutter/ephemeral/flutter_texture_registrar.h, C:/flutter/Contaslite/windows/flutter/ephemeral/cpp_client_wrapper/core_implementations.cc, C:/flutter/Contaslite/windows/flutter/ephemeral/cpp_client_wrapper/standard_codec.cc, C:/flutter/Contaslite/windows/flutter/ephemeral/cpp_client_wrapper/plugin_registrar.cc, C:/flutter/Contaslite/windows/flutter/ephemeral/cpp_client_wrapper/flutter_engine.cc, C:/flutter/Contaslite/windows/flutter/ephemeral/cpp_client_wrapper/flutter_view_controller.cc, _phony_
+[+1922 ms]   [ +466 ms] Unable to locate an Android SDK.
+[   +1 ms]   [  +10 ms] Artifact Instance of 'MaterialFonts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'GradleWrapper' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'AndroidGenSnapshotArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'AndroidInternalBuildArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'IOSEngineArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'FlutterWebSdk' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'LegacyCanvasKitRemover' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'FlutterSdk' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'WindowsEngineArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'MacOSEngineArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'LinuxEngineArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'LinuxFuchsiaSDKArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'MacOSFuchsiaSDKArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'FlutterRunnerSDKArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'FlutterRunnerDebugSymbols' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'FontSubsetArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'PubDependencies' is not required, skipping update.
+[  +11 ms]   [  +11 ms] Artifact Instance of 'AndroidGenSnapshotArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'AndroidInternalBuildArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'IOSEngineArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'FlutterWebSdk' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'FlutterEngineStamp' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'LegacyCanvasKitRemover' is not required, skipping update.
+[   +2 ms]   [   +2 ms] Artifact Instance of 'WindowsEngineArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'MacOSEngineArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'LinuxEngineArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'LinuxFuchsiaSDKArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'MacOSFuchsiaSDKArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'FlutterRunnerSDKArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'FlutterRunnerDebugSymbols' is not required, skipping update.
+[  +56 ms]   [  +56 ms] Artifact Instance of 'MaterialFonts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'GradleWrapper' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'AndroidGenSnapshotArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'AndroidInternalBuildArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'IOSEngineArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'FlutterWebSdk' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'FlutterEngineStamp' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'LegacyCanvasKitRemover' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'FlutterSdk' is not required, skipping update.
+[   +1 ms]   [   +2 ms] Artifact Instance of 'MacOSEngineArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'LinuxEngineArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'LinuxFuchsiaSDKArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'MacOSFuchsiaSDKArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'FlutterRunnerSDKArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'FlutterRunnerDebugSymbols' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'FontSubsetArtifacts' is not required, skipping update.
+[        ]   [        ] Artifact Instance of 'PubDependencies' is not required, skipping update.
+[  +47 ms]   [  +47 ms] Initializing file store
+[  +21 ms]   [  +21 ms] dart_build: Starting due to {}
+[   +2 ms]   [   +2 ms] Skipping target: gen_localizations
+[   +3 ms]   [   +2 ms] gen_dart_plugin_registrant: Starting due to {InvalidatedReasonKind.outputSetAddition: The following outputs were added to the output set: C:\flutter\Contaslite\.dart_tool\flutter_build\dart_plugin_registrant.dart, InvalidatedReasonKind.inputChanged: The following inputs have updated contents: C:\flutter\Contaslite\.dart_tool\package_config.json}
+[   +3 ms]   [   +3 ms] unpack_windows: Starting due to {}
+[ +238 ms]   [ +238 ms] unpack_windows: Complete
+[+2514 ms]   [+2513 ms] Found plugin window_manager at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\window_manager-0.5.1\
+[   +5 ms]   [   +5 ms] Found plugin screen_retriever at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever-0.2.0\
+[   +1 ms]   [   +2 ms] Found plugin screen_retriever_windows at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever_windows-0.2.0\
+[   +5 ms]   [   +5 ms] Found plugin screen_retriever_macos at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever_macos-0.2.0\
+[   +2 ms]   [   +1 ms] Found plugin screen_retriever_linux at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\screen_retriever_linux-0.2.0\
+[   +6 ms]   [   +5 ms] executing: C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe -format json -products * -utf8 -latest -version 16 -requires Microsoft.VisualStudio.Workload.NativeDesktop Microsoft.VisualStudio.Component.VC.Tools.x86.x64 Microsoft.VisualStudio.Component.VC.CMake.Project
+[  +68 ms]   [  +69 ms] Exit code 0 from: C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe -format json -products * -utf8 -latest -version 16 -requires Microsoft.VisualStudio.Workload.NativeDesktop Microsoft.VisualStudio.Component.VC.Tools.x86.x64 Microsoft.VisualStudio.Component.VC.CMake.Project
+[        ]   [        ] []
+[        ]   [        ] executing: C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe -format json -products * -utf8 -latest -version 16 -requires Microsoft.VisualStudio.Workload.VCTools Microsoft.VisualStudio.Component.VC.Tools.x86.x64 Microsoft.VisualStudio.Component.VC.CMake.Project
+[  +83 ms]   [  +82 ms] Exit code 0 from: C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe -format json -products * -utf8 -latest -version 16 -requires Microsoft.VisualStudio.Workload.VCTools Microsoft.VisualStudio.Component.VC.Tools.x86.x64 Microsoft.VisualStudio.Component.VC.CMake.Project
+[   +5 ms]   [        ] [
+[        ]                {
+[        ]                  "instanceId": "2dc8a5b7",
+[        ]                  "installDate": "2025-11-24T03:07:51Z",
+[        ]                  "installationName": "VisualStudio/18.0.2+11222.15",
+[        ]                  "installationPath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools",
+[        ]                  "installationVersion": "18.0.11222.15",
+[        ]                  "productId": "Microsoft.VisualStudio.Product.BuildTools",
+[        ]                  "productPath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\Common7\\Tools\\LaunchDevCmd.bat",
+[        ]                  "state": 4294967295,
+[        ]                  "isComplete": true,
+[        ]                  "isLaunchable": true,
+[        ]                  "isPrerelease": false,
+[        ]                  "isRebootRequired": false,
+[        ]                  "displayName": "Visual Studio Build Tools 2026",
+[   +3 ms]                  "description": "Ferramentas essenciais de MSBuild e compilador ├ö├ç├┤ nÔö£├║oÔö¼├íÔö£┬« necessÔö£├¡rio usar IDE.",
+[        ]                  "channelId": "VisualStudio.18.Release",
+[        ]                  "channelUri": "https://aka.ms/vs/18/stable/channel",
+[        ]                  "enginePath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\resources\\app\\ServiceHub\\Services\\Microsoft.VisualStudio.Setup.Service",
+[        ]                  "installedChannelId": "VisualStudio.18.Release",
+[        ]                  "installedChannelUri": "https://aka.ms/vs/18/stable/channel",
+[        ]                  "releaseNotes": "https://docs.microsoft.com/en-us/visualstudio/releases/18/release-notes-v18.0#18.0.2",
+[        ]                  "resolvedInstallationPath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools",
+[        ]                  "thirdPartyNotices": "https://go.microsoft.com/fwlink/?LinkId=661480",
+[        ]                  "updateDate": "2025-11-25T11:58:03.5919343Z",
+[        ]                  "catalog": {
+[        ]                    "buildBranch": "d18.0",
+[        ]                    "buildVersion": "18.0.11222.15",
+[        ]                    "featureReleaseMonth": "11",
+[        ]                    "featureReleaseYear": "2025",
+[        ]                    "id": "VisualStudio/18.0.2+11222.15",
+[        ]                    "includeBuildVersionInDisplayVersion": "False",
+[        ]                    "localBuild": "build-lab",
+[        ]                    "manifestName": "VisualStudio",
+[        ]                    "manifestType": "installer",
+[        ]                    "productDisplayVersion": "18.0.2",
+[        ]                    "productLine": "Dev18",
+[        ]                    "productLineVersion": "18",
+[        ]                    "productMilestone": "RTW",
+[        ]                    "productMilestoneIsPreRelease": "False",
+[        ]                    "productName": "Visual Studio",
+[        ]                    "productPatchVersion": "2",
+[        ]                    "productPreReleaseMilestoneSuffix": "1.0",
+[        ]                    "productRelease": "RTW",
+[        ]                    "productSemanticVersion": "18.0.2+11222.15",
+[        ]                    "requiredEngineVersion": "4.0.2166.47498"
+[        ]                  },
+[        ]                  "properties": {
+[        ]                    "appLocalWPF": "false",
+[        ]                    "campaignId": "",
+[        ]                    "channelManifestId": "VisualStudio.18.Release/18.0.2+11222.15",
+[        ]                    "includeRecommended": "0",
+[        ]                    "nickname": "",
+[        ]                    "setupEngineFilePath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\setup.exe"
+[        ]                  }
+[        ]                }
+[        ]              ]
+[        ]   [  +11 ms] Building native assets for windows_x64.
+[  +70 ms]   [  +75 ms] Found plugin shared_preferences at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences-2.5.4\
+[   +1 ms]   [   +1 ms] Found plugin shared_preferences_windows at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_windows-2.4.1\
+[   +4 ms]   [   +4 ms] input.json contents:
+[        ]              {
+[        ]                "assets": {},
+[        ]                "config": {
+[        ]                  "build_asset_types": [
+[        ]                    "code_assets/code"
+[        ]                  ],
+[        ]                  "extensions": {
+[        ]                    "code_assets": {
+[        ]                      "c_compiler": {
+[        ]                        "ar": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\lib.exe",
+[        ]                        "cc": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\cl.exe",
+[        ]                        "ld": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\link.exe",
+[        ]                        "windows": {
+[        ]                          "developer_command_prompt": {
+[        ]                            "arguments": [],
+[        ]                            "script": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat"
+[        ]                          }
+[        ]                        }
+[        ]                      },
+[        ]                      "link_mode_preference": "dynamic",
+[        ]                      "target_architecture": "x64",
+[        ]                      "target_os": "windows"
+[        ]                    }
+[        ]                  },
+[        ]                  "linking_enabled": false
+[        ]                },
+[        ]                "out_dir_shared": "C:\\flutter\\Contaslite\\.dart_tool\\hooks_runner\\shared\\sqlite3\\build\\",
+[        ]                "out_file": "C:\\flutter\\Contaslite\\.dart_tool\\hooks_runner\\sqlite3\\e8072a2455773a99a9f4fa5fa1a7cafd\\output.json",
+[        ]                "package_name": "sqlite3",
+[        ]                "package_root": "C:\\Users\\hawk\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\sqlite3-3.1.3\\",
+[        ]                "user_defines": {}
+[        ]              }
+[   +6 ms]   [   +9 ms] Found plugin path_provider_windows at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_windows-2.3.0\
+[   +4 ms]   [   +5 ms] output.json contents:
+[        ]              {
+[        ]                "assets": [
+[        ]                  {
+[        ]                    "encoding": {
+[        ]                      "file": "C:\\flutter\\Contaslite\\.dart_tool\\hooks_runner\\shared\\sqlite3\\build\\download-9ba7a57\\sqlite3.x64.windows.dll",
+[        ]                      "id": "package:sqlite3/src/ffi/libsqlite3.g.dart",
+[        ]                      "link_mode": {
+[        ]                        "type": "dynamic_loading_bundle"
+[        ]                      }
+[        ]                    },
+[        ]                    "type": "code_assets/code"
+[        ]                  }
+[        ]                ],
+[        ]                "assets_for_linking": {},
+[        ]                "status": "success",
+[        ]                "timestamp": "2026-01-14 09:34:26.000"
+[        ]              }
+[        ]   [   +3 ms] Found plugin shared_preferences_web at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_web-2.4.3\
+[   +5 ms]   [   +5 ms] Found plugin shared_preferences_linux at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_linux-2.4.1\
+[   +1 ms]   [   +2 ms] Found plugin path_provider_linux at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_linux-2.2.1\
+[   +3 ms]   [   +2 ms] Rerunning build for sqlite3 in C:\flutter\Contaslite\.dart_tool\hooks_runner\sqlite3\e8072a2455773a99a9f4fa5fa1a7cafd\. Environment variable changed: PATH.
+[   +2 ms]   [   +2 ms] input.json contents:
+[        ]              {
+[        ]                "assets": {},
+[        ]                "config": {
+[        ]                  "build_asset_types": [
+[        ]                    "code_assets/code"
+[        ]                  ],
+[        ]                  "extensions": {
+[        ]                    "code_assets": {
+[        ]                      "c_compiler": {
+[        ]                        "ar": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\lib.exe",
+[        ]                        "cc": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\cl.exe",
+[        ]                        "ld": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\link.exe",
+[        ]                        "windows": {
+[        ]                          "developer_command_prompt": {
+[        ]                            "arguments": [],
+[        ]                            "script": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat"
+[        ]                          }
+[        ]                        }
+[        ]                      },
+[        ]                      "link_mode_preference": "dynamic",
+[        ]                      "target_architecture": "x64",
+[        ]                      "target_os": "windows"
+[        ]                    }
+[        ]                  },
+[        ]                  "linking_enabled": false
+[        ]                },
+[        ]                "out_dir_shared": "C:\\flutter\\Contaslite\\.dart_tool\\hooks_runner\\shared\\sqlite3\\build\\",
+[        ]                "out_file": "C:\\flutter\\Contaslite\\.dart_tool\\hooks_runner\\sqlite3\\e8072a2455773a99a9f4fa5fa1a7cafd\\output.json",
+[        ]                "package_name": "sqlite3",
+[        ]                "package_root": "C:\\Users\\hawk\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\sqlite3-3.1.3\\",
+[        ]                "user_defines": {}
+[        ]              }
+[   +3 ms]   [   +7 ms] Found plugin shared_preferences_foundation at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_foundation-2.5.6\
+[   +3 ms]   [   +3 ms] Found plugin shared_preferences_android at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\shared_preferences_android-2.4.18\
+[   +4 ms]   [   +4 ms] Found plugin printing at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\printing-5.14.2\
+[   +5 ms]   [   +5 ms] Running `(cd C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\sqlite3-3.1.3\; PATH=C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Tools\MSVC\14.50.35717\bin\HostX64\x64;C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64;;C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x86;;C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\tools;C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\ide;C:\Program Files (x86)\HTML Help Workshop;;C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\MSBuild\Current\Bin\amd64;C:\Windows\Microsoft.NET\Framework64\v4.0.30319\;C:\Windows\Microsoft.NET\Framework\v4.0.30319\;C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\MSBuild\Current\Bin;C:\Windows\Microsoft.NET\Framework\v4.0.30319\;;C:\Program Files\PowerShell\7;C:\Users\hawk\flutter\bin\;c:\Users\hawk\AppData\Roaming\Code\User\globalStorage\github.copilot-chat\debugCommand;c:\Users\hawk\AppData\Roaming\Code\User\globalStorage\github.copilot-chat\copilotCli;C:\Program Files (x86)\Common Files\Oracle\Java\java8path;C:\Program Files (x86)\Common Files\Oracle\Java\javapath;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\ProgramData\chocolatey\bin;C:\Program Files\dotnet\;C:\Program Files\Microsoft SQL Server\120\Tools\Binn\;C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\;C:\Program Files (x86)\Microsoft SQL Server\150\Tools\Binn\;C:\Program Files\Microsoft SQL Server\150\Tools\Binn\;C:\Program Files\Microsoft SQL Server\150\DTS\Binn\;C:\Program Files (x86)\Paragon Software\LinuxFS for Windows\;C:\Program Files\NVIDIA Corporation\NVIDIA App\NvDLISR;C:\Program Files\PuTTY\;C:\Program Files\IDM Computer Solutions\UltraEdit;C:\ffmpeg\bin;C:\Program Files\smartmontools\bin;C:\Program Files\PowerShell\7\;C:\Program Files\nodejs\;C:\Program Files\Git\cmd;C:\Users\hawk\.local\bin;C:\Program Files (x86)\VMware\VMware Workstation\bin\;C:\Program Files (x86)\Common Files\Oracle\Java\java8path;C:\Program Files (x86)\Common Files\Oracle\Java\javapath;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Program Files\NVIDIA Corporation\NVIDIA NvDLISR;C:\ProgramData\chocolatey\bin;C:\Program Files\dotnet\;C:\Program Files\Microsoft SQL Server\120\Tools\Binn\;C:\Program Files\PowerShell\7\;C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\;C:\Program Files (x86)\Microsoft SQL Server\150\Tools\Binn\;C:\Program Files\Microsoft SQL Server\150\Tools\Binn\;C:\Program Files\Microsoft SQL Server\150\DTS\Binn\;C:\Program Files\PuTTY\;C:\Users\hawk\AppData\Local\Microsoft\WindowsApps;C:\Users\hawk\AppData\Local\Programs\oh-my-posh\bin;C:\Users\hawk\AppData\Local\Microsoft\WinGet\Packages\Schniz.fnm_Microsoft.Winget.Source_8wekyb3d8bbwe;C:\Users\hawk\AppData\Local\Microsoft\WinGet\Links;C:\Users\hawk\.dotnet\tools;C:\ProgramData\mingw64\mingw64\bin;C:\tools\Nim\nim-2.2.4\bin;C:\Users\hawk\.nimble\bin;C:\Users\hawk\AppData\Roaming\npm;C:\Users\hawk\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\hawk\flutter\bin;C:\Users\hawk\.local\bin;C:\Users\hawk\AppData\Local\Programs\Antigravity\bin;c:\Users\hawk\.vscode\extensions\ms-python.debugpy-2025.18.0-win32-x64\bundled\scripts\noConfigScripts; PROGRAMDATA=C:\ProgramData SYSTEMDRIVE=C: SYSTEMROOT=C:\Windows TEMP=C:\Users\hawk\AppData\Local\Temp TMP=C:\Users\hawk\AppData\Local\Temp USERPROFILE=C:\Users\hawk WINDIR=C:\Windows C:\Users\hawk\flutter\bin\cache\dart-sdk\bin\dart --packages=C:\flutter\Contaslite\.dart_tool\package_config.json C:\flutter\Contaslite\.dart_tool\hooks_runner\sqlite3\e8072a2455773a99a9f4fa5fa1a7cafd\hook.dill --config=C:\flutter\Contaslite\.dart_tool\hooks_runner\sqlite3\e8072a2455773a99a9f4fa5fa1a7cafd\input.json )`.
+[  +32 ms]   [  +32 ms] Found plugin path_provider at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider-2.1.5\
+[   +2 ms]   [   +2 ms] Found plugin path_provider_foundation at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_foundation-2.5.1\
+[   +1 ms]   [   +1 ms] Found plugin path_provider_android at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\path_provider_android-2.2.22\
+[  +12 ms]   [  +12 ms] Found plugin sqflite at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\sqflite-2.4.2\
+[   +4 ms]   [   +4 ms] Found plugin sqflite_darwin at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\sqflite_darwin-2.4.2\
+[   +2 ms]   [   +2 ms] Found plugin sqflite_android at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\sqflite_android-2.4.2+2\
+[   +5 ms]   [   +4 ms] Found plugin file_picker at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\file_picker-10.3.8\
+[   +3 ms]   [   +4 ms] Found plugin flutter_plugin_android_lifecycle at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\flutter_plugin_android_lifecycle-2.0.33\
+[   +5 ms]   [   +5 ms] Found plugin desktop_drop at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\desktop_drop-0.5.0\
+[   +1 ms]   [   +1 ms] Found plugin connectivity_plus at C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\connectivity_plus-5.0.2\
+[  +26 ms]   [  +26 ms] Skipping generating dart_plugin_registrant.dart because it is up-to-date.
+[        ]   [        ] gen_dart_plugin_registrant: Complete
+[   +4 ms]   [   +4 ms] kernel_snapshot_program: Starting due to {}
+[  +12 ms]   [  +12 ms] C:\Users\hawk\flutter\bin\cache\dart-sdk\bin\dartaotruntime.exe C:\Users\hawk\flutter\bin\cache\dart-sdk\bin\snapshots\frontend_server_aot.dart.snapshot --sdk-root C:\Users\hawk\flutter\bin\cache\artifacts\engine\common\flutter_patched_sdk/ --target=flutter --no-print-incremental-dependencies -DFLUTTER_VERSION=3.38.5 -DFLUTTER_CHANNEL=stable -DFLUTTER_GIT_URL=https://github.com/flutter/flutter.git -DFLUTTER_FRAMEWORK_REVISION=f6ff1529fd -DFLUTTER_ENGINE_REVISION=1527ae0ec5 -DFLUTTER_DART_VERSION=3.10.4 -Ddart.vm.profile=false -Ddart.vm.product=false --enable-asserts --track-widget-creation --packages C:\flutter\Contaslite\.dart_tool\package_config.json --output-dill C:\flutter\Contaslite\.dart_tool\flutter_build\e64577279301706dcfb14d9184127910\app.dill --depfile C:\flutter\Contaslite\.dart_tool\flutter_build\e64577279301706dcfb14d9184127910\kernel_snapshot_program.d --incremental --initialize-from-dill C:\flutter\Contaslite\.dart_tool\flutter_build\e64577279301706dcfb14d9184127910\app.dill --source file:///C:/flutter/Contaslite/.dart_tool/flutter_build/dart_plugin_registrant.dart --source package:flutter/src/dart_plugin_registrant.dart -Dflutter.dart_plugin_registrant=file:///C:/flutter/Contaslite/.dart_tool/flutter_build/dart_plugin_registrant.dart --verbosity=error package:contas_app/main.dart
+[ +649 ms]   [ +649 ms] output.json contents:
+[        ]              {
+[        ]                "assets": [
+[        ]                  {
+[        ]                    "encoding": {
+[        ]                      "file": "C:\\flutter\\Contaslite\\.dart_tool\\hooks_runner\\shared\\sqlite3\\build\\download-185c369d\\sqlite3.x64.windows.dll",
+[        ]                      "id": "package:sqlite3/src/ffi/libsqlite3.g.dart",
+[        ]                      "link_mode": {
+[        ]                        "type": "dynamic_loading_bundle"
+[        ]                      }
+[        ]                    },
+[        ]                    "type": "code_assets/code"
+[        ]                  }
+[        ]                ],
+[        ]                "assets_for_linking": {},
+[        ]                "status": "success",
+[        ]                "timestamp": "2026-01-14 10:33:18.000"
+[        ]              }
+[  +45 ms]   [  +47 ms] Note: You are using the dart build hooks feature which is currently in preview. Please see https://dart.dev/interop/c-interop#native-assets for more details.
+[        ]   [        ] Building native assets for windows_x64 done.
+[   +6 ms]   [   +7 ms] dart_build: Complete
+[   +4 ms]   [   +5 ms] install_code_assets: Starting due to {}
+[   +5 ms]   [   +5 ms] Copying native assets to C:\flutter\Contaslite\build\native_assets\windows\.
+[  +49 ms]   [  +50 ms] Copying native assets done.
+[        ]   [        ] Writing native assets json to file:///C:/flutter/Contaslite/.dart_tool/flutter_build/e64577279301706dcfb14d9184127910/native_assets.json.
+[   +2 ms]   [   +2 ms] Writing C:\flutter\Contaslite\.dart_tool\flutter_build\e64577279301706dcfb14d9184127910\native_assets.json done.
+[   +1 ms]   [   +1 ms] install_code_assets: Complete
+[+13547 ms]   [+13547 ms] kernel_snapshot_program: Complete
+[+1432 ms]   [+1432 ms] debug_bundle_windows-x64_assets: Starting due to {}
+[ +168 ms]   [ +168 ms] shaderc command: [C:\Users\hawk\flutter\bin\cache\artifacts\engine\windows-x64\impellerc.exe, --sksl, --runtime-stage-gles, --runtime-stage-gles3, --runtime-stage-vulkan, --iplr, --sl=C:\flutter\Contaslite\build\flutter_assets\shaders/ink_sparkle.frag, --spirv=C:\flutter\Contaslite\build\flutter_assets\shaders/ink_sparkle.frag.spirv, --input=C:\Users\hawk\flutter\packages\flutter\lib\src\material\shaders\ink_sparkle.frag, --input-type=frag, --include=C:\Users\hawk\flutter\packages\flutter\lib\src\material\shaders, --include=C:\Users\hawk\flutter\bin\cache\artifacts\engine\windows-x64\shader_lib]
+[   +1 ms]   [   +1 ms] shaderc command: [C:\Users\hawk\flutter\bin\cache\artifacts\engine\windows-x64\impellerc.exe, --sksl, --runtime-stage-gles, --runtime-stage-gles3, --runtime-stage-vulkan, --iplr, --sl=C:\flutter\Contaslite\build\flutter_assets\shaders/stretch_effect.frag, --spirv=C:\flutter\Contaslite\build\flutter_assets\shaders/stretch_effect.frag.spirv, --input=C:\Users\hawk\flutter\packages\flutter\lib\src\material\shaders\stretch_effect.frag, --input-type=frag, --include=C:\Users\hawk\flutter\packages\flutter\lib\src\material\shaders, --include=C:\Users\hawk\flutter\bin\cache\artifacts\engine\windows-x64\shader_lib]
+[ +749 ms]   [ +748 ms] debug_bundle_windows-x64_assets: Complete
+[ +803 ms]   [ +803 ms] Persisting file store
+[  +14 ms]   [  +14 ms] Done persisting file store
+[  +23 ms]   [  +23 ms] build succeeded.
+[        ]   [        ] "flutter assemble" took 20.852ms.
+[ +114 ms]   [ +114 ms] Running 1 shutdown hook
+[        ]   [        ] Shutdown hooks complete
+[  +23 ms]   [  +22 ms] exiting with code 0
+[  +79 ms] FinalizeBuildStatus:
+[        ]   Excluindo o arquivo "x64\Debug\flutter_assemble\flutter_assemble.tlog\unsuccessfulbuild".
+[        ]   Tocando "x64\Debug\flutter_assemble\flutter_assemble.tlog\flutter_assemble.lastbuildstate".
+[   +3 ms] Projeto de compila├º├úo pronto "C:\flutter\Contaslite\build\windows\x64\flutter\flutter_assemble.vcxproj" (destinos padr├úo).
+[  +26 ms] O projeto "C:\flutter\Contaslite\build\windows\x64\plugins\connectivity_plus\connectivity_plus_plugin.vcxproj" (4) est├í compilando "C:\flutter\Contaslite\build\windows\x64\flutter\flutter_wrapper_plugin.vcxproj" (6) no n├│ 1 (destinos padr├úo).
+[        ] PrepareForBuild:
+[        ]   A sa├¡da estruturada est├í habilitada. A formata├º├úo do diagn├│stico do compilador refletir├í a hierarquia de erros. Consulte https://aka.ms/cpp/structured-output para obter mais detalhes.
+[   +1 ms] InitializeBuildStatus:
+[        ]   Criando "flutter_wrapper_plugin.dir\Debug\flutter_.0F66EA6D.tlog\unsuccessfulbuild" porque "AlwaysCreate" foi especificado.
+[        ]   Tocando "flutter_wrapper_plugin.dir\Debug\flutter_.0F66EA6D.tlog\unsuccessfulbuild".
+[   +2 ms] CustomBuild:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[  +44 ms] ClCompile:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[  +22 ms] Lib:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[   +1 ms]   flutter_wrapper_plugin.vcxproj -> C:\flutter\Contaslite\build\windows\x64\flutter\Debug\flutter_wrapper_plugin.lib
+[  +20 ms] FinalizeBuildStatus:
+[        ]   Excluindo o arquivo "flutter_wrapper_plugin.dir\Debug\flutter_.0F66EA6D.tlog\unsuccessfulbuild".
+[        ]   Tocando "flutter_wrapper_plugin.dir\Debug\flutter_.0F66EA6D.tlog\flutter_wrapper_plugin.lastbuildstate".
+[        ] Projeto de compila├º├úo pronto "C:\flutter\Contaslite\build\windows\x64\flutter\flutter_wrapper_plugin.vcxproj" (destinos padr├úo).
+[   +6 ms] PrepareForBuild:
+[        ]   A sa├¡da estruturada est├í habilitada. A formata├º├úo do diagn├│stico do compilador refletir├í a hierarquia de erros. Consulte https://aka.ms/cpp/structured-output para obter mais detalhes.
+[   +2 ms] InitializeBuildStatus:
+[        ]   Criando "connectivity_plus_plugin.dir\Debug\connecti.2432966D.tlog\unsuccessfulbuild" porque "AlwaysCreate" foi especificado.
+[        ]   Tocando "connectivity_plus_plugin.dir\Debug\connecti.2432966D.tlog\unsuccessfulbuild".
+[   +2 ms] CustomBuild:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[  +10 ms] ClCompile:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[  +26 ms] Link:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[   +2 ms]   connectivity_plus_plugin.vcxproj -> C:\flutter\Contaslite\build\windows\x64\plugins\connectivity_plus\Debug\connectivity_plus_plugin.dll
+[   +8 ms] FinalizeBuildStatus:
+[        ]   Excluindo o arquivo "connectivity_plus_plugin.dir\Debug\connecti.2432966D.tlog\unsuccessfulbuild".
+[        ]   Tocando "connectivity_plus_plugin.dir\Debug\connecti.2432966D.tlog\connectivity_plus_plugin.lastbuildstate".
+[        ] Projeto de compila├º├úo pronto "C:\flutter\Contaslite\build\windows\x64\plugins\connectivity_plus\connectivity_plus_plugin.vcxproj" (destinos padr├úo).
+[  +60 ms] O projeto "C:\flutter\Contaslite\build\windows\x64\ALL_BUILD.vcxproj" (3) est├í compilando "C:\flutter\Contaslite\build\windows\x64\runner\contaslite.vcxproj" (7) no n├│ 1 (destinos padr├úo).
+[        ] O projeto "C:\flutter\Contaslite\build\windows\x64\runner\contaslite.vcxproj" (7) est├í compilando "C:\flutter\Contaslite\build\windows\x64\plugins\desktop_drop\desktop_drop_plugin.vcxproj" (8) no n├│ 1 (destinos padr├úo).
+[        ] PrepareForBuild:
+[        ]   A sa├¡da estruturada est├í habilitada. A formata├º├úo do diagn├│stico do compilador refletir├í a hierarquia de erros. Consulte https://aka.ms/cpp/structured-output para obter mais detalhes.
+[   +1 ms] InitializeBuildStatus:
+[        ]   Criando "desktop_drop_plugin.dir\Debug\desktop_.42B61A64.tlog\unsuccessfulbuild" porque "AlwaysCreate" foi especificado.
+[        ]   Tocando "desktop_drop_plugin.dir\Debug\desktop_.42B61A64.tlog\unsuccessfulbuild".
+[   +2 ms] CustomBuild:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[   +8 ms] ClCompile:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[   +6 ms] Link:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[        ]   desktop_drop_plugin.vcxproj -> C:\flutter\Contaslite\build\windows\x64\plugins\desktop_drop\Debug\desktop_drop_plugin.dll
+[   +8 ms] FinalizeBuildStatus:
+[        ]   Excluindo o arquivo "desktop_drop_plugin.dir\Debug\desktop_.42B61A64.tlog\unsuccessfulbuild".
+[        ]   Tocando "desktop_drop_plugin.dir\Debug\desktop_.42B61A64.tlog\desktop_drop_plugin.lastbuildstate".
+[        ] Projeto de compila├º├úo pronto "C:\flutter\Contaslite\build\windows\x64\plugins\desktop_drop\desktop_drop_plugin.vcxproj" (destinos padr├úo).
+[  +27 ms] O projeto "C:\flutter\Contaslite\build\windows\x64\runner\contaslite.vcxproj" (7) est├í compilando "C:\flutter\Contaslite\build\windows\x64\flutter\flutter_wrapper_app.vcxproj" (9) no n├│ 1 (destinos padr├úo).
+[        ] PrepareForBuild:
+[        ]   A sa├¡da estruturada est├í habilitada. A formata├º├úo do diagn├│stico do compilador refletir├í a hierarquia de erros. Consulte https://aka.ms/cpp/structured-output para obter mais detalhes.
+[   +1 ms] InitializeBuildStatus:
+[        ]   Criando "flutter_wrapper_app.dir\Debug\flutter_.81EB8377.tlog\unsuccessfulbuild" porque "AlwaysCreate" foi especificado.
+[        ]   Tocando "flutter_wrapper_app.dir\Debug\flutter_.81EB8377.tlog\unsuccessfulbuild".
+[   +2 ms] CustomBuild:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[  +10 ms] ClCompile:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[   +4 ms] Lib:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[        ]   flutter_wrapper_app.vcxproj -> C:\flutter\Contaslite\build\windows\x64\flutter\Debug\flutter_wrapper_app.lib
+[   +8 ms] FinalizeBuildStatus:
+[        ]   Excluindo o arquivo "flutter_wrapper_app.dir\Debug\flutter_.81EB8377.tlog\unsuccessfulbuild".
+[        ]   Tocando "flutter_wrapper_app.dir\Debug\flutter_.81EB8377.tlog\flutter_wrapper_app.lastbuildstate".
+[        ] Projeto de compila├º├úo pronto "C:\flutter\Contaslite\build\windows\x64\flutter\flutter_wrapper_app.vcxproj" (destinos padr├úo).
+[  +29 ms] O projeto "C:\flutter\Contaslite\build\windows\x64\runner\contaslite.vcxproj" (7) est├í compilando "C:\flutter\Contaslite\build\windows\x64\plugins\printing\printing_plugin.vcxproj" (10) no n├│ 1 (destinos padr├úo).
+[        ] PrepareForBuild:
+[        ]   A sa├¡da estruturada est├í habilitada. A formata├º├úo do diagn├│stico do compilador refletir├í a hierarquia de erros. Consulte https://aka.ms/cpp/structured-output para obter mais detalhes.
+[   +2 ms] InitializeBuildStatus:
+[        ]   Criando "printing_plugin.dir\Debug\printing_plugin.tlog\unsuccessfulbuild" porque "AlwaysCreate" foi especificado.
+[        ]   Tocando "printing_plugin.dir\Debug\printing_plugin.tlog\unsuccessfulbuild".
+[   +2 ms] CustomBuild:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[  +10 ms] ClCompile:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[   +6 ms] Link:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[        ]   printing_plugin.vcxproj -> C:\flutter\Contaslite\build\windows\x64\plugins\printing\Debug\printing_plugin.dll
+[   +7 ms] FinalizeBuildStatus:
+[        ]   Excluindo o arquivo "printing_plugin.dir\Debug\printing_plugin.tlog\unsuccessfulbuild".
+[        ]   Tocando "printing_plugin.dir\Debug\printing_plugin.tlog\printing_plugin.lastbuildstate".
+[        ] Projeto de compila├º├úo pronto "C:\flutter\Contaslite\build\windows\x64\plugins\printing\printing_plugin.vcxproj" (destinos padr├úo).
+[  +31 ms] O projeto "C:\flutter\Contaslite\build\windows\x64\runner\contaslite.vcxproj" (7) est├í compilando "C:\flutter\Contaslite\build\windows\x64\plugins\screen_retriever_windows\screen_retriever_windows_plugin.vcxproj" (11) no n├│ 1 (destinos padr├úo).
+[        ] PrepareForBuild:
+[        ]   A sa├¡da estruturada est├í habilitada. A formata├º├úo do diagn├│stico do compilador refletir├í a hierarquia de erros. Consulte https://aka.ms/cpp/structured-output para obter mais detalhes.
+[   +1 ms] InitializeBuildStatus:
+[        ]   Criando "screen_retriever_windows_plugin.dir\Debug\screen_r.6BA476E7.tlog\unsuccessfulbuild" porque "AlwaysCreate" foi especificado.
+[        ]   Tocando "screen_retriever_windows_plugin.dir\Debug\screen_r.6BA476E7.tlog\unsuccessfulbuild".
+[   +3 ms] CustomBuild:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[  +10 ms] ClCompile:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[   +7 ms] Link:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[        ]   screen_retriever_windows_plugin.vcxproj -> C:\flutter\Contaslite\build\windows\x64\plugins\screen_retriever_windows\Debug\screen_retriever_windows_plugin.dll
+[   +8 ms] FinalizeBuildStatus:
+[        ]   Excluindo o arquivo "screen_retriever_windows_plugin.dir\Debug\screen_r.6BA476E7.tlog\unsuccessfulbuild".
+[        ]   Tocando "screen_retriever_windows_plugin.dir\Debug\screen_r.6BA476E7.tlog\screen_retriever_windows_plugin.lastbuildstate".
+[        ] Projeto de compila├º├úo pronto "C:\flutter\Contaslite\build\windows\x64\plugins\screen_retriever_windows\screen_retriever_windows_plugin.vcxproj" (destinos padr├úo).
+[  +29 ms] O projeto "C:\flutter\Contaslite\build\windows\x64\runner\contaslite.vcxproj" (7) est├í compilando "C:\flutter\Contaslite\build\windows\x64\plugins\window_manager\window_manager_plugin.vcxproj" (12) no n├│ 1 (destinos padr├úo).
+[        ] PrepareForBuild:
+[        ]   A sa├¡da estruturada est├í habilitada. A formata├º├úo do diagn├│stico do compilador refletir├í a hierarquia de erros. Consulte https://aka.ms/cpp/structured-output para obter mais detalhes.
+[   +1 ms] InitializeBuildStatus:
+[        ]   Criando "window_manager_plugin.dir\Debug\window_m.D2582806.tlog\unsuccessfulbuild" porque "AlwaysCreate" foi especificado.
+[        ]   Tocando "window_manager_plugin.dir\Debug\window_m.D2582806.tlog\unsuccessfulbuild".
+[   +2 ms] CustomBuild:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[   +9 ms] ClCompile:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[   +7 ms] Link:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[        ]   window_manager_plugin.vcxproj -> C:\flutter\Contaslite\build\windows\x64\plugins\window_manager\Debug\window_manager_plugin.dll
+[  +10 ms] FinalizeBuildStatus:
+[        ]   Excluindo o arquivo "window_manager_plugin.dir\Debug\window_m.D2582806.tlog\unsuccessfulbuild".
+[        ]   Tocando "window_manager_plugin.dir\Debug\window_m.D2582806.tlog\window_manager_plugin.lastbuildstate".
+[        ] Projeto de compila├º├úo pronto "C:\flutter\Contaslite\build\windows\x64\plugins\window_manager\window_manager_plugin.vcxproj" (destinos padr├úo).
+[   +9 ms] PrepareForBuild:
+[        ]   A sa├¡da estruturada est├í habilitada. A formata├º├úo do diagn├│stico do compilador refletir├í a hierarquia de erros. Consulte https://aka.ms/cpp/structured-output para obter mais detalhes.
+[   +1 ms] InitializeBuildStatus:
+[        ]   Criando "contaslite.dir\Debug\contaslite.tlog\unsuccessfulbuild" porque "AlwaysCreate" foi especificado.
+[        ]   Tocando "contaslite.dir\Debug\contaslite.tlog\unsuccessfulbuild".
+[   +2 ms] CustomBuild:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[  +16 ms] ClCompile:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[   +6 ms] ResourceCompile:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[  +13 ms] Link:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[        ]   contaslite.vcxproj -> C:\flutter\Contaslite\build\windows\x64\runner\Debug\contaslite.exe
+[  +10 ms] FinalizeBuildStatus:
+[        ]   Excluindo o arquivo "contaslite.dir\Debug\contaslite.tlog\unsuccessfulbuild".
+[        ]   Tocando "contaslite.dir\Debug\contaslite.tlog\contaslite.lastbuildstate".
+[   +1 ms] Projeto de compila├º├úo pronto "C:\flutter\Contaslite\build\windows\x64\runner\contaslite.vcxproj" (destinos padr├úo).
+[   +6 ms] PrepareForBuild:
+[        ]   A sa├¡da estruturada est├í habilitada. A formata├º├úo do diagn├│stico do compilador refletir├í a hierarquia de erros. Consulte https://aka.ms/cpp/structured-output para obter mais detalhes.
+[   +2 ms] InitializeBuildStatus:
+[        ]   Criando "x64\Debug\ALL_BUILD\ALL_BUILD.tlog\unsuccessfulbuild" porque "AlwaysCreate" foi especificado.
+[        ]   Tocando "x64\Debug\ALL_BUILD\ALL_BUILD.tlog\unsuccessfulbuild".
+[   +2 ms] CustomBuild:
+[        ]   Todas as sa├¡das est├úo atualizadas.
+[   +8 ms] FinalizeBuildStatus:
+[        ]   Excluindo o arquivo "x64\Debug\ALL_BUILD\ALL_BUILD.tlog\unsuccessfulbuild".
+[        ]   Tocando "x64\Debug\ALL_BUILD\ALL_BUILD.tlog\ALL_BUILD.lastbuildstate".
+[        ] Projeto de compila├º├úo pronto "C:\flutter\Contaslite\build\windows\x64\ALL_BUILD.vcxproj" (destinos padr├úo).
+[   +4 ms] PrepareForBuild:
+[        ]   A sa├¡da estruturada est├í habilitada. A formata├º├úo do diagn├│stico do compilador refletir├í a hierarquia de erros. Consulte https://aka.ms/cpp/structured-output para obter mais detalhes.
+[   +2 ms] InitializeBuildStatus:
+[        ]   Criando "x64\Debug\INSTALL\INSTALL.tlog\unsuccessfulbuild" porque "AlwaysCreate" foi especificado.
+[        ]   Tocando "x64\Debug\INSTALL\INSTALL.tlog\unsuccessfulbuild".
+[  +85 ms] CustomBuild:
+[        ]   1>
+[  +17 ms] PostBuildEvent:
+[        ]   setlocal
+[        ]   "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -DBUILD_TYPE=Debug -P cmake_install.cmake
+[        ]   if %errorlevel% neq 0 goto :cmEnd
+[        ]   :cmEnd
+[        ]   endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+[        ]   :cmErrorLevel
+[        ]   exit /b %1
+[        ]   :cmDone
+[        ]   if %errorlevel% neq 0 goto :VCEnd
+[        ]   :VCEnd
+[ +106 ms]   -- Install configuration: "Debug"
+[   +3 ms]   -- Up-to-date: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/icudtl.dat
+[        ]   -- Up-to-date: C:/flutter/Contaslite/build/windows/x64/runner/Debug/flutter_windows.dll
+[        ]   -- Up-to-date: C:/flutter/Contaslite/build/windows/x64/runner/Debug/connectivity_plus_plugin.dll
+[        ]   -- Up-to-date: C:/flutter/Contaslite/build/windows/x64/runner/Debug/desktop_drop_plugin.dll
+[        ]   -- Up-to-date: C:/flutter/Contaslite/build/windows/x64/runner/Debug/printing_plugin.dll
+[        ]   -- Up-to-date: C:/flutter/Contaslite/build/windows/x64/runner/Debug/pdfium.dll
+[        ]   -- Up-to-date: C:/flutter/Contaslite/build/windows/x64/runner/Debug/screen_retriever_windows_plugin.dll
+[        ]   -- Up-to-date: C:/flutter/Contaslite/build/windows/x64/runner/Debug/window_manager_plugin.dll
+[        ]   -- Up-to-date: C:/flutter/Contaslite/build/windows/x64/runner/Debug
+[        ]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/sqlite3.x64.windows.dll
+[  +26 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets
+[   +2 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/AssetManifest.bin
+[   +2 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/assets
+[   +2 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/assets/logo.png
+[   +2 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/FontManifest.json
+[   +2 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/fonts
+[   +2 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/fonts/MaterialIcons-Regular.otf
+[   +7 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/kernel_blob.bin
+[ +266 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/NativeAssetsManifest.json
+[   +1 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/NOTICES.Z
+[   +2 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/packages
+[   +2 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/packages/finance_app
+[   +2 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/packages/finance_app/assets
+[   +2 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/packages/finance_app/assets/icons
+[   +2 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/packages/finance_app/assets/icons/cc_amex.png
+[   +2 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/packages/finance_app/assets/icons/cc_elo.png
+[   +2 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/packages/finance_app/assets/icons/cc_mc.png
+[   +2 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/packages/finance_app/assets/icons/cc_visa.png
+[   +2 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/shaders
+[   +2 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/shaders/ink_sparkle.frag
+[   +2 ms]   -- Installing: C:/flutter/Contaslite/build/windows/x64/runner/Debug/data/flutter_assets/shaders/stretch_effect.frag
+[  +16 ms] FinalizeBuildStatus:
+[        ]   Excluindo o arquivo "x64\Debug\INSTALL\INSTALL.tlog\unsuccessfulbuild".
+[        ]   Tocando "x64\Debug\INSTALL\INSTALL.tlog\INSTALL.lastbuildstate".
+[        ] Projeto de compila├º├úo pronto "C:\flutter\Contaslite\build\windows\x64\INSTALL.vcxproj" (destinos padr├úo).
+[   +1 ms] Compila├º├úo com ├¬xito.
+[        ]     0 Aviso(s)
+[        ]     0 Erro(s)
+[        ] Tempo Decorrido 00:00:24.74
+[  +36 ms] Building Windows application... (completed in 27,1s)
+[   +2 ms] ÔêÜ Built build\windows\x64\runner\Debug\contaslite.exe
+[ +426 ms] VM Service URL on device: http://127.0.0.1:1388/4zVzgLBGzdc=/
+[   +1 ms] Caching compiled dill
+[  +39 ms] Connecting to service protocol: http://127.0.0.1:1388/4zVzgLBGzdc=/
+[  +96 ms] Launching a Dart Developer Service (DDS) instance at http://127.0.0.1:0, connecting to VM service at http://127.0.0.1:1388/4zVzgLBGzdc=/.
+[ +227 ms] ­ƒùä´©Å Banco de dados (desktop): C:\Users\hawk\Documents\ContasLite\Database
+[  +44 ms] Successfully connected to service protocol: http://127.0.0.1:1388/4zVzgLBGzdc=/
+[   +7 ms] DevFS: Creating new filesystem on the device (null)
+[  +70 ms] DevFS: Created new filesystem on the device (file:///C:/Users/hawk/AppData/Local/Temp/Contaslitebb694b3b/Contaslite/)
+[   +3 ms] Updating assets
+[   +1 ms] runHooks() with {TargetFile: C:\flutter\Contaslite\lib\main.dart, BuildMode: debug} and TargetPlatform.windows_x64
+[        ] runHooks() - will perform dart build
+[   +1 ms] Initializing file store
+[   +3 ms] dart_build: Starting due to {}
+[  +35 ms] Ô£à Janela inicializada e mostrada com sucesso
+[  +22 ms] executing: C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe -format json -products * -utf8 -latest -version 16 -requires Microsoft.VisualStudio.Workload.NativeDesktop Microsoft.VisualStudio.Component.VC.Tools.x86.x64 Microsoft.VisualStudio.Component.VC.CMake.Project
+[  +72 ms] Exit code 0 from: C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe -format json -products * -utf8 -latest -version 16 -requires Microsoft.VisualStudio.Workload.NativeDesktop Microsoft.VisualStudio.Component.VC.Tools.x86.x64 Microsoft.VisualStudio.Component.VC.CMake.Project
+[        ] []
+[        ] executing: C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe -format json -products * -utf8 -latest -version 16 -requires Microsoft.VisualStudio.Workload.VCTools Microsoft.VisualStudio.Component.VC.Tools.x86.x64 Microsoft.VisualStudio.Component.VC.CMake.Project
+[  +60 ms] Exit code 0 from: C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe -format json -products * -utf8 -latest -version 16 -requires Microsoft.VisualStudio.Workload.VCTools Microsoft.VisualStudio.Component.VC.Tools.x86.x64 Microsoft.VisualStudio.Component.VC.CMake.Project
+[        ] [
+             {
+               "instanceId": "2dc8a5b7",
+               "installDate": "2025-11-24T03:07:51Z",
+               "installationName": "VisualStudio/18.0.2+11222.15",
+               "installationPath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools",
+               "installationVersion": "18.0.11222.15",
+               "productId": "Microsoft.VisualStudio.Product.BuildTools",
+               "productPath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\Common7\\Tools\\LaunchDevCmd.bat",
+               "state": 4294967295,
+               "isComplete": true,
+               "isLaunchable": true,
+               "isPrerelease": false,
+               "isRebootRequired": false,
+               "displayName": "Visual Studio Build Tools 2026",
+               "description": "Ferramentas essenciais de MSBuild e compilador ÔÇô n├úo┬á├® necess├írio usar IDE.",
+               "channelId": "VisualStudio.18.Release",
+               "channelUri": "https://aka.ms/vs/18/stable/channel",
+               "enginePath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\resources\\app\\ServiceHub\\Services\\Microsoft.VisualStudio.Setup.Service",
+               "installedChannelId": "VisualStudio.18.Release",
+               "installedChannelUri": "https://aka.ms/vs/18/stable/channel",
+               "releaseNotes": "https://docs.microsoft.com/en-us/visualstudio/releases/18/release-notes-v18.0#18.0.2",
+               "resolvedInstallationPath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools",
+               "thirdPartyNotices": "https://go.microsoft.com/fwlink/?LinkId=661480",
+               "updateDate": "2025-11-25T11:58:03.5919343Z",
+               "catalog": {
+                 "buildBranch": "d18.0",
+                 "buildVersion": "18.0.11222.15",
+                 "featureReleaseMonth": "11",
+                 "featureReleaseYear": "2025",
+                 "id": "VisualStudio/18.0.2+11222.15",
+                 "includeBuildVersionInDisplayVersion": "False",
+                 "localBuild": "build-lab",
+                 "manifestName": "VisualStudio",
+                 "manifestType": "installer",
+                 "productDisplayVersion": "18.0.2",
+                 "productLine": "Dev18",
+                 "productLineVersion": "18",
+                 "productMilestone": "RTW",
+                 "productMilestoneIsPreRelease": "False",
+                 "productName": "Visual Studio",
+                 "productPatchVersion": "2",
+                 "productPreReleaseMilestoneSuffix": "1.0",
+                 "productRelease": "RTW",
+                 "productSemanticVersion": "18.0.2+11222.15",
+                 "requiredEngineVersion": "4.0.2166.47498"
+               },
+               "properties": {
+                 "appLocalWPF": "false",
+                 "campaignId": "",
+                 "channelManifestId": "VisualStudio.18.Release/18.0.2+11222.15",
+                 "includeRecommended": "0",
+                 "nickname": "",
+                 "setupEngineFilePath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\Installer\\setup.exe"
+               }
+             }
+           ]
+[   +3 ms] Building native assets for windows_x64.
+[   +4 ms] ­ƒöº [PrefsService] Carregando config, raw: host:localhost|port:5432|database:default|username:user|password:|enabled:true|apiUrl:http://contaslite.hawk.com.br:3000
+[        ] ­ƒöº [PrefsService] Pares encontrados: [host:localhost, port:5432, database:default, username:user, password:, enabled:true, apiUrl:http://contaslite.hawk.com.br:3000]
+[        ] ­ƒöº [PrefsService] ConfigMap decodificado: {host: localhost, port: 5432, database: default, username: user, password: , enabled: true, apiUrl: http://contaslite.hawk.com.br:3000}
+[        ] ­ƒöº [PrefsService] Config final: apiUrl=http://contaslite.hawk.com.br:3000
+[        ] ­ƒöº AuthService inicializado com URL: http://contaslite.hawk.com.br:3000
+[        ] ­ƒöÉ Sess├úo encontrada para: hawkinf@gmail.com
+[        ] ­ƒöÉ Token expira em: 2026-01-14 10:45:56.995402
+[        ] ­ƒöÉ Agora: 2026-01-14 10:33:38.854103
+[        ] ­ƒöÉ Token expirado: false
+[        ] ÔÅ░ Refresh token agendado para: 7 minutos
+[        ] Ô£à Sess├úo restaurada com sucesso para: hawkinf@gmail.com
+[        ] ­ƒöº [PrefsService] Carregando config, raw: host:localhost|port:5432|database:default|username:user|password:|enabled:true|apiUrl:http://contaslite.hawk.com.br:3000
+[        ] ­ƒöº [PrefsService] Pares encontrados: [host:localhost, port:5432, database:default, username:user, password:, enabled:true, apiUrl:http://contaslite.hawk.com.br:3000]
+[        ] ­ƒöº [PrefsService] ConfigMap decodificado: {host: localhost, port: 5432, database: default, username: user, password: , enabled: true, apiUrl: http://contaslite.hawk.com.br:3000}
+[        ] ­ƒöº [PrefsService] Config final: apiUrl=http://contaslite.hawk.com.br:3000
+[        ] ­ƒöº SyncService inicializado com URL: http://contaslite.hawk.com.br:3000
+[  +55 ms] input.json contents:
+           {
+             "assets": {},
+             "config": {
+               "build_asset_types": [
+                 "code_assets/code"
+               ],
+               "extensions": {
+                 "code_assets": {
+                   "c_compiler": {
+                     "ar": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\lib.exe",
+                     "cc": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\cl.exe",
+                     "ld": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\link.exe",
+                     "windows": {
+                       "developer_command_prompt": {
+                         "arguments": [],
+                         "script": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat"
+                       }
+                     }
+                   },
+                   "link_mode_preference": "dynamic",
+                   "target_architecture": "x64",
+                   "target_os": "windows"
+                 }
+               },
+               "linking_enabled": false
+             },
+             "out_dir_shared": "C:\\flutter\\Contaslite\\.dart_tool\\hooks_runner\\shared\\sqlite3\\build\\",
+             "out_file": "C:\\flutter\\Contaslite\\.dart_tool\\hooks_runner\\sqlite3\\e8072a2455773a99a9f4fa5fa1a7cafd\\output.json",
+             "package_name": "sqlite3",
+             "package_root": "C:\\Users\\hawk\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\sqlite3-3.1.3\\",
+             "user_defines": {}
+           }
+[   +6 ms] output.json contents:
+           {
+             "assets": [
+               {
+                 "encoding": {
+                   "file": "C:\\flutter\\Contaslite\\.dart_tool\\hooks_runner\\shared\\sqlite3\\build\\download-185c369d\\sqlite3.x64.windows.dll",
+                   "id": "package:sqlite3/src/ffi/libsqlite3.g.dart",
+                   "link_mode": {
+                     "type": "dynamic_loading_bundle"
+                   }
+                 },
+                 "type": "code_assets/code"
+               }
+             ],
+             "assets_for_linking": {},
+             "status": "success",
+             "timestamp": "2026-01-14 10:33:18.000"
+           }
+[   +3 ms] Rerunning build for sqlite3 in C:\flutter\Contaslite\.dart_tool\hooks_runner\sqlite3\e8072a2455773a99a9f4fa5fa1a7cafd\. Environment variable changed: PATH.
+[   +1 ms] input.json contents:
+           {
+             "assets": {},
+             "config": {
+               "build_asset_types": [
+                 "code_assets/code"
+               ],
+               "extensions": {
+                 "code_assets": {
+                   "c_compiler": {
+                     "ar": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\lib.exe",
+                     "cc": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\cl.exe",
+                     "ld": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.50.35717\\bin\\Hostx64\\x64\\link.exe",
+                     "windows": {
+                       "developer_command_prompt": {
+                         "arguments": [],
+                         "script": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Auxiliary\\Build\\vcvars64.bat"
+                       }
+                     }
+                   },
+                   "link_mode_preference": "dynamic",
+                   "target_architecture": "x64",
+                   "target_os": "windows"
+                 }
+               },
+               "linking_enabled": false
+             },
+             "out_dir_shared": "C:\\flutter\\Contaslite\\.dart_tool\\hooks_runner\\shared\\sqlite3\\build\\",
+             "out_file": "C:\\flutter\\Contaslite\\.dart_tool\\hooks_runner\\sqlite3\\e8072a2455773a99a9f4fa5fa1a7cafd\\output.json",
+             "package_name": "sqlite3",
+             "package_root": "C:\\Users\\hawk\\AppData\\Local\\Pub\\Cache\\hosted\\pub.dev\\sqlite3-3.1.3\\",
+             "user_defines": {}
+           }
+[   +9 ms] Running `(cd C:\Users\hawk\AppData\Local\Pub\Cache\hosted\pub.dev\sqlite3-3.1.3\; PATH=C:\Program Files\PowerShell\7;C:\Users\hawk\flutter\bin\;c:\Users\hawk\AppData\Roaming\Code\User\globalStorage\github.copilot-chat\debugCommand;c:\Users\hawk\AppData\Roaming\Code\User\globalStorage\github.copilot-chat\copilotCli;C:\Program Files (x86)\Common Files\Oracle\Java\java8path;C:\Program Files (x86)\Common Files\Oracle\Java\javapath;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\ProgramData\chocolatey\bin;C:\Program Files\dotnet\;C:\Program Files\Microsoft SQL Server\120\Tools\Binn\;C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\;C:\Program Files (x86)\Microsoft SQL Server\150\Tools\Binn\;C:\Program Files\Microsoft SQL Server\150\Tools\Binn\;C:\Program Files\Microsoft SQL Server\150\DTS\Binn\;C:\Program Files (x86)\Paragon Software\LinuxFS for Windows\;C:\Program Files\NVIDIA Corporation\NVIDIA App\NvDLISR;C:\Program Files\PuTTY\;C:\Program Files\IDM Computer Solutions\UltraEdit;C:\ffmpeg\bin;C:\Program Files\smartmontools\bin;C:\Program Files\PowerShell\7\;C:\Program Files\nodejs\;C:\Program Files\Git\cmd;C:\Users\hawk\.local\bin;C:\Program Files (x86)\VMware\VMware Workstation\bin\;C:\Program Files (x86)\Common Files\Oracle\Java\java8path;C:\Program Files (x86)\Common Files\Oracle\Java\javapath;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Program Files\NVIDIA Corporation\NVIDIA NvDLISR;C:\ProgramData\chocolatey\bin;C:\Program Files\dotnet\;C:\Program Files\Microsoft SQL Server\120\Tools\Binn\;C:\Program Files\PowerShell\7\;C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\;C:\Program Files (x86)\Microsoft SQL Server\150\Tools\Binn\;C:\Program Files\Microsoft SQL Server\150\Tools\Binn\;C:\Program Files\Microsoft SQL Server\150\DTS\Binn\;C:\Program Files\PuTTY\;C:\Users\hawk\AppData\Local\Microsoft\WindowsApps;C:\Users\hawk\AppData\Local\Programs\oh-my-posh\bin;C:\Users\hawk\AppData\Local\Microsoft\WinGet\Packages\Schniz.fnm_Microsoft.Winget.Source_8wekyb3d8bbwe;C:\Users\hawk\AppData\Local\Microsoft\WinGet\Links;C:\Users\hawk\.dotnet\tools;C:\ProgramData\mingw64\mingw64\bin;C:\tools\Nim\nim-2.2.4\bin;C:\Users\hawk\.nimble\bin;C:\Users\hawk\AppData\Roaming\npm;C:\Users\hawk\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\hawk\flutter\bin;C:\Users\hawk\.local\bin;C:\Users\hawk\AppData\Local\Programs\Antigravity\bin;c:\Users\hawk\.vscode\extensions\ms-python.debugpy-2025.18.0-win32-x64\bundled\scripts\noConfigScripts PROGRAMDATA=C:\ProgramData SYSTEMDRIVE=C: SYSTEMROOT=C:\Windows TEMP=C:\Users\hawk\AppData\Local\Temp TMP=C:\Users\hawk\AppData\Local\Temp USERPROFILE=C:\Users\hawk WINDIR=C:\Windows C:\Users\hawk\flutter\bin\cache\dart-sdk\bin\dart --packages=C:\flutter\Contaslite\.dart_tool\package_config.json C:\flutter\Contaslite\.dart_tool\hooks_runner\sqlite3\e8072a2455773a99a9f4fa5fa1a7cafd\hook.dill --config=C:\flutter\Contaslite\.dart_tool\hooks_runner\sqlite3\e8072a2455773a99a9f4fa5fa1a7cafd\input.json )`.
+[ +633 ms] output.json contents:
+           {
+             "assets": [
+               {
+                 "encoding": {
+                   "file": "C:\\flutter\\Contaslite\\.dart_tool\\hooks_runner\\shared\\sqlite3\\build\\download-c59289a\\sqlite3.x64.windows.dll",
+                   "id": "package:sqlite3/src/ffi/libsqlite3.g.dart",
+                   "link_mode": {
+                     "type": "dynamic_loading_bundle"
+                   }
+                 },
+                 "type": "code_assets/code"
+               }
+             ],
+             "assets_for_linking": {},
+             "status": "success",
+             "timestamp": "2026-01-14 10:33:39.000"
+           }
+[  +39 ms] Note: You are using the dart build hooks feature which is currently in preview. Please see https://dart.dev/interop/c-interop#native-assets for more details.
+[        ] Building native assets for windows_x64 done.
+[   +5 ms] dart_build: Complete
+[  +16 ms] Persisting file store
+[   +4 ms] Done persisting file store
+[   +8 ms] runHooks() - done
+[ +133 ms] Syncing files to device Windows...
+[   +2 ms] Compiling dart to kernel with 0 updated files
+[        ] Processing bundle.
+[   +1 ms] <- recompile package:contas_app/main.dart 8c349a55-4de8-452f-96cf-fda1d1adb39e
+[        ] <- 8c349a55-4de8-452f-96cf-fda1d1adb39e
+[   +3 ms] Bundle processing done.
+[ +160 ms] Updating files.
+[        ] Pending asset builds completed. Writing dirty entries.
+[        ] DevFS: Sync finished
+[        ] Syncing files to device Windows... (completed in 169ms)
+[        ] Synced 0.0MB.
+[        ] <- accept
+[   +2 ms] Connected to _flutterView/0x20945ce77c0.
+[   +1 ms] Flutter run key commands.
+[        ] r Hot reload. 
+[        ] R Hot restart.
+[        ] h List all available interactive commands.
+[        ] d Detach (terminate "flutter run" but leave application running).
+[        ] c Clear the screen
+[        ] q Quit (terminate the application on the device).
+[        ] A Dart VM Service on Windows is available at: http://127.0.0.1:1393/H__YGx7uNEc=/
+[        ] The Flutter DevTools debugger and profiler on Windows is available at: http://127.0.0.1:1393/H__YGx7uNEc=/devtools/?uri=ws://127.0.0.1:1393/H__YGx7uNEc=/ws
+[  +45 ms] [DB INIT] Iniciando verificacao do banco de dados...
+[ +196 ms] [DB INIT] Tipos de conta encontrados: 17
+[        ] [DB INIT] Formas de pagamento encontradas: 6
+[   +9 ms] [DB INIT] Banco j├í possui tipos e formas de pagamento. Pulando popula├º├úo autom├ítica.
+[        ] [DB INIT] ValidaÔÇí├åo de integridade skipped durante inicializaÔÇí├åo
+[        ] [DB INIT] Banco pronto com 17 tipo(s) e 6 forma(s) (245ms).
+[  +41 ms] ÔÅ│ DashboardScreen: _loadData start (#1)
+[        ] ÔÅ│ DashboardScreen: readAllAccountsRaw (#1)
+[  +81 ms] Ô£à DashboardScreen: readAllAccountsRaw ok (82ms) (#1)
+[        ] ÔÅ│ DashboardScreen: readAllTypes (#1)
+[        ] Ô£à DashboardScreen: readAllTypes ok (83ms) (#1)
+[        ] ÔÅ│ DashboardScreen: readAllAccountCategories (#1)
+[   +2 ms] Ô£à DashboardScreen: readAllAccountCategories ok (86ms) (#1)
+[        ] ÔÅ│ DashboardScreen: readAllCards (#1)
+[   +4 ms] Ô£à DashboardScreen: readAllCards ok (90ms) (#1)
+[   +1 ms] ­ƒôï Tipos no banco: Alimenta├º├úo(id: 1), Assinaturas e Servi├ºos Digitais(id: 2), Cart├Áes de Cr├®dito(id: 3), Comunica├º├úo(id: 4), Despesas Operacionais / Moradia(id: 5), D├¡vidas e Obriga├º├Áes Financeiras(id: 6), Educa├º├úo(id: 7), Fam├¡lia e Pets(id: 8), Financeiro Geral(id: 9), Fornecedores(id: 10), Impostos e Tributos(id: 11), Lazer e Viagens(id: 12), Pessoal(id: 13), Recebimentos(id: 17), Sa├║de(id: 14), Tecnologia(id: 15), Ve├¡culo(id: 16)
+[        ] ­ƒôï Total de contas: 37
+[   +2 ms] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_1, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_2, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_3, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_4, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_5, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_6, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_7, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_8, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_9, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_10, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_11, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_12, description=Aluguel Otica
+[        ] ­ƒöì launchedIndex completo: {25: {25_2026_1, 25_2026_2, 25_2026_3, 25_2026_4, 25_2026_5, 25_2026_6, 25_2026_7, 25_2026_8, 25_2026_9, 25_2026_10, 25_2026_11, 25_2026_12}}
+[        ] ­ƒôè normalExpenses 15 contas:
+[        ]    - Houter (id=1, recId=null, isRec=false, instTotal=1, 2026_1)
+[        ]    - Cal├ºada (id=2, recId=null, isRec=false, instTotal=1, 2026_1)
+[        ]    - Receber emprestimo (id=3, recId=null, isRec=false, instTotal=1, 2026_1)
+[        ]    - Aluguel Otica (id=26, recId=25, isRec=false, instTotal=null, 2026_1)
+[        ]    - Aluguel Otica (id=27, recId=25, isRec=false, instTotal=null, 2026_2)
+[        ]    - Aluguel Otica (id=28, recId=25, isRec=false, instTotal=null, 2026_3)
+[        ]    - Aluguel Otica (id=29, recId=25, isRec=false, instTotal=null, 2026_4)
+[        ]    - Aluguel Otica (id=30, recId=25, isRec=false, instTotal=null, 2026_5)
+[        ]    - Aluguel Otica (id=31, recId=25, isRec=false, instTotal=null, 2026_6)
+[        ]    - Aluguel Otica (id=32, recId=25, isRec=false, instTotal=null, 2026_7)
+[        ]    - Aluguel Otica (id=33, recId=25, isRec=false, instTotal=null, 2026_8)
+[        ]    - Aluguel Otica (id=34, recId=25, isRec=false, instTotal=null, 2026_9)
+[        ]    - Aluguel Otica (id=35, recId=25, isRec=false, instTotal=null, 2026_10)
+[        ]    - Aluguel Otica (id=36, recId=25, isRec=false, instTotal=null, 2026_11)
+[        ]    - Aluguel Otica (id=37, recId=25, isRec=false, instTotal=null, 2026_12)
+[        ] ­ƒôï Adicionando 1 contas do m├¬s 2026_2:
+[        ]    - Aluguel Otica (id=27, recurrenceId=25, value=0.0)
+[        ] ­ƒöÄ Verificando recorr├¬ncia: Aluguel Otica (id=25), launchKey=25_2026_2
+[        ]    launchedIndex[25] = {25_2026_1, 25_2026_2, 25_2026_3, 25_2026_4, 25_2026_5, 25_2026_6, 25_2026_7, 25_2026_8, 25_2026_9, 25_2026_10, 25_2026_11, 25_2026_12}
+[        ]    wasLaunched=true, value=0.0
+[        ] Ô£à PULANDO recorr├¬ncia PAI pois foi lan├ºada: Aluguel Otica (id=25)
+[   +7 ms] ­ƒôè Antes de filtros: 5 contas
+[        ]    Detalhes: Aluguel Otica(id=27,rec=false,recId=25), Fatura: BB - ELO(id=24,rec=true,recId=null), Fatura: Bradesco - AMEX(id=23,rec=true,recId=null), Fatura: Itaucard - MASTERCARD(id=4,rec=true,recId=null), Fatura: Itaucard - VISA(id=22,rec=true,recId=null)
+[        ] ­ƒôè Depois de filtros: 5 contas
+[   +3 ms] ÔÅ│ DashboardScreen: buildInstallmentSummaries (#1)
+[        ] Ô£à DashboardScreen: buildInstallmentSummaries ok (111ms) (#1)
+[   +1 ms] ÔÅ│ DashboardScreen: getPaymentsForAccountsByMonth (#1)
+[   +4 ms] Ô£à DashboardScreen: getPaymentsForAccountsByMonth ok (116ms) (#1)
+[        ] ÔÅ│ DashboardScreen: getPaymentsSumForAccountsByMonth (#1)
+[   +1 ms] Ô£à DashboardScreen: getPaymentsSumForAccountsByMonth ok (118ms) (#1)
+[        ] Ô£à DashboardScreen: _loadData end (#1) isLoading=false items=5
+[  +52 ms] ­ƒÄ┤ _buildAccountCard chamado: account="Fatura: Itaucard - MASTERCARD", typeId=3, typeName="Cart├Áes de Cr├®dito"
+[  +35 ms] ­ƒÄ┤ _buildAccountCard chamado: account="Fatura: BB - ELO", typeId=3, typeName="Cart├Áes de Cr├®dito"
+[  +17 ms] ­ƒÄ┤ _buildAccountCard chamado: account="Fatura: Itaucard - VISA", typeId=3, typeName="Cart├Áes de Cr├®dito"
+[  +18 ms] ­ƒÄ┤ _buildAccountCard chamado: account="Aluguel Otica", typeId=17, typeName="Recebimentos"
+[  +11 ms] ­ƒÄ┤ _buildAccountCard chamado: account="Fatura: Bradesco - AMEX", typeId=3, typeName="Cart├Áes de Cr├®dito"
+[+3037 ms] ­ƒÆ│ _handlePayAction: account="Aluguel Otica", isRecebimento=false, typeNameFilter="null"
+[+3772 ms] ÔÅ│ DashboardScreen: _loadData start (#2)
+[        ] ÔÅ│ DashboardScreen: readAllAccountsRaw (#2)
+[  +33 ms] Ô£à DashboardScreen: readAllAccountsRaw ok (34ms) (#2)
+[   +1 ms] ÔÅ│ DashboardScreen: readAllTypes (#2)
+[  +10 ms] Ô£à DashboardScreen: readAllTypes ok (46ms) (#2)
+[        ] ÔÅ│ DashboardScreen: readAllAccountCategories (#2)
+[   +1 ms] Ô£à DashboardScreen: readAllAccountCategories ok (48ms) (#2)
+[        ] ÔÅ│ DashboardScreen: readAllCards (#2)
+[        ] Ô£à DashboardScreen: readAllCards ok (49ms) (#2)
+[   +1 ms] ­ƒôï Tipos no banco: Alimenta├º├úo(id: 1), Assinaturas e Servi├ºos Digitais(id: 2), Cart├Áes de Cr├®dito(id: 3), Comunica├º├úo(id: 4), Despesas Operacionais / Moradia(id: 5), D├¡vidas e Obriga├º├Áes Financeiras(id: 6), Educa├º├úo(id: 7), Fam├¡lia e Pets(id: 8), Financeiro Geral(id: 9), Fornecedores(id: 10), Impostos e Tributos(id: 11), Lazer e Viagens(id: 12), Pessoal(id: 13), Recebimentos(id: 17), Sa├║de(id: 14), Tecnologia(id: 15), Ve├¡culo(id: 16)
+[        ] ­ƒôï Total de contas: 37
+[   +1 ms] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_1, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_2, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_3, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_4, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_5, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_6, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_7, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_8, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_9, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_10, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_11, description=Aluguel Otica
+[        ] ­ƒôØ Lan├ºamento indexado: recurrenceId=25, key=25_2026_12, description=Aluguel Otica
+[        ] ­ƒöì launchedIndex completo: {25: {25_2026_1, 25_2026_2, 25_2026_3, 25_2026_4, 25_2026_5, 25_2026_6, 25_2026_7, 25_2026_8, 25_2026_9, 25_2026_10, 25_2026_11, 25_2026_12}}
+[        ] ­ƒôè normalExpenses 15 contas:
+[        ]    - Houter (id=1, recId=null, isRec=false, instTotal=1, 2026_1)
+[        ]    - Cal├ºada (id=2, recId=null, isRec=false, instTotal=1, 2026_1)
+[        ]    - Receber emprestimo (id=3, recId=null, isRec=false, instTotal=1, 2026_1)
+[        ]    - Aluguel Otica (id=26, recId=25, isRec=false, instTotal=null, 2026_1)
+[        ]    - Aluguel Otica (id=27, recId=25, isRec=false, instTotal=null, 2026_2)
+[        ]    - Aluguel Otica (id=28, recId=25, isRec=false, instTotal=null, 2026_3)
+[        ]    - Aluguel Otica (id=29, recId=25, isRec=false, instTotal=null, 2026_4)
+[        ]    - Aluguel Otica (id=30, recId=25, isRec=false, instTotal=null, 2026_5)
+[        ]    - Aluguel Otica (id=31, recId=25, isRec=false, instTotal=null, 2026_6)
+[        ]    - Aluguel Otica (id=32, recId=25, isRec=false, instTotal=null, 2026_7)
+[        ]    - Aluguel Otica (id=33, recId=25, isRec=false, instTotal=null, 2026_8)
+[        ]    - Aluguel Otica (id=34, recId=25, isRec=false, instTotal=null, 2026_9)
+[        ]    - Aluguel Otica (id=35, recId=25, isRec=false, instTotal=null, 2026_10)
+[        ]    - Aluguel Otica (id=36, recId=25, isRec=false, instTotal=null, 2026_11)
+[        ]    - Aluguel Otica (id=37, recId=25, isRec=false, instTotal=null, 2026_12)
+[        ] ­ƒôï Adicionando 1 contas do m├¬s 2026_2:
+[        ]    - Aluguel Otica (id=27, recurrenceId=25, value=0.0)
+[        ] ­ƒöÄ Verificando recorr├¬ncia: Aluguel Otica (id=25), launchKey=25_2026_2
+[        ]    launchedIndex[25] = {25_2026_1, 25_2026_2, 25_2026_3, 25_2026_4, 25_2026_5, 25_2026_6, 25_2026_7, 25_2026_8, 25_2026_9, 25_2026_10, 25_2026_11, 25_2026_12}
+[        ]    wasLaunched=true, value=0.0
+[        ] Ô£à PULANDO recorr├¬ncia PAI pois foi lan├ºada: Aluguel Otica (id=25)
+[  +11 ms] ­ƒôè Antes de filtros: 5 contas
+[        ]    Detalhes: Aluguel Otica(id=27,rec=false,recId=25), Fatura: BB - ELO(id=24,rec=true,recId=null), Fatura: Bradesco - AMEX(id=23,rec=true,recId=null), Fatura: Itaucard - MASTERCARD(id=4,rec=true,recId=null), Fatura: Itaucard - VISA(id=22,rec=true,recId=null)
+[        ] ­ƒôè Depois de filtros: 5 contas
+[        ] ÔÅ│ DashboardScreen: buildInstallmentSummaries (#2)
+[        ] Ô£à DashboardScreen: buildInstallmentSummaries ok (69ms) (#2)
+[        ] ÔÅ│ DashboardScreen: getPaymentsForAccountsByMonth (#2)
+[        ] Ô£à DashboardScreen: getPaymentsForAccountsByMonth ok (69ms) (#2)
+[        ] ÔÅ│ DashboardScreen: getPaymentsSumForAccountsByMonth (#2)
+[   +4 ms] Ô£à DashboardScreen: getPaymentsSumForAccountsByMonth ok (74ms) (#2)
+[        ] Ô£à DashboardScreen: _loadData end (#2) isLoading=false items=5
+[  +20 ms] ­ƒÄ┤ _buildAccountCard chamado: account="Fatura: Itaucard - MASTERCARD", typeId=3, typeName="Cart├Áes de Cr├®dito"
+[  +24 ms] ­ƒÄ┤ _buildAccountCard chamado: account="Fatura: BB - ELO", typeId=3, typeName="Cart├Áes de Cr├®dito"
+[  +15 ms] ­ƒÄ┤ _buildAccountCard chamado: account="Fatura: Itaucard - VISA", typeId=3, typeName="Cart├Áes de Cr├®dito"
+[  +12 ms] ­ƒÄ┤ _buildAccountCard chamado: account="Aluguel Otica", typeId=17, typeName="Recebimentos"
+[   +9 ms] ­ƒÄ┤ _buildAccountCard chamado: account="Fatura: Bradesco - AMEX", typeId=3, typeName="Cart├Áes de Cr├®dito"
+[+20511 ms] ­ƒÆ│ _handlePayAction: account="Aluguel Otica", isRecebimento=false, typeNameFilter="null"

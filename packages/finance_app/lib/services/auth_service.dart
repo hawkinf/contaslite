@@ -8,6 +8,8 @@ import '../models/auth_tokens.dart';
 import '../models/user.dart';
 import 'secure_credential_storage.dart';
 import 'prefs_service.dart';
+import '../database/sync_helpers.dart';
+import 'sync_service.dart';
 
 /// Estados de autenticação
 enum AuthState {
@@ -251,6 +253,11 @@ class AuthService {
     debugPrint('🔐 Tentando login para: $email');
     debugPrint('🔐 URL da API: $_apiBaseUrl');
     
+    // NÃO usar credenciais salvas automaticamente. Se não vier email/senha, falha.
+    if (email.isEmpty || password.isEmpty) {
+      return AuthResult.failed('Email e senha são obrigatórios', errorCode: 'MISSING_CREDENTIALS');
+    }
+
     if (_apiBaseUrl == null) {
       debugPrint('❌ URL da API não configurada!');
       return AuthResult.failed(
@@ -349,6 +356,8 @@ class AuthService {
     currentUserNotifier.value = null;
     authStateNotifier.value = AuthState.unauthenticated;
     errorNotifier.value = null;
+    // Garantir que a UI reflita modo offline imediatamente
+    SyncService.instance.syncStateNotifier.value = SyncState.offline;
 
     debugPrint('✅ Logout realizado com sucesso');
   }

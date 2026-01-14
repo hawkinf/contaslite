@@ -6,6 +6,7 @@ import '../services/prefs_service.dart';
 import '../services/sync_service.dart';
 import '../services/auth_service.dart';
 import '../database/postgresql_impl.dart';
+import 'postgres_data_explorer_screen.dart';
 
 class DatabaseSettingsScreen extends StatefulWidget {
   const DatabaseSettingsScreen({super.key});
@@ -26,6 +27,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
   bool _isEnabled = false;
   bool _isLoading = true;
   bool _showPassword = false;
+  bool _rememberCredentials = true;
   bool _isTesting = false;
   bool _isProcessingBackup = false;
   String? _testMessage;
@@ -56,6 +58,8 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
         _passwordController.text = config.password;
         _apiUrlController.text = config.apiUrl ?? '';
         _isEnabled = config.enabled;
+        _rememberCredentials =
+            config.username.isNotEmpty || config.password.isNotEmpty;
         _isLoading = false;
       });
     } catch (e) {
@@ -87,13 +91,15 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
     try {
       // Se tiver apiUrl, marca como enabled automaticamente
       final shouldEnable = _isEnabled || _apiUrlController.text.trim().isNotEmpty;
+      final usernameToStore = _rememberCredentials ? _usernameController.text.trim() : '';
+      final passwordToStore = _rememberCredentials ? _passwordController.text : '';
       
       final config = DatabaseConfig(
         host: _hostController.text.trim().isEmpty ? 'localhost' : _hostController.text.trim(),
         port: _portController.text.isEmpty ? 5432 : int.parse(_portController.text),
         database: _databaseController.text.trim().isEmpty ? 'default' : _databaseController.text.trim(),
-        username: _usernameController.text.trim().isEmpty ? 'user' : _usernameController.text.trim(),
-        password: _passwordController.text.isEmpty ? '' : _passwordController.text,
+        username: usernameToStore.isEmpty ? 'user' : usernameToStore,
+        password: passwordToStore,
         enabled: shouldEnable,
         apiUrl: _apiUrlController.text.trim().isEmpty
             ? null
@@ -236,6 +242,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
                   _passwordController.clear();
                   _apiUrlController.clear();
                   _isEnabled = false;
+                  _rememberCredentials = false;
                   _testMessage = null;
                 });
                 if (mounted) {
@@ -497,6 +504,18 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
               enabled: !_isTesting,
             ),
             const SizedBox(height: 16),
+
+            CheckboxListTile(
+              title: const Text('Guardar login e senha'),
+              subtitle: const Text('Mantém usuário e senha salvos para reabrir depois'),
+              value: _rememberCredentials,
+              onChanged: _isTesting
+                  ? null
+                  : (val) {
+                      setState(() => _rememberCredentials = val ?? true);
+                    },
+            ),
+            const SizedBox(height: 12),
 
             // API URL (Recomendado)
             Container(
@@ -1092,10 +1111,9 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
   }
 
   void _openDataExplorer() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('🔍 Explorador de Dados - Em desenvolvimento'),
-      ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const PostgresDataExplorerScreen()),
     );
   }
 

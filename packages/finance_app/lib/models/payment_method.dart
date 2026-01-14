@@ -49,6 +49,7 @@ class PaymentMethod {
   final bool requiresBank;
   final bool isActive;
   final PaymentMethodUsage usage;
+  final String? logo; // Emoji icon
 
   PaymentMethod({
     this.id,
@@ -58,6 +59,7 @@ class PaymentMethod {
     required this.requiresBank,
     this.isActive = true,
     this.usage = PaymentMethodUsage.pagamentosRecebimentos,
+    this.logo,
   });
 
   IconData get icon => IconData(iconCode, fontFamily: 'MaterialIcons');
@@ -79,6 +81,7 @@ class PaymentMethod {
       'requires_bank': requiresBank ? 1 : 0,
       'is_active': isActive ? 1 : 0,
       'usage': usage.toDb(),
+      'logo': logo,
     };
   }
 
@@ -91,6 +94,7 @@ class PaymentMethod {
       requiresBank: (map['requires_bank'] as int?) == 1,
       isActive: (map['is_active'] as int?) == 1,
       usage: PaymentMethodUsage.fromDb(map['usage']),
+      logo: map['logo'] as String?,
     );
   }
 
@@ -102,6 +106,7 @@ class PaymentMethod {
     bool? requiresBank,
     bool? isActive,
     PaymentMethodUsage? usage,
+    String? logo,
   }) {
     return PaymentMethod(
       id: id ?? this.id,
@@ -111,6 +116,7 @@ class PaymentMethod {
       requiresBank: requiresBank ?? this.requiresBank,
       isActive: isActive ?? this.isActive,
       usage: usage ?? this.usage,
+      logo: logo ?? this.logo,
     );
   }
 

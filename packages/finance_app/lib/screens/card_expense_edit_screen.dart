@@ -88,10 +88,11 @@ class _CardExpenseEditScreenState extends State<CardExpenseEditScreen> {
   DateTime _parseDateString(String dateStr) {
     try {
       final parts = dateStr.split('/');
-      if (parts.length == 3) {
+      if (parts.length >= 2) {
         final day = int.parse(parts[0]);
         final month = int.parse(parts[1]);
-        final year = int.parse(parts[2]);
+        // Se não tiver ano, usar o ano corrente
+        final year = parts.length >= 3 ? int.parse(parts[2]) : DateTime.now().year;
         // Se tiver 2 dígitos (yy), converter para 20xx
         final fullYear = year < 100 ? 2000 + year : year;
         return DateTime(fullYear, month, day);
@@ -232,7 +233,30 @@ class _CardExpenseEditScreenState extends State<CardExpenseEditScreen> {
                       label: 'Categoria',
                       icon: Icons.category,
                     ),
-                    items: _categorias.map((cat) => DropdownMenuItem(value: cat, child: Text(cat.categoria))).toList(),
+                                        items: _categorias
+                                            .map((cat) => DropdownMenuItem(
+                                                  value: cat,
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Text(
+                                                        cat.logo ?? '📁',
+                                                        style: const TextStyle(fontSize: 18),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Text(cat.categoria),
+                                                    ],
+                                                  ),
+                                                ))
+                                            .toList(),
+                    selectedItemBuilder: (BuildContext context) {
+                      return _categorias
+                          .map((cat) => Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text('${cat.logo ?? '📁'} ${cat.categoria}'),
+                              ))
+                          .toList();
+                    },
                     onChanged: (val) {
                       setState(() {
                         _selectedCategory = val;

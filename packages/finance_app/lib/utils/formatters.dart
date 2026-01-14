@@ -54,13 +54,49 @@ class DateFormatter {
     return formatted[0].toUpperCase() + formatted.substring(1);
   }
 
-  /// Converte string dd/MM/yyyy para DateTime
+  /// Converte string dd/MM/yyyy ou dd/MM para DateTime
+  /// Se apenas dd/MM for fornecido, usa o ano corrente
   static DateTime? parseDate(String dateStr) {
     try {
+      final trimmed = dateStr.trim();
+      // Se tem menos de 10 caracteres, pode ser dd/MM
+      if (trimmed.length <= 5) {
+        final parts = trimmed.split('/');
+        if (parts.length == 2) {
+          final day = int.tryParse(parts[0]);
+          final month = int.tryParse(parts[1]);
+          if (day != null && month != null) {
+            final currentYear = DateTime.now().year;
+            return DateTime(currentYear, month, day);
+          }
+        }
+      }
       return UtilData.obterDateTime(dateStr);
     } catch (e) {
       return null;
     }
+  }
+  
+  /// Normaliza string de data para dd/MM/yyyy, completando com ano corrente se necessário
+  static String normalizeDate(String dateStr) {
+    final trimmed = dateStr.trim();
+    final parts = trimmed.split('/');
+    
+    if (parts.length == 2) {
+      // dd/MM -> dd/MM/yyyy (ano corrente)
+      final day = parts[0].padLeft(2, '0');
+      final month = parts[1].padLeft(2, '0');
+      final currentYear = DateTime.now().year;
+      return '$day/$month/$currentYear';
+    } else if (parts.length == 3 && parts[2].length == 2) {
+      // dd/MM/yy -> dd/MM/20yy
+      final day = parts[0].padLeft(2, '0');
+      final month = parts[1].padLeft(2, '0');
+      final year = '20${parts[2]}';
+      return '$day/$month/$year';
+    }
+    
+    return trimmed;
   }
 
   /// Retorna o primeiro dia do mês

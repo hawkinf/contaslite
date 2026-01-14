@@ -165,10 +165,11 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
   DateTime _parseDateString(String dateStr) {
     try {
       final parts = dateStr.split('/');
-      if (parts.length == 3) {
+      if (parts.length >= 2) {
         final day = int.parse(parts[0]);
         final month = int.parse(parts[1]);
-        final year = int.parse(parts[2]);
+        // Se não tiver ano, usar o ano corrente
+        final year = parts.length >= 3 ? int.parse(parts[2]) : DateTime.now().year;
         final fullYear = year < 100 ? 2000 + year : year;
         if (fullYear < 1900) return DateTime.now();
         return DateTime(fullYear, month, day);

@@ -33,7 +33,9 @@
       "Bash(wc:*)",
       "Bash(Get-ChildItem -Path \"c:\\\\flutter\\\\Contaslite\" -Filter \"*card_expense_form*\" -Recurse -File)",
       "Bash(Where-Object { $_FullName -notlike \"*.history*\" })",
-      "Bash(Select-Object FullName)"
+      "Bash(Select-Object FullName)",
+      "Bash(ls -la \"c:\\\\flutter\\\\Contaslite\\\\assets\\\\icons\"\" 2>&1 || echo \"Directory not found \")",
+      "Bash(ls -la \"c:\\\\flutter\\\\Contaslite\\\\packages\\\\finance_app\\\\assets\\\\icons\"\" 2>&1 || echo \"Directory not found \")"
     ]
   }
 }
