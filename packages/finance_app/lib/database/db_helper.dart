@@ -68,7 +68,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 14,
+      version: 15,
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
         debugPrint('🔄 Iniciando migração de banco de dados v$oldVersion→v$newVersion...');

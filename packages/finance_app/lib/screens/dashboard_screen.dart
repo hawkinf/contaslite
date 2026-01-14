@@ -1061,7 +1061,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         subTextColor = textColor.withValues(alpha: 0.8);
         // ...existing code...
         typeColor = userColor;
-        dayNumberColor = Colors.red.shade700;
+        dayNumberColor = Colors.black;
     } else {
       final int? accountColorValue = account.cardColor;
       final bool usesCustomColor = accountColorValue != null;
@@ -1091,7 +1091,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
 
       typeColor = accent;
-      dayNumberColor = isRecebimento ? Colors.blue.shade700 : Colors.red.shade700;
+      dayNumberColor = Colors.black;
     }
 
     final Color accentColor = typeColor;
@@ -1490,6 +1490,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   weekdayLabel,
                   style: TextStyle(
                     fontSize: weekdaySize,
+                    fontWeight: FontWeight.bold,
                     color: _adaptiveGreyTextColor(context, Colors.grey.shade600),
                   ),
                 ),
@@ -1531,25 +1532,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               const SizedBox(width: 6),
                             ],
                             Expanded(
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      '${widget.typeNameFilter ?? _typeNames[account.typeId] ?? 'Outro'} - $childLabel',
-                                      style: TextStyle(
-                                        fontSize: categorySize,
-                                        fontWeight: FontWeight.bold,
-                                        color: textColor,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  if (headerChildIcon != null) ...[
-                                    const SizedBox(width: 6),
-                                    headerChildIcon,
-                                  ],
-                                ],
+                              child: Text(
+                                widget.typeNameFilter ?? _typeNames[account.typeId] ?? 'Outro',
+                                style: TextStyle(
+                                  fontSize: categorySize,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -1595,12 +1586,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             if (isCard && brandBadge != null) ...[
                               brandBadge,
                               const SizedBox(width: 8),
+                            ] else if (headerChildIcon != null) ...[
+                              headerChildIcon,
+                              const SizedBox(width: 6),
                             ],
                             Expanded(
                               child: Text(
-                                secondaryDescription.isNotEmpty
-                                    ? secondaryDescription
-                                    : account.description,
+                                '$childLabel - ${secondaryDescription.isNotEmpty ? secondaryDescription : account.description}',
                                 style: TextStyle(
                                   fontSize: descriptionSize,
                                   fontWeight: FontWeight.w600,

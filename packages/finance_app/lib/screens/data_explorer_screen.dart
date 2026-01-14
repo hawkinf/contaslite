@@ -22,7 +22,7 @@ class _DataExplorerScreenState extends State<DataExplorerScreen> {
     'Categorias',
     'Pagamentos',
     'Bancos',
-    'Formas de Pagamento/Recebimento'
+    'Formas de Pagamento/Recebimento',
   ];
 
   @override

@@ -39,7 +39,7 @@ class MastercardLogo extends StatelessWidget {
               height: circleSize,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFFF79E1B).withOpacity(0.85),
+                color: const Color(0xFFF79E1B).withValues(alpha: 0.85),
               ),
             ),
           ),
