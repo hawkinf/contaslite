@@ -2,20 +2,42 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "finance_app (Windows)",
+      "name": "ContasLite (Windows Debug)",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
       "deviceId": "windows",
-      "args": ["--dart-define=FLUTTER_WEB_USE_SKIA=true"]
+      "cwd": "${workspaceFolder}",
+      "flutterRunAdditionalArgs": ["--no-track-widget-creation"],
+      "evaluateGettersInDebugViews": false,
+      "evaluateToStringInDebugViews": false
     },
     {
-      "name": "finance_app (Windows Release)",
+      "name": "ContasLite (Windows Run - No Debug)",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
       "deviceId": "windows",
-      "flutterMode": "release"
+      "cwd": "${workspaceFolder}",
+      "noDebug": true
+    },
+    {
+      "name": "ContasLite (Windows Release)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "windows",
+      "flutterMode": "release",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "ContasLite (Windows Profile)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "windows",
+      "flutterMode": "profile",
+      "cwd": "${workspaceFolder}"
     },
     {
       "type": "node",

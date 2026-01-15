@@ -13,6 +13,10 @@ class DatabaseInitializationService {
   Future<void> initializeDatabase() async {
     try {
       debugPrint('[DB INIT] Iniciando verificacao do banco de dados...');
+      
+      // Permitir que a UI renderize antes de iniciar operações pesadas
+      await Future.delayed(const Duration(milliseconds: 50));
+      
       final stopwatch = Stopwatch()..start();
       final db = DatabaseHelper.instance;
 

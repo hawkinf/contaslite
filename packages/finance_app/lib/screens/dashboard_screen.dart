@@ -132,6 +132,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _showContasPagar = true;
   bool _showContasReceber = true;
   bool _showCartoesCredito = true;
+  
+  // Novos filtros
+  bool _hidePaidAccounts = true; // Ocultar contas pagas/recebidas (true = oculta)
+  String _periodFilter = 'month'; // 'month', 'currentWeek', 'nextWeek'
+  final GlobalKey _filterButtonKey = GlobalKey(); // Key para posicionar o popup
 
 
   @override
@@ -192,79 +197,129 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Theme.of(context).brightness == Brightness.dark ? (darkGrey ?? Colors.grey.shade600) : lightGrey;
   }
 
-  bool get _isCombinedView => widget.typeNameFilter == null && widget.excludeTypeNameFilter == null;
+  void _applyPeriodFilter(String filter) {
+    final now = DateTime.now();
+    DateTime start;
+    DateTime end;
 
-  Future<void> _openAppBarFilter() async {
-    bool tempPagar = _showContasPagar;
-    bool tempReceber = _showContasReceber;
-    bool tempCartoes = _showCartoesCredito;
-
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Filtrar contas'),
-          content: StatefulBuilder(
-            builder: (context, setStateDialog) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CheckboxListTile(
-                    value: tempPagar,
-                    onChanged: (value) => setStateDialog(() => tempPagar = value ?? true),
-                    title: const Text('Contas a pagar'),
-                    controlAffinity: ListTileControlAffinity.leading,
-                  ),
-                  CheckboxListTile(
-                    value: tempReceber,
-                    onChanged: (value) => setStateDialog(() => tempReceber = value ?? true),
-                    title: const Text('Contas a receber'),
-                    controlAffinity: ListTileControlAffinity.leading,
-                  ),
-                  CheckboxListTile(
-                    value: tempCartoes,
-                    onChanged: (value) => setStateDialog(() => tempCartoes = value ?? true),
-                    title: const Text('Cartões de Crédito'),
-                    controlAffinity: ListTileControlAffinity.leading,
-                  ),
-                ],
-              );
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Aplicar'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (result == true && mounted) {
-      setState(() {
-        _showContasPagar = tempPagar;
-        _showContasReceber = tempReceber;
-        _showCartoesCredito = tempCartoes;
-      });
-      _loadData();
+    switch (filter) {
+      case 'currentWeek':
+        // Início da semana (domingo) até fim (sábado)
+        final weekday = now.weekday % 7; // Domingo = 0
+        start = DateTime(now.year, now.month, now.day - weekday);
+        end = start.add(const Duration(days: 6));
+        break;
+      case 'nextWeek':
+        // Próxima semana
+        final weekday = now.weekday % 7;
+        final nextSunday = DateTime(now.year, now.month, now.day - weekday + 7);
+        start = nextSunday;
+        end = start.add(const Duration(days: 6));
+        break;
+      case 'month':
+      default:
+        // Mês inteiro
+        start = DateTime(_startDate.year, _startDate.month, 1);
+        end = DateTime(_startDate.year, _startDate.month + 1, 0);
+        break;
     }
+
+    setState(() {
+      _startDate = start;
+      _endDate = end;
+    });
+    _loadData();
   }
 
+  bool get _isCombinedView => widget.typeNameFilter == null && widget.excludeTypeNameFilter == null;
+
   List<Widget> _buildAppBarActions({required bool includeFilter}) {
-    if (!includeFilter || !_isCombinedView) {
-      return <Widget>[];
-    }
-    final bool hasCustomFilter = !(_showContasPagar && _showContasReceber && _showCartoesCredito);
+    if (!includeFilter) return <Widget>[];
+    
+    // Botão de filtro com popup
     return <Widget>[
-      IconButton(
-        tooltip: 'Filtrar contas',
-        icon: Icon(hasCustomFilter ? Icons.filter_alt : Icons.filter_list),
-        onPressed: _openAppBarFilter,
+      PopupMenuButton<String>(
+        key: _filterButtonKey,
+        icon: Badge(
+          isLabelVisible: _hidePaidAccounts || _periodFilter != 'month',
+          backgroundColor: Colors.orange,
+          smallSize: 8,
+          child: const Icon(Icons.filter_list, color: Colors.white),
+        ),
+        tooltip: 'Filtros',
+        offset: const Offset(0, 45),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        itemBuilder: (context) => [
+          // Checkbox ocultar pagas
+          PopupMenuItem<String>(
+            enabled: false,
+            padding: EdgeInsets.zero,
+            child: StatefulBuilder(
+              builder: (context, setStateLocal) => CheckboxListTile(
+                value: _hidePaidAccounts,
+                onChanged: (value) {
+                  setState(() => _hidePaidAccounts = value ?? true);
+                  setStateLocal(() {});
+                  _loadData();
+                },
+                title: const Text('Ocultar Contas Pagas/Recebidas', style: TextStyle(fontSize: 14)),
+                controlAffinity: ListTileControlAffinity.leading,
+                dense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+            ),
+          ),
+          const PopupMenuDivider(),
+          // Título período
+          const PopupMenuItem<String>(
+            enabled: false,
+            height: 32,
+            child: Text('Período:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          ),
+          // Opções de período
+          PopupMenuItem<String>(
+            value: 'month',
+            child: Row(
+              children: [
+                Icon(Icons.calendar_month, size: 18, color: _periodFilter == 'month' ? AppColors.primary : Colors.grey),
+                const SizedBox(width: 8),
+                const Text('Mês inteiro'),
+                const Spacer(),
+                if (_periodFilter == 'month') const Icon(Icons.check, size: 18, color: AppColors.primary),
+              ],
+            ),
+          ),
+          PopupMenuItem<String>(
+            value: 'currentWeek',
+            child: Row(
+              children: [
+                Icon(Icons.today, size: 18, color: _periodFilter == 'currentWeek' ? AppColors.primary : Colors.grey),
+                const SizedBox(width: 8),
+                const Text('Semana atual'),
+                const Spacer(),
+                if (_periodFilter == 'currentWeek') const Icon(Icons.check, size: 18, color: AppColors.primary),
+              ],
+            ),
+          ),
+          PopupMenuItem<String>(
+            value: 'nextWeek',
+            child: Row(
+              children: [
+                Icon(Icons.next_week, size: 18, color: _periodFilter == 'nextWeek' ? AppColors.primary : Colors.grey),
+                const SizedBox(width: 8),
+                const Text('Próxima semana'),
+                const Spacer(),
+                if (_periodFilter == 'nextWeek') const Icon(Icons.check, size: 18, color: AppColors.primary),
+              ],
+            ),
+          ),
+        ],
+        onSelected: (value) {
+          if (value == 'month' || value == 'currentWeek' || value == 'nextWeek') {
+            setState(() => _periodFilter = value);
+            _applyPeriodFilter(value);
+          }
+        },
       ),
     ];
   }
@@ -672,6 +727,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
 
       debugPrint('📊 Depois de filtros: ${processedList.length} contas');
+      
+      // Aplicar filtro de período (semana atual, próxima semana)
+      if (_periodFilter != 'month') {
+        final beforePeriod = processedList.length;
+        processedList = processedList.where((account) {
+          final year = account.year ?? _startDate.year;
+          final month = account.month ?? _startDate.month;
+          int day = account.dueDay;
+          final maxDays = DateUtils.getDaysInMonth(year, month);
+          if (day > maxDays) day = maxDays;
+          final dueDate = DateTime(year, month, day);
+          return !dueDate.isBefore(_startDate) && !dueDate.isAfter(_endDate);
+        }).toList();
+        debugPrint('✓ Filtro de período ($_periodFilter): $beforePeriod → ${processedList.length} contas');
+      }
+      
       processedList.sort((a, b) => a.dueDay.compareTo(b.dueDay));
       final double totalForecast = processedList.fold(0.0, (sum, item) {
         if (item.cardBrand != null && item.isRecurrent) {
@@ -691,6 +762,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           .where((account) => account.id != null)
           .map((account) => account.id!)
           .toList();
+      debugPrint('💳 Buscando pagamentos para IDs: $paymentIds');
       final paymentInfo = paymentIds.isEmpty
           ? <int, Map<String, dynamic>>{}
           : await timed(
@@ -702,6 +774,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               timeout: const Duration(seconds: 10),
             );
+      debugPrint('💳 Pagamentos encontrados: ${paymentInfo.keys.toList()}');
+      for (var entry in paymentInfo.entries) {
+        debugPrint('   accountId=${entry.key}: ${entry.value}');
+      }
+      
+      // Filtrar contas pagas se a opção "Ocultar" estiver ativa
+      if (_hidePaidAccounts) {
+        final beforePaid = processedList.length;
+        processedList = processedList.where((account) {
+          if (account.id == null) return true;
+          return !paymentInfo.containsKey(account.id!);
+        }).toList();
+        debugPrint('✓ Filtro de pagas (ocultar): $beforePaid → ${processedList.length} contas');
+      }
+      
       final totalPaid = paymentIds.isEmpty
           ? 0.0
           : await timed(
@@ -863,6 +950,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                backgroundColor: appBarBg,
                foregroundColor: appBarFg,
                actions: _buildAppBarActions(includeFilter: true),
+               showFilters: _isCombinedView,
+               filterContasPagar: _showContasPagar,
+               filterContasReceber: _showContasReceber,
+               filterCartoes: _showCartoesCredito,
+               onFilterContasPagarChanged: (value) {
+                 setState(() => _showContasPagar = value);
+                 _loadData();
+               },
+               onFilterContasReceberChanged: (value) {
+                 setState(() => _showContasReceber = value);
+                 _loadData();
+               },
+               onFilterCartoesChanged: (value) {
+                 setState(() => _showCartoesCredito = value);
+                 _loadData();
+               },
              ) as PreferredSizeWidget);
       final dashboardBody = SafeArea(
         child: LayoutBuilder(
@@ -3237,7 +3340,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     );
                   }
                   
+                  // Cor zebrada para linhas alternadas
+                  final isEven = index % 2 == 0;
+                  final zebraColor = isEven
+                      ? Colors.transparent
+                      : Theme.of(ctx).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5);
+                  
                   return ListTile(
+                    tileColor: zebraColor,
                     onTap: () => Navigator.pop(ctx, card),
                     leading: CircleAvatar(
                       backgroundColor: baseColor,

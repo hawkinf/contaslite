@@ -1,0 +1,9 @@
+{
+  "dart.debugExternalPackageLibraries": false,
+  "dart.debugSdkLibraries": false,
+  "dart.runPubGetOnPubspecChanges": "prompt",
+  "dart.flutterSdkPath": "C:\\Users\\hawk\\flutter",
+  "dart.breakOnExceptions": "none",
+  "dart.evaluateToStringInDebugViews": false,
+  "dart.showInspectorNotificationsForWidgetErrors": false
+}

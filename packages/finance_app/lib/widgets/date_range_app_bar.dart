@@ -15,6 +15,15 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color? foregroundColor;
   final TextStyle? titleStyle;
   final TextStyle? monthStyle;
+  
+  // Filtros de switches
+  final bool showFilters;
+  final bool filterContasPagar;
+  final bool filterContasReceber;
+  final bool filterCartoes;
+  final ValueChanged<bool>? onFilterContasPagarChanged;
+  final ValueChanged<bool>? onFilterContasReceberChanged;
+  final ValueChanged<bool>? onFilterCartoesChanged;
 
   const DateRangeAppBar({
     super.key,
@@ -30,6 +39,13 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.foregroundColor,
     this.titleStyle,
     this.monthStyle,
+    this.showFilters = false,
+    this.filterContasPagar = true,
+    this.filterContasReceber = true,
+    this.filterCartoes = true,
+    this.onFilterContasPagarChanged,
+    this.onFilterContasReceberChanged,
+    this.onFilterCartoesChanged,
   });
 
   @override
@@ -37,7 +53,7 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
       PrefsService.embeddedMode && title == null
           ? Size.zero
           : Size.fromHeight(
-              toolbarHeight ?? (title == null ? 64 : 76),
+              showFilters ? 80 : (toolbarHeight ?? (title == null ? 64 : 76)),
             );
 
   @override
@@ -73,7 +89,7 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
         TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: effectiveForegroundColor);
 
     return AppBar(
-      centerTitle: centerTitle ?? true,
+      centerTitle: true,
       toolbarHeight: preferredSize.height,
       backgroundColor: backgroundColor,
       foregroundColor: foregroundColor,
@@ -90,6 +106,7 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
                 icon: Icon(Icons.chevron_left, size: 28, color: effectiveForegroundColor),
@@ -112,9 +129,60 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             ],
           ),
+          if (showFilters)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildSwitchRow('Pagar', filterContasPagar, onFilterContasPagarChanged, Colors.red),
+                  const SizedBox(width: 16),
+                  _buildSwitchRow('Receber', filterContasReceber, onFilterContasReceberChanged, Colors.blue),
+                  const SizedBox(width: 16),
+                  _buildSwitchRow('Cartões', filterCartoes, onFilterCartoesChanged, Colors.white),
+                ],
+              ),
+            ),
         ],
       ),
       actions: actions ?? [],
+    );
+  }
+  
+  Widget _buildSwitchRow(String label, bool value, ValueChanged<bool>? onChanged, Color switchColor) {
+    return SizedBox(
+      height: 28,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 36,
+            height: 20,
+            child: Transform.scale(
+              scale: 0.7,
+              child: Switch(
+                value: value,
+                onChanged: onChanged,
+                activeThumbColor: switchColor,
+                activeTrackColor: switchColor.withValues(alpha: 0.5),
+                inactiveThumbColor: switchColor.withValues(alpha: 0.4),
+                inactiveTrackColor: switchColor.withValues(alpha: 0.2),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: value ? FontWeight.bold : FontWeight.normal,
+              color: value ? switchColor : switchColor.withValues(alpha: 0.5),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

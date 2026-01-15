@@ -1506,19 +1506,15 @@ class DatabaseHelper {
     if (accountIds.isEmpty) return {};
     final db = await database;
     final placeholders = List.filled(accountIds.length, '?').join(',');
-    final start = DateTime(year, month, 1);
-    final endExclusive = DateTime(year, month + 1, 1);
-    final startIso = start.toIso8601String();
-    final endIso = endExclusive.toIso8601String();
+    // Buscar TODOS os pagamentos das contas, sem filtrar por data do pagamento
+    // O que importa é se a conta (ID) tem um pagamento registrado
     final result = await db.rawQuery('''
       SELECT p.account_id, p.id, p.payment_date, pm.name as method_name, p.created_at
       FROM payments p
       INNER JOIN payment_methods pm ON p.payment_method_id = pm.id
       WHERE p.account_id IN ($placeholders)
-        AND p.payment_date >= ?
-        AND p.payment_date < ?
       ORDER BY p.account_id, p.created_at DESC
-    ''', [...accountIds, startIso, endIso]);
+    ''', [...accountIds]);
 
     final map = <int, Map<String, dynamic>>{};
     for (final row in result) {
@@ -1544,17 +1540,12 @@ class DatabaseHelper {
     if (accountIds.isEmpty) return 0.0;
     final db = await database;
     final placeholders = List.filled(accountIds.length, '?').join(',');
-    final start = DateTime(year, month, 1);
-    final endExclusive = DateTime(year, month + 1, 1);
-    final startIso = start.toIso8601String();
-    final endIso = endExclusive.toIso8601String();
+    // Somar TODOS os pagamentos das contas, sem filtrar por data
     final result = await db.rawQuery('''
       SELECT COALESCE(SUM(p.value), 0) as total
       FROM payments p
       WHERE p.account_id IN ($placeholders)
-        AND p.payment_date >= ?
-        AND p.payment_date < ?
-    ''', [...accountIds, startIso, endIso]);
+    ''', [...accountIds]);
 
     if (result.isEmpty) return 0.0;
     final total = result.first['total'];

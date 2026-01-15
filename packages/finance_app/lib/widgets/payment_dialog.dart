@@ -117,10 +117,47 @@ class _PaymentDialogState extends State<PaymentDialog> {
       }
       cardInvoices.sort((a, b) => a.dueDay.compareTo(b.dueDay));
 
-      final initialAccount = _resolveInitialSelectedAccount(widget.preselectedAccount);
+      // Resolver conta inicial ANTES do setState, usando as listas locais
+      Account? initialAccount;
       DateTime? lockedDueDate;
       String? lockedWarning;
       DateTime? lockedPaymentDate;
+      
+      if (widget.preselectedAccount != null) {
+        final preferred = widget.preselectedAccount!;
+        final isCard = preferred.cardBrand != null;
+        final targetList = isCard ? cardInvoices : regularAccounts;
+        
+        // Buscar por ID primeiro
+        Account? match;
+        if (preferred.id != null) {
+          for (final acc in targetList) {
+            if (acc.id == preferred.id) {
+              match = acc;
+              break;
+            }
+          }
+        }
+        
+        // Se não encontrou por ID, usar a conta pré-selecionada diretamente
+        // A conta pode não estar na lista (já paga ou outro motivo)
+        match ??= preferred;
+        
+        initialAccount = match;
+        _accountType = isCard ? PaymentAccountType.creditCard : PaymentAccountType.regular;
+      }
+      
+      // Fallback para primeira conta disponível
+      if (initialAccount == null) {
+        if (regularAccounts.isNotEmpty) {
+          initialAccount = regularAccounts.first;
+          _accountType = PaymentAccountType.regular;
+        } else if (cardInvoices.isNotEmpty) {
+          initialAccount = cardInvoices.first;
+          _accountType = PaymentAccountType.creditCard;
+        }
+      }
+      
       if (_isAccountLocked && initialAccount != null) {
         final dueInfo = _getAccountDueDate(initialAccount);
         final adjustment = _applyBusinessRules(initialAccount, dueInfo);
@@ -153,58 +190,6 @@ class _PaymentDialogState extends State<PaymentDialog> {
         );
       }
     }
-  }
-
-  Account? _resolveInitialSelectedAccount([Account? preferred]) {
-    if (preferred != null) {
-      final isCard = preferred.cardBrand != null;
-      final targetList = isCard ? _cardInvoices : _regularAccounts;
-      final match = _findMatchingAccount(preferred, targetList);
-
-      if (match != null) {
-        _accountType =
-            isCard ? PaymentAccountType.creditCard : PaymentAccountType.regular;
-        return match;
-      }
-    }
-
-    final currentList = _accountType == PaymentAccountType.regular
-        ? _regularAccounts
-        : _cardInvoices;
-    if (currentList.isNotEmpty) {
-      return currentList.first;
-    }
-    final fallbackList = _accountType == PaymentAccountType.regular
-        ? _cardInvoices
-        : _regularAccounts;
-    if (fallbackList.isNotEmpty) {
-      _accountType = _accountType == PaymentAccountType.regular
-          ? PaymentAccountType.creditCard
-          : PaymentAccountType.regular;
-      return fallbackList.first;
-    }
-    return null;
-  }
-
-  Account? _findMatchingAccount(Account needle, List<Account> source) {
-    if (needle.id != null) {
-      for (final acc in source) {
-        if (acc.id == needle.id) return acc;
-      }
-    }
-    final normalizedDesc = needle.description.trim().toLowerCase();
-    final targetMonth = needle.month ?? widget.startDate.month;
-    final targetYear = needle.year ?? widget.startDate.year;
-    for (final acc in source) {
-      final sameDesc = acc.description.trim().toLowerCase() == normalizedDesc;
-      final sameDay = acc.dueDay == needle.dueDay;
-      final sameMonth = (acc.month ?? widget.startDate.month) == targetMonth;
-      final sameYear = (acc.year ?? widget.startDate.year) == targetYear;
-      if (sameDesc && sameDay && sameMonth && sameYear) {
-        return acc;
-      }
-    }
-    return null;
   }
 
   DateTime _getAccountDueDate(Account account) {
@@ -364,8 +349,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
   Widget _buildAccountSelector() {
     final list = _currentAccountList;
     final isRegular = _accountType == PaymentAccountType.regular;
-    final label =
-        isRegular ? 'Selecione a conta' : 'Selecione o cartão de crédito';
+    final label = isRegular
+        ? (widget.isRecebimento ? 'Selecione a conta a receber' : 'Selecione a conta a pagar')
+        : 'Selecione o cartão de crédito';
 
     if (_isAccountLocked && _selectedAccount != null) {
       return Column(
@@ -375,7 +361,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
             initialValue: _accountDisplayLabel(_selectedAccount!),
             enabled: false,
             decoration: buildOutlinedInputDecoration(
-              label: isRegular ? 'Conta selecionada' : 'Fatura selecionada',
+              label: isRegular
+                  ? (widget.isRecebimento ? 'Conta a receber selecionada' : 'Conta a pagar selecionada')
+                  : 'Fatura selecionada',
               icon: isRegular ? Icons.receipt : Icons.credit_card,
             ),
           ),
@@ -394,7 +382,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
         });
       }
       final emptyMessage = isRegular
-          ? 'Nenhuma conta avulsa pendente neste mês.'
+          ? (widget.isRecebimento
+              ? 'Nenhuma conta a receber pendente neste mês.'
+              : 'Nenhuma conta a pagar pendente neste mês.')
           : 'Nenhuma fatura de cartão pendente neste mês.';
       return Container(
         width: double.infinity,
@@ -473,7 +463,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
   Future<void> _savePayment() async {
     // Validações
     if (_selectedAccount == null) {
-      _showError('Selecione uma conta');
+      _showError(widget.isRecebimento
+          ? 'Selecione uma conta a receber'
+          : 'Selecione uma conta a pagar');
       return;
     }
 
@@ -512,8 +504,11 @@ class _PaymentDialogState extends State<PaymentDialog> {
         createdAt: DateTime.now().toIso8601String(),
       );
 
+      debugPrint('💰 Salvando pagamento: accountId=${payment.accountId}, value=${payment.value}, date=${payment.paymentDate}');
+      
       // Salvar no banco
-      await DatabaseHelper.instance.createPayment(payment);
+      final paymentId = await DatabaseHelper.instance.createPayment(payment);
+      debugPrint('💰 Pagamento salvo com ID: $paymentId');
 
       // Se for cartão de crédito, lançar despesa no cartão
       if (_selectedMethod!.type == 'CREDIT_CARD') {
@@ -523,7 +518,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
       if (mounted) {
         Navigator.pop(context, true);
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('❌ Erro ao salvar pagamento: $e');
+      debugPrint('Stack: $stackTrace');
       _showError(widget.isRecebimento
           ? 'Erro ao salvar recebimento: $e'
           : 'Erro ao salvar pagamento: $e');
@@ -573,29 +570,6 @@ class _PaymentDialogState extends State<PaymentDialog> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Cabeçalho com mês/ano
-          Card(
-            color: Colors.blue.shade50,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-              child: Center(
-                child: Text(
-                  DateFormat('MMMM yyyy', 'pt_BR')
-                      .format(widget.startDate)
-                      .toUpperCase(),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.blue.shade800,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
-                    fontSize: 18,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-
           Text(
             'Tipo de Conta',
             style: TextStyle(
@@ -754,18 +728,25 @@ class _PaymentDialogState extends State<PaymentDialog> {
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
-            decoration: buildOutlinedInputDecoration(
-              label:
-                  widget.isRecebimento ? 'Data do Recebimento' : 'Data do Pagamento',
-              icon: Icons.calendar_today,
+          InkWell(
+            onTap: _selectDate,
+            child: InputDecorator(
+              decoration: buildOutlinedInputDecoration(
+                label:
+                    widget.isRecebimento ? 'Data do Recebimento' : 'Data do Pagamento',
+                icon: Icons.calendar_today,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    DateFormat('dd/MM/yyyy').format(_paymentDate),
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const Icon(Icons.calendar_month, color: Colors.grey),
+                ],
+              ),
             ),
-            readOnly: true,
-            enabled: !_isAccountLocked,
-            controller: TextEditingController(
-              text: DateFormat('dd/MM/yyyy').format(_paymentDate),
-            ),
-            onTap: _isAccountLocked ? null : _selectDate,
           ),
           const SizedBox(height: 24),
 
