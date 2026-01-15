@@ -14,7 +14,16 @@ class CardExpensesScreen extends StatefulWidget {
   final Account card; 
   final int month;
   final int year;
-  const CardExpensesScreen({super.key, required this.card, required this.month, required this.year});
+  final bool inline;
+  final VoidCallback? onClose;
+  const CardExpensesScreen({
+    super.key,
+    required this.card,
+    required this.month,
+    required this.year,
+    this.inline = false,
+    this.onClose,
+  });
   @override
   State<CardExpensesScreen> createState() => _CardExpensesScreenState();
 }
@@ -164,6 +173,67 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final headerRow = _buildCardHeaderRow(context);
+    final body = Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
+          if (widget.inline && widget.onClose != null) {
+            widget.onClose!();
+          } else {
+            Navigator.of(context).maybePop();
+          }
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Column(
+        children: [
+          if (widget.inline)
+            Padding(
+              padding: const EdgeInsets.only(top: 2, right: 6),
+              child: Row(
+                children: [
+                  Expanded(child: headerRow),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: 'Fechar',
+                    onPressed: () {
+                      if (widget.onClose != null) {
+                        widget.onClose!();
+                      }
+                    },
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            _buildSharedMonthHeader(),
+            headerRow,
+          ],
+          _buildSummaryStrip(),
+          const SizedBox(height: 8),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _visibleExpenses.isEmpty
+                    ? const Center(child: Text('Nenhuma despesa nesta fatura.'))
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(8),
+                        itemCount: _visibleExpenses.length,
+                        itemBuilder: (context, index) {
+                          return _buildExpenseItem(_visibleExpenses[index]);
+                        },
+                      ),
+          ),
+        ],
+      ),
+    );
+
+    if (widget.inline) {
+      return body;
+    }
+
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'fabNewCardExpense',
@@ -172,36 +242,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
         icon: const Icon(Icons.rocket_launch),
         label: const Text('Lançar despesa'),
       ),
-      body: Focus(
-        autofocus: true,
-        onKeyEvent: (node, event) {
-          if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.escape) {
-            Navigator.of(context).maybePop();
-            return KeyEventResult.handled;
-          }
-          return KeyEventResult.ignored;
-        },
-        child: Column(
-          children: [
-            _buildSharedMonthHeader(),
-            _buildSummaryStrip(),
-            const SizedBox(height: 8),
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _visibleExpenses.isEmpty
-                      ? const Center(child: Text('Nenhuma despesa nesta fatura.'))
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(8),
-                          itemCount: _visibleExpenses.length,
-                          itemBuilder: (context, index) {
-                            return _buildExpenseItem(_visibleExpenses[index]);
-                          },
-                        ),
-            ),
-          ],
-        ),
-      ),
+      body: body,
     );
   }
 
@@ -244,12 +285,112 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
           ),
           IconButton(
             icon: Icon(Icons.close, color: headerTextColor),
-            onPressed: () => Navigator.of(context).maybePop(),
+            onPressed: () {
+              if (widget.inline && widget.onClose != null) {
+                widget.onClose!();
+              } else {
+                Navigator.of(context).maybePop();
+              }
+            },
             tooltip: 'Fechar',
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildCardHeaderRow(BuildContext context) {
+    final brand = widget.card.cardBrand?.trim() ?? '';
+    final cardName = widget.card.description.trim().isNotEmpty
+        ? widget.card.description.trim()
+        : 'Cartão de Crédito';
+    final cardDescription = (widget.card.cardBank?.trim().isNotEmpty == true)
+        ? widget.card.cardBank!.trim()
+        : cardName;
+
+    final Color headerBg = widget.card.cardColor != null
+        ? Color(widget.card.cardColor!)
+        : Theme.of(context).cardColor;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 0, bottom: 0, left: 12, right: 12),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: headerBg,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.black12, width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.card.dueDay.toString().padLeft(2, '0'),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontSize: (Theme.of(context).textTheme.titleMedium?.fontSize ?? 16) * 1.6,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.black,
+                    ),
+              ),
+              const SizedBox(width: 8),
+              _buildCardBrandIcon(brand),
+              const SizedBox(width: 8),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    brand.isNotEmpty ? brand : cardName,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    cardDescription,
+                    style: Theme.of(context).textTheme.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardBrandIcon(String brand) {
+    final normalized = brand.trim().toUpperCase();
+    String? assetPath;
+    if (normalized == 'VISA') {
+      assetPath = 'assets/icons/cc_visa.png';
+    } else if (normalized == 'AMEX' ||
+        normalized == 'AMERICAN EXPRESS' ||
+        normalized == 'AMERICANEXPRESS') {
+      assetPath = 'assets/icons/cc_amex.png';
+    } else if (normalized == 'MASTER' ||
+        normalized == 'MASTERCARD' ||
+        normalized == 'MASTER CARD') {
+      assetPath = 'assets/icons/cc_mc.png';
+    } else if (normalized == 'ELO') {
+      assetPath = 'assets/icons/cc_elo.png';
+    }
+
+    if (assetPath != null) {
+      return Image.asset(
+        assetPath,
+        package: 'finance_app',
+        width: 36,
+        height: 24,
+        fit: BoxFit.contain,
+      );
+    }
+
+    return const Icon(Icons.credit_card, size: 24);
   }
 
   List<Account> get _visibleExpenses {
@@ -429,9 +570,15 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     final Color badgeTextColor = customColor != null ? foregroundColorFor(customColor) : typeColor;
 
     final InstallmentDisplay installmentDisplay = _installmentDisplayFor(expense);
-    final int? currentInstallment = installmentDisplay.isInstallment ? installmentDisplay.index : null;
-    final int? installmentTotal = installmentDisplay.isInstallment ? installmentDisplay.total : null;
-    double? totalPurchase = installmentDisplay.isInstallment ? expense.value * installmentDisplay.total : null;
+    // Usado para descrição e barra de progresso quando parcelado
+    final double totalPurchase = installmentDisplay.isInstallment ? expense.value * installmentDisplay.total : 0;
+    final double remainingPurchase = installmentDisplay.isInstallment
+      ? (totalPurchase - (expense.value * installmentDisplay.index)).clamp(0, totalPurchase)
+      : 0;
+    final String baseDescription = cleanInstallmentDescription(expense.description);
+    final String displayDescription = installmentDisplay.isInstallment
+      ? '$baseDescription (${installmentDisplay.index}/${installmentDisplay.total})'
+      : expense.description;
 
     return Card(
       elevation: 2,
@@ -461,79 +608,120 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: badgeBgColor,
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: accentColor.withValues(alpha: 0.1),
-                            blurRadius: 2,
-                            offset: const Offset(0, 1),
-                          )
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(typeIcon, color: badgeTextColor, size: 18),
-                          const SizedBox(width: 6),
-                          Text(typeLabel, style: TextStyle(color: badgeTextColor, fontWeight: FontWeight.w700, fontSize: 12)),
-                        ],
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: badgeBgColor,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: accentColor.withValues(alpha: 0.1),
+                                blurRadius: 2,
+                                offset: const Offset(0, 1),
+                              )
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(typeIcon, color: badgeTextColor, size: 18),
+                              const SizedBox(width: 6),
+                              Text(typeLabel, style: TextStyle(color: badgeTextColor, fontWeight: FontWeight.w700, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 13, color: Colors.black),
+                            const SizedBox(width: 4),
+                            Stack(
+                              alignment: Alignment.centerLeft,
+                              children: [
+                                Text(
+                                  purchaseLabel,
+                                  style: TextStyle(
+                                    fontSize: 14.3,
+                                    fontWeight: FontWeight.w600,
+                                    foreground: Paint()
+                                      ..style = PaintingStyle.stroke
+                                      ..strokeWidth = 1
+                                      ..color = Colors.black,
+                                  ),
+                                ),
+                                Text(
+                                  purchaseLabel,
+                                  style: const TextStyle(
+                                    fontSize: 14.3,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                     const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.calendar_today, size: 13, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Text(purchaseLabel, style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500)),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(expense.description,
-                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                                  overflow: TextOverflow.ellipsis),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(left: 6),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: installmentDisplay.isInstallment ? typeColor.withValues(alpha: 0.15) : Colors.green.shade50,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  installmentDisplay.badgeText,
-                                  style: TextStyle(
-                                    color: installmentDisplay.isInstallment ? badgeTextColor : Colors.green.shade800,
+                        if (installmentDisplay.isInstallment)
+                          RichText(
+                            text: TextSpan(
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.6, color: Colors.black),
+                              children: [
+                                TextSpan(text: displayDescription),
+                                const TextSpan(text: ' - '),
+                                TextSpan(
+                                  text: 'Total: ${UtilBrasilFields.obterReal(totalPurchase)}',
+                                  style: const TextStyle(
                                     fontWeight: FontWeight.w700,
-                                    fontSize: 11,
+                                    fontSize: 14.6,
+                                    color: Colors.black,
                                   ),
                                 ),
-                              ),
+                                const TextSpan(text: ' - '),
+                                TextSpan(
+                                  text: 'Restam: ${UtilBrasilFields.obterReal(remainingPurchase)}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14.6,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        // Progress bar para parcelamentos
-                        if (isParcel && currentInstallment != null && installmentTotal != null && installmentTotal > 1)
+                            overflow: TextOverflow.ellipsis,
+                          )
+                        else
+                          Text(displayDescription,
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.6),
+                              overflow: TextOverflow.ellipsis),
+                        if (installmentDisplay.isInstallment)
                           Padding(
                             padding: const EdgeInsets.only(top: 6),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: LinearProgressIndicator(
-                                value: currentInstallment / installmentTotal,
-                                minHeight: 3,
-                                backgroundColor: Colors.grey.shade300,
-                                valueColor: AlwaysStoppedAnimation<Color>(typeColor),
+                            child: Container(
+                              padding: const EdgeInsets.all(1),
+                              decoration: BoxDecoration(
+                                color: Colors.black,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(7),
+                                child: LinearProgressIndicator(
+                                  value: installmentDisplay.total == 0
+                                      ? 0
+                                      : installmentDisplay.index / installmentDisplay.total,
+                                  minHeight: 10,
+                                  backgroundColor: typeColor.withValues(alpha: 0.12),
+                                  valueColor: AlwaysStoppedAnimation<Color>(typeColor),
+                                ),
                               ),
                             ),
                           ),
@@ -544,60 +732,66 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        UtilBrasilFields.obterReal(expense.value),
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
-                      ),
-                      if (totalPurchase != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Container(
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: typeColor.withValues(alpha: 0.1),
+                              color: installmentDisplay.isInstallment ? typeColor.withValues(alpha: 0.15) : Colors.green.shade50,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              'Total ${UtilBrasilFields.obterReal(totalPurchase)}',
-                              style: TextStyle(color: typeColor, fontSize: 11, fontWeight: FontWeight.w700),
+                              installmentDisplay.badgeText,
+                              style: TextStyle(
+                                color: installmentDisplay.isInstallment ? badgeTextColor : Colors.green.shade800,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(width: 8),
+                          Text(
+                            UtilBrasilFields.obterReal(expense.value),
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (!isSubscription)
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade100,
+                                shape: BoxShape.circle,
+                              ),
+                              child: IconButton(
+                                icon: Icon(Icons.drive_file_move_outline, color: Colors.orange.shade700, size: 18),
+                                tooltip: 'Mover Fatura',
+                                onPressed: () => _showMoveDialog(expense),
+                                constraints: const BoxConstraints(minHeight: 28, minWidth: 28),
+                                padding: EdgeInsets.zero,
+                              ),
+                            ),
+                          if (!isSubscription) const SizedBox(width: 6),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade100,
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon: Icon(Icons.delete, color: Colors.red.shade700, size: 18),
+                              tooltip: 'Excluir',
+                              onPressed: () => _confirmDelete(expense),
+                              constraints: const BoxConstraints(minHeight: 28, minWidth: 28),
+                              padding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if (!isSubscription)
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade100,
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: Icon(Icons.drive_file_move_outline, color: Colors.orange.shade700, size: 18),
-                        tooltip: 'Mover Fatura',
-                        onPressed: () => _showMoveDialog(expense),
-                        constraints: const BoxConstraints(minHeight: 32, minWidth: 32),
-                        padding: EdgeInsets.zero,
-                      ),
-                    ),
-                  const SizedBox(width: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: Icon(Icons.delete, color: Colors.red.shade700, size: 18),
-                      tooltip: 'Excluir',
-                      onPressed: () => _confirmDelete(expense),
-                      constraints: const BoxConstraints(minHeight: 32, minWidth: 32),
-                      padding: EdgeInsets.zero,
-                    ),
                   ),
                 ],
               ),

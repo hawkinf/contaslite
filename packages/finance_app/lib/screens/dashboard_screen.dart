@@ -101,6 +101,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isInlineEditing = false;
   bool _isNavigating = false;
   Widget? _inlineEditWidget; // Widget de edição inline
+  bool _inlinePreserveAppBar = false;
 
   Future<void>? _activeLoad;
   bool _pendingReload = false;
@@ -855,9 +856,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
 
       return Scaffold(
-        appBar: _isInlineEditing ? null : appBarWidget,
-        body: _isInlineEditing && _inlineEditWidget != null 
-            ? _inlineEditWidget! 
+        appBar: _isInlineEditing && !_inlinePreserveAppBar ? null : appBarWidget,
+        body: _isInlineEditing && _inlineEditWidget != null
+            ? _inlineEditWidget!
             : dashboardBody,
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         floatingActionButtonAnimator: FloatingActionButtonAnimator.scaling,
@@ -1681,20 +1682,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _openCardExpenses(Account account) async {
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => Dialog.fullscreen(
-        child: CardExpensesScreen(
-          card: account,
-          month: _startDate.month,
-          year: _startDate.year,
-        ),
-      ),
-    );
-    if (mounted) {
-      _refresh();
-    }
+    if (_isNavigating) return;
+    _isNavigating = true;
+
+    setState(() {
+      _isInlineEditing = true;
+      _inlinePreserveAppBar = true;
+      _inlineEditWidget = CardExpensesScreen(
+        card: account,
+        month: _startDate.month,
+        year: _startDate.year,
+        inline: true,
+        onClose: _closeInlineEdit,
+      );
+    });
   }
 
   Future<Map<int, _InstallmentSummary>> _buildInstallmentSummaries(
@@ -2196,6 +2197,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _isInlineEditing = false;
       _inlineEditWidget = null;
       _isNavigating = false;
+      _inlinePreserveAppBar = false;
     });
     _refresh();
   }
@@ -2217,6 +2219,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _isInlineEditing = true;
       _inlineEditWidget = screenToOpen;
+      _inlinePreserveAppBar = false;
     });
   }
 
