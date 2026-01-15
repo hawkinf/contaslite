@@ -124,6 +124,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<int, _InstallmentSummary> _installmentSummaries = {};
   Map<int, Map<String, dynamic>> _paymentInfo = {};
   final Map<int, double> _recurrenceParentValues = {}; // Mapeia recurrence ID -> valor previsto
+  bool _showContasPagar = true;
+  bool _showContasReceber = true;
+  bool _showCartoesCredito = true;
 
 
   @override
@@ -184,8 +187,81 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Theme.of(context).brightness == Brightness.dark ? (darkGrey ?? Colors.grey.shade600) : lightGrey;
   }
 
+  bool get _isCombinedView => widget.typeNameFilter == null && widget.excludeTypeNameFilter == null;
+
+  Future<void> _openAppBarFilter() async {
+    bool tempPagar = _showContasPagar;
+    bool tempReceber = _showContasReceber;
+    bool tempCartoes = _showCartoesCredito;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Filtrar contas'),
+          content: StatefulBuilder(
+            builder: (context, setStateDialog) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CheckboxListTile(
+                    value: tempPagar,
+                    onChanged: (value) => setStateDialog(() => tempPagar = value ?? true),
+                    title: const Text('Contas a pagar'),
+                    controlAffinity: ListTileControlAffinity.leading,
+                  ),
+                  CheckboxListTile(
+                    value: tempReceber,
+                    onChanged: (value) => setStateDialog(() => tempReceber = value ?? true),
+                    title: const Text('Contas a receber'),
+                    controlAffinity: ListTileControlAffinity.leading,
+                  ),
+                  CheckboxListTile(
+                    value: tempCartoes,
+                    onChanged: (value) => setStateDialog(() => tempCartoes = value ?? true),
+                    title: const Text('Cartões de Crédito'),
+                    controlAffinity: ListTileControlAffinity.leading,
+                  ),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Aplicar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == true && mounted) {
+      setState(() {
+        _showContasPagar = tempPagar;
+        _showContasReceber = tempReceber;
+        _showCartoesCredito = tempCartoes;
+      });
+      _loadData();
+    }
+  }
+
   List<Widget> _buildAppBarActions({required bool includeFilter}) {
-    return <Widget>[];
+    if (!includeFilter || !_isCombinedView) {
+      return <Widget>[];
+    }
+    final bool hasCustomFilter = !(_showContasPagar && _showContasReceber && _showCartoesCredito);
+    return <Widget>[
+      IconButton(
+        tooltip: 'Filtrar contas',
+        icon: Icon(hasCustomFilter ? Icons.filter_alt : Icons.filter_list),
+        onPressed: _openAppBarFilter,
+      ),
+    ];
   }
 
   bool _hasRecurrenceStarted(Account rec, DateTime current) {
@@ -572,6 +648,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
             .where((account) => !excludedTypeIds!.contains(account.typeId))
             .toList();
         debugPrint('✓ Filtro de exclusão: $beforeFilter → ${processedList.length} contas');
+      }
+
+      if (_isCombinedView && (!(_showContasPagar && _showContasReceber && _showCartoesCredito))) {
+        final beforeFilter = processedList.length;
+        processedList = processedList.where((account) {
+          final isCard = account.cardBrand != null;
+          final typeName = typeMap[account.typeId]?.toLowerCase() ?? '';
+          final isRecebimento = typeName.contains('receb');
+          final isPagar = !isCard && !isRecebimento;
+
+          if (isCard && !_showCartoesCredito) return false;
+          if (isRecebimento && !_showContasReceber) return false;
+          if (isPagar && !_showContasPagar) return false;
+          return true;
+        }).toList();
+        debugPrint('✓ Filtro de categorias: $beforeFilter → ${processedList.length} contas');
       }
 
       debugPrint('📊 Depois de filtros: ${processedList.length} contas');
