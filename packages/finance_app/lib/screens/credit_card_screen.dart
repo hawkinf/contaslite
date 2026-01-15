@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:finance_app/widgets/mastercard_logo.dart';
 import 'package:finance_app/widgets/elo_logo.dart';
+import 'package:finance_app/widgets/visa_logo.dart';
+import 'package:finance_app/widgets/amex_logo.dart';
 import 'dart:math' as math;
 import 'package:brasil_fields/brasil_fields.dart';
 import '../database/db_helper.dart';
@@ -392,45 +394,15 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
                             child: EloLogo(width: 28, height: 18),
                           )
                         else if (widget.card.cardBrand?.toUpperCase() == 'VISA')
-                          Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child: Container(
-                              width: 32,
-                              height: 18,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1434CB),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                              child: Stack(
-                                children: [
-                                  Positioned(
-                                    top: 2,
-                                    left: 2,
-                                    child: Container(
-                                      width: 6,
-                                      height: 6,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFFFFA200),
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          const Padding(
+                            padding: EdgeInsets.only(right: 6),
+                            child: VisaLogo(width: 32, height: 18),
                           )
                         else if ((widget.card.cardBrand?.toUpperCase().contains('AMEX') ?? false) ||
                                  (widget.card.cardBrand?.toUpperCase().contains('AMERICAN') ?? false))
-                          Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child: Container(
-                              width: 28,
-                              height: 18,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF006FCF),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
+                          const Padding(
+                            padding: EdgeInsets.only(right: 6),
+                            child: AmexLogo(width: 28, height: 18),
                           ),
                         Expanded(
                           child: Text(
