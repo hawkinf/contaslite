@@ -32,7 +32,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
   late int _currentMonth;
   late int _currentYear;
   List<Account> _expenses = [];
-  List<Account> _launchedExpenses = [];
+  double _invoiceLaunchedTotal = 0;
   bool _isLoading = true;
   Map<int, InstallmentDisplay> _installmentById = {};
   final Set<String> _activeFilters = {};
@@ -113,6 +113,17 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     final recurringRes = await db.query('accounts', where: 'cardId = ? AND isRecurrent = 1', whereArgs: [widget.card.id]);
     List<Account> subscriptions = recurringRes.map((e) => Account.fromMap(e)).toList();
 
+    double invoiceLaunchedTotal = 0;
+    final invoiceRows = await db.query(
+      'accounts',
+      where: 'recurrenceId = ? AND month = ? AND year = ? AND isRecurrent = 0 AND description LIKE ?',
+      whereArgs: [widget.card.id, _currentMonth, _currentYear, 'Fatura:%'],
+    );
+    for (final row in invoiceRows) {
+      final acc = Account.fromMap(row);
+      invoiceLaunchedTotal += acc.value;
+    }
+
     List<Account> displayList = [...expenses];
 
     // Criar set de recurrenceIds para busca O(1) em vez de O(n)
@@ -167,7 +178,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
 
     setState(() {
       _expenses = displayList;
-      _launchedExpenses = expenses;
+      _invoiceLaunchedTotal = invoiceLaunchedTotal;
       _installmentById = installmentMap;
       _isLoading = false;
     });
@@ -313,23 +324,32 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     final Color headerBg = widget.card.cardColor != null
         ? Color(widget.card.cardColor!)
         : Theme.of(context).cardColor;
+    final Color headerFg = foregroundColorFor(headerBg);
+    final Color headerSubtle = headerFg.withValues(alpha: 0.75);
 
     double totalPrevisto = 0;
     for (final e in _expenses) {
       totalPrevisto += e.value;
     }
-    double totalLancado = 0;
-    for (final e in _launchedExpenses) {
-      totalLancado += e.value;
-    }
+    final double totalLancado = _invoiceLaunchedTotal;
 
     Widget buildTotalBox(String label, double value, Color baseColor) {
+      final bool isLancado = label == 'TOTAL LANÇADO';
+      final Color labelColor = isLancado ? Colors.red : Colors.black54;
+      final Color valueColor = isLancado ? Colors.red : Colors.black;
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: baseColor.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.black12, width: 1),
+          color: baseColor.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.black, width: 0.8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -337,12 +357,12 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
           children: [
             Text(
               label,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black54),
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: labelColor),
             ),
             const SizedBox(height: 2),
             Text(
               UtilBrasilFields.obterReal(value),
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.black),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: valueColor),
             ),
           ],
         ),
@@ -351,62 +371,76 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
 
     return Padding(
       padding: const EdgeInsets.only(top: 0, bottom: 0, left: 12, right: 12),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: headerBg,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.black12, width: 1),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    widget.card.dueDay.toString().padLeft(2, '0'),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontSize: (Theme.of(context).textTheme.titleMedium?.fontSize ?? 16) * 1.6,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.black,
-                        ),
-                  ),
-                  const SizedBox(width: 8),
-                  _buildCardBrandIcon(brand),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          brand.isNotEmpty ? brand : cardName,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          cardDescription,
-                          style: Theme.of(context).textTheme.bodySmall,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              flex: 2,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: headerBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.black, width: 0.8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
                     ),
+                  ],
+                ),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.card.dueDay.toString().padLeft(2, '0'),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontSize: (Theme.of(context).textTheme.titleMedium?.fontSize ?? 16) * 1.45,
+                              fontWeight: FontWeight.w800,
+                              color: headerFg,
+                            ),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildCardBrandIcon(brand),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              brand.isNotEmpty ? brand : cardName,
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: headerFg,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              cardDescription,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: headerSubtle),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(child: buildTotalBox('TOTAL PREVISTO', totalPrevisto, headerBg)),
-          const SizedBox(width: 8),
-          Expanded(child: buildTotalBox('TOTAL LANÇADO', totalLancado, headerBg)),
-        ],
+            const SizedBox(width: 8),
+            Expanded(child: buildTotalBox('TOTAL PREVISTO', totalPrevisto, headerBg)),
+            const SizedBox(width: 8),
+            Expanded(child: buildTotalBox('TOTAL LANÇADO', totalLancado, headerBg)),
+          ],
+        ),
       ),
     );
   }
@@ -475,10 +509,10 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
         elevation: isActive ? 2 : 1,
         color: theme.cardTheme.color ?? cs.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           side: BorderSide(
-            color: isActive ? Colors.brown : color.withValues(alpha: 0.25),
-            width: isActive ? 2 : 1,
+            color: Colors.black,
+            width: 0.8,
           ),
         ),
         child: Padding(
@@ -489,12 +523,12 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, color: color, size: 16),
+                  Icon(icon, color: color, size: 15),
                   const SizedBox(width: 4),
                   Text(
                     label,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       color: color,
                       fontWeight: FontWeight.w600,
                     ),
@@ -507,7 +541,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                 style: TextStyle(
                   color: cs.onSurface,
                   fontWeight: FontWeight.w800,
-                  fontSize: 14,
+                  fontSize: 13,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -533,26 +567,21 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       color: cs.surface,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         children: [
-          Row(
-            children: [
-              buildSummaryCard(
-                'Recorrência',
-                totalSubs,
-                assinaturaColor,
-                Icons.autorenew,
-                filterKey: 'recorrencia',
-              ),
-              const SizedBox(width: 8),
-              buildSummaryCard('À Vista', totalVista, vistaColor, Icons.attach_money, filterKey: 'avista'),
-              const SizedBox(width: 8),
-              buildSummaryCard('Parcelado', totalParcel, parceladoColor, Icons.view_agenda, filterKey: 'parcelado'),
-            ],
+          buildSummaryCard(
+            'Recorrência',
+            totalSubs,
+            assinaturaColor,
+            Icons.autorenew,
+            filterKey: 'recorrencia',
           ),
+          const SizedBox(width: 8),
+          buildSummaryCard('À Vista', totalVista, vistaColor, Icons.attach_money, filterKey: 'avista'),
+          const SizedBox(width: 8),
+          buildSummaryCard('Parcelado', totalParcel, parceladoColor, Icons.view_agenda, filterKey: 'parcelado'),
         ],
       ),
     );
@@ -599,18 +628,18 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
       : expense.description;
 
     return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+      elevation: 1,
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: borderColor, width: 3),
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: borderColor.withValues(alpha: 0.85), width: 2),
       ),
       color: cardBackground,
       child: InkWell(
         onTap: () => _showEditDialog(expense),
         onLongPress: () => _showDetailsPopup(expense),
         child: Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -619,7 +648,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                 children: [
                   Container(
                     width: 6,
-                    height: 48,
+                    height: 44,
                     decoration: BoxDecoration(
                       color: accentColor,
                       borderRadius: BorderRadius.circular(8),
@@ -630,14 +659,14 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: badgeBgColor,
                             borderRadius: BorderRadius.circular(10),
                             boxShadow: [
                               BoxShadow(
                                 color: accentColor.withValues(alpha: 0.1),
-                                blurRadius: 2,
+                                blurRadius: 1,
                                 offset: const Offset(0, 1),
                               )
                             ],
@@ -645,16 +674,16 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(typeIcon, color: badgeTextColor, size: 18),
+                              Icon(typeIcon, color: badgeTextColor, size: 16),
                               const SizedBox(width: 6),
-                              Text(typeLabel, style: TextStyle(color: badgeTextColor, fontWeight: FontWeight.w700, fontSize: 12)),
+                              Text(typeLabel, style: TextStyle(color: badgeTextColor, fontWeight: FontWeight.w700, fontSize: 11)),
                             ],
                           ),
                         ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            const Icon(Icons.calendar_today, size: 13, color: Colors.black),
+                            const Icon(Icons.calendar_today, size: 12, color: Colors.black87),
                             const SizedBox(width: 4),
                             Stack(
                               alignment: Alignment.centerLeft,
@@ -662,7 +691,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                                 Text(
                                   purchaseLabel,
                                   style: TextStyle(
-                                    fontSize: 14.3,
+                                    fontSize: 13.4,
                                     fontWeight: FontWeight.w600,
                                     foreground: Paint()
                                       ..style = PaintingStyle.stroke
@@ -673,7 +702,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                                 Text(
                                   purchaseLabel,
                                   style: const TextStyle(
-                                    fontSize: 14.3,
+                                    fontSize: 13.4,
                                     color: Colors.white,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -692,7 +721,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                         if (installmentDisplay.isInstallment)
                           RichText(
                             text: TextSpan(
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.6, color: Colors.black),
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16.8, color: Colors.black),
                               children: [
                                 TextSpan(text: displayDescription),
                                 const TextSpan(text: ' - '),
@@ -700,7 +729,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                                   text: 'Total: ${UtilBrasilFields.obterReal(totalPurchase)}',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
-                                    fontSize: 14.6,
+                                    fontSize: 16.8,
                                     color: Colors.black,
                                   ),
                                 ),
@@ -709,7 +738,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                                   text: 'Restam: ${UtilBrasilFields.obterReal(remainingPurchase)}',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
-                                    fontSize: 14.6,
+                                    fontSize: 16.8,
                                     color: Colors.black,
                                   ),
                                 ),
@@ -719,7 +748,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                           )
                         else
                           Text(displayDescription,
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.6),
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16.8),
                               overflow: TextOverflow.ellipsis),
                         if (installmentDisplay.isInstallment)
                           Padding(
@@ -736,7 +765,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                                   value: installmentDisplay.total == 0
                                       ? 0
                                       : installmentDisplay.index / installmentDisplay.total,
-                                  minHeight: 10,
+                                  minHeight: 9,
                                   backgroundColor: typeColor.withValues(alpha: 0.12),
                                   valueColor: AlwaysStoppedAnimation<Color>(typeColor),
                                 ),
@@ -771,7 +800,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                           const SizedBox(width: 8),
                           Text(
                             UtilBrasilFields.obterReal(expense.value),
-                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
                           ),
                         ],
                       ),
