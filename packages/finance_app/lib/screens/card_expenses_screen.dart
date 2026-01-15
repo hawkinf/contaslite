@@ -55,9 +55,12 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
   }
 
   Future<void> _openNewExpense() async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => NewExpenseDialog(card: widget.card)),
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog.fullscreen(
+        child: NewExpenseDialog(card: widget.card),
+      ),
     );
     if (result == true && mounted) {
       await _loadExpenses();

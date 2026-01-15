@@ -60,16 +60,7 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
   final List<String> _defaultBrands = const ['Mastercard', 'Visa', 'ELO', 'AMEX', 'Hipercard'];
   List<String> _brands = [];
   
-  final List<Color> _colors = [
-    const Color(0xFFFF0000), const Color(0xFFFFFF00), const Color(0xFF0000FF),
-    const Color(0xFFFFA500), const Color(0xFF00FF00), const Color(0xFF800080),
-    const Color(0xFFFF1493), const Color(0xFF4B0082), const Color(0xFF00CED1),
-    const Color(0xFF008080), const Color(0xFF2E8B57), const Color(0xFF6B8E23),
-    const Color(0xFFBDB76B), const Color(0xFFDAA520), const Color(0xFFCD5C5C),
-    const Color(0xFFFF7F50), const Color(0xFF8B0000), const Color(0xFF191970),
-    const Color(0xFFFFFFFF), const Color(0xFF000000), const Color(0xFF808080),
-    const Color(0xFF8B4513),
-  ];
+  final List<Color> _colors = List<Color>.from(AppColors.essentialPalette);
 
   @override
   void initState() {

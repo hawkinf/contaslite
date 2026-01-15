@@ -23,8 +23,6 @@ import '../utils/card_utils.dart';
 import 'account_form_screen.dart';
 import 'recebimento_form_screen.dart';
 import 'credit_card_form.dart';
-import 'account_edit_screen.dart';
-import 'recurrent_account_edit_screen.dart' as rec;
 
 class _InstallmentSummary {
   final double totalAmount;
@@ -102,6 +100,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _isInlineEditing = false;
   bool _isNavigating = false;
+  Widget? _inlineEditWidget; // Widget de edição inline
 
   Future<void>? _activeLoad;
   bool _pendingReload = false;
@@ -857,7 +856,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       return Scaffold(
         appBar: _isInlineEditing ? null : appBarWidget,
-        body: dashboardBody,
+        body: _isInlineEditing && _inlineEditWidget != null 
+            ? _inlineEditWidget! 
+            : dashboardBody,
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         floatingActionButtonAnimator: FloatingActionButtonAnimator.scaling,
         floatingActionButton: _isInlineEditing
@@ -1011,7 +1012,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final String? typeName = _typeNames[account.typeId]?.toLowerCase();
     final bool isRecebimento = _isRecebimentosFilter || (typeName != null && typeName.contains('receb'));
     final Color receberColor = Colors.lightBlue.shade300;
+    final Color receberBorderColor = AppColors.primary;
     final Color pagarColor = Colors.red.shade300;
+    final Color pagarBorderColor = AppColors.error;
+    final Color cardBorderColor = const Color(0xFF8B4513);
 
     Color dayNumberColor;
 
@@ -1025,7 +1029,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         subTextColor = textColor.withValues(alpha: 0.8);
         // ...existing code...
         typeColor = userColor;
-        dayNumberColor = Colors.black;
+        dayNumberColor = cardBorderColor;
     } else {
       final int? accountColorValue = account.cardColor;
       final bool usesCustomColor = accountColorValue != null;
@@ -1055,7 +1059,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
 
       typeColor = accent;
-      dayNumberColor = Colors.black;
+      dayNumberColor = isRecebimento ? receberBorderColor : pagarBorderColor;
     }
 
     final Color accentColor = typeColor;
@@ -1116,6 +1120,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final Color cardActionIconColor = Colors.grey.shade600;
     final Color cardActionIconBg = Colors.white.withValues(
         alpha: Theme.of(context).brightness == Brightness.light ? 0.85 : 0.75);
+    final double childIconHeight = categorySize * 1.3;
+    final double childIconWidth = categorySize * 1.8;
+
     Widget? buildCardBrandBadge(String? brand) {
       final normalized = (brand ?? '').trim().toUpperCase();
       if (normalized.isEmpty) return null;
@@ -1136,8 +1143,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return Image.asset(
           assetPath,
           package: 'finance_app',
-          width: 40,
-          height: 28,
+          width: childIconWidth,
+          height: childIconHeight,
           fit: BoxFit.contain,
         );
       }
@@ -1255,6 +1262,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ]);
 
     Widget buildCardBody({required EdgeInsets padding, required List<Widget> children}) {
+      final double borderWidth = 3.5;
+      final Color borderColor = isCard
+          ? cardBorderColor
+          : (isRecebimento ? receberBorderColor : pagarBorderColor);
       return Container(
         color: isCard ? null : containerBg,
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -1265,7 +1276,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           clipBehavior: Clip.antiAlias,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
-            side: BorderSide(color: accentColor, width: 2.5),
+            side: BorderSide(color: borderColor, width: borderWidth),
           ),
           child: InkWell(
             onTap: () async {
@@ -1294,11 +1305,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ? Text(childLogo!, style: TextStyle(fontSize: categorySize * 0.9))
             : null);
     final Widget? headerChildIcon = childIcon == null
-        ? null
-        : SizedBox(
-            height: categorySize * 1.1,
-            child: FittedBox(fit: BoxFit.scaleDown, child: childIcon),
-          );
+      ? null
+      : SizedBox(
+        width: childIconWidth,
+        height: childIconHeight,
+        child: FittedBox(fit: BoxFit.scaleDown, child: childIcon),
+        );
 
     return buildCardBody(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
@@ -1342,7 +1354,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     '($originalLabel)',
                     style: TextStyle(
                       fontSize: smallDateSize,
-                      color: _adaptiveGreyTextColor(context, Colors.grey.shade600),
+                      color: isCard
+                          ? cardBorderColor
+                          : (isRecebimento
+                              ? receberBorderColor
+                              : pagarBorderColor),
                     ),
                   ),
                 ] else ...[
@@ -1352,7 +1368,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     style: TextStyle(
                       fontSize: smallDateSize,
                       fontWeight: FontWeight.w600,
-                      color: _adaptiveGreyTextColor(context, Colors.grey.shade700),
+                      color: isCard
+                          ? cardBorderColor
+                          : (isRecebimento
+                              ? receberBorderColor
+                              : pagarBorderColor),
                     ),
                   ),
                 ],
@@ -1586,10 +1606,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _handlePayAction(Account account) async {
-    await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PaymentDialog(
+    await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog.fullscreen(
+        child: PaymentDialog(
           startDate: _startDate,
           endDate: _endDate,
           isRecebimento: _isRecebimentosFilter,
@@ -1647,10 +1668,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _openCardEditor(Account account) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CreditCardFormScreen(cardToEdit: account),
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog.fullscreen(
+        child: CreditCardFormScreen(cardToEdit: account),
       ),
     );
     if (mounted) {
@@ -1659,10 +1681,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _openCardExpenses(Account account) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CardExpensesScreen(
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog.fullscreen(
+        child: CardExpensesScreen(
           card: account,
           month: _startDate.month,
           year: _startDate.year,
@@ -2138,9 +2161,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _showExpenseDialog(Account card) async {
-    await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => NewExpenseDialog(card: card)),
+    await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog.fullscreen(
+        child: NewExpenseDialog(card: card),
+      ),
     );
     if (mounted) {
       _refresh();
@@ -2148,10 +2174,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _showPaymentDialog() async {
-    await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PaymentDialog(
+    await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog.fullscreen(
+        child: PaymentDialog(
           startDate: _startDate,
           endDate: _endDate,
           isRecebimento: _isRecebimentosFilter,
@@ -2163,36 +2190,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  void _closeInlineEdit() {
+    if (!mounted) return;
+    setState(() {
+      _isInlineEditing = false;
+      _inlineEditWidget = null;
+      _isNavigating = false;
+    });
+    _refresh();
+  }
+
   Future<void> _showEditSpecificDialog(Account account) async {
-    // Detectar se é recorrente (pai ou filha)
-    final isRecurrentParent = account.isRecurrent && account.recurrenceId == null;
-    final isRecurrentChild = account.recurrenceId != null;
-
-    Widget screenToOpen;
-    if (isRecurrentParent || isRecurrentChild) {
-      // Abrir tela de edição de recorrentes
-      screenToOpen = rec.RecurrentAccountEditScreen(
-        account: account,
-        isRecebimento: _isRecebimentosFilter,
-      );
-    } else {
-      // Abrir tela normal de edição
-      screenToOpen = AccountEditScreen(account: account);
-    }
-
     if (_isNavigating) return;
     _isNavigating = true;
-    setState(() => _isInlineEditing = true);
-    try {
-      await Navigator.of(context).push<bool>(
-        MaterialPageRoute(builder: (context) => screenToOpen),
-      );
-    } finally {
-      _isNavigating = false;
+
+    // Determinar se a conta editada é recebimento pelo tipo da conta
+    final isRecebimento = _isRecebimentoAccount(account);
+
+    // Usar AccountFormScreen para todos os tipos de conta, passando isRecebimento corretamente
+    final screenToOpen = AccountFormScreen(
+      accountToEdit: account,
+      isRecebimento: isRecebimento,
+      onClose: _closeInlineEdit,
+    );
+
+    setState(() {
+      _isInlineEditing = true;
+      _inlineEditWidget = screenToOpen;
+    });
+  }
+
+  bool _isRecebimentoAccount(Account account) {
+    final typeName = _typeNames[account.typeId]?.trim().toLowerCase();
+    if (typeName == null || typeName.isEmpty) {
+      return _isRecebimentosFilter;
     }
-    if (!mounted) return;
-    setState(() => _isInlineEditing = false);
-    _refresh();
+    return typeName == 'recebimentos';
   }
 
   Future<void> _confirmDelete(Account acc) async {

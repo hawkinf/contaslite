@@ -5,8 +5,9 @@ import 'account_form_screen.dart';
 
 class AccountEditScreen extends StatefulWidget {
   final Account account;
+  final VoidCallback? onClose;
 
-  const AccountEditScreen({super.key, required this.account});
+  const AccountEditScreen({super.key, required this.account, this.onClose});
 
   @override
   State<AccountEditScreen> createState() => _AccountEditScreenState();
@@ -52,6 +53,7 @@ class _AccountEditScreenState extends State<AccountEditScreen> {
         return AccountFormScreen(
           accountToEdit: widget.account,
           isRecebimento: isRecebimento,
+          onClose: widget.onClose,
         );
       },
     );

@@ -459,7 +459,7 @@ class AuthService {
           .post(
             Uri.parse('$_apiBaseUrl/api/auth/refresh'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'refresh_token': refreshToken}),
+            body: jsonEncode({'refreshToken': refreshToken}),
           )
           .timeout(const Duration(seconds: 15));
 

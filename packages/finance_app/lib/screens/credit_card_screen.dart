@@ -188,10 +188,11 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
 
 
   Future<void> _openExpenses() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CardExpensesScreen(card: widget.card, month: _viewDate.month, year: _viewDate.year),
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog.fullscreen(
+        child: CardExpensesScreen(card: widget.card, month: _viewDate.month, year: _viewDate.year),
       ),
     );
     _loadTotals();

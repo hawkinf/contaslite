@@ -6,11 +6,9 @@ import '../database/db_helper.dart';
 import '../models/account.dart';
 import '../models/account_type.dart';
 import '../models/account_category.dart';
-import '../utils/color_contrast.dart';
 import '../widgets/app_input_decoration.dart';
 import '../widgets/payment_dialog.dart';
 import '../services/prefs_service.dart';
-import '../widgets/date_range_app_bar.dart';
 import '../utils/app_colors.dart';
 import 'recebimentos_table_screen.dart';
 
@@ -19,17 +17,21 @@ enum _RecurrentEditScope { thisOnly, thisAndFuture, all }
 class RecurrentAccountEditScreen extends StatefulWidget {
   final Account account;
   final bool isRecebimento;
+  final VoidCallback? onClose;
   const RecurrentAccountEditScreen({
     super.key,
     required this.account,
     this.isRecebimento = false,
+    this.onClose,
   });
 
   @override
-  State<RecurrentAccountEditScreen> createState() => _RecurrentAccountEditScreenState();
+  State<RecurrentAccountEditScreen> createState() =>
+      _RecurrentAccountEditScreenState();
 }
 
-class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen> {
+class _RecurrentAccountEditScreenState
+    extends State<RecurrentAccountEditScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isDisposed = false;
 
@@ -38,7 +40,6 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
   late TextEditingController _dueDayController;
   late TextEditingController _observationController;
   late TextEditingController _averageValueController;
-  
 
   late Account _parentAccount;
   bool _isEditingParent = false;
@@ -48,42 +49,18 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
 
   List<AccountCategory> _parentCategorias = [];
   AccountCategory? _selectedParentCategoria;
-  
+
   List<AccountCategory> _categorias = [];
   AccountCategory? _selectedCategory;
-  
+
   static const String _recebimentosChildSeparator = '||';
 
-  final List<Color> _colors = const [
-    Color(0xFFFF0000),
-    Color(0xFFFFFF00),
-    Color(0xFF0000FF),
-    Color(0xFFFFA500),
-    Color(0xFF00FF00),
-    Color(0xFF800080),
-    Color(0xFFFF1493),
-    Color(0xFF4B0082),
-    Color(0xFF00CED1),
-    Color(0xFF008080),
-    Color(0xFF2E8B57),
-    Color(0xFF6B8E23),
-    Color(0xFFBDB76B),
-    Color(0xFFDAA520),
-    Color(0xFFCD5C5C),
-    Color(0xFFFF7F50),
-    Color(0xFF8B0000),
-    Color(0xFF191970),
-    Color(0xFFFFFFFF),
-    Color(0xFF000000),
-    Color(0xFF808080),
-    Color(0xFF8B4513),
-  ];
   int _selectedColor = 0xFFFFFFFF;
 
   bool _isSaving = false;
   bool _payInAdvance = false;
   Map<String, dynamic>? _paymentInfo;
-  bool _shouldRefreshOnPop = false;
+  final bool _shouldRefreshOnPop = false;
 
   @override
   void initState() {
@@ -94,24 +71,38 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
 
   void _initializeSync() {
     // Inicializar dados síncronos
-    _isEditingParent = widget.account.isRecurrent && widget.account.recurrenceId == null;
+    _isEditingParent =
+        widget.account.isRecurrent && widget.account.recurrenceId == null;
     _parentAccount = widget.account;
 
     _descController = TextEditingController(text: _parentAccount.description);
-    _valueController = TextEditingController(text: UtilBrasilFields.obterReal(_parentAccount.value));
-    _averageValueController = TextEditingController(text: UtilBrasilFields.obterReal(_parentAccount.estimatedValue ?? _parentAccount.value));
-    _dueDayController = TextEditingController(text: _parentAccount.dueDay.toString());
-    _observationController = TextEditingController(text: _parentAccount.observation ?? '');
+    _valueController = TextEditingController(
+        text: UtilBrasilFields.obterReal(_parentAccount.value));
+    _averageValueController = TextEditingController(
+        text: UtilBrasilFields.obterReal(
+            _parentAccount.estimatedValue ?? _parentAccount.value));
+    _dueDayController =
+        TextEditingController(text: _parentAccount.dueDay.toString());
+    _observationController =
+        TextEditingController(text: _parentAccount.observation ?? '');
     _selectedColor = _parentAccount.cardColor ?? 0xFFFFFFFF;
     _payInAdvance = _parentAccount.payInAdvance;
-    
+  }
+
+  void _closeScreen() {
+    if (widget.onClose != null) {
+      widget.onClose!();
+    } else {
+      Navigator.pop(context);
+    }
   }
 
   Future<void> _initializeAsync() async {
     // Carregar pai se estamos editando uma filha
     if (!_isEditingParent && widget.account.recurrenceId != null) {
       try {
-        final parent = await DatabaseHelper.instance.readAccountById(widget.account.recurrenceId!);
+        final parent = await DatabaseHelper.instance
+            .readAccountById(widget.account.recurrenceId!);
         if (parent != null && mounted) {
           setState(() {
             // Atualiza referência ao pai, mas NÃO sobrescreve campos da instância filha
@@ -142,43 +133,12 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
 
   Future<void> _loadPaymentInfo() async {
     if (widget.account.id == null) return;
-    final info = await DatabaseHelper.instance.getAccountPaymentInfo(widget.account.id!);
+    final info =
+        await DatabaseHelper.instance.getAccountPaymentInfo(widget.account.id!);
     if (!mounted) return;
     setState(() {
       _paymentInfo = info;
     });
-  }
-
-  Future<void> _updateLaunchedValue() async {
-    if (_isEditingParent || widget.account.id == null) return;
-    final text = _valueController.text;
-    if (text.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Informe o valor lançado.'), backgroundColor: Colors.red),
-        );
-      }
-      return;
-    }
-
-    final launchedValue = UtilBrasilFields.converterMoedaParaDouble(text);
-    try {
-      final updated = widget.account.copyWith(value: launchedValue);
-      await DatabaseHelper.instance.updateAccount(updated);
-      if (!mounted) return;
-      setState(() {
-        _shouldRefreshOnPop = true;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Valor lançado atualizado.'), backgroundColor: Colors.green),
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao atualizar: $e'), backgroundColor: Colors.red),
-        );
-      }
-    }
   }
 
   Future<void> _openPayAccount() async {
@@ -220,8 +180,7 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
 
     AccountType? selected;
     try {
-      selected =
-          filteredTypes.firstWhere((t) => t.id == _parentAccount.typeId);
+      selected = filteredTypes.firstWhere((t) => t.id == _parentAccount.typeId);
     } catch (_) {
       selected = filteredTypes.isNotEmpty ? filteredTypes.first : null;
     }
@@ -249,8 +208,9 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
       return;
     }
 
-    final cats = await DatabaseHelper.instance.readAccountCategories(_selectedType!.id!);
-    
+    final cats =
+        await DatabaseHelper.instance.readAccountCategories(_selectedType!.id!);
+
     if (!mounted) return;
 
     // Para Recebimentos, separar em categorias pai e filha
@@ -268,7 +228,7 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
 
       // Usar a categoria pai já selecionada (que foi atualizada no setState)
       AccountCategory? selectedParent = _selectedParentCategoria;
-      
+
       // Se nenhuma categoria pai está selecionada, tentar usar da conta
       if (selectedParent == null && _parentAccount.categoryId != null) {
         final catName = cats
@@ -287,7 +247,7 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
           }
         }
       }
-      
+
       if (selectedParent == null && parents.isNotEmpty) {
         selectedParent = parents.first;
       }
@@ -295,21 +255,21 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
       final filteredChildren = selectedParent == null
           ? <AccountCategory>[]
           : children
-              .where((child) =>
-                  child.categoria.startsWith(
-                      '${selectedParent!.categoria}$_recebimentosChildSeparator'))
+              .where((child) => child.categoria.startsWith(
+                  '${selectedParent!.categoria}$_recebimentosChildSeparator'))
               .toList()
-            ..sort((a, b) => a.categoria.compareTo(b.categoria));
+        ..sort((a, b) => a.categoria.compareTo(b.categoria));
 
       setState(() {
         _parentCategorias = parents;
         _selectedParentCategoria = selectedParent;
         _categorias = filteredChildren;
-        
+
         // Selecionar categoria filha se houver uma na conta
         if (_parentAccount.categoryId != null) {
           try {
-            _selectedCategory = cats.firstWhere((c) => c.id == _parentAccount.categoryId);
+            _selectedCategory =
+                cats.firstWhere((c) => c.id == _parentAccount.categoryId);
             if (!_categorias.any((c) => c.id == _selectedCategory!.id)) {
               _selectedCategory = null;
             }
@@ -327,14 +287,17 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
       _selectedCategory = null;
     });
   }
-  
-    Future<void> _showCategoriesDialog() async {
+
+  Future<void> _showCategoriesDialog() async {
     if (_isDisposed) return;
 
     if (widget.isRecebimento) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const RecebimentosTableScreen()),
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Dialog.fullscreen(
+          child: RecebimentosTableScreen(),
+        ),
       );
       if (_isDisposed) return;
       await _loadCategories();
@@ -366,7 +329,7 @@ class _RecurrentAccountEditScreenState extends State<RecurrentAccountEditScreen>
     );
   }
 
-String _childDisplayName(String raw) {
+  String _childDisplayName(String raw) {
     if (!raw.contains(_recebimentosChildSeparator)) return raw;
     return raw.split(_recebimentosChildSeparator).last.trim();
   }
@@ -375,7 +338,9 @@ String _childDisplayName(String raw) {
     if (_isSaving) return;
     if (!_formKey.currentState!.validate() || _selectedType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha todos os campos obrigatórios.'), backgroundColor: Colors.red),
+        const SnackBar(
+            content: Text('Preencha todos os campos obrigatórios.'),
+            backgroundColor: Colors.red),
       );
       return;
     }
@@ -388,8 +353,10 @@ String _childDisplayName(String raw) {
         throw Exception('Dia do mês deve estar entre 1 e 31');
       }
 
-      final newValue = UtilBrasilFields.converterMoedaParaDouble(_valueController.text);
-      final averageValue = UtilBrasilFields.converterMoedaParaDouble(_averageValueController.text);
+      final newValue =
+          UtilBrasilFields.converterMoedaParaDouble(_valueController.text);
+      final averageValue = UtilBrasilFields.converterMoedaParaDouble(
+          _averageValueController.text);
       final newDesc = _descController.text.trim();
 
       debugPrint('💾 Salvando recorrência:');
@@ -405,15 +372,19 @@ String _childDisplayName(String raw) {
         builder: (ctx) => AlertDialog(
           icon: const Icon(Icons.save, color: Colors.blue, size: 48),
           title: const Text('Salvar Alterações'),
-          content: const Text('Como deseja aplicar as alterações?\n\nNota: O valor lançado é específico para cada conta e nunca é propagado.'),
+          content: const Text(
+              'Como deseja aplicar as alterações?\n\nNota: O valor lançado é específico para cada conta e nunca é propagado.'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancelar')),
             TextButton(
               onPressed: () => Navigator.pop(ctx, _RecurrentEditScope.thisOnly),
               child: const Text('Somente essa conta'),
             ),
             TextButton(
-              onPressed: () => Navigator.pop(ctx, _RecurrentEditScope.thisAndFuture),
+              onPressed: () =>
+                  Navigator.pop(ctx, _RecurrentEditScope.thisAndFuture),
               child: const Text('Essa e futuras'),
             ),
             FilledButton(
@@ -434,7 +405,7 @@ String _childDisplayName(String raw) {
         final updated = widget.account.copyWith(
           typeId: _selectedType!.id!,
           description: newDesc,
-          value: newValue,  // Valor lançado só para essa conta
+          value: newValue, // Valor lançado só para essa conta
           estimatedValue: averageValue,
           dueDay: dueDay,
           payInAdvance: _payInAdvance,
@@ -444,15 +415,17 @@ String _childDisplayName(String raw) {
         await DatabaseHelper.instance.updateAccount(updated);
       } else if (scope == _RecurrentEditScope.thisAndFuture) {
         // Atualizar essa e futuras (mas NÃO propagar valor lançado)
-        
+
         // Verificar se estamos editando o PAI ou uma FILHA
         final isEditingParentAccount = widget.account.id == _parentAccount.id;
-        
+
         // Atualizar o PAI (com ou sem valor lançado dependendo se é o que estamos editando)
         final updatedParent = _parentAccount.copyWith(
           typeId: _selectedType!.id!,
           description: newDesc,
-          value: isEditingParentAccount ? newValue : _parentAccount.value,  // Só atualiza value se editamos o PAI
+          value: isEditingParentAccount
+              ? newValue
+              : _parentAccount.value, // Só atualiza value se editamos o PAI
           estimatedValue: averageValue,
           dueDay: dueDay,
           payInAdvance: _payInAdvance,
@@ -460,13 +433,13 @@ String _childDisplayName(String raw) {
           observation: _observationController.text,
         );
         await DatabaseHelper.instance.updateAccount(updatedParent);
-        
+
         // Se não estamos editando o PAI, atualizar a conta atual com valor lançado
         if (!isEditingParentAccount) {
           final updatedThis = widget.account.copyWith(
             typeId: _selectedType!.id!,
             description: newDesc,
-            value: newValue,  // Valor lançado só para essa
+            value: newValue, // Valor lançado só para essa
             estimatedValue: averageValue,
             dueDay: dueDay,
             payInAdvance: _payInAdvance,
@@ -475,20 +448,21 @@ String _childDisplayName(String raw) {
           );
           await DatabaseHelper.instance.updateAccount(updatedThis);
         }
-        
+
         // Atualizar futuras (sem propagar valor lançado)
         final currentMonth = widget.account.month ?? DateTime.now().month;
         final currentYear = widget.account.year ?? DateTime.now().year;
         final currentDate = DateTime(currentYear, currentMonth, 1);
-        
+
         final instances = await DatabaseHelper.instance.readAllAccountsRaw();
         final futureChildren = instances.where((a) {
           if (a.recurrenceId != _parentAccount.id) return false;
-          if (a.id == widget.account.id) return false;  // Já atualizamos essa
-          final accDate = DateTime(a.year ?? DateTime.now().year, a.month ?? 1, 1);
+          if (a.id == widget.account.id) return false; // Já atualizamos essa
+          final accDate =
+              DateTime(a.year ?? DateTime.now().year, a.month ?? 1, 1);
           return accDate.isAfter(currentDate);
         }).toList();
-        
+
         for (var child in futureChildren) {
           final updated = child.copyWith(
             typeId: _selectedType!.id!,
@@ -504,15 +478,17 @@ String _childDisplayName(String raw) {
         }
       } else if (scope == _RecurrentEditScope.all) {
         // Atualizar TODAS as recorrências (mas NÃO propagar valor lançado)
-        
+
         // Verificar se estamos editando o PAI ou uma FILHA
         final isEditingParentAccount = widget.account.id == _parentAccount.id;
-        
+
         // Atualizar o PAI (com ou sem valor lançado dependendo se é o que estamos editando)
         final updatedParent = _parentAccount.copyWith(
           typeId: _selectedType!.id!,
           description: newDesc,
-          value: isEditingParentAccount ? newValue : _parentAccount.value,  // Só atualiza value se editamos o PAI
+          value: isEditingParentAccount
+              ? newValue
+              : _parentAccount.value, // Só atualiza value se editamos o PAI
           estimatedValue: averageValue,
           dueDay: dueDay,
           payInAdvance: _payInAdvance,
@@ -520,13 +496,13 @@ String _childDisplayName(String raw) {
           observation: _observationController.text,
         );
         await DatabaseHelper.instance.updateAccount(updatedParent);
-        
+
         // Se não estamos editando o PAI, atualizar a conta atual com valor lançado
         if (!isEditingParentAccount) {
           final updatedThis = widget.account.copyWith(
             typeId: _selectedType!.id!,
             description: newDesc,
-            value: newValue,  // Valor lançado só para essa
+            value: newValue, // Valor lançado só para essa
             estimatedValue: averageValue,
             dueDay: dueDay,
             payInAdvance: _payInAdvance,
@@ -535,15 +511,15 @@ String _childDisplayName(String raw) {
           );
           await DatabaseHelper.instance.updateAccount(updatedThis);
         }
-        
+
         // Atualizar TODAS as outras filhas (sem propagar valor lançado)
         final instances = await DatabaseHelper.instance.readAllAccountsRaw();
         final allChildren = instances.where((a) {
           if (a.recurrenceId != _parentAccount.id) return false;
-          if (a.id == widget.account.id) return false;  // Já atualizamos essa
+          if (a.id == widget.account.id) return false; // Já atualizamos essa
           return true;
         }).toList();
-        
+
         for (var child in allChildren) {
           final updated = child.copyWith(
             typeId: _selectedType!.id!,
@@ -561,13 +537,16 @@ String _childDisplayName(String raw) {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Recorrência atualizada com sucesso!'), backgroundColor: Colors.green),
+        const SnackBar(
+            content: Text('Recorrência atualizada com sucesso!'),
+            backgroundColor: Colors.green),
       );
-      Navigator.pop(context, true);
+      _closeScreen();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao salvar: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Erro ao salvar: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -591,7 +570,9 @@ String _childDisplayName(String raw) {
           title: Text(title),
           content: Text(message),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancelar')),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () => Navigator.pop(ctx, true),
@@ -612,10 +593,13 @@ String _childDisplayName(String raw) {
           title: Text(title),
           content: Text(message),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancelar')),
             TextButton(
               onPressed: () => Navigator.pop(ctx, 'single'),
-              child: const Text('Só essa', style: TextStyle(color: Colors.orange)),
+              child:
+                  const Text('Só essa', style: TextStyle(color: Colors.orange)),
             ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: Colors.red),
@@ -631,11 +615,15 @@ String _childDisplayName(String raw) {
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+            icon: const Icon(Icons.warning_amber_rounded,
+                color: Colors.orange, size: 48),
             title: const Text('Confirmar Exclusão'),
-            content: Text('Tem certeza que deseja apagar somente esta instância de "${widget.account.description}"?'),
+            content: Text(
+                'Tem certeza que deseja apagar somente esta instância de "${widget.account.description}"?'),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancelar')),
               FilledButton(
                 style: FilledButton.styleFrom(backgroundColor: Colors.red),
                 onPressed: () => Navigator.pop(ctx, true),
@@ -648,17 +636,21 @@ String _childDisplayName(String raw) {
         if (confirmed != true) return;
         final deleted = await _deleteSingleInstance();
         if (!mounted) return;
-        if (deleted) Navigator.pop(context, true);
+        if (deleted) _closeScreen();
       } else if (action == 'series') {
         // Confirmar antes de apagar
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            icon: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 48),
+            icon: const Icon(Icons.warning_amber_rounded,
+                color: Colors.orange, size: 48),
             title: const Text('Confirmar Exclusão'),
-            content: Text('Tem certeza que deseja apagar TODA a série de "${widget.account.description}"?\n\nEsta ação não pode ser desfeita.'),
+            content: Text(
+                'Tem certeza que deseja apagar TODA a série de "${widget.account.description}"?\n\nEsta ação não pode ser desfeita.'),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancelar')),
               FilledButton(
                 style: FilledButton.styleFrom(backgroundColor: Colors.red),
                 onPressed: () => Navigator.pop(ctx, true),
@@ -671,7 +663,7 @@ String _childDisplayName(String raw) {
         if (confirmed != true) return;
         final deleted = await _deleteRecurrence();
         if (!mounted) return;
-        if (deleted) Navigator.pop(context, true);
+        if (deleted) _closeScreen();
       }
     }
   }
@@ -702,8 +694,9 @@ String _childDisplayName(String raw) {
   @override
   Widget build(BuildContext context) {
     final isChild = !_isEditingParent;
-    final valueLabel = _isEditingParent ? 'Valor Lançado (R\$)' : 'Valor Lançado (R\$)';
-    final showAverageValue = true;  // Sempre mostrar Valor Médio
+    final valueLabel =
+        _isEditingParent ? 'Valor Lançado (R\$)' : 'Valor Lançado (R\$)';
+    final showAverageValue = true; // Sempre mostrar Valor Médio
 
     return ValueListenableBuilder<DateTimeRange>(
       valueListenable: PrefsService.dateRangeNotifier,
@@ -712,17 +705,16 @@ String _childDisplayName(String raw) {
           canPop: !_shouldRefreshOnPop,
           onPopInvokedWithResult: (didPop, result) {
             if (didPop || !_shouldRefreshOnPop) return;
-            Navigator.pop(context, true);
+            _closeScreen();
           },
           child: Scaffold(
-            appBar: DateRangeAppBar(
-              title: 'Editar Recorrência',
-              range: range,
-              // Durante edição não permitir troca de mês pela AppBar
-              onPrevious: null,
-              onNext: null,
-              backgroundColor: Colors.blue.shade700,
-              foregroundColor: Colors.white,
+            appBar: AppBar(
+              title: Text(
+                  widget.isRecebimento ? 'Editar Recebimento' : 'Editar Conta'),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: _closeScreen,
+              ),
               actions: [
                 if (isChild && widget.account.id != null)
                   IconButton(
@@ -734,14 +726,16 @@ String _childDisplayName(String raw) {
                         : (widget.isRecebimento
                             ? 'Registrar recebimento'
                             : 'Registrar pagamento'),
-                    onPressed: (widget.account.id == null || _paymentInfo != null)
-                        ? null
-                        : _openPayAccount,
+                    onPressed:
+                        (widget.account.id == null || _paymentInfo != null)
+                            ? null
+                            : _openPayAccount,
                   ),
+                // Botão de deletar
                 IconButton(
-                  icon: const Icon(Icons.close),
-                  tooltip: 'Cancelar',
-                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.delete_outline),
+                  tooltip: 'Deletar',
+                  onPressed: _confirmDelete,
                 ),
               ],
             ),
@@ -752,307 +746,349 @@ String _childDisplayName(String raw) {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildSummaryCard(),
-                    const SizedBox(height: 16),
-
-              // Paleta de cores
-              Wrap(
-                spacing: 12,
-                runSpacing: 10,
-                children: _colors
-                    .map(
-                      (c) => InkWell(
-                        onTap: () => setState(() => _selectedColor = c.toARGB32()),
-                        borderRadius: BorderRadius.circular(20),
-                        child: Container(
-                          width: 34,
-                          height: 34,
-                          decoration: BoxDecoration(
-                            color: c,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: _selectedColor == c.toARGB32()
-                                  ? foregroundColorFor(c)
-                                  : Colors.grey.shade400,
-                              width: _selectedColor == c.toARGB32() ? 3 : 1,
-                            ),
-                          ),
-                          child: _selectedColor == c.toARGB32()
-                              ? Icon(
-                                  Icons.check,
-                                  size: 18,
-                                  color: foregroundColorFor(c),
-                                )
-                              : null,
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Para Recebimentos: Categoria Pai (Tipo de Recebimento)
-              if (widget.isRecebimento && _parentCategorias.isNotEmpty)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    DropdownButtonFormField<AccountCategory>(
-                      initialValue: _selectedParentCategoria,
-                      decoration: buildOutlinedInputDecoration(
-                        label: 'Tipo de Recebimento',
-                        icon: Icons.account_balance_wallet,
-                      ),
-                      items: _parentCategorias
-                          .map((cat) => DropdownMenuItem(
-                                value: cat,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      cat.logo ?? '📁',
-                                      style: const TextStyle(fontSize: 18),
+                    // Card com tipo, categoria e descrição
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Para Recebimentos: Categoria Pai (Tipo de Recebimento)
+                            if (widget.isRecebimento &&
+                                _parentCategorias.isNotEmpty)
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  DropdownButtonFormField<AccountCategory>(
+                                    initialValue: _selectedParentCategoria,
+                                    decoration: buildOutlinedInputDecoration(
+                                      label: 'Tipo de Recebimento',
+                                      icon: Icons.account_balance_wallet,
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(cat.categoria),
-                                  ],
-                                ),
-                              ))
-                          .toList(),
-                      selectedItemBuilder: (BuildContext context) {
-                        return _parentCategorias
-                            .map((cat) => Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text('${cat.logo ?? '📁'} ${cat.categoria}'),
-                                ))
-                            .toList();
-                      },
-                      onChanged: (val) {
-                        setState(() {
-                          _selectedParentCategoria = val;
-                          _selectedCategory = null;
-                          _categorias = [];
-                        });
-                        _loadCategories();
-                      },
-                      validator: (val) => val == null ? 'Selecione um tipo de recebimento' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Gerenciar Categorias',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    FilledButton.icon(
-                      icon: const Icon(Icons.category),
-                      label: const Text('Acessar Categorias'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.blue.shade700,
-                      ),
-                      onPressed: _showCategoriesDialog,
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                )
-              // Para não-Recebimentos: Tipo da Conta normal
-              else if (!widget.isRecebimento)
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    DropdownButtonFormField<AccountType>(
-                      initialValue: _selectedType,
-                      decoration: buildOutlinedInputDecoration(
-                        label: 'Tipo da Conta',
-                        icon: Icons.account_balance_wallet,
-                      ),
-                      items: _typesList
-                          .map((t) => DropdownMenuItem(
-                                value: t,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      t.logo ?? '📁',
-                                      style: const TextStyle(fontSize: 18),
+                                    items: _parentCategorias
+                                        .map((cat) => DropdownMenuItem(
+                                              value: cat,
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    cat.logo ?? '📁',
+                                                    style: const TextStyle(
+                                                        fontSize: 18),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(cat.categoria),
+                                                ],
+                                              ),
+                                            ))
+                                        .toList(),
+                                    selectedItemBuilder:
+                                        (BuildContext context) {
+                                      return _parentCategorias
+                                          .map((cat) => Align(
+                                                alignment: Alignment.centerLeft,
+                                                child: Text(
+                                                    '${cat.logo ?? '📁'} ${cat.categoria}'),
+                                              ))
+                                          .toList();
+                                    },
+                                    onChanged: (val) {
+                                      setState(() {
+                                        _selectedParentCategoria = val;
+                                        _selectedCategory = null;
+                                        _categorias = [];
+                                      });
+                                      _loadCategories();
+                                    },
+                                    validator: (val) => val == null
+                                        ? 'Selecione um tipo de recebimento'
+                                        : null,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          'Gerenciar Categorias',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.grey.shade700,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  FilledButton.icon(
+                                    icon: const Icon(Icons.category),
+                                    label: const Text('Acessar Categorias'),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: Colors.blue.shade700,
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(t.name),
-                                  ],
-                                ),
-                              ))
-                          .toList(),
-                      selectedItemBuilder: (BuildContext context) {
-                        return _typesList
-                            .map((t) => Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text('${t.logo ?? '📁'} ${t.name}'),
-                                ))
-                            .toList();
-                      },
-                      onChanged: (val) async {
-                        setState(() {
-                          _selectedType = val;
-                          _selectedCategory = null;
-                        });
-                        await _loadCategories();
-                      },
-                      validator: (val) => val == null ? 'Selecione um tipo' : null,
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                ),
-
-
-              if (_categorias.isNotEmpty)
-                DropdownButtonFormField<AccountCategory>(
-                  initialValue: _selectedCategory,
-                  decoration: buildOutlinedInputDecoration(
-                    label: 'Categoria',
-                    icon: Icons.label,
-                  ),
-                  items: _categorias
-                      .map((cat) {
-                        final displayText = widget.isRecebimento
-                            ? _childDisplayName(cat.categoria)
-                            : cat.categoria;
-                        return DropdownMenuItem(
-                          value: cat,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                cat.logo ?? '📁',
-                                style: const TextStyle(fontSize: 18),
+                                    onPressed: _showCategoriesDialog,
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
+                              )
+                            // Para não-Recebimentos: Tipo da Conta normal
+                            else if (!widget.isRecebimento)
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  DropdownButtonFormField<AccountType>(
+                                    initialValue: _selectedType,
+                                    decoration: buildOutlinedInputDecoration(
+                                      label: 'Tipo da Conta',
+                                      icon: Icons.account_balance_wallet,
+                                    ),
+                                    items: _typesList
+                                        .map((t) => DropdownMenuItem(
+                                              value: t,
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    t.logo ?? '📁',
+                                                    style: const TextStyle(
+                                                        fontSize: 18),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(t.name),
+                                                ],
+                                              ),
+                                            ))
+                                        .toList(),
+                                    selectedItemBuilder:
+                                        (BuildContext context) {
+                                      return _typesList
+                                          .map((t) => Align(
+                                                alignment: Alignment.centerLeft,
+                                                child: Text(
+                                                    '${t.logo ?? '📁'} ${t.name}'),
+                                              ))
+                                          .toList();
+                                    },
+                                    onChanged: (val) async {
+                                      setState(() {
+                                        _selectedType = val;
+                                        _selectedCategory = null;
+                                      });
+                                      await _loadCategories();
+                                    },
+                                    validator: (val) => val == null
+                                        ? 'Selecione um tipo'
+                                        : null,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          'Gerenciar Categorias',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.grey.shade700,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  FilledButton.icon(
+                                    icon: const Icon(Icons.category),
+                                    label: const Text('Acessar Categorias'),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: Colors.blue.shade700,
+                                    ),
+                                    onPressed: _showCategoriesDialog,
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Text(displayText),
-                            ],
-                          ),
-                        );
-                      })
-                      .toList(),
-                  selectedItemBuilder: (BuildContext context) {
-                    return _categorias
-                        .map((cat) {
-                          final displayText = widget.isRecebimento
-                              ? _childDisplayName(cat.categoria)
-                              : cat.categoria;
-                          return Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text('${cat.logo ?? '📁'} $displayText'),
-                          );
-                        })
-                        .toList();
-                  },
-                  onChanged: (val) => setState(() => _selectedCategory = val),
-                ),
 
-              if (_categorias.isNotEmpty) const SizedBox(height: 12),
+                            if (_categorias.isNotEmpty)
+                              DropdownButtonFormField<AccountCategory>(
+                                initialValue: _selectedCategory,
+                                decoration: buildOutlinedInputDecoration(
+                                  label: 'Categoria',
+                                  icon: Icons.label,
+                                ),
+                                items: _categorias.map((cat) {
+                                  final displayText = widget.isRecebimento
+                                      ? _childDisplayName(cat.categoria)
+                                      : cat.categoria;
+                                  return DropdownMenuItem(
+                                    value: cat,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          cat.logo ?? '📁',
+                                          style: const TextStyle(fontSize: 18),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(displayText),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                                selectedItemBuilder: (BuildContext context) {
+                                  return _categorias.map((cat) {
+                                    final displayText = widget.isRecebimento
+                                        ? _childDisplayName(cat.categoria)
+                                        : cat.categoria;
+                                    return Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                          '${cat.logo ?? '📁'} $displayText'),
+                                    );
+                                  }).toList();
+                                },
+                                onChanged: (val) =>
+                                    setState(() => _selectedCategory = val),
+                              ),
 
-              // Descrição
-              TextFormField(
-                controller: _descController,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: buildOutlinedInputDecoration(
-                  label: 'Descrição',
-                  icon: Icons.description_outlined,
-                ),
-                validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
-              ),
+                            if (_categorias.isNotEmpty)
+                              const SizedBox(height: 12),
 
-              const SizedBox(height: 16),
-
-              if (showAverageValue)
-                TextFormField(
-                  controller: _averageValueController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly, CentavosInputFormatter(moeda: true)],
-                  decoration: buildOutlinedInputDecoration(
-                    label: 'Valor Médio (R\$)',
-                    icon: Icons.bar_chart,
-                  ),
-                  validator: (v) => v == null || v.isEmpty ? 'Obrigatório' : null,
-                ),
-
-              if (showAverageValue) const SizedBox(height: 12),
-
-              // Valor lançado e Dia de vencimento
-              Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: TextFormField(
-                      controller: _valueController,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly, CentavosInputFormatter(moeda: true)],
-                      decoration: buildOutlinedInputDecoration(
-                        label: valueLabel,
-                        icon: Icons.attach_money,
+                            // Descrição
+                            TextFormField(
+                              controller: _descController,
+                              textCapitalization: TextCapitalization.sentences,
+                              decoration: buildOutlinedInputDecoration(
+                                label: widget.isRecebimento
+                                    ? 'Descrição do Recebimento'
+                                    : 'Descrição (Ex: TV Nova, Aluguel)',
+                                icon: Icons.description_outlined,
+                              ),
+                              validator: (v) =>
+                                  v!.isEmpty ? 'Obrigatório' : null,
+                            ),
+                          ],
+                        ),
                       ),
-                      validator: (v) => v == null || v.isEmpty ? 'Obrigatório' : null,
                     ),
-                  ),
-                  if (showAverageValue) const SizedBox(width: 8),
-                  if (showAverageValue)
-                    FilledButton(
-                      onPressed: _updateLaunchedValue,
-                      child: const Text('Gravar'),
+
+                    const SizedBox(height: 20),
+
+                    // Card com valores e data
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Dia do vencimento
+                            TextFormField(
+                              controller: _dueDayController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly
+                              ],
+                              maxLength: 2,
+                              decoration: buildOutlinedInputDecoration(
+                                label: widget.isRecebimento
+                                    ? 'Dia Base do Recebimento (1-31)'
+                                    : 'Dia Base do Vencimento (1-31)',
+                                icon: Icons.calendar_today,
+                              ).copyWith(counter: const SizedBox.shrink()),
+                              validator: (v) {
+                                if (v == null || v.isEmpty) {
+                                  return 'Obrigatório';
+                                }
+                                final day = int.tryParse(v);
+                                if (day == null || day < 1 || day > 31) {
+                                  return 'Entre 1-31';
+                                }
+                                return null;
+                              },
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Valor Total / Valor Médio
+                            TextFormField(
+                              controller: _averageValueController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                CentavosInputFormatter(moeda: true)
+                              ],
+                              decoration: buildOutlinedInputDecoration(
+                                label: 'Valor Total (R\$)',
+                                icon: Icons.attach_money,
+                              ),
+                              validator: (v) =>
+                                  v == null || v.isEmpty ? 'Obrigatório' : null,
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // Valor Lançado (se for conta recorrente)
+                            if (showAverageValue)
+                              TextFormField(
+                                controller: _valueController,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                  CentavosInputFormatter(moeda: true)
+                                ],
+                                decoration: buildOutlinedInputDecoration(
+                                  label: valueLabel,
+                                  icon: Icons.attach_money,
+                                ),
+                                validator: (v) => v == null || v.isEmpty
+                                    ? 'Obrigatório'
+                                    : null,
+                              ),
+
+                            if (showAverageValue) const SizedBox(height: 16),
+
+                            // Comportamento em feriado
+                            SwitchListTile(
+                              title: Text(widget.isRecebimento
+                                  ? 'Receber em Feriado'
+                                  : 'Pagar em Feriado'),
+                              subtitle: const Text(
+                                  'Antecipar para dia útil anterior'),
+                              value: _payInAdvance,
+                              onChanged: (val) =>
+                                  setState(() => _payInAdvance = val),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: TextFormField(
-                      controller: _dueDayController,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      maxLength: 2,
-                      decoration: buildOutlinedInputDecoration(
-                        label: 'Dia (1-31)',
-                        icon: Icons.calendar_today,
-                      ).copyWith(counter: const SizedBox.shrink()),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Obrigatório';
-                        final day = int.tryParse(v);
-                        if (day == null || day < 1 || day > 31) return 'Entre 1-31';
-                        return null;
-                      },
+
+                    const SizedBox(height: 20),
+
+                    // Card com observações
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: TextFormField(
+                          controller: _observationController,
+                          maxLines: 3,
+                          decoration: buildOutlinedInputDecoration(
+                            label: 'Observações (Opcional)',
+                            icon: Icons.note,
+                            alignLabelWithHint: true,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Comportamento em feriado
-              SwitchListTile(
-                title: const Text('Pagar em Feriado'),
-                subtitle: const Text('Antecipar para dia útil anterior'),
-                value: _payInAdvance,
-                onChanged: (val) => setState(() => _payInAdvance = val),
-                contentPadding: EdgeInsets.zero,
-              ),
-
-              const SizedBox(height: 16),
-
-              TextFormField(
-                controller: _observationController,
-                maxLines: 3,
-                decoration: buildOutlinedInputDecoration(
-                  label: 'Observações (Opcional)',
-                  icon: Icons.note,
-                  alignLabelWithHint: true,
-                ),
-              ),
 
                     const SizedBox(height: 24),
                   ],
@@ -1068,7 +1104,7 @@ String _childDisplayName(String raw) {
                     child: OutlinedButton.icon(
                       icon: const Icon(Icons.close),
                       label: const Text('Cancelar'),
-                      onPressed: _isSaving ? null : () => Navigator.pop(context),
+                      onPressed: _isSaving ? null : _closeScreen,
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 18),
                         shape: RoundedRectangleBorder(
@@ -1081,9 +1117,11 @@ String _childDisplayName(String raw) {
                   Expanded(
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 18, horizontal: 32),
                         backgroundColor: Colors.green.shade600,
-                        disabledBackgroundColor: Colors.green.shade600.withValues(alpha: 0.6),
+                        disabledBackgroundColor:
+                            Colors.green.shade600.withValues(alpha: 0.6),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -1101,7 +1139,8 @@ String _childDisplayName(String raw) {
                           : const Icon(Icons.check_circle, size: 24),
                       label: Text(
                         _isSaving ? 'Gravando...' : 'Gravar',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -1111,122 +1150,6 @@ String _childDisplayName(String raw) {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildSummaryCard() {
-    final valueColor = _parentAccount.value >= 0 ? Colors.green.shade700 : Colors.red.shade700;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6F8FF),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _dueDayController.text.isEmpty ? '--' : _dueDayController.text,
-                style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: Colors.black87),
-              ),
-              Text(
-                'do mês',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'RECORRÊNCIA',
-                  style: TextStyle(color: Colors.green.shade700, fontSize: 11, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _selectedType?.name ?? 'Conta',
-                  style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _descController.text,
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.black87),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _isEditingParent ? 'Conta Pai' : 'Instância Mensal',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green.shade700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                UtilBrasilFields.obterReal(UtilBrasilFields.converterMoedaParaDouble(_valueController.text.isEmpty ? '0' : _valueController.text)),
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: valueColor),
-              ),
-              const SizedBox(height: 10),
-              _actionSquare(
-                color: Colors.red.shade50,
-                icon: Icons.delete,
-                onTap: _confirmDelete,
-                iconColor: Colors.red.shade700,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _actionSquare({required Color color, required IconData icon, required VoidCallback onTap, required Color iconColor}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, color: iconColor, size: 18),
-      ),
     );
   }
 }
@@ -1274,7 +1197,8 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
       return;
     }
 
-    final exists = await DatabaseHelper.instance.checkAccountCategoryExists(widget.typeId, text);
+    final exists = await DatabaseHelper.instance
+        .checkAccountCategoryExists(widget.typeId, text);
     if (exists) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1285,11 +1209,13 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
       return;
     }
 
-    final categoria = AccountCategory(accountId: widget.typeId, categoria: text);
+    final categoria =
+        AccountCategory(accountId: widget.typeId, categoria: text);
     final id = await DatabaseHelper.instance.createAccountCategory(categoria);
 
     setState(() {
-      _categorias.add(AccountCategory(id: id, accountId: widget.typeId, categoria: text));
+      _categorias.add(
+          AccountCategory(id: id, accountId: widget.typeId, categoria: text));
       _newCategoriaController.clear();
     });
 
@@ -1303,7 +1229,9 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
         title: const Text('Deletar Categoria?'),
         content: const Text('Deseja remover esta categoria?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar')),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
@@ -1337,7 +1265,10 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
           children: [
             const Text(
               'Gerenciar Categorias',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87),
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -1345,7 +1276,8 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
               decoration: InputDecoration(
                 labelText: 'Nova Categoria',
                 prefixIcon: const Icon(Icons.add),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onSubmitted: (_) => _addCategory(),
             ),
@@ -1365,11 +1297,14 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
                         final cat = _categorias[index];
                         return Card(
                           child: ListTile(
-                            leading: Text(cat.logo ?? '📂', style: const TextStyle(fontSize: 18)),
+                            leading: Text(cat.logo ?? '📂',
+                                style: const TextStyle(fontSize: 18)),
                             title: Text(cat.categoria),
                             trailing: IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: cat.id != null ? () => _deleteCategory(cat.id!) : null,
+                              onPressed: cat.id != null
+                                  ? () => _deleteCategory(cat.id!)
+                                  : null,
                             ),
                           ),
                         );

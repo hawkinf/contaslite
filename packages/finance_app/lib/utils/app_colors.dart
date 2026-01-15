@@ -63,6 +63,19 @@ class AppColors {
   static const Color subscription = Color(0xFFAB47BC); // purple.shade400 para assinaturas
   static const Color oneOff = primaryLight; // Avista em azul claro
 
+  /// Paleta essencial de cores (substitui a paleta estendida)
+  static const List<Color> essentialPalette = [
+    error, // vermelho
+    warning, // laranja
+    success, // verde
+    primary, // azul
+    secondary, // indigo
+    cardPurple, // roxo
+    backgroundCard, // branco
+    Colors.black, // preto
+    textSecondary, // cinza
+  ];
+
   /// Obtem cor adaptativa baseada no brilho do tema
   static Color adaptive(BuildContext context, {
     required Color light,

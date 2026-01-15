@@ -53,6 +53,7 @@ class AccountFormScreen extends StatefulWidget {
   final bool useInstallmentDropdown;
   final bool isRecebimento;
   final bool showAppBar; // Controla se mostra AppBar (false para Dialog)
+  final VoidCallback? onClose; // Callback para fechar inline edit
 
   const AccountFormScreen({
     super.key,
@@ -62,6 +63,7 @@ class AccountFormScreen extends StatefulWidget {
     this.useInstallmentDropdown = false,
     this.isRecebimento = false,
     this.showAppBar = true, // Por padrão mostra AppBar
+    this.onClose,
   });
 
   @override
@@ -86,30 +88,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   int _entryMode = 0; // 0 = Avulsa/Parcelada, 1 = Recorrente Fixa
   Account? _editingAccount; // Conta sendo editada (pode ser diferente de widget.accountToEdit se for filha)
 
-  final List<Color> _colors = [
-    const Color(0xFFFF0000),
-    const Color(0xFFFFFF00),
-    const Color(0xFF0000FF),
-    const Color(0xFFFFA500),
-    const Color(0xFF00FF00),
-    const Color(0xFF800080),
-    const Color(0xFFFF1493),
-    const Color(0xFF4B0082),
-    const Color(0xFF00CED1),
-    const Color(0xFF008080),
-    const Color(0xFF2E8B57),
-    const Color(0xFF6B8E23),
-    const Color(0xFFBDB76B),
-    const Color(0xFFDAA520),
-    const Color(0xFFCD5C5C),
-    const Color(0xFFFF7F50),
-    const Color(0xFF8B0000),
-    const Color(0xFF191970),
-    const Color(0xFFFFFFFF),
-    const Color(0xFF000000),
-    const Color(0xFF808080),
-    const Color(0xFF8B4513),
-  ];
+  final List<Color> _colors = AppColors.essentialPalette;
   int _selectedColor = 0xFFFFFFFF; // Branco padrão
 
   DateTime? _mainOriginalDueDate;
@@ -156,6 +135,14 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       return 'Gravar';
     }
     return 'Gravar';
+  }
+
+  void _closeScreen() {
+    if (widget.onClose != null) {
+      widget.onClose!();
+    } else {
+      Navigator.pop(context);
+    }
   }
 
   bool _isRecebimentosChild(AccountCategory category) {
@@ -543,9 +530,12 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     if (_isDisposed) return;
 
     if (widget.isRecebimento) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const RecebimentosTableScreen()),
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => Dialog.fullscreen(
+          child: const RecebimentosTableScreen(),
+        ),
       );
       if (_isDisposed) return;
       await _loadCategories();
@@ -585,16 +575,23 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     final typeFilter = widget.typeNameFilter?.trim();
     var filteredTypes = baseTypes;
 
-    // Se não for recebimento, excluir "Recebimentos" do dropdown
-    if (!widget.isRecebimento) {
+    // Filtrar tipos baseado em isRecebimento
+    if (widget.isRecebimento) {
+      // Para recebimentos, incluir APENAS o tipo "Recebimentos"
+      filteredTypes = baseTypes
+          .where((t) => t.name.trim().toLowerCase() == 'recebimentos')
+          .toList();
+    } else {
+      // Para não-recebimentos, excluir "Recebimentos" do dropdown
       filteredTypes = baseTypes
           .where((t) => !t.name.toLowerCase().contains('recebimento'))
           .toList();
     }
 
+    // Se houver um filtro específico de tipo, aplicar sobre o resultado anterior
     if (typeFilter != null && typeFilter.isNotEmpty) {
       final normalizedFilter = typeFilter.toLowerCase();
-      filteredTypes = baseTypes
+      filteredTypes = filteredTypes
           .where((t) => t.name.trim().toLowerCase() == normalizedFilter)
           .toList();
     }
@@ -1844,7 +1841,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.close),
                   label: const Text('Cancelar'),
-                  onPressed: _isSaving ? null : () => Navigator.pop(context),
+                  onPressed: _isSaving ? null : _closeScreen,
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
@@ -1931,7 +1928,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         );
       }
 
-      // Se mostrar AppBar (página completa), usa Scaffold
+      // Se mostrar AppBar (página completa), usa Scaffold com SafeArea
       debugPrint('🏗️ AccountFormScreen.build: Modo Scaffold (showAppBar=true)');
       debugPrint('🏗️ AccountFormScreen.build FIM - retornando Scaffold');
       return Scaffold(
@@ -1939,10 +1936,12 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           title: Text(appBarTitle),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
+            onPressed: _closeScreen,
           ),
         ),
-        body: _buildFormContent(),
+        body: SafeArea(
+          child: _buildFormContent(),
+        ),
         bottomNavigationBar: _buildActionButtons(),
       );
     } catch (e, stackTrace) {
@@ -2342,7 +2341,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
               content: Text("Conta atualizada com sucesso!"),
               backgroundColor: AppColors.success));
-          Navigator.pop(context, true);
+          _closeScreen();
         }
         return;
       }
@@ -2557,7 +2556,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text("Contas lançadas com sucesso!"),
             backgroundColor: AppColors.success));
-        Navigator.pop(context, true);
+        _closeScreen();
       }
     } catch (e) {
       if (mounted) {

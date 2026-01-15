@@ -53,30 +53,7 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
   final _installmentsQtyController = TextEditingController(text: '1');
   final _establishmentController = TextEditingController();
   final _observationController = TextEditingController();
-  final List<Color> _colors = const [
-    Color(0xFFFF0000),
-    Color(0xFFFFFF00),
-    Color(0xFF0000FF),
-    Color(0xFFFFA500),
-    Color(0xFF00FF00),
-    Color(0xFF800080),
-    Color(0xFFFF1493),
-    Color(0xFF4B0082),
-    Color(0xFF00CED1),
-    Color(0xFF008080),
-    Color(0xFF2E8B57),
-    Color(0xFF6B8E23),
-    Color(0xFFBDB76B),
-    Color(0xFFDAA520),
-    Color(0xFFCD5C5C),
-    Color(0xFFFF7F50),
-    Color(0xFF8B0000),
-    Color(0xFF191970),
-    Color(0xFFFFFFFF),
-    Color(0xFF000000),
-    Color(0xFF808080),
-    Color(0xFF8B4513),
-  ];
+  final List<Color> _colors = AppColors.essentialPalette;
 
   bool _isSaving = false;
   bool _isLoading = true;

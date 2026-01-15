@@ -369,6 +369,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
   final GlobalKey _calendarGridKey = GlobalKey();
   final GlobalKey _annualCalendarKey = GlobalKey();
   final GlobalKey<NavigatorState> _cardsNavigatorKey = GlobalKey<NavigatorState>();
+  final GlobalKey<NavigatorState> _contasPagarNavigatorKey = GlobalKey<NavigatorState>();
+  final GlobalKey<NavigatorState> _recebimentosNavigatorKey = GlobalKey<NavigatorState>();
 
   final List<int> availableYears = List.generate(11, (index) => DateTime.now().year - 5 + index);
 
@@ -4132,9 +4134,41 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                         // ABA 1: CONTAS (visão consolidada)
                         const ContasResumoTab(),
                         // ABA 2: CONTAS A PAGAR
-                        const ContasTab(),
+                        PopScope(
+                          canPop: false,
+                          onPopInvokedWithResult: (didPop, result) {
+                            if (_contasPagarNavigatorKey.currentState?.canPop() ?? false) {
+                              _contasPagarNavigatorKey.currentState!.pop();
+                            } else if (!didPop) {
+                              Navigator.of(context).maybePop();
+                            }
+                          },
+                          child: Navigator(
+                            key: _contasPagarNavigatorKey,
+                            onGenerateRoute: (settings) => MaterialPageRoute(
+                              builder: (_) => const ContasTab(),
+                              settings: settings,
+                            ),
+                          ),
+                        ),
                         // ABA 3: RECEBIMENTOS
-                        const RecebimentosTab(),
+                        PopScope(
+                          canPop: false,
+                          onPopInvokedWithResult: (didPop, result) {
+                            if (_recebimentosNavigatorKey.currentState?.canPop() ?? false) {
+                              _recebimentosNavigatorKey.currentState!.pop();
+                            } else if (!didPop) {
+                              Navigator.of(context).maybePop();
+                            }
+                          },
+                          child: Navigator(
+                            key: _recebimentosNavigatorKey,
+                            onGenerateRoute: (settings) => MaterialPageRoute(
+                              builder: (_) => const RecebimentosTab(),
+                              settings: settings,
+                            ),
+                          ),
+                        ),
                         // ABA 4: CARTÕES (navegação interna mantém as abas visíveis)
                         PopScope(
                           canPop: false,
