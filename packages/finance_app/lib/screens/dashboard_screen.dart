@@ -121,6 +121,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoading = false;
   double _totalPeriod = 0.0;
   double _totalForecast = 0.0;
+  // Totais para visão combinada
+  double _totalPrevistoPagar = 0.0;
+  double _totalPrevistoReceber = 0.0;
+  double _totalLancadoPagar = 0.0;
+  double _totalLancadoReceber = 0.0;
   Map<int, _InstallmentSummary> _installmentSummaries = {};
   Map<int, Map<String, dynamic>> _paymentInfo = {};
   final Map<int, double> _recurrenceParentValues = {}; // Mapeia recurrence ID -> valor previsto
@@ -710,6 +715,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
             );
       final totalRemaining = math.max(0.0, totalForecast - totalPaid);
 
+      // Calcular totais separados para visão combinada
+      double previstoPagar = 0.0;
+      double previstoReceber = 0.0;
+      double lancadoPagar = 0.0;
+      double lancadoReceber = 0.0;
+
+      for (final item in processedList) {
+        final isCard = item.cardBrand != null;
+        final typeName = typeMap[item.typeId]?.toLowerCase() ?? '';
+        final isRecebimento = typeName.contains('receb');
+
+        double itemPrevisto = 0.0;
+        double itemLancado = 0.0;
+        
+        if (isCard && item.isRecurrent) {
+          final breakdown = CardBreakdown.parse(item.observation);
+          itemPrevisto = breakdown.total;
+          // Para cartões, o lançado é o value (fatura lançada)
+          itemLancado = item.value;
+        } else {
+          // Usar estimatedValue (Previsto) quando disponível, senão usar value
+          itemPrevisto = item.estimatedValue ?? item.value;
+          // Lançado é sempre o value
+          itemLancado = item.value;
+        }
+
+        if (isRecebimento) {
+          previstoReceber += itemPrevisto;
+          lancadoReceber += itemLancado;
+        } else {
+          // Contas a pagar + cartões
+          previstoPagar += itemPrevisto;
+          lancadoPagar += itemLancado;
+        }
+      }
+
       if (mounted) {
         setState(() {
           _displayList = processedList;
@@ -719,6 +760,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _categoryLogos = categoryLogoMap;
           _totalPeriod = totalPaid;
           _totalForecast = totalRemaining;
+          _totalPrevistoPagar = previstoPagar;
+          _totalPrevistoReceber = previstoReceber;
+          _totalLancadoPagar = lancadoPagar;
+          _totalLancadoReceber = lancadoReceber;
           _installmentSummaries = installmentSummaries;
           _paymentInfo = paymentInfo;
         });
@@ -833,8 +878,105 @@ class _DashboardScreenState extends State<DashboardScreen> {
               );
               final listBottomPadding = isCompactHeight ? 72.0 : 100.0;
 
-              return Column(children: [
-                Container(
+              Widget buildTotalBox(String label, double value, Color valueColor) {
+                return Expanded(
+                  child: Container(
+                    padding: cardPadding,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.black, width: 1.0),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                            color: _adaptiveGreyTextColor(context, Colors.grey),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            UtilBrasilFields.obterReal(value),
+                            style: TextStyle(
+                              fontSize: isCompactHeight ? 16.0 : 20.0,
+                              fontWeight: FontWeight.bold,
+                              color: valueColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              final headerWidget = isCombined
+                ? Container(
+                    padding: headerPadding,
+                    color: headerColor,
+                    child: Row(
+                      children: [
+                        // Lado esquerdo: Previsões
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).cardColor,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.black, width: 1.0),
+                            ),
+                            child: Column(
+                              children: [
+                                Text('PREVISÕES', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.grey.shade700)),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    buildTotalBox('A PAGAR', _totalPrevistoPagar, AppColors.error),
+                                    const SizedBox(width: 8),
+                                    buildTotalBox('A RECEBER', _totalPrevistoReceber, AppColors.success),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Lado direito: Lançados
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).cardColor,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.black, width: 1.0),
+                            ),
+                            child: Column(
+                              children: [
+                                Text('LANÇADOS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.grey.shade700)),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    buildTotalBox('A PAGAR', _totalLancadoPagar, Colors.red.shade800),
+                                    const SizedBox(width: 8),
+                                    buildTotalBox('A RECEBER', _totalLancadoReceber, Colors.green.shade800),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Container(
                     padding: headerPadding,
                     color: headerColor,
                     child: Row(children: [
@@ -897,7 +1039,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                           color: totalForecastColor)),
                                 )
                               ]))),
-                    ])),
+                    ]));
+
+              return Column(children: [
+                headerWidget,
                 Expanded(
                     child: _isLoading
                         ? Center(
@@ -2266,23 +2411,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _showPaymentDialog() async {
-    await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => Dialog.fullscreen(
-        child: PaymentDialog(
-          startDate: _startDate,
-          endDate: _endDate,
-          isRecebimento: _isRecebimentosFilter,
-        ),
-      ),
-    );
-    if (mounted) {
-      _refresh();
-    }
-  }
-
   void _closeInlineEdit() {
     if (!mounted) return;
     setState(() {
@@ -2825,7 +2953,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             final availableHeight = math.max(0.0, maxHeight - bottomOffset);
             final maxTileWidth = math.max(
               0.0,
-              (maxWidth - (horizontalPadding * 2) - (spacing * 2)) / 3,
+              (maxWidth - (horizontalPadding * 2) - (spacing * 3)) / 4,
             );
             final maxTileHeight =
                 math.max(0.0, availableHeight - (verticalPadding * 2));
@@ -2856,8 +2984,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       _buildQuickAction(
                         icon: Icons.receipt_long,
-                        label: 'Lançar Conta',
-                        color: AppColors.primary,
+                        label: 'Conta a Pagar',
+                        color: AppColors.error,
                         size: tileSize,
                         iconSize: iconSize,
                         fontSize: fontSize,
@@ -2895,7 +3023,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
                                             const Text(
-                                              'Nova Conta',
+                                              'Nova Conta a Pagar',
                                               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                                             ),
                                             IconButton(
@@ -2922,6 +3050,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       const SizedBox(width: spacing),
                       _buildQuickAction(
+                        icon: Icons.account_balance_wallet,
+                        label: 'Conta a Receber',
+                        color: AppColors.success,
+                        size: tileSize,
+                        iconSize: iconSize,
+                        fontSize: fontSize,
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _openRecebimentoForm();
+                        },
+                      ),
+                      const SizedBox(width: spacing),
+                      _buildQuickAction(
                         icon: Icons.credit_card,
                         label: 'Despesa Cartão',
                         color: AppColors.cardPurple,
@@ -2935,15 +3076,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       const SizedBox(width: spacing),
                       _buildQuickAction(
-                        icon: Icons.payments,
-                        label: 'Lançar Pagamento',
-                        color: AppColors.success,
+                        icon: Icons.add_card,
+                        label: 'Novo Cartão',
+                        color: AppColors.cardPurple.withValues(alpha: 0.85),
                         size: tileSize,
                         iconSize: iconSize,
                         fontSize: fontSize,
-                        onTap: () {
+                        onTap: () async {
                           Navigator.pop(ctx);
-                          _showPaymentDialog();
+                          await showDialog(
+                            context: context,
+                            builder: (_) => const CreditCardFormScreen(),
+                          );
+                          _refresh();
                         },
                       ),
                     ],
@@ -2988,22 +3133,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: EdgeInsets.all(padding),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             _borderedIcon(icon,
                 iconColor: fg,
                 size: iconSize,
                 padding: const EdgeInsets.all(4),
                 borderWidth: 1),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: fg,
-                fontWeight: FontWeight.w600,
-                fontSize: fontSize,
+            const SizedBox(height: 6),
+            Flexible(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: fg,
+                  fontWeight: FontWeight.w600,
+                  fontSize: fontSize,
+                ),
               ),
             ),
           ],
@@ -3020,9 +3168,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             card.id != null)
         .toList()
       ..sort((a, b) {
-        final bankA = (a.cardBank ?? a.description).toLowerCase();
-        final bankB = (b.cardBank ?? b.description).toLowerCase();
-        return bankA.compareTo(bankB);
+        // Ordenar pelo dia de vencimento
+        return a.dueDay.compareTo(b.dueDay);
       });
 
     if (cards.isEmpty) {
@@ -3065,11 +3212,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       : AppColors.cardPurple;
                   final dueDay =
                       card.dueDay.toString().padLeft(2, '0');
+                  
+                  // Obter logo da bandeira do cartão
+                  Widget? brandLogo;
+                  final normalized = (card.cardBrand ?? '').trim().toUpperCase();
+                  String? assetPath;
+                  if (normalized == 'VISA') {
+                    assetPath = 'assets/icons/cc_visa.png';
+                  } else if (normalized == 'AMEX' || normalized == 'AMERICAN EXPRESS' || normalized == 'AMERICANEXPRESS') {
+                    assetPath = 'assets/icons/cc_amex.png';
+                  } else if (normalized == 'MASTER' || normalized == 'MASTERCARD' || normalized == 'MASTER CARD') {
+                    assetPath = 'assets/icons/cc_mc.png';
+                  } else if (normalized == 'ELO') {
+                    assetPath = 'assets/icons/cc_elo.png';
+                  }
+                  
+                  if (assetPath != null) {
+                    brandLogo = Image.asset(
+                      assetPath,
+                      package: 'finance_app',
+                      width: 32,
+                      height: 20,
+                      fit: BoxFit.contain,
+                    );
+                  }
+                  
                   return ListTile(
                     onTap: () => Navigator.pop(ctx, card),
                     leading: CircleAvatar(
                       backgroundColor: baseColor,
-                      child: _borderedIcon(
+                      radius: 22,
+                      child: brandLogo ?? _borderedIcon(
                         Icons.credit_card,
                         iconColor: foregroundColorFor(baseColor),
                         size: 18,
