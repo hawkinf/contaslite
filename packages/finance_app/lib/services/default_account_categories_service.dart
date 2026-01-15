@@ -107,13 +107,8 @@ class DefaultAccountCategoriesService {
     'Outros': '🎭',
   };
 
-  // Cartões de Crédito - ícones únicos
-  static const Map<String, String> cartoesLogos = {
-    'AMEX': '💳',
-    'ELO': '🟡',
-    'MASTERCARD': '🔴',
-    'VISA': '🔵',
-  };
+  // Cartões de Crédito - sem ícones (os badges corretos são exibidos em buildCardBrandBadge)
+  static const Map<String, String> cartoesLogos = {};
 
   // Veículo - ícones únicos
   static const Map<String, String> veiculoLogos = {

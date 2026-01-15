@@ -6,7 +6,6 @@ import 'package:finance_app/screens/payment_methods_screen.dart';
 import 'package:finance_app/screens/recebimentos_table_screen.dart';
 import 'package:finance_app/screens/settings_screen.dart';
 import 'package:finance_app/database/db_helper.dart';
-import 'package:finance_app/database/sync_helpers.dart' as contas_sync_helpers;
 import 'package:finance_app/services/holiday_service.dart';
 import 'package:finance_app/widgets/backup_dialog.dart';
 import 'package:flutter/foundation.dart';
@@ -498,115 +497,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     );
   }
 
-  Widget _buildOnlineStatusChip({required bool compact}) {
-    return ValueListenableBuilder<contas_sync_helpers.SyncState>(
-      valueListenable: contas_sync.SyncService.instance.syncStateNotifier,
-      builder: (context, state, _) {
-        final bool isDark = Theme.of(context).brightness == Brightness.dark;
-        final bool isOffline = state == contas_sync_helpers.SyncState.offline;
-        final bool hasError = state == contas_sync_helpers.SyncState.error;
-        final bool isSyncing = state == contas_sync_helpers.SyncState.syncing;
 
-        final (String label, IconData icon, Color color) status = () {
-          if (isOffline) {
-            return ('Offline', Icons.wifi_off_rounded, Colors.redAccent);
-          }
-          if (hasError) {
-            return ('Erro', Icons.error_outline, Colors.orange);
-          }
-          if (isSyncing) {
-            return ('Sincronizando', Icons.sync, Colors.lightBlueAccent);
-          }
-          return ('Online', Icons.wifi, Colors.lightGreenAccent);
-        }();
-
-        final background = isDark
-            ? Colors.white.withValues(alpha: 0.08)
-            : Colors.white.withValues(alpha: 0.18);
-
-        return InkWell(
-          borderRadius: BorderRadius.circular(24),
-          onTap: () => _onStatusTap(state),
-          child: Container(
-            padding: compact
-                ? const EdgeInsets.symmetric(horizontal: 10, vertical: 6)
-                : const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: background,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: status.$3, width: 1.5),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(status.$2, size: compact ? 14 : 16, color: status.$3),
-                const SizedBox(width: 6),
-                Text(
-                  status.$1,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: compact ? 11 : 12,
-                    color: status.$3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _onStatusTap(contas_sync_helpers.SyncState state) async {
-    if (state == contas_sync_helpers.SyncState.offline) {
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Conectar agora?'),
-          content: const Text('Você está offline. Deseja tentar ficar online e sincronizar?'),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancelar')),
-            ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Ficar online')),
-          ],
-        ),
-      );
-
-      if (!mounted) return;
-      if (confirm == true) {
-        final becameOnline = await contas_sync.SyncService.instance.forceConnectivityCheck(triggerSync: true);
-        if (!mounted) return;
-        if (!becameOnline) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Ainda offline. Verifique sua conexão e tente novamente.')),
-          );
-        }
-      }
-      return;
-    }
-
-    // Online / idle / syncing / error: oferecer logout
-    final confirmLogout = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Sair da conta?'),
-        content: const Text('Deseja fazer logout agora?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancelar')),
-          ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Logout')),
-        ],
-      ),
-    );
-
-    if (!mounted) return;
-    if (confirmLogout == true) {
-      await contas_auth.AuthService.instance.logout();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Logout realizado.')),
-      );
-    }
-  }
-  
   Future<void> _saveWindowSize() async {
     try {
       final size = await windowManager.getSize();
@@ -4150,7 +4041,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                           ),
                         ),
                       const SizedBox(width: 12),
-                      _buildOnlineStatusChip(compact: isSmallMobile),
                     ],
                   ),
                 );
@@ -4209,7 +4099,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                         ),
                       ),
                     ),
-                    _buildOnlineStatusChip(compact: true),
                   ],
                 ),
               ),

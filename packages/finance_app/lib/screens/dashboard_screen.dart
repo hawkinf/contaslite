@@ -5,7 +5,6 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:finance_app/widgets/mastercard_logo.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import '../database/db_helper.dart';
 import '../models/account.dart';
@@ -185,43 +184,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Theme.of(context).brightness == Brightness.dark ? (darkGrey ?? Colors.grey.shade600) : lightGrey;
   }
 
-  String _formatRangeLabel(DateTime start, DateTime end) {
-    final formatter = DateFormat('dd/MM/yyyy');
-    return '${formatter.format(start)} ate ${formatter.format(end)}';
-  }
-
-  Future<void> _showFilterInfo() async {
-    if (!_datesInitialized) {
-      return;
-    }
-    final rangeLabel = _formatRangeLabel(_startDate, _endDate);
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Filtro'),
-        content: Text('Periodo de $rangeLabel'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Fechar'),
-          ),
-        ],
-      ),
-    );
-  }
-
   List<Widget> _buildAppBarActions({required bool includeFilter}) {
-    final actions = <Widget>[];
-    if (includeFilter) {
-      actions.add(
-        IconButton(
-          icon: _borderedIcon(Icons.filter_alt, size: 20),
-          tooltip: 'Filtro de periodo',
-          onPressed: _showFilterInfo,
-        ),
-      );
-    }
-    return actions;
+    return <Widget>[];
   }
 
   bool _hasRecurrenceStarted(Account rec, DateTime current) {
@@ -1156,151 +1120,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final normalized = (brand ?? '').trim().toUpperCase();
       if (normalized.isEmpty) return null;
 
+      // Usar imagens personalizadas para cada bandeira
+      String? assetPath;
       if (normalized == 'VISA') {
-        return Container(
-          width: 50,
-          height: 24,
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1F71),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          alignment: Alignment.center,
-          child: const Text(
-            'VISA',
-            style: TextStyle(
-              color: Color(0xFFFCC419),
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.0,
-            ),
-          ),
-        );
+        assetPath = 'assets/icons/cc_visa.png';
+      } else if (normalized == 'AMEX' || normalized == 'AMERICAN EXPRESS' || normalized == 'AMERICANEXPRESS') {
+        assetPath = 'assets/icons/cc_amex.png';
+      } else if (normalized == 'MASTER' || normalized == 'MASTERCARD' || normalized == 'MASTER CARD') {
+        assetPath = 'assets/icons/cc_mc.png';
+      } else if (normalized == 'ELO') {
+        assetPath = 'assets/icons/cc_elo.png';
       }
 
-      if (normalized == 'AMEX' || normalized == 'AMERICAN EXPRESS' || normalized == 'AMERICANEXPRESS') {
-        return Container(
-          width: 64,
+      if (assetPath != null) {
+        return Image.asset(
+          assetPath,
+          package: 'finance_app',
+          width: 40,
           height: 28,
-          decoration: BoxDecoration(
-            color: const Color(0xFF016FD0),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          alignment: Alignment.center,
-          child: const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'AMERICAN',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 8.5,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.2,
-                  height: 1.0,
-                ),
-              ),
-              Text(
-                'EXPRESS',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.3,
-                  height: 1.0,
-                ),
-              ),
-            ],
-          ),
+          fit: BoxFit.contain,
         );
       }
 
-      if (normalized == 'MASTER' || normalized == 'MASTERCARD' || normalized == 'MASTER CARD') {
-        return Container(
-          width: 54,
-          height: 24,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: Colors.black.withValues(alpha: 0.1), width: 1),
-          ),
-          alignment: Alignment.center,
-          child: const MastercardLogo(width: 30, height: 18),
-        );
-      }
-
-      if (normalized == 'ELO') {
-        return SizedBox(
-          width: 54,
-          height: 26,
-          child: Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: Stack(
-                    children: [
-                      Transform.rotate(
-                        angle: -0.6,
-                        child: Align(
-                          alignment: Alignment.topLeft,
-                          child: Container(
-                            width: 14,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF7C400),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Transform.rotate(
-                        angle: 0.6,
-                        child: Align(
-                          alignment: Alignment.bottomLeft,
-                          child: Container(
-                            width: 14,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0066B3),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Transform.rotate(
-                        angle: 2.2,
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: Container(
-                            width: 14,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE53935),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 6),
-                const Text(
-                  'elo',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-
+      // Fallback para bandeiras não reconhecidas
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(

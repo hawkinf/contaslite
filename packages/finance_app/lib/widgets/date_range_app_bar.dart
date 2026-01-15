@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:finance_app/services/prefs_service.dart';
-import 'sync_status_indicator.dart';
 
 class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
   final DateTimeRange range;
@@ -63,10 +62,7 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        actions: [
-          const SyncStatusIndicator(),
-          if (actions != null) ...actions!,
-        ],
+        actions: actions ?? [],
       );
     }
 
@@ -118,10 +114,7 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
         ],
       ),
-      actions: [
-        const SyncStatusIndicator(),
-        if (actions != null) ...actions!,
-      ],
+      actions: actions ?? [],
     );
   }
 }

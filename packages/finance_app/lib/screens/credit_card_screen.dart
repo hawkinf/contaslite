@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:finance_app/widgets/mastercard_logo.dart';
+import 'package:finance_app/widgets/elo_logo.dart';
 import 'dart:math' as math;
 import 'package:brasil_fields/brasil_fields.dart';
 import '../database/db_helper.dart';
@@ -384,6 +385,11 @@ class _CreditCardItemWidgetState extends State<CreditCardItemWidget> {
                           const Padding(
                             padding: EdgeInsets.only(right: 6),
                             child: MastercardLogo(width: 28, height: 18),
+                          )
+                        else if (widget.card.cardBrand?.toUpperCase() == 'ELO')
+                          const Padding(
+                            padding: EdgeInsets.only(right: 6),
+                            child: EloLogo(width: 28, height: 18),
                           )
                         else if (widget.card.cardBrand?.toUpperCase() == 'VISA')
                           Padding(
