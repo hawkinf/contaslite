@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../database/db_helper.dart';
 import '../models/account.dart';
+import '../models/account_category.dart';
+import '../models/account_type.dart';
 import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
 import '../utils/color_contrast.dart';
@@ -33,6 +35,8 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
   late int _currentYear;
   List<Account> _expenses = [];
   double _invoiceLaunchedTotal = 0;
+  Map<int, AccountType> _typeById = {};
+  Map<int, AccountCategory> _categoryById = {};
   bool _isLoading = true;
   Map<int, InstallmentDisplay> _installmentById = {};
   final Set<String> _activeFilters = {};
@@ -108,21 +112,35 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
 
   Future<void> _loadExpenses() async {
     setState(() => _isLoading = true);
-    final expenses = await DatabaseHelper.instance.getCardExpensesForMonth(widget.card.id!, _currentMonth, _currentYear);
-    final db = await DatabaseHelper.instance.database;
-    final recurringRes = await db.query('accounts', where: 'cardId = ? AND isRecurrent = 1', whereArgs: [widget.card.id]);
-    List<Account> subscriptions = recurringRes.map((e) => Account.fromMap(e)).toList();
-
-    double invoiceLaunchedTotal = 0;
-    final invoiceRows = await db.query(
-      'accounts',
-      where: 'recurrenceId = ? AND month = ? AND year = ? AND isRecurrent = 0 AND description LIKE ?',
-      whereArgs: [widget.card.id, _currentMonth, _currentYear, 'Fatura:%'],
-    );
-    for (final row in invoiceRows) {
-      final acc = Account.fromMap(row);
-      invoiceLaunchedTotal += acc.value;
+    if (widget.card.id == null) {
+      if (!mounted) return;
+      setState(() {
+        _expenses = [];
+        _invoiceLaunchedTotal = 0;
+        _typeById = {};
+        _categoryById = {};
+        _installmentById = {};
+        _isLoading = false;
+      });
+      return;
     }
+
+    try {
+      final expenses = await DatabaseHelper.instance.getCardExpensesForMonth(widget.card.id!, _currentMonth, _currentYear);
+      final db = await DatabaseHelper.instance.database;
+      final recurringRes = await db.query('accounts', where: 'cardId = ? AND isRecurrent = 1', whereArgs: [widget.card.id]);
+      List<Account> subscriptions = recurringRes.map((e) => Account.fromMap(e)).toList();
+
+      double invoiceLaunchedTotal = 0;
+      final invoiceRows = await db.query(
+        'accounts',
+        where: 'recurrenceId = ? AND month = ? AND year = ? AND isRecurrent = 0 AND description LIKE ?',
+        whereArgs: [widget.card.id, _currentMonth, _currentYear, 'Fatura:%'],
+      );
+      for (final row in invoiceRows) {
+        final acc = Account.fromMap(row);
+        invoiceLaunchedTotal += acc.value;
+      }
 
     List<Account> displayList = [...expenses];
 
@@ -144,7 +162,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
            if (currentView < subStart) show = false;
         }
         if (show) {
-          displayList.add(Account(id: sub.id, typeId: sub.typeId, description: sub.description, value: sub.value, dueDay: widget.card.dueDay, month: _currentMonth, year: _currentYear, isRecurrent: true, payInAdvance: sub.payInAdvance, cardId: sub.cardId, observation: sub.observation, recurrenceId: sub.id, purchaseDate: sub.purchaseDate, creationDate: sub.creationDate));
+          displayList.add(Account(id: sub.id, typeId: sub.typeId, categoryId: sub.categoryId, description: sub.description, value: sub.value, dueDay: widget.card.dueDay, month: _currentMonth, year: _currentYear, isRecurrent: true, payInAdvance: sub.payInAdvance, cardId: sub.cardId, observation: sub.observation, recurrenceId: sub.id, purchaseDate: sub.purchaseDate, creationDate: sub.creationDate));
         }
       }
     }
@@ -176,12 +194,52 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
       }
     });
 
-    setState(() {
-      _expenses = displayList;
-      _invoiceLaunchedTotal = invoiceLaunchedTotal;
-      _installmentById = installmentMap;
-      _isLoading = false;
-    });
+      final neededTypeIds = displayList.map((e) => e.typeId).toSet();
+      final neededCategoryIds = displayList
+          .map((e) => e.categoryId)
+          .whereType<int>()
+          .toSet();
+      final Map<int, AccountType> typeMap = {};
+      final Map<int, AccountCategory> categoryMap = {};
+
+      if (neededTypeIds.isNotEmpty) {
+        final types = await DatabaseHelper.instance.readAllTypes();
+        for (final t in types) {
+          if (t.id != null && neededTypeIds.contains(t.id)) {
+            typeMap[t.id!] = t;
+          }
+        }
+        for (final typeId in neededTypeIds) {
+          final cats = await DatabaseHelper.instance.readAccountCategories(typeId);
+          for (final cat in cats) {
+            if (cat.id != null && (neededCategoryIds.isEmpty || neededCategoryIds.contains(cat.id))) {
+              categoryMap[cat.id!] = cat;
+            }
+          }
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _expenses = displayList;
+        _invoiceLaunchedTotal = invoiceLaunchedTotal;
+        _typeById = typeMap;
+        _categoryById = categoryMap;
+        _installmentById = installmentMap;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('🔧 CardExpensesScreen: erro ao carregar despesas: $e');
+      if (!mounted) return;
+      setState(() {
+        _expenses = [];
+        _invoiceLaunchedTotal = 0;
+        _typeById = {};
+        _categoryById = {};
+        _installmentById = {};
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -510,7 +568,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
         color: theme.cardTheme.color ?? cs.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
+          side: const BorderSide(
             color: Colors.black,
             width: 0.8,
           ),
@@ -601,7 +659,6 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     purchaseDate ??= (expense.year != null && expense.month != null)
         ? DateTime(expense.year!, expense.month!, expense.dueDay)
         : null;
-    final String purchaseLabel = purchaseDate != null ? DateFormat('dd/MM/yyyy').format(purchaseDate) : 'Data indefinida';
 
     IconData typeIcon = isSubscription
       ? Icons.autorenew
@@ -655,65 +712,41 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: badgeBgColor,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: accentColor.withValues(alpha: 0.1),
-                                blurRadius: 1,
-                                offset: const Offset(0, 1),
-                              )
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(typeIcon, color: badgeTextColor, size: 16),
-                              const SizedBox(width: 6),
-                              Text(typeLabel, style: TextStyle(color: badgeTextColor, fontWeight: FontWeight.w700, fontSize: 11)),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(Icons.calendar_today, size: 12, color: Colors.black87),
-                            const SizedBox(width: 4),
-                            Stack(
-                              alignment: Alignment.centerLeft,
-                              children: [
-                                Text(
-                                  purchaseLabel,
-                                  style: TextStyle(
-                                    fontSize: 13.4,
-                                    fontWeight: FontWeight.w600,
-                                    foreground: Paint()
-                                      ..style = PaintingStyle.stroke
-                                      ..strokeWidth = 1
-                                      ..color = Colors.black,
-                                  ),
-                                ),
-                                Text(
-                                  purchaseLabel,
-                                  style: const TextStyle(
-                                    fontSize: 13.4,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: badgeBgColor,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: accentColor.withValues(alpha: 0.1),
+                              blurRadius: 1,
+                              offset: const Offset(0, 1),
+                            )
                           ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(width: 10),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(typeIcon, color: badgeTextColor, size: 16),
+                            const SizedBox(width: 6),
+                            Text(typeLabel, style: TextStyle(color: badgeTextColor, fontWeight: FontWeight.w700, fontSize: 11)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      if (purchaseDate != null)
+                        Text(
+                          DateFormat('dd/MM/yyyy', 'pt_BR').format(purchaseDate),
+                          style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -772,6 +805,36 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                               ),
                             ),
                           ),
+                        // Conta Pai e Conta Filha
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (_typeById[expense.typeId]?.logo?.isNotEmpty == true)
+                                Text(_typeById[expense.typeId]!.logo!, style: const TextStyle(fontSize: 14))
+                              else
+                                const Icon(Icons.folder, size: 12, color: Colors.black87),
+                              const SizedBox(width: 4),
+                              Text(
+                                _typeById[expense.typeId]?.name ?? 'Conta Pai',
+                                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.black87),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(width: 8),
+                              if (expense.categoryId != null && _categoryById[expense.categoryId!]?.logo?.isNotEmpty == true)
+                                Text(_categoryById[expense.categoryId!]!.logo!, style: const TextStyle(fontSize: 14))
+                              else
+                                const Icon(Icons.label, size: 12, color: Colors.black87),
+                              const SizedBox(width: 4),
+                              Text(
+                                _categoryById[expense.categoryId ?? -1]?.categoria ?? 'Conta Filha',
+                                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.black87),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),

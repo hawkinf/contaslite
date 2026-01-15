@@ -4,11 +4,15 @@ import 'package:brasil_fields/brasil_fields.dart';
 import 'package:intl/intl.dart';
 import '../database/db_helper.dart';
 import '../models/account.dart';
+import '../models/account_category.dart';
+import '../models/account_type.dart';
 import '../utils/app_colors.dart';
 import '../utils/color_contrast.dart';
 import '../widgets/app_input_decoration.dart';
+import '../screens/account_types_screen.dart';
 import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
+import '../services/default_account_categories_service.dart';
 import '../widgets/dialog_close_button.dart';
 import '../utils/installment_utils.dart';
 
@@ -54,6 +58,11 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
   final _establishmentController = TextEditingController();
   final _observationController = TextEditingController();
   final List<Color> _colors = AppColors.essentialPalette;
+
+  List<AccountType> _typesList = [];
+  AccountType? _selectedType;
+  List<AccountCategory> _categories = [];
+  AccountCategory? _selectedCategory;
 
   bool _isSaving = false;
   bool _isLoading = true;
@@ -136,7 +145,122 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
       });
     }
 
+    await _loadTypesAndCategories(editing: editing);
     _updatePreview();
+  }
+
+  AccountType? _getValidatedSelectedType() {
+    if (_selectedType == null) return null;
+    if (_typesList.any((t) => t.id == _selectedType!.id)) return _selectedType;
+    return null;
+  }
+
+  AccountCategory? _getValidatedSelectedCategory() {
+    if (_selectedCategory == null) return null;
+    if (_categories.any((c) => c.id == _selectedCategory!.id)) return _selectedCategory;
+    return null;
+  }
+
+  Future<void> _loadTypesAndCategories({Account? editing}) async {
+    final types = await DatabaseHelper.instance.readAllTypes();
+    String normalizeName(String value) {
+      return value
+          .trim()
+          .toUpperCase()
+          .replaceAll('Á', 'A')
+          .replaceAll('À', 'A')
+          .replaceAll('Â', 'A')
+          .replaceAll('Ã', 'A')
+          .replaceAll('É', 'E')
+          .replaceAll('Ê', 'E')
+          .replaceAll('Í', 'I')
+          .replaceAll('Ó', 'O')
+          .replaceAll('Ô', 'O')
+          .replaceAll('Õ', 'O')
+          .replaceAll('Ú', 'U')
+          .replaceAll('Ç', 'C');
+    }
+    final recebimentosKey = normalizeName(DefaultAccountCategoriesService.recebimentosName);
+    const cartoesKey = 'CARTOES DE CREDITO';
+    final filtered = types
+        .where((t) {
+          final key = normalizeName(t.name);
+          if (key == recebimentosKey) return false;
+          if (key == cartoesKey) return false;
+          return true;
+        })
+        .toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+
+    AccountType? selected = _selectedType;
+    if (editing != null && filtered.isNotEmpty) {
+      selected = filtered.firstWhere(
+        (t) => t.id == editing.typeId,
+        orElse: () => filtered.first,
+      );
+    }
+    if (selected != null && !filtered.any((t) => t.id == selected!.id)) {
+      selected = filtered.isNotEmpty ? filtered.first : null;
+    }
+    selected ??= filtered.isNotEmpty ? filtered.first : null;
+
+    List<AccountCategory> categories = [];
+    AccountCategory? selectedCategory;
+    if (selected?.id != null) {
+      categories = await DatabaseHelper.instance.readAccountCategories(selected!.id!);
+      categories.sort((a, b) => a.categoria.compareTo(b.categoria));
+
+      if (editing?.categoryId != null) {
+        for (final cat in categories) {
+          if (cat.id == editing!.categoryId) {
+            selectedCategory = cat;
+            break;
+          }
+        }
+      }
+
+      if (selectedCategory == null && _selectedCategory != null) {
+        if (categories.any((c) => c.id == _selectedCategory!.id)) {
+          selectedCategory = _selectedCategory;
+        }
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _typesList = filtered;
+      _selectedType = selected;
+      _categories = categories;
+      _selectedCategory = selectedCategory;
+    });
+  }
+
+  Future<void> _reloadCategoriesForSelectedType() async {
+    if (_selectedType?.id == null) {
+      if (!mounted) return;
+      setState(() {
+        _categories = [];
+        _selectedCategory = null;
+      });
+      return;
+    }
+
+    final categories = await DatabaseHelper.instance.readAccountCategories(_selectedType!.id!);
+    categories.sort((a, b) => a.categoria.compareTo(b.categoria));
+    if (!mounted) return;
+    setState(() {
+      _categories = categories;
+      _selectedCategory = null;
+    });
+  }
+
+  Future<void> _openCategoriesManager() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AccountTypesScreen()),
+    );
+    if (!mounted) return;
+    await _loadTypesAndCategories(editing: widget.expenseToEdit);
   }
 
   DateTime _parseDateString(String dateStr) {
@@ -438,6 +562,13 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
       return;
     }
 
+    if (_selectedType?.id == null || _selectedCategory?.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecione a tabela pai e a categoria filha.'), backgroundColor: AppColors.error),
+      );
+      return;
+    }
+
     setState(() => _isSaving = true);
 
     try {
@@ -465,6 +596,8 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
             purchaseDate: purchaseDate,
             observation: observation,
             establishment: establishment,
+            typeId: _selectedType!.id!,
+            categoryId: _selectedCategory!.id!,
           );
         } else if (isInstallmentSeries) {
           final scope = await _askScope(title: 'Atualizar parcelamento');
@@ -480,6 +613,8 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
             invoiceMonthBase: invoiceMonthBase,
             observation: observation,
             establishment: establishment,
+            typeId: _selectedType!.id!,
+            categoryId: _selectedCategory!.id!,
           );
         } else {
           await _updateSingleExpense(
@@ -489,6 +624,8 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
             purchaseDate: purchaseDate,
             observation: observation,
             establishment: establishment,
+            typeId: _selectedType!.id!,
+            categoryId: _selectedCategory!.id!,
           );
         }
       } else {
@@ -506,7 +643,8 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
           }
 
           final expense = Account(
-            typeId: widget.card.typeId,
+            typeId: _selectedType!.id!,
+            categoryId: _selectedCategory!.id!,
             description: finalDesc,
             value: installmentValue,
             dueDay: dueDate.day,
@@ -568,6 +706,8 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
     required DateTime purchaseDate,
     String? observation,
     String? establishment,
+    required int typeId,
+    required int categoryId,
   }) async {
     final (invoiceMonthBase, invoiceYearBase) = _calculateInvoiceMonth(purchaseDate);
     final baseDate = DateTime(invoiceYearBase, invoiceMonthBase + _invoiceOffset, 1);
@@ -575,6 +715,8 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
     final dueDate = _calculateDueDate(targetInvoice.month, targetInvoice.year);
 
     final updated = original.copyWith(
+      typeId: typeId,
+      categoryId: categoryId,
       description: description,
       value: value,
       dueDay: dueDate.day,
@@ -604,6 +746,8 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
     required int invoiceMonthBase,
     String? observation,
     String? establishment,
+    required int typeId,
+    required int categoryId,
   }) async {
     final perInstallmentValue = installments > 1 ? value / installments : value;
     final baseInvoiceDate = DateTime(invoiceYearBase, invoiceMonthBase + _invoiceOffset, 1);
@@ -640,6 +784,8 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
       }
 
       final updated = acc.copyWith(
+        typeId: typeId,
+        categoryId: categoryId,
         description: finalDesc,
         value: perInstallmentValue,
         dueDay: dueDate.day,
@@ -666,6 +812,8 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
     required DateTime purchaseDate,
     String? observation,
     String? establishment,
+    required int typeId,
+    required int categoryId,
   }) async {
     final parentId = original.recurrenceId ?? original.id;
     if (parentId == null) return;
@@ -689,6 +837,8 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
       final safeDay = _validDayForMonth(newDay, acc.month ?? purchaseDate.month, acc.year ?? purchaseDate.year);
 
       final updated = acc.copyWith(
+        typeId: typeId,
+        categoryId: categoryId,
         description: description,
         value: value,
         dueDay: safeDay,
@@ -787,6 +937,134 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                                 // Linha de resumo similar ao lançamento de conta
                                 _buildSummaryHeader(),
                                 const SizedBox(height: 16),
+
+                        if (_typesList.isEmpty)
+                          InkWell(
+                            onTap: _openCategoriesManager,
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.warningBackground,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: AppColors.warning),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.warning, color: AppColors.warning),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text('Cadastre a tabela pai e categorias para classificar a despesa.'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        else ...[
+                          DropdownButtonFormField<AccountType>(
+                            key: ValueKey(_selectedType?.id),
+                            initialValue: _getValidatedSelectedType(),
+                            decoration: buildOutlinedInputDecoration(
+                              label: 'Tabela Pai (Contas a Pagar)',
+                              icon: Icons.account_balance_wallet,
+                            ),
+                            items: _typesList
+                                .map((type) => DropdownMenuItem(
+                                      value: type,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(type.logo ?? '📁', style: const TextStyle(fontSize: 18)),
+                                          const SizedBox(width: 8),
+                                          Text(type.name),
+                                        ],
+                                      ),
+                                    ))
+                                .toList(),
+                            selectedItemBuilder: (context) {
+                              return _typesList
+                                  .map((type) => Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text('${type.logo ?? '📁'} ${type.name}'),
+                                      ))
+                                  .toList();
+                            },
+                            onChanged: (val) {
+                              setState(() {
+                                _selectedType = val;
+                                _selectedCategory = null;
+                                _categories = [];
+                              });
+                              _reloadCategoriesForSelectedType();
+                            },
+                            validator: (val) => val == null ? 'Selecione a tabela pai' : null,
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Gerenciar Categorias',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          FilledButton.icon(
+                            icon: const Icon(Icons.category),
+                            label: const Text('Acessar Categorias'),
+                            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                            onPressed: _openCategoriesManager,
+                          ),
+                          const SizedBox(height: 16),
+                          if (_categories.isNotEmpty)
+                            DropdownButtonFormField<AccountCategory>(
+                              key: ValueKey(_selectedCategory?.id),
+                              initialValue: _getValidatedSelectedCategory(),
+                              decoration: buildOutlinedInputDecoration(
+                                label: 'Categoria (Filha)',
+                                icon: Icons.label,
+                              ),
+                              items: _categories
+                                  .map((cat) => DropdownMenuItem(
+                                        value: cat,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(cat.logo ?? '📁', style: const TextStyle(fontSize: 18)),
+                                            const SizedBox(width: 8),
+                                            Text(cat.categoria),
+                                          ],
+                                        ),
+                                      ))
+                                  .toList(),
+                              selectedItemBuilder: (context) {
+                                return _categories
+                                    .map((cat) => Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text('${cat.logo ?? '📁'} ${cat.categoria}'),
+                                        ))
+                                    .toList();
+                              },
+                              onChanged: (val) => setState(() => _selectedCategory = val),
+                              validator: (val) => val == null ? 'Selecione a categoria filha' : null,
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.amber.shade300),
+                              ),
+                              child: const Text('Nenhuma categoria encontrada para o tipo selecionado.'),
+                            ),
+                          const SizedBox(height: 16),
+                        ],
 
                           // Paleta de cores
                           _buildColorPalette(),

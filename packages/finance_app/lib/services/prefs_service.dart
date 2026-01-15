@@ -179,7 +179,11 @@ static Future<void> saveDateRange(DateTime start, DateTime end) async {
   static Future<DatabaseConfig> loadDatabaseConfig() async {
     final prefs = await _safePrefs();
     final configJson = prefs.getString('db_config');
-    debugPrint('🔧 [PrefsService] Carregando config, raw: $configJson');
+    String redactConfig(String? raw) {
+      if (raw == null) return 'null';
+      return raw.replaceAll(RegExp(r'password:[^|]*'), 'password:***');
+    }
+    debugPrint('🔧 [PrefsService] Carregando config, raw: ${redactConfig(configJson)}');
 
     if (configJson == null) {
       debugPrint('🔧 [PrefsService] Nenhuma config encontrada, retornando padrão');
@@ -198,7 +202,10 @@ static Future<void> saveDateRange(DateTime start, DateTime end) async {
       // Decodificar formato key:value|key:value
       final Map<String, dynamic> configMap = {};
       final pairs = Uri.decodeComponent(configJson).split('|');
-      debugPrint('🔧 [PrefsService] Pares encontrados: $pairs');
+        final redactedPairs = pairs
+          .map((pair) => pair.startsWith('password:') ? 'password:***' : pair)
+          .toList();
+        debugPrint('🔧 [PrefsService] Pares encontrados: $redactedPairs');
       
       for (final pair in pairs) {
         // Usar indexOf para encontrar o primeiro ':' e dividir ali
@@ -220,7 +227,11 @@ static Future<void> saveDateRange(DateTime start, DateTime end) async {
         }
       }
 
-      debugPrint('🔧 [PrefsService] ConfigMap decodificado: $configMap');
+      final redactedMap = Map<String, dynamic>.from(configMap);
+      if (redactedMap.containsKey('password')) {
+        redactedMap['password'] = '***';
+      }
+      debugPrint('🔧 [PrefsService] ConfigMap decodificado: $redactedMap');
       final config = DatabaseConfig.fromJson(configMap);
       debugPrint('🔧 [PrefsService] Config final: apiUrl=${config.apiUrl}');
       return config;
