@@ -32,6 +32,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
   late int _currentMonth;
   late int _currentYear;
   List<Account> _expenses = [];
+  List<Account> _launchedExpenses = [];
   bool _isLoading = true;
   Map<int, InstallmentDisplay> _installmentById = {};
   final Set<String> _activeFilters = {};
@@ -166,6 +167,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
 
     setState(() {
       _expenses = displayList;
+      _launchedExpenses = expenses;
       _installmentById = installmentMap;
       _isLoading = false;
     });
@@ -312,53 +314,99 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
         ? Color(widget.card.cardColor!)
         : Theme.of(context).cardColor;
 
+    double totalPrevisto = 0;
+    for (final e in _expenses) {
+      totalPrevisto += e.value;
+    }
+    double totalLancado = 0;
+    for (final e in _launchedExpenses) {
+      totalLancado += e.value;
+    }
+
+    Widget buildTotalBox(String label, double value, Color baseColor) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: baseColor.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.black12, width: 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.black54),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              UtilBrasilFields.obterReal(value),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.black),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(top: 0, bottom: 0, left: 12, right: 12),
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: headerBg,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.black12, width: 1),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                widget.card.dueDay.toString().padLeft(2, '0'),
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontSize: (Theme.of(context).textTheme.titleMedium?.fontSize ?? 16) * 1.6,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.black,
-                    ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: headerBg,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.black12, width: 1),
               ),
-              const SizedBox(width: 8),
-              _buildCardBrandIcon(brand),
-              const SizedBox(width: 8),
-              Column(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    brand.isNotEmpty ? brand : cardName,
+                    widget.card.dueDay.toString().padLeft(2, '0'),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
+                          fontSize: (Theme.of(context).textTheme.titleMedium?.fontSize ?? 16) * 1.6,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black,
                         ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                  Text(
-                    cardDescription,
-                    style: Theme.of(context).textTheme.bodySmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  const SizedBox(width: 8),
+                  _buildCardBrandIcon(brand),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          brand.isNotEmpty ? brand : cardName,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          cardDescription,
+                          style: Theme.of(context).textTheme.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
+          const SizedBox(width: 8),
+          Expanded(child: buildTotalBox('TOTAL PREVISTO', totalPrevisto, headerBg)),
+          const SizedBox(width: 8),
+          Expanded(child: buildTotalBox('TOTAL LANÇADO', totalLancado, headerBg)),
+        ],
       ),
     );
   }
@@ -417,12 +465,9 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
         totalVista += e.value;
       }
     }
-    double totalAll = totalSubs + totalVista + totalParcel;
-
     const assinaturaColor = Colors.purple;
     final vistaColor = Colors.green.shade700;
     final parceladoColor = Colors.orange.shade700;
-    const totalColor = Colors.blue;
 
     Widget buildSummaryCard(String label, double value, Color color, IconData icon, {String? filterKey}) {
       final bool isActive = filterKey != null && _activeFilters.contains(filterKey);
@@ -507,33 +552,6 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
               const SizedBox(width: 8),
               buildSummaryCard('Parcelado', totalParcel, parceladoColor, Icons.view_agenda, filterKey: 'parcelado'),
             ],
-          ),
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [totalColor.withValues(alpha: 0.12), totalColor.withValues(alpha: 0.05)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: totalColor.withValues(alpha: 0.3), width: 1),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'TOTAL FATURA',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: totalColor),
-                ),
-                Text(
-                  UtilBrasilFields.obterReal(totalAll),
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: totalColor),
-                ),
-              ],
-            ),
           ),
         ],
       ),
