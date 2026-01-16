@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import '../database/db_helper.dart';
@@ -412,208 +411,109 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     return ValueListenableBuilder<DateTimeRange>(
       valueListenable: PrefsService.dateRangeNotifier,
       builder: (context, range, _) {
-        return Scaffold(
-      appBar: AppBar(
-          title: const Text('Formas de Pagamento/Recebimento'),
-        ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Row(
-              children: [
-                const Spacer(),
-                FilledButton.icon(
-                  onPressed: () => _showPaymentMethodDialog(),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Novo Item'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.blue.shade800,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                    shape: const StadiumBorder(),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: _isPopulating ? null : _populateDefaults,
-                  icon: const Icon(Icons.auto_awesome),
-                  label: const Text('Popular'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.amber.shade700,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                    shape: const StadiumBorder(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: FutureBuilder<List<PaymentMethod>>(
-              future: _futurePaymentMethods,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+        return SafeArea(
+          child: FutureBuilder<List<PaymentMethod>>(
+            future: _futurePaymentMethods,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text('Erro: ${snapshot.error}'),
-                  );
-                }
+              if (snapshot.hasError) {
+                return Center(child: Text('Erro: ${snapshot.error}'));
+              }
 
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(
-                    child: Text('Nenhuma forma de pagamento/recebimento cadastrada'),
-                  );
-                }
+              final methods = snapshot.data ?? [];
 
-                final methods = snapshot.data!;
-
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    const horizontalPadding = 16.0;
-                    const verticalPadding = 16.0;
-                    const spacing = 12.0;
-                    const targetCardWidth = 320.0;
-
-                    final usableWidth = constraints.maxWidth - (horizontalPadding * 2);
-                    final usableHeight = constraints.maxHeight - (verticalPadding * 2);
-                    final crossAxisCount =
-                        math.max(1, (usableWidth / targetCardWidth).floor());
-                    final rows = (methods.length + crossAxisCount - 1) ~/ crossAxisCount;
-                    final totalSpacing = spacing * math.max(0, rows - 1);
-                    final availableForCards =
-                        math.max(0.0, usableHeight - totalSpacing);
-                    final rawCardHeight =
-                        rows > 0 ? availableForCards / rows : usableHeight;
-                    final cardHeight = rawCardHeight > 0 ? rawCardHeight : 1.0;
-
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: horizontalPadding,
-                        vertical: verticalPadding,
+              return ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // Botões de ação
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.end,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: () => _showPaymentMethodDialog(),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Novo Item'),
                       ),
-                      child: GridView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: methods.length,
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: crossAxisCount,
-                          crossAxisSpacing: spacing,
-                          mainAxisSpacing: spacing,
-                          mainAxisExtent: cardHeight,
-                        ),
-                        itemBuilder: (context, index) {
-                          final method = methods[index];
-                          final statusColor =
-                              method.isActive ? Colors.green : Colors.red;
-                          final displayIcon = method.iconCode != _fallbackIconCode
-                              ? method.icon
-                              : _inferIcon(method.name, method.type);
-                          final hasEmojiLogo =
-                              method.logo != null && method.logo!.isNotEmpty;
-
-                          return Card(
-                            elevation: 1,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 22,
-                                    backgroundColor: Colors.grey.shade100,
-                                    child: hasEmojiLogo
-                                        ? Text(
-                                            method.logo!,
-                                            style: const TextStyle(fontSize: 24),
-                                          )
-                                        : Icon(displayIcon,
-                                            color: Colors.grey.shade800),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          method.name,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: statusColor.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      method.isActive ? 'Ativo' : 'Inativo',
-                                      style: TextStyle(
-                                        color: statusColor,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Tooltip(
-                                        message: 'Editar',
-                                        child: IconButton(
-                                          icon: const Icon(
-                                            Icons.edit,
-                                            color: Colors.blue,
-                                          ),
-                                          onPressed: () => _showPaymentMethodDialog(
-                                              method: method),
-                                          iconSize: 24,
-                                        ),
-                                      ),
-                                      Tooltip(
-                                        message: 'Deletar',
-                                        child: IconButton(
-                                          icon: const Icon(
-                                            Icons.delete,
-                                            color: Colors.red,
-                                          ),
-                                          onPressed: () =>
-                                              _deletePaymentMethod(method),
-                                          iconSize: 24,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                      FilledButton.icon(
+                        onPressed: _isPopulating ? null : _populateDefaults,
+                        icon: const Icon(Icons.auto_awesome),
+                        label: const Text('Popular'),
+                        style: FilledButton.styleFrom(backgroundColor: Colors.amber.shade700),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Tabela
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300, width: 1),
+                      borderRadius: BorderRadius.circular(8),
+                      color: Theme.of(context).cardColor,
+                    ),
+                    child: Column(
+                      children: [
+                        // Cabeçalho
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          child: const Row(
+                            children: [
+                              Expanded(
+                                child: Text('Descrição', style: TextStyle(fontWeight: FontWeight.bold)),
                               ),
+                              SizedBox(width: 8),
+                              Text('Ações', style: TextStyle(fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                        const Divider(height: 1),
+                        // Lista vazia
+                        if (methods.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.all(32),
+                            child: Center(
+                              child: Text('Nenhuma forma de pagamento/recebimento cadastrada'),
                             ),
-                          );
-                        },
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
+                          ),
+                        // Itens da lista
+                        ...methods.map((method) => Container(
+                          decoration: const BoxDecoration(
+                            border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1)),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          height: 56,
+                          child: Row(
+                            children: [
+                              if (method.logo != null && method.logo!.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 14.0),
+                                  child: Text(method.logo!, style: const TextStyle(fontSize: 26)),
+                                ),
+                              Expanded(
+                                child: Text(method.name, style: const TextStyle(fontSize: 16)),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.edit, color: Colors.blue),
+                                onPressed: () => _showPaymentMethodDialog(method: method),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () => _deletePaymentMethod(method),
+                              ),
+                            ],
+                          ),
+                        )),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
-        ],
-      ),
         );
       },
     );

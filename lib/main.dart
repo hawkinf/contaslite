@@ -4797,9 +4797,36 @@ class _TablesScreenState extends State<TablesScreen> {
       ),
     ];
 
+    Widget appBar = Container(
+      width: double.infinity,
+      color: Theme.of(context).colorScheme.primary,
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+      child: const Text(
+        'Tabelas',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+
     if (_currentScreen != null) {
+      String? tableTitle;
+      if (_currentScreen is AccountTypesScreen) {
+        tableTitle = 'Contas a Pagar';
+      } else if (_currentScreen is RecebimentosTableScreen) {
+        tableTitle = 'Contas a Receber';
+      } else if (_currentScreen is BankAccountsScreen) {
+        tableTitle = 'Contas Bancárias';
+      } else if (_currentScreen is PaymentMethodsScreen) {
+        tableTitle = 'Formas de Pagamento/Recebimento';
+      }
+
       return Column(
         children: [
+          appBar,
           Padding(
             padding: const EdgeInsets.only(left: 8, top: 8, right: 8, bottom: 0),
             child: Row(
@@ -4809,8 +4836,10 @@ class _TablesScreenState extends State<TablesScreen> {
                   tooltip: 'Voltar',
                   onPressed: () => setState(() => _currentScreen = null),
                 ),
-                const SizedBox(width: 8),
-                const Text('Tabelas', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                if (tableTitle != null) ...[
+                  const SizedBox(width: 4),
+                  Text(tableTitle, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                ],
               ],
             ),
           ),
@@ -4820,31 +4849,38 @@ class _TablesScreenState extends State<TablesScreen> {
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: items.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: Theme.of(context)
-                .colorScheme
-                .primary
-                .withValues(alpha: 0.12),
-            child: Icon(
-              item.icon,
-              color: Theme.of(context).colorScheme.primary,
-            ),
+    return Column(
+      children: [
+        appBar,
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: items.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final item = items[index];
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.12),
+                  child: Icon(
+                    item.icon,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                title: Text(item.title),
+                subtitle: Text(item.subtitle),
+                trailing: const Icon(Icons.chevron_right),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                tileColor: Theme.of(context).cardColor,
+                onTap: () => setState(() => _currentScreen = item.builder()),
+              );
+            },
           ),
-          title: Text(item.title),
-          subtitle: Text(item.subtitle),
-          trailing: const Icon(Icons.chevron_right),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          tileColor: Theme.of(context).cardColor,
-          onTap: () => setState(() => _currentScreen = item.builder()),
-        );
-      },
+        ),
+      ],
     );
   }
 }

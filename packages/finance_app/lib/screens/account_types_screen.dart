@@ -7,7 +7,6 @@ import '../widgets/icon_picker_dialog.dart';
 import '../services/prefs_service.dart';
 import '../services/credit_card_brand_service.dart';
 import '../services/default_account_categories_service.dart';
-import 'recebimentos_table_screen.dart';
 
 /// Opções de tipo de pessoa para seleção
 const List<String> tipoPessoaOptions = [
@@ -144,17 +143,12 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
     return ValueListenableBuilder<DateTimeRange>(
       valueListenable: PrefsService.dateRangeNotifier,
       builder: (context, range, _) {
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Contas a Pagar'),
-          ),
-          body: SafeArea(
-            child: isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : types.isEmpty
-                    ? _buildEmptyState()
-                    : _buildTable(),
-          ),
+        return SafeArea(
+          child: isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : types.isEmpty
+                  ? _buildEmptyState()
+                  : _buildTable(),
         );
       },
     );
@@ -196,58 +190,59 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          clipBehavior: Clip.antiAlias,
-          child: DataTable(
-            columnSpacing: 20,
-            columns: const [
-              DataColumn(label: Text('Descrição', style: TextStyle(fontWeight: FontWeight.bold))),
-              DataColumn(label: Text('Ações', style: TextStyle(fontWeight: FontWeight.bold)), numeric: true),
-            ],
-            rows: types.map((type) {
-              return DataRow(cells: [
-              DataCell(
-                Row(
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300, width: 1),
+            borderRadius: BorderRadius.circular(8),
+            color: Theme.of(context).cardColor,
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: const Row(
+                  children: [
+                    Expanded(
+                      child: Text('Descrição', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                    SizedBox(width: 8),
+                    Text('Ações', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              ...types.map((type) => Container(
+                decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1)),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                height: 56,
+                child: Row(
                   children: [
                     if (type.logo != null && type.logo!.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(right: 8.0),
-                        child: Text(type.logo!, style: const TextStyle(fontSize: 18)),
+                        padding: const EdgeInsets.only(right: 14.0),
+                        child: Text(type.logo!, style: const TextStyle(fontSize: 26)),
                       ),
                     Expanded(
-                      child: Text(type.name, style: const TextStyle(fontWeight: FontWeight.w500)),
+                      child: Text(type.name, style: const TextStyle(fontSize: 16)),
                     ),
-                  ],
-                ),
-                onTap: () => _showTypeDialog(typeToEdit: type),
-              ),
-              DataCell(
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(icon: const Icon(Icons.edit, color: Colors.blue), tooltip: 'Editar', onPressed: () => _showTypeDialog(typeToEdit: type)),
                     IconButton(
-                      icon: const Icon(Icons.category, color: Colors.purple),
-                      tooltip: 'Categorias',
-                      onPressed: () {
-                        if (type.name.toUpperCase() == 'RECEBIMENTOS') {
-                          showDialog(
-                            context: context,
-                            builder: (ctx) => const RecebimentosTableScreen(asDialog: true),
-                          );
-                          return;
-                        }
-                        _showCategoriesDialog(type);
-                      },
+                      icon: const Icon(Icons.edit, color: Colors.blue),
+                      onPressed: () => _showTypeDialog(typeToEdit: type),
                     ),
-                      IconButton(icon: const Icon(Icons.delete, color: Colors.red), tooltip: 'Excluir', onPressed: () => _confirmDelete(type)),
+                    IconButton(
+                      icon: const Icon(Icons.list, color: Colors.green),
+                      onPressed: () => _showCategoriesDialog(type),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _confirmDelete(type),
+                    ),
                   ],
                 ),
-              ),
-            ]);
-            }).toList(),
+              )),
+            ],
           ),
         ),
       ],
@@ -258,13 +253,13 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
     final isEditing = typeToEdit != null;
     final controller = TextEditingController(text: isEditing ? typeToEdit.name : '');
     final logoController = TextEditingController(text: isEditing ? (typeToEdit.logo ?? '') : '');
-    
+
     await showDialog(
       context: context,
-      builder: (context) => Dialog(
+      builder: (ctx) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Container(
-          width: 360,
+          width: 400,
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -275,7 +270,7 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 24),
-              
+
               TextField(
                 controller: controller,
                 textCapitalization: TextCapitalization.sentences,
@@ -286,9 +281,9 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
                   hintText: 'Ex: Energia, Internet',
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Campo de Logo com botão para abrir picker
               Row(
                 children: [
@@ -306,12 +301,11 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
                   FilledButton.icon(
                     onPressed: () async {
                       final selectedIcon = await showIconPickerDialog(
-                        context,
+                        ctx,
                         initialIcon: logoController.text.isNotEmpty ? logoController.text : null,
                       );
                       if (selectedIcon != null) {
                         logoController.text = selectedIcon;
-                        setState(() {});
                       }
                     },
                     icon: const Icon(Icons.palette),
@@ -319,15 +313,15 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Botões
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.pop(ctx),
                     child: const Text('Cancelar'),
                   ),
                   const SizedBox(width: 12),
@@ -339,8 +333,8 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
                         if (!isEditing || (isEditing && name.toUpperCase() != typeToEdit.name.toUpperCase())) {
                            bool exists = await DatabaseHelper.instance.checkAccountTypeExists(name);
                            if (exists) {
-                             if (context.mounted) {
-                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erro: Este nome já existe!'), backgroundColor: Colors.red));
+                             if (ctx.mounted) {
+                               ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Erro: Este nome já existe!'), backgroundColor: Colors.red));
                              }
                              return;
                            }
@@ -352,8 +346,8 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
                         } else {
                           await DatabaseHelper.instance.createType(AccountType(name: name, logo: logo.isEmpty ? null : logo));
                         }
-                        
-                        if (context.mounted) Navigator.pop(context);
+
+                        if (ctx.mounted) Navigator.pop(ctx);
                         refreshData();
                       }
                     },

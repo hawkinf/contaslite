@@ -182,13 +182,8 @@ class _RecebimentosTableScreenState extends State<RecebimentosTableScreen> {
     return ValueListenableBuilder<DateTimeRange>(
       valueListenable: PrefsService.dateRangeNotifier,
       builder: (context, range, _) {
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Contas a Receber'),
-          ),
-          body: SafeArea(
-            child: _buildContent(),
-          ),
+        return SafeArea(
+          child: _buildContent(),
         );
       },
     );
