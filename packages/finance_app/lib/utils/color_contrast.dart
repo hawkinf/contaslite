@@ -128,7 +128,12 @@ class ColorContrast {
       }
     }
 
-    return bestColor;
+    if (bestRatio >= minContrast) {
+      return bestColor;
+    }
+
+    // Nenhuma cor da paleta atendeu ao contraste mínimo, ajustar a melhor cor.
+    return adjustForContrast(bestColor, background, targetRatio: minContrast);
   }
 
   /// Verifica se duas cores são iguais ou muito similares
@@ -260,8 +265,22 @@ class ColorContrast {
 ///
 /// Esta é a função principal de conveniência para uso em todo o app.
 /// Usa um limiar simples de luminância para contraste consistente.
-Color foregroundColorFor(Color background, {Color dark = Colors.black, Color light = Colors.white}) {
-  return ColorContrast.bestTextColor(background, dark: dark, light: light);
+Color foregroundColorFor(
+  Color background, {
+  Color dark = Colors.black,
+  Color light = Colors.white,
+  double minRatio = 4.5,
+}) {
+  final ratioDark = ColorContrast.contrastRatio(dark, background);
+  final ratioLight = ColorContrast.contrastRatio(light, background);
+  Color chosen = ratioDark >= ratioLight ? dark : light;
+
+  if (ColorContrast.hasMinimumContrast(chosen, background, minRatio: minRatio)) {
+    return chosen;
+  }
+
+  // Ajusta a cor escolhida para atingir o contraste mínimo.
+  return ColorContrast.adjustForContrast(chosen, background, targetRatio: minRatio);
 }
 
 /// Extensão para facilitar o uso de contraste em cores

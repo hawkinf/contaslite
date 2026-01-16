@@ -1356,7 +1356,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final Color receberBorderColor = AppColors.primary;
     final Color pagarColor = Colors.red.shade300;
     final Color pagarBorderColor = AppColors.error;
-    final Color cardBorderColor = const Color(0xFF8B4513);
+    // Border color não é mais usado; manter const evita warning de variáveis não utilizadas.
+    // ignore: unused_local_variable
+    const Color cardBorderColor = Color(0xFF8B4513);
 
     Color dayNumberColor;
 
@@ -1367,10 +1369,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         cardColor = userColor;
         containerBg = Colors.transparent;
         textColor = foregroundColorFor(userColor);
-        subTextColor = textColor.withValues(alpha: 0.8);
+        subTextColor = textColor;
         // ...existing code...
         typeColor = userColor;
-        dayNumberColor = Colors.black;
+        dayNumberColor = textColor;
     } else {
       final int? accountColorValue = account.cardColor;
       final bool usesCustomColor = accountColorValue != null;
@@ -1381,12 +1383,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       // ...existing code...
       if (customColor != null) {
         textColor = foregroundColorFor(customColor);
-        subTextColor = textColor.withValues(alpha: 0.8);
+        subTextColor = textColor;
       } else {
-        textColor = isAlertDay
-            ? Colors.black87
-            : (Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black);
-        subTextColor = _adaptiveGreyTextColor(context, Colors.grey.shade600);
+        textColor = foregroundColorFor(cardColor);
+        subTextColor = textColor;
         if (isAlertDay) {
           textColor = Colors.white;
           subTextColor = Colors.white70;
@@ -1444,21 +1444,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ? cleanedDescription
             : account.description)
         .trim();
-    final labelSource = sanitizedCategoryChild?.isNotEmpty == true
+    final childLabel = sanitizedCategoryChild?.isNotEmpty == true
         ? sanitizedCategoryChild!
         : fallbackDescription;
-    final labelSegments = labelSource
-        .split(RegExp(r'\s*-\s*'))
-        .map((segment) => segment.trim())
-        .where((segment) => segment.isNotEmpty)
-        .toList();
-    final inferredChildLabel =
-        labelSegments.isNotEmpty ? labelSegments.last : labelSource;
-    final childLabel = (account.cardBrand?.trim().isNotEmpty == true)
+    final secondaryDescription = (account.cardBrand?.trim().isNotEmpty == true)
         ? account.cardBrand!.trim()
-        : inferredChildLabel;
-    final secondaryDescription = (account.cardBank?.trim().isNotEmpty == true)
-        ? account.cardBank!.trim()
         : fallbackDescription;
     final installmentSummary =
         account.id != null ? _installmentSummaries[account.id!] : null;
@@ -1533,22 +1523,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final bool canLaunchPayment = highlightLaunchAction || !isPaid;
       final actionButtons = Row(mainAxisSize: MainAxisSize.min, children: [
         if (isCard) ...[
+        // Editar cartão de crédito
+        InkWell(
+            onTap: () => _openCardEditor(account),
+            child: _actionIcon(Icons.edit, cardActionIconBg, cardActionIconColor,
+                size: iconSize, surfaceColor: cardColor)),
+        const SizedBox(width: 6),
         // Ícone de lançamento de valor para cartão de crédito
         InkWell(
             onTap: () => _showCartaoValueDialog(account),
             child: _actionIcon(Icons.attach_money, Colors.orange.shade50,
-                Colors.orange.shade700, enabled: true, size: iconSize)),
+                Colors.orange.shade700, enabled: true, size: iconSize, surfaceColor: cardColor)),
         const SizedBox(width: 6),
         InkWell(
             onTap: () => _showExpenseDialog(account),
-            child: _actionIcon(Icons.rocket_launch,
-                cardActionIconBg, cardActionIconColor, size: iconSize)),
-        const SizedBox(width: 6),
-        InkWell(
-          onTap: () => _showLaunchInvoiceDialog(account, breakdown.total),
-          child: _actionIcon(Icons.description,
-              Colors.orange.shade50, cardActionIconColor, size: iconSize),
-        ),
+            child: _actionIcon(Icons.add_shopping_cart,
+                cardActionIconBg, cardActionIconColor, size: iconSize, surfaceColor: cardColor)),
         const SizedBox(width: 6),
         if (account.id != null)
           InkWell(
@@ -1556,8 +1546,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: _borderedIcon(
               Icons.delete,
               size: iconSize,
-              iconColor: Colors.grey.shade600,
-              borderColor: Colors.grey.shade500,
+              iconColor: foregroundColorFor(cardColor),
+              borderColor: foregroundColorFor(cardColor),
               borderWidth: 1.5,
               padding: const EdgeInsets.all(5),
             ),
@@ -1568,20 +1558,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
             InkWell(
                 onTap: () => _showRecebimentoValueDialog(account),
                 child: _actionIcon(Icons.attach_money, Colors.lightBlue.shade50,
-                    AppColors.primary, enabled: true, size: iconSize)),
+                    AppColors.primary, enabled: true, size: iconSize, surfaceColor: cardColor)),
             const SizedBox(width: 8),
           ] else if (isRecurrent) ...[
             InkWell(
                 onTap: () => _showDespesaValueDialog(account),
                 child: _actionIcon(Icons.attach_money, Colors.orange.shade50,
-                    Colors.orange.shade700, enabled: true, size: iconSize)),
+                    Colors.orange.shade700, enabled: true, size: iconSize, surfaceColor: cardColor)),
             const SizedBox(width: 8),
           ],
           InkWell(
               onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
               child: _actionIcon(Icons.payments, Colors.blue.shade50,
                   AppColors.primary,
-                  enabled: canLaunchPayment, size: iconSize)),
+                  enabled: canLaunchPayment, size: iconSize, surfaceColor: cardColor)),
         const SizedBox(width: 8),
         if (isRecurrent && account.recurrenceId == null)
           InkWell(
@@ -1604,26 +1594,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 if (mounted) _showLaunchDialog(parentRecurrence);
               },
               child: _actionIcon(Icons.rocket_launch,
-                  Colors.green.shade50, AppColors.successDark, size: iconSize)),
+                  Colors.green.shade50, AppColors.successDark, size: iconSize, surfaceColor: cardColor)),
         if (isRecurrent && account.recurrenceId == null)
           const SizedBox(width: 8),
-        InkWell(
-            onTap: () => _confirmDelete(account),
-            child: _actionIcon(
-              Icons.delete,
-              Colors.red.shade50,
-              Colors.grey.shade600,
-              size: iconSize,
-              borderColor: AppColors.errorDark,
-              borderWidth: 1.3)),
+          InkWell(
+              onTap: () => _confirmDelete(account),
+              child: _actionIcon(
+                Icons.delete,
+                Colors.red.shade50,
+                foregroundColorFor(cardColor),
+                size: iconSize,
+                borderColor: foregroundColorFor(cardColor),
+                borderWidth: 1.3)),
       ]
     ]);
 
     Widget buildCardBody({required EdgeInsets padding, required List<Widget> children}) {
       final double borderWidth = 3.5;
-      final Color borderColor = isCard
-          ? cardBorderColor
-          : (isRecebimento ? receberBorderColor : pagarBorderColor);
+          final Color borderColor = isCard
+            ? foregroundColorFor(cardColor)
+            : (isRecebimento ? receberBorderColor : pagarBorderColor);
       return Container(
         color: isCard ? null : containerBg,
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -1703,7 +1693,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: TextStyle(
                     fontSize: weekdaySize,
                     fontWeight: FontWeight.bold,
-                    color: _adaptiveGreyTextColor(context, Colors.grey.shade600),
+                    color: textColor,
                   ),
                 ),
                 if (dateAdjusted) ...[
@@ -1712,26 +1702,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     '($originalLabel)',
                     style: TextStyle(
                       fontSize: smallDateSize,
-                      color: isCard
-                          ? cardBorderColor
-                          : (isRecebimento
-                              ? receberBorderColor
-                              : pagarBorderColor),
+                      color: textColor,
                     ),
                   ),
                 ] else ...[
                   const SizedBox(height: 1),
                   Text(
                     effectiveLabel,
-                    style: TextStyle(
-                      fontSize: smallDateSize,
-                      fontWeight: FontWeight.w600,
-                      color: isCard
-                          ? cardBorderColor
-                          : (isRecebimento
-                              ? receberBorderColor
-                              : pagarBorderColor),
-                    ),
+                      style: TextStyle(
+                        fontSize: smallDateSize,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
                   ),
                 ],
               ],
@@ -2057,9 +2039,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
       {bool enabled = true,
       double size = 16,
       Color? borderColor,
-      double borderWidth = 1}) {
-    final displayColor = enabled ? iconColor : iconColor.withValues(alpha: 0.4);
-    final displayBg = enabled ? bg : bg.withValues(alpha: 0.3);
+      double borderWidth = 1,
+      Color? surfaceColor}) {
+    Color resolvedBg = bg;
+    if (surfaceColor != null) {
+      resolvedBg = ColorContrast.adjustForContrast(bg, surfaceColor, targetRatio: 3.0);
+    }
+    Color resolvedIcon = iconColor;
+    if (surfaceColor != null) {
+      resolvedIcon = foregroundColorFor(resolvedBg);
+    }
+
+    final displayColor = enabled ? resolvedIcon : resolvedIcon.withValues(alpha: 0.6);
+    final displayBg = enabled ? resolvedBg : resolvedBg.withValues(alpha: 0.5);
     return Opacity(
       opacity: enabled ? 1 : 0.6,
       child: Container(
@@ -2112,6 +2104,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onClose: _closeInlineEdit,
       );
     });
+  }
+
+  Future<void> _openCardEditor(Account account) async {
+    if (_isNavigating) return;
+    _isNavigating = true;
+    try {
+      await showDialog(
+        context: context,
+        builder: (_) => CreditCardFormScreen(cardToEdit: account),
+      );
+      if (mounted) _refresh();
+    } finally {
+      _isNavigating = false;
+    }
   }
 
   Future<Map<int, _InstallmentSummary>> _buildInstallmentSummaries(
@@ -2462,109 +2468,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Erro ao lançar parcela: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-          )
-        ],
-      ),
-    );
-  }
-
-  Future<void> _showLaunchInvoiceDialog(Account card, double forecastValue) async {
-    final valueController =
-        TextEditingController(text: UtilBrasilFields.obterReal(forecastValue));
-    DateTime initialDate = DateTime(card.year ?? _startDate.year,
-        card.month ?? _startDate.month, card.dueDay);
-    var check = HolidayService.adjustDateToBusinessDay(
-        initialDate, PrefsService.cityNotifier.value);
-    final dateController = TextEditingController(
-        text: DateFormat('dd/MM/yyyy').format(check.date));
-
-    await showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Lançar Fatura do Cartão'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: valueController,
-              decoration: buildOutlinedInputDecoration(
-                label: 'Valor da Fatura (R\$)',
-                icon: Icons.attach_money,
-              ),
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                CentavosInputFormatter(moeda: true),
-              ],
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: dateController,
-              readOnly: true,
-              decoration: buildOutlinedInputDecoration(
-                label: 'Data do Vencimento',
-                icon: Icons.calendar_today,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar')),
-          FilledButton.icon(
-            icon: _borderedIcon(Icons.check, size: 18, iconColor: Colors.white),
-            label: const Text('Gravar'),
-            onPressed: () async {
-              if (valueController.text.isEmpty) return;
-              DateTime finalDate = UtilData.obterDateTime(dateController.text);
-              double finalValue = UtilBrasilFields.converterMoedaParaDouble(
-                  valueController.text);
-
-              try {
-                final invoice = Account(
-                  typeId: card.typeId,
-                  description: 'Fatura: ${card.cardBank} - ${card.cardBrand}',
-                  value: finalValue,
-                  dueDay: finalDate.day,
-                  month: finalDate.month,
-                  year: finalDate.year,
-                  isRecurrent: false,
-                  payInAdvance: card.payInAdvance,
-                  recurrenceId: card.id,
-                  cardBrand: card.cardBrand,
-                  cardBank: card.cardBank,
-                  cardColor: card.cardColor,
-                  cardLimit: card.cardLimit,
-                  bestBuyDay: card.bestBuyDay,
-                );
-
-                await DatabaseHelper.instance.createAccount(invoice);
-
-                if (mounted) {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Fatura de ${UtilBrasilFields.obterReal(finalValue)} lançada'),
-                      backgroundColor: Colors.green,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                  _refresh();
-                }
-              } catch (e) {
-                if (mounted) {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Erro ao lançar fatura: $e'),
                       backgroundColor: Colors.red,
                     ),
                   );
