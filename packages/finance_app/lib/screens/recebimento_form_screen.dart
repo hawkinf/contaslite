@@ -10,10 +10,10 @@ class RecebimentoFormScreen extends StatelessWidget {
     final screenSize = MediaQuery.of(context).size;
     final viewInsets = MediaQuery.of(context).viewInsets;
 
-    // Calcular dimensões responsivas
-    final maxWidth = (screenSize.width * 0.9).clamp(280.0, 600.0);
+    // Calcular dimensões responsivas - tamanho reduzido
+    final maxWidth = (screenSize.width * 0.85).clamp(280.0, 500.0);
     final availableHeight = screenSize.height - viewInsets.bottom;
-    final maxHeight = (availableHeight * 0.85).clamp(400.0, 900.0);
+    final maxHeight = (availableHeight * 0.75).clamp(350.0, 700.0);
 
     return Dialog(
       insetPadding: EdgeInsets.zero,

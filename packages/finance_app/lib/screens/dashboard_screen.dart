@@ -1370,7 +1370,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         subTextColor = textColor.withValues(alpha: 0.8);
         // ...existing code...
         typeColor = userColor;
-        dayNumberColor = cardBorderColor;
+        dayNumberColor = Colors.black;
     } else {
       final int? accountColorValue = account.cardColor;
       final bool usesCustomColor = accountColorValue != null;
@@ -1427,6 +1427,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final String? parentLogo = _typeLogos[account.typeId];
     final String? childLogo =
         account.categoryId != null ? _categoryLogos[account.categoryId!] : null;
+    // Extrair categoria pai (antes do ||) e categoria filho (depois do ||)
+    final categoryParent = rawCategory == null
+        ? null
+        : (rawCategory.contains('||')
+            ? rawCategory.split('||').first.trim()
+            : rawCategory.trim());
     final categoryChild = rawCategory == null
         ? null
         : (rawCategory.contains('||')
@@ -1523,18 +1529,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 fontWeight: FontWeight.w600,
                 color: installmentBadgeTextColor)));
 
-    final actionButtons = Row(mainAxisSize: MainAxisSize.min, children: [
-      if (isCard) ...[
+      final bool highlightLaunchAction = isRecebimento;
+      final bool canLaunchPayment = highlightLaunchAction || !isPaid;
+      final actionButtons = Row(mainAxisSize: MainAxisSize.min, children: [
+        if (isCard) ...[
+        // Ícone de lançamento de valor para cartão de crédito
         InkWell(
-            onTap: () => _openCardEditor(account),
-            child: _actionIcon(Icons.edit,
-                cardActionIconBg, cardActionIconColor, size: iconSize)),
-        const SizedBox(width: 6),
-        InkWell(
-            onTap: isPaid ? null : () => _handlePayAction(account),
-            child: _actionIcon(Icons.payments, Colors.blue.shade50,
-                cardActionIconColor,
-                enabled: !isPaid, size: iconSize)),
+            onTap: () => _showCartaoValueDialog(account),
+            child: _actionIcon(Icons.attach_money, Colors.orange.shade50,
+                Colors.orange.shade700, enabled: true, size: iconSize)),
         const SizedBox(width: 6),
         InkWell(
             onTap: () => _showExpenseDialog(account),
@@ -1559,12 +1562,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
               padding: const EdgeInsets.all(5),
             ),
           ),
-      ] else ...[
-        InkWell(
-            onTap: isPaid ? null : () => _handlePayAction(account),
-            child: _actionIcon(Icons.payments, Colors.blue.shade50,
-                AppColors.primary,
-                enabled: !isPaid, size: iconSize)),
+        ] else ...[
+          // Ícone de lançamento de valor para recebimentos E despesas recorrentes
+          if (isRecebimento) ...[
+            InkWell(
+                onTap: () => _showRecebimentoValueDialog(account),
+                child: _actionIcon(Icons.attach_money, Colors.lightBlue.shade50,
+                    AppColors.primary, enabled: true, size: iconSize)),
+            const SizedBox(width: 8),
+          ] else if (isRecurrent) ...[
+            InkWell(
+                onTap: () => _showDespesaValueDialog(account),
+                child: _actionIcon(Icons.attach_money, Colors.orange.shade50,
+                    Colors.orange.shade700, enabled: true, size: iconSize)),
+            const SizedBox(width: 8),
+          ],
+          InkWell(
+              onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
+              child: _actionIcon(Icons.payments, Colors.blue.shade50,
+                  AppColors.primary,
+                  enabled: canLaunchPayment, size: iconSize)),
         const SizedBox(width: 8),
         if (isRecurrent && account.recurrenceId == null)
           InkWell(
@@ -1736,7 +1753,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ],
                             Expanded(
                               child: Text(
-                                widget.typeNameFilter ?? _typeNames[account.typeId] ?? 'Outro',
+                                categoryParent ?? _typeNames[account.typeId] ?? 'Outro',
                                 style: TextStyle(
                                   fontSize: categorySize,
                                   fontWeight: FontWeight.bold,
@@ -1987,6 +2004,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  /// Constrói o badge da bandeira do cartão para uso nos diálogos
+  Widget _buildCardBrandBadgeForDialog(String? brand, Color fallbackColor) {
+    final normalized = (brand ?? '').trim().toUpperCase();
+    const double badgeWidth = 36.0;
+    const double badgeHeight = 24.0;
+
+    if (normalized.isEmpty) {
+      return Icon(Icons.credit_card, size: 24, color: fallbackColor);
+    }
+
+    // Usar imagens personalizadas para cada bandeira
+    String? assetPath;
+    if (normalized == 'VISA') {
+      assetPath = 'assets/icons/cc_visa.png';
+    } else if (normalized == 'AMEX' || normalized == 'AMERICAN EXPRESS' || normalized == 'AMERICANEXPRESS') {
+      assetPath = 'assets/icons/cc_amex.png';
+    } else if (normalized == 'MASTER' || normalized == 'MASTERCARD' || normalized == 'MASTER CARD') {
+      assetPath = 'assets/icons/cc_mc.png';
+    } else if (normalized == 'ELO') {
+      assetPath = 'assets/icons/cc_elo.png';
+    }
+
+    if (assetPath != null) {
+      return Image.asset(
+        assetPath,
+        package: 'finance_app',
+        width: badgeWidth,
+        height: badgeHeight,
+        fit: BoxFit.contain,
+      );
+    }
+
+    // Fallback para bandeiras não reconhecidas
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        normalized,
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
   Widget _actionIcon(IconData icon, Color bg, Color iconColor,
       {bool enabled = true,
       double size = 16,
@@ -2029,16 +2095,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       child: Icon(icon, size: size, color: resolvedIconColor),
     );
-  }
-
-  Future<void> _openCardEditor(Account account) async {
-    await showDialog(
-      context: context,
-      builder: (_) => CreditCardFormScreen(cardToEdit: account),
-    );
-    if (mounted) {
-      _refresh();
-    }
   }
 
   Future<void> _openCardExpenses(Account account) async {
@@ -2525,13 +2581,561 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Dialog.fullscreen(
-        child: NewExpenseDialog(card: card),
-      ),
+      builder: (_) => NewExpenseDialog(card: card),
     );
     if (mounted) {
       _refresh();
     }
+  }
+
+  Future<void> _showRecebimentoValueDialog(Account account) async {
+    final previstoValue = account.estimatedValue ?? account.value;
+    final valueController =
+        TextEditingController(text: UtilBrasilFields.obterReal(previstoValue));
+    final previstoController =
+        TextEditingController(text: UtilBrasilFields.obterReal(previstoValue));
+    DateTime initialDate = DateTime(account.year ?? _startDate.year,
+        account.month ?? _startDate.month, account.dueDay);
+    final check = HolidayService.adjustDateToBusinessDay(
+        initialDate, PrefsService.cityNotifier.value);
+    final dateController =
+        TextEditingController(text: DateFormat('dd/MM/yyyy').format(check.date));
+
+    final rawChildLabel = _categoryNames[account.categoryId] ?? 'Conta';
+    // Remover a parte do pai (antes do ||) se existir
+    final childLabel = rawChildLabel.contains('||')
+        ? rawChildLabel.split('||').last.trim()
+        : rawChildLabel;
+    final childLogo = _categoryLogos[account.categoryId] ?? account.logo;
+    final headerLogo = account.logo ?? childLogo;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        final media = MediaQuery.of(ctx);
+        final maxWidth = (media.size.width * 0.9).clamp(300.0, 420.0);
+        final primaryColor = Theme.of(ctx).colorScheme.primary;
+
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          clipBehavior: Clip.antiAlias,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // AppBar
+                Container(
+                  color: primaryColor,
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                      const Expanded(
+                        child: Text(
+                          'Lançamento de Recebimento',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Conteúdo
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Card com info da conta
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            if (headerLogo?.isNotEmpty ?? false)
+                              Text(headerLogo!, style: const TextStyle(fontSize: 22))
+                            else
+                              Icon(Icons.attach_money, size: 22, color: primaryColor),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                '$childLabel - ${account.description}',
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Data
+                      TextField(
+                        controller: dateController,
+                        readOnly: true,
+                        decoration: buildOutlinedInputDecoration(
+                          label: 'Data do Vencimento',
+                          icon: Icons.calendar_today,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Valor Previsto
+                      TextField(
+                        controller: previstoController,
+                        readOnly: true,
+                        decoration: buildOutlinedInputDecoration(
+                          label: 'Valor Previsto (R\$)',
+                          icon: Icons.trending_flat,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Valor Lançado
+                      TextField(
+                        controller: valueController,
+                        decoration: buildOutlinedInputDecoration(
+                          label: 'Valor Lançado (R\$)',
+                          icon: Icons.attach_money,
+                        ),
+                        keyboardType: TextInputType.number,
+                        autofocus: true,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          CentavosInputFormatter(moeda: true),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      // Botões
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Cancelar'),
+                          ),
+                          const SizedBox(width: 12),
+                          FilledButton.icon(
+                            icon: const Icon(Icons.check, size: 18),
+                            label: const Text('Gravar'),
+                            onPressed: () async {
+                              if (valueController.text.isEmpty) return;
+                              final finalDate = UtilData.obterDateTime(dateController.text);
+                              final finalValue = UtilBrasilFields.converterMoedaParaDouble(
+                                  valueController.text);
+
+                              try {
+                                final updated = account.copyWith(
+                                  value: finalValue,
+                                  dueDay: finalDate.day,
+                                  month: finalDate.month,
+                                  year: finalDate.year,
+                                );
+                                if (account.id != null) {
+                                  await DatabaseHelper.instance.updateAccount(updated);
+                                } else {
+                                  await DatabaseHelper.instance.createAccount(updated);
+                                }
+                              } catch (e) {
+                                debugPrint('❌ Erro ao lançar recebimento: $e');
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                      content: Text('Erro ao lançar recebimento: $e')));
+                                }
+                                return;
+                              }
+
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (mounted) _refresh();
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showDespesaValueDialog(Account account) async {
+    final previstoValue = account.estimatedValue ?? account.value;
+    final valueController =
+        TextEditingController(text: UtilBrasilFields.obterReal(previstoValue));
+    final previstoController =
+        TextEditingController(text: UtilBrasilFields.obterReal(previstoValue));
+    DateTime initialDate = DateTime(account.year ?? _startDate.year,
+        account.month ?? _startDate.month, account.dueDay);
+    final check = HolidayService.adjustDateToBusinessDay(
+        initialDate, PrefsService.cityNotifier.value);
+    final dateController =
+        TextEditingController(text: DateFormat('dd/MM/yyyy').format(check.date));
+
+    final rawChildLabel = _categoryNames[account.categoryId] ?? 'Conta';
+    final childLabel = rawChildLabel.contains('||')
+        ? rawChildLabel.split('||').last.trim()
+        : rawChildLabel;
+    final childLogo = _categoryLogos[account.categoryId] ?? account.logo;
+    final headerLogo = account.logo ?? childLogo;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        final media = MediaQuery.of(ctx);
+        final maxWidth = (media.size.width * 0.9).clamp(300.0, 420.0);
+        final despesaColor = Colors.orange.shade700;
+
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          clipBehavior: Clip.antiAlias,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // AppBar
+                Container(
+                  color: despesaColor,
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                      const Expanded(
+                        child: Text(
+                          'Lançamento de Despesa',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Conteúdo
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Card com info da conta
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            if (headerLogo?.isNotEmpty ?? false)
+                              Text(headerLogo!, style: const TextStyle(fontSize: 22))
+                            else
+                              Icon(Icons.receipt_long, size: 22, color: despesaColor),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                '$childLabel - ${account.description}',
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Data
+                      TextField(
+                        controller: dateController,
+                        readOnly: true,
+                        decoration: buildOutlinedInputDecoration(
+                          label: 'Data do Vencimento',
+                          icon: Icons.calendar_today,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Valor Previsto
+                      TextField(
+                        controller: previstoController,
+                        readOnly: true,
+                        decoration: buildOutlinedInputDecoration(
+                          label: 'Valor Previsto (R\$)',
+                          icon: Icons.trending_flat,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Valor Lançado
+                      TextField(
+                        controller: valueController,
+                        decoration: buildOutlinedInputDecoration(
+                          label: 'Valor Lançado (R\$)',
+                          icon: Icons.attach_money,
+                        ),
+                        keyboardType: TextInputType.number,
+                        autofocus: true,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          CentavosInputFormatter(moeda: true),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      // Botões
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Cancelar'),
+                          ),
+                          const SizedBox(width: 12),
+                          FilledButton.icon(
+                            icon: const Icon(Icons.check, size: 18),
+                            label: const Text('Gravar'),
+                            style: FilledButton.styleFrom(backgroundColor: despesaColor),
+                            onPressed: () async {
+                              if (valueController.text.isEmpty) return;
+                              final finalDate = UtilData.obterDateTime(dateController.text);
+                              final finalValue = UtilBrasilFields.converterMoedaParaDouble(
+                                  valueController.text);
+
+                              try {
+                                final updated = account.copyWith(
+                                  value: finalValue,
+                                  dueDay: finalDate.day,
+                                  month: finalDate.month,
+                                  year: finalDate.year,
+                                );
+                                if (account.id != null) {
+                                  await DatabaseHelper.instance.updateAccount(updated);
+                                } else {
+                                  await DatabaseHelper.instance.createAccount(updated);
+                                }
+                              } catch (e) {
+                                debugPrint('❌ Erro ao lançar despesa: $e');
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                      content: Text('Erro ao lançar despesa: $e')));
+                                }
+                                return;
+                              }
+
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (mounted) _refresh();
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showCartaoValueDialog(Account account) async {
+    final breakdown = CardBreakdown.parse(account.observation);
+    final previstoValue = breakdown.total;
+    final valueController =
+        TextEditingController(text: UtilBrasilFields.obterReal(previstoValue));
+    final previstoController =
+        TextEditingController(text: UtilBrasilFields.obterReal(previstoValue));
+    DateTime initialDate = DateTime(account.year ?? _startDate.year,
+        account.month ?? _startDate.month, account.dueDay);
+    final check = HolidayService.adjustDateToBusinessDay(
+        initialDate, PrefsService.cityNotifier.value);
+    final dateController =
+        TextEditingController(text: DateFormat('dd/MM/yyyy').format(check.date));
+
+    final cardBrand = account.cardBrand ?? 'Cartão';
+    final cardBank = account.cardBank ?? '';
+
+    await showDialog(
+      context: context,
+      builder: (ctx) {
+        final media = MediaQuery.of(ctx);
+        final maxWidth = (media.size.width * 0.9).clamp(300.0, 420.0);
+        final cartaoColor = Colors.orange.shade700;
+
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          clipBehavior: Clip.antiAlias,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // AppBar
+                Container(
+                  color: cartaoColor,
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                      const Expanded(
+                        child: Text(
+                          'Lançamento de Fatura',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Conteúdo
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Card com info do cartão
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            // Badge da bandeira do cartão
+                            _buildCardBrandBadgeForDialog(account.cardBrand, cartaoColor),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                '$cardBrand${cardBank.isNotEmpty ? ' - $cardBank' : ''}',
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Data
+                      TextField(
+                        controller: dateController,
+                        readOnly: true,
+                        decoration: buildOutlinedInputDecoration(
+                          label: 'Data do Vencimento',
+                          icon: Icons.calendar_today,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Valor Previsto
+                      TextField(
+                        controller: previstoController,
+                        readOnly: true,
+                        decoration: buildOutlinedInputDecoration(
+                          label: 'Valor Previsto (R\$)',
+                          icon: Icons.trending_flat,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // Valor Lançado
+                      TextField(
+                        controller: valueController,
+                        decoration: buildOutlinedInputDecoration(
+                          label: 'Valor Lançado (R\$)',
+                          icon: Icons.attach_money,
+                        ),
+                        keyboardType: TextInputType.number,
+                        autofocus: true,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          CentavosInputFormatter(moeda: true),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      // Botões
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Cancelar'),
+                          ),
+                          const SizedBox(width: 12),
+                          FilledButton.icon(
+                            icon: const Icon(Icons.check, size: 18),
+                            label: const Text('Gravar'),
+                            style: FilledButton.styleFrom(backgroundColor: cartaoColor),
+                            onPressed: () async {
+                              if (valueController.text.isEmpty) return;
+                              final finalDate = UtilData.obterDateTime(dateController.text);
+                              final finalValue = UtilBrasilFields.converterMoedaParaDouble(
+                                  valueController.text);
+
+                              try {
+                                final updated = account.copyWith(
+                                  value: finalValue,
+                                  dueDay: finalDate.day,
+                                  month: finalDate.month,
+                                  year: finalDate.year,
+                                );
+                                if (account.id != null) {
+                                  await DatabaseHelper.instance.updateAccount(updated);
+                                } else {
+                                  await DatabaseHelper.instance.createAccount(updated);
+                                }
+                              } catch (e) {
+                                debugPrint('❌ Erro ao lançar fatura: $e');
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                      content: Text('Erro ao lançar fatura: $e')));
+                                }
+                                return;
+                              }
+
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (mounted) _refresh();
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _closeInlineEdit() {

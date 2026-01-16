@@ -823,8 +823,10 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     int qty = int.tryParse(_installmentsQtyController.text) ?? 1;
     if (qty < 1) qty = 1;
 
-    double totalValue =
-        UtilBrasilFields.converterMoedaParaDouble(_totalValueController.text);
+    final totalText = _totalValueController.text.trim();
+    double totalValue = totalText.isNotEmpty
+        ? UtilBrasilFields.converterMoedaParaDouble(totalText)
+        : 0.0;
     double baseValue = totalValue / qty;
 
     List<InstallmentDraft> newList = [];
@@ -913,6 +915,13 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               decoration: buildOutlinedInputDecoration(
                 label: _typeLabel,
                 icon: Icons.account_balance_wallet,
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Text(
+                    _selectedParentCategoria?.logo ?? '📁',
+                    style: const TextStyle(fontSize: 22),
+                  ),
+                ),
               ),
               items: _parentCategorias
                   .map((cat) => DropdownMenuItem(
@@ -934,7 +943,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                 return _parentCategorias
                     .map((cat) => Align(
                           alignment: Alignment.centerLeft,
-                          child: Text('${cat.logo ?? '📁'} ${cat.categoria}'),
+                          child: Text(cat.categoria),
                         ))
                     .toList();
               },
@@ -991,6 +1000,13 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             decoration: buildOutlinedInputDecoration(
               label: _typeLabel,
               icon: Icons.account_balance_wallet,
+              prefixIcon: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Text(
+                  _selectedType?.logo ?? '📁',
+                  style: const TextStyle(fontSize: 22),
+                ),
+              ),
             ),
             items: _typesList
                 .map((t) => DropdownMenuItem(
@@ -1012,7 +1028,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               return _typesList
                   .map((t) => Align(
                         alignment: Alignment.centerLeft,
-                        child: Text('${t.logo ?? '📁'} ${t.name}'),
+                        child: Text(t.name),
                       ))
                   .toList();
             },
@@ -1431,8 +1447,10 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                                     CentavosInputFormatter(moeda: true),
                                   ],
                                   onChanged: (val) {
-                                    item.value = UtilBrasilFields
-                                        .converterMoedaParaDouble(val);
+                                    final trimmed = val.trim();
+                                    item.value = trimmed.isNotEmpty
+                                        ? UtilBrasilFields.converterMoedaParaDouble(trimmed)
+                                        : 0.0;
                                     setState(() {});
                                   }))
                         ]));
@@ -1664,6 +1682,13 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                                 decoration: buildOutlinedInputDecoration(
                                   label: 'Categoria',
                                   icon: Icons.label,
+                                  prefixIcon: Padding(
+                                    padding: const EdgeInsets.all(12.0),
+                                    child: Text(
+                                      _selectedCategory?.logo ?? '📁',
+                                      style: const TextStyle(fontSize: 22),
+                                    ),
+                                  ),
                                 ),
                                 validator: (val) => val == null
                                     ? 'Selecione uma categoria'
@@ -1673,13 +1698,15 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                                       final displayText = widget.isRecebimento
                                           ? _childDisplayName(cat.categoria)
                                           : cat.categoria;
+                                      // Usar logo próprio da categoria
+                                      final logoToShow = cat.logo ?? '📁';
                                       return DropdownMenuItem(
                                         value: cat,
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Text(
-                                              cat.logo ?? '📁',
+                                              logoToShow,
                                               style: const TextStyle(fontSize: 18),
                                             ),
                                             const SizedBox(width: 8),
@@ -1697,7 +1724,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                                             : cat.categoria;
                                         return Align(
                                           alignment: Alignment.centerLeft,
-                                          child: Text('${cat.logo ?? '📁'} $displayText'),
+                                          child: Text(displayText),
                                         );
                                       })
                                       .toList();
@@ -2074,10 +2101,14 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
         if (_entryMode == 1) {
           // Editar recorrente
-          double averageVal = UtilBrasilFields.converterMoedaParaDouble(
-              _recurrentValueController.text);
-          double launchedVal = UtilBrasilFields.converterMoedaParaDouble(
-              _recurrentLaunchedValueController.text);
+          final avgText = _recurrentValueController.text.trim();
+          final launchedText = _recurrentLaunchedValueController.text.trim();
+          double averageVal = avgText.isNotEmpty
+              ? UtilBrasilFields.converterMoedaParaDouble(avgText)
+              : 0.0;
+          double launchedVal = launchedText.isNotEmpty
+              ? UtilBrasilFields.converterMoedaParaDouble(launchedText)
+              : 0.0;
 
           debugPrint('🔍 EDIÇÃO RECORRÊNCIA:');
           debugPrint('  Valor Médio (controller): "${_recurrentValueController.text}" = $averageVal');
@@ -2273,9 +2304,10 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               editDate = DateTime(year, month, day);
             }
 
-            final newValue = UtilBrasilFields.converterMoedaParaDouble(
-              _totalValueController.text,
-            );
+            final newValueText = _totalValueController.text.trim();
+            final newValue = newValueText.isNotEmpty
+                ? UtilBrasilFields.converterMoedaParaDouble(newValueText)
+                : 0.0;
 
             final updated = acc.copyWith(
               typeId: _selectedType!.id!,
@@ -2381,12 +2413,16 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
   debugPrint('  → Configuração de início: mês=$startMonth ano=$startYear');
 
-        double val = UtilBrasilFields.converterMoedaParaDouble(
-            _recurrentValueController.text);
-        double launchedVal = UtilBrasilFields.converterMoedaParaDouble(
-            _recurrentLaunchedValueController.text);
+        final valText = _recurrentValueController.text.trim();
+        final launchedText = _recurrentLaunchedValueController.text.trim();
+        double val = valText.isNotEmpty
+            ? UtilBrasilFields.converterMoedaParaDouble(valText)
+            : 0.0;
+        double launchedVal = launchedText.isNotEmpty
+            ? UtilBrasilFields.converterMoedaParaDouble(launchedText)
+            : 0.0;
         debugPrint('🔍 SALVAMENTO RECORRÊNCIA:');
-        debugPrint('  Controller text: "${_recurrentValueController.text}"');
+        debugPrint('  Controller text: "$valText"');
         debugPrint('  Valor convertido: $val');
         debugPrint('  Valor Lançado: $launchedVal');
         final acc = Account(
@@ -2495,8 +2531,10 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
         // Se for assinatura, criar como recorrente
         if (_installmentsQtyController.text == "-1") {
-          double val = UtilBrasilFields.converterMoedaParaDouble(
-              _totalValueController.text);
+          final valText = _totalValueController.text.trim();
+          double val = valText.isNotEmpty
+              ? UtilBrasilFields.converterMoedaParaDouble(valText)
+              : 0.0;
           try {
             // Normalizar data para completar com ano corrente se necessário
             final normalizedDate = DateFormatter.normalizeDate(_dateController.text);

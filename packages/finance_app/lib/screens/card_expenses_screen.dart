@@ -72,9 +72,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Dialog.fullscreen(
-        child: NewExpenseDialog(card: widget.card),
-      ),
+      builder: (_) => NewExpenseDialog(card: widget.card),
     );
     if (result == true && mounted) {
       await _loadExpenses();
@@ -263,20 +261,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
           if (widget.inline)
             Padding(
               padding: const EdgeInsets.only(top: 2, right: 6),
-              child: Row(
-                children: [
-                  Expanded(child: headerRow),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    tooltip: 'Fechar',
-                    onPressed: () {
-                      if (widget.onClose != null) {
-                        widget.onClose!();
-                      }
-                    },
-                  ),
-                ],
-              ),
+              child: headerRow,
             )
           else ...[
             _buildSharedMonthHeader(),
@@ -396,17 +381,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
               ],
             ),
           ),
-          IconButton(
-            icon: Icon(Icons.close, color: headerTextColor),
-            onPressed: () {
-              if (widget.inline && widget.onClose != null) {
-                widget.onClose!();
-              } else {
-                Navigator.of(context).maybePop();
-              }
-            },
-            tooltip: 'Fechar',
-          ),
+          const SizedBox(width: 48), // Espaço para balancear o layout
         ],
       ),
     );
@@ -475,6 +450,18 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Seta de voltar
+            IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              onPressed: () {
+                if (widget.inline && widget.onClose != null) {
+                  widget.onClose!();
+                } else {
+                  Navigator.of(context).maybePop();
+                }
+              },
+              tooltip: 'Voltar',
+            ),
             Expanded(
               flex: 2,
               child: Container(

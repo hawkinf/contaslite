@@ -8,8 +8,9 @@ import '../models/payment.dart';
 import '../models/payment_method.dart';
 import '../services/holiday_service.dart';
 import '../services/prefs_service.dart';
+import '../utils/app_colors.dart';
+import '../utils/color_contrast.dart';
 import 'app_input_decoration.dart';
-import 'dialog_close_button.dart';
 
 enum PaymentAccountType { regular, creditCard }
 
@@ -50,6 +51,140 @@ class _PaymentDialogState extends State<PaymentDialog> {
 
   final _observationController = TextEditingController();
   bool _isLoading = true;
+  bool _inferredRecebimento = false;
+
+  bool get _effectiveRecebimento => widget.isRecebimento || _inferredRecebimento;
+
+  Color _resolveAppBarColor() {
+    if (_selectedAccount?.cardColor != null) {
+      return Color(_selectedAccount!.cardColor!);
+    }
+    return Theme.of(context).colorScheme.primary;
+  }
+
+  Color _resolveAppBarTextColor(Color background) {
+    return foregroundColorFor(background);
+  }
+
+  Widget _buildCardBrandLogo(String? brand) {
+    final normalized = (brand ?? '').trim().toUpperCase();
+    String? assetPath;
+    if (normalized == 'VISA') {
+      assetPath = 'assets/icons/cc_visa.png';
+    } else if (normalized == 'AMEX' ||
+        normalized == 'AMERICAN EXPRESS' ||
+        normalized == 'AMERICANEXPRESS') {
+      assetPath = 'assets/icons/cc_amex.png';
+    } else if (normalized == 'MASTER' ||
+        normalized == 'MASTERCARD' ||
+        normalized == 'MASTER CARD') {
+      assetPath = 'assets/icons/cc_mc.png';
+    } else if (normalized == 'ELO') {
+      assetPath = 'assets/icons/cc_elo.png';
+    }
+
+    if (assetPath != null) {
+      return Image.asset(
+        assetPath,
+        package: 'finance_app',
+        width: 26,
+        height: 16,
+        fit: BoxFit.contain,
+      );
+    }
+
+    return const Icon(Icons.credit_card, size: 16);
+  }
+
+  Widget _buildCardInvoiceRow(Account account, {Color? textColor}) {
+    final color = textColor ?? Colors.grey.shade700;
+    final dueDay = account.dueDay.toString().padLeft(2, '0');
+    final brand = (account.cardBrand ?? 'Cartao').trim();
+    final description = (account.cardBank ?? account.description).trim();
+    return Row(
+      children: [
+        Text(
+          dueDay,
+          style: TextStyle(color: color, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(width: 26, height: 16, child: _buildCardBrandLogo(account.cardBrand)),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            '$brand $description',
+            style: TextStyle(color: color, fontWeight: FontWeight.w600),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Color _methodColor(String type) {
+    switch (type) {
+      case 'CREDIT_CARD':
+        return AppColors.cardPurple;
+      case 'PIX':
+        return AppColors.success;
+      case 'CASH':
+        return AppColors.warning;
+      case 'BANK_DEBIT':
+        return AppColors.primary;
+      default:
+        return Colors.grey.shade700;
+    }
+  }
+
+  Widget _buildPaymentMethodRow(PaymentMethod method, {Color? textColor}) {
+    final color = textColor ?? Colors.grey.shade800;
+    final logo = method.logo?.trim();
+    final iconColor = _methodColor(method.type);
+    return Row(
+      children: [
+        if (logo != null && logo.isNotEmpty)
+          Text(
+            logo,
+            style: const TextStyle(fontSize: 18),
+          )
+        else
+          Icon(method.icon, size: 18, color: iconColor),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            method.name,
+            style: TextStyle(color: color, fontWeight: FontWeight.w600),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPaymentCardRow(Account card, {Color? textColor}) {
+    final color = textColor ?? Colors.grey.shade700;
+    final dueDay = card.dueDay.toString().padLeft(2, '0');
+    final brand = (card.cardBrand ?? 'Cartao').trim();
+    final description = (card.cardBank ?? card.description).trim();
+    return Row(
+      children: [
+        SizedBox(width: 26, height: 16, child: _buildCardBrandLogo(card.cardBrand)),
+        const SizedBox(width: 8),
+        Text(
+          dueDay,
+          style: TextStyle(color: color, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            '$brand $description',
+            style: TextStyle(color: color, fontWeight: FontWeight.w600),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   void initState() {
@@ -64,11 +199,8 @@ class _PaymentDialogState extends State<PaymentDialog> {
         widget.startDate,
         widget.endDate,
       );
+      final types = await DatabaseHelper.instance.readAllTypes();
       final paymentMethods = await DatabaseHelper.instance.readPaymentMethods();
-      final filteredPaymentMethods = paymentMethods
-          .where((m) =>
-              widget.isRecebimento ? m.supportsRecebimentos : m.supportsPagamentos)
-          .toList();
       final banks = await DatabaseHelper.instance.readBankAccounts();
       final cards = await DatabaseHelper.instance.readAllCards();
 
@@ -123,6 +255,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
       String? lockedWarning;
       DateTime? lockedPaymentDate;
       
+      bool inferredRecebimento = _inferredRecebimento;
       if (widget.preselectedAccount != null) {
         final preferred = widget.preselectedAccount!;
         final isCard = preferred.cardBrand != null;
@@ -145,7 +278,19 @@ class _PaymentDialogState extends State<PaymentDialog> {
         
         initialAccount = match;
         _accountType = isCard ? PaymentAccountType.creditCard : PaymentAccountType.regular;
+        if (!_effectiveRecebimento) {
+          final type = types.where((t) => t.id == preferred.typeId).toList();
+          if (type.isNotEmpty && type.first.name.toLowerCase().contains('receb')) {
+            inferredRecebimento = true;
+          }
+        }
       }
+      final effectiveRecebimento = widget.isRecebimento || inferredRecebimento;
+      final filteredPaymentMethods = paymentMethods
+          .where((m) => effectiveRecebimento
+              ? m.supportsRecebimentos
+              : m.supportsPagamentos)
+          .toList();
       
       // Fallback para primeira conta disponível
       if (initialAccount == null) {
@@ -181,6 +326,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
             _paymentDate = lockedPaymentDate;
           }
           _isLoading = false;
+          _inferredRecebimento = inferredRecebimento;
         });
       }
     } catch (e) {
@@ -293,7 +439,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
     final expense = Account(
       typeId: card.typeId,
       description:
-          '${widget.isRecebimento ? 'Recebimento' : 'Pagamento'}: ${_selectedAccount!.description}',
+          '${_effectiveRecebimento ? 'Recebimento' : 'Pagamento'}: ${_selectedAccount!.description}',
       value: _selectedAccount!.value,
       dueDay: card.dueDay,
       month: month,
@@ -302,7 +448,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
       cardBrand: card.cardBrand,
       cardBank: card.cardBank,
       establishment: _selectedAccount!.description,
-      observation: widget.isRecebimento
+      observation: _effectiveRecebimento
           ? 'Recebimento via cartão de crédito'
           : 'Pagamento via cartão de crédito',
       purchaseDate: _paymentDate.toIso8601String(),
@@ -350,21 +496,46 @@ class _PaymentDialogState extends State<PaymentDialog> {
     final list = _currentAccountList;
     final isRegular = _accountType == PaymentAccountType.regular;
     final label = isRegular
-        ? (widget.isRecebimento ? 'Selecione a conta a receber' : 'Selecione a conta a pagar')
-        : 'Selecione o cartão de crédito';
+        ? (_effectiveRecebimento
+            ? 'Conta a receber selecionada'
+            : 'Conta a pagar selecionada')
+        : 'Fatura do Cartão';
 
     if (_isAccountLocked && _selectedAccount != null) {
+      if (!isRegular) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InputDecorator(
+              decoration: buildOutlinedInputDecoration(
+                label: 'Fatura do Cartão',
+                icon: Icons.credit_card,
+              ).copyWith(
+                enabled: false,
+              ),
+              child: _buildCardInvoiceRow(
+                _selectedAccount!,
+                textColor: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildDueDateField(useLocked: true),
+          ],
+        );
+      }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextFormField(
-            initialValue: _accountDisplayLabel(_selectedAccount!),
-            enabled: false,
+          InputDecorator(
             decoration: buildOutlinedInputDecoration(
               label: isRegular
-                  ? (widget.isRecebimento ? 'Conta a receber selecionada' : 'Conta a pagar selecionada')
+                  ? (_effectiveRecebimento ? 'Conta a receber selecionada' : 'Conta a pagar selecionada')
                   : 'Fatura selecionada',
               icon: isRegular ? Icons.receipt : Icons.credit_card,
+            ).copyWith(enabled: false),
+            child: Text(
+              _accountDisplayLabel(_selectedAccount!),
+              style: TextStyle(color: Colors.grey.shade700),
             ),
           ),
           const SizedBox(height: 12),
@@ -382,7 +553,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
         });
       }
       final emptyMessage = isRegular
-          ? (widget.isRecebimento
+          ? (_effectiveRecebimento
               ? 'Nenhuma conta a receber pendente neste mês.'
               : 'Nenhuma conta a pagar pendente neste mês.')
           : 'Nenhuma fatura de cartão pendente neste mês.';
@@ -414,24 +585,50 @@ class _PaymentDialogState extends State<PaymentDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DropdownButtonFormField<Account>(
-          initialValue: currentValue,
-          decoration: buildOutlinedInputDecoration(
-            label: label,
-            icon: isRegular ? Icons.receipt : Icons.credit_card,
+        if (isRegular)
+          DropdownButtonFormField<Account>(
+            initialValue: currentValue,
+            decoration: buildOutlinedInputDecoration(
+              label: label,
+              icon: isRegular ? Icons.receipt : Icons.credit_card,
+            ),
+            items: list
+                .map((account) => DropdownMenuItem(
+                      value: account,
+                      child: Text(_accountDisplayLabel(account)),
+                    ))
+                .toList(),
+            onChanged: (account) {
+              setState(() {
+                _selectedAccount = account;
+              });
+            },
+          )
+        else
+          DropdownButtonFormField<Account>(
+            initialValue: currentValue,
+            isExpanded: true,
+            decoration: buildOutlinedInputDecoration(
+              label: 'Fatura do Cartão',
+              icon: Icons.credit_card,
+            ),
+            items: list
+                .map((account) => DropdownMenuItem(
+                      value: account,
+                      child: _buildCardInvoiceRow(
+                        account,
+                        textColor: Colors.grey.shade700,
+                      ),
+                    ))
+                .toList(),
+            selectedItemBuilder: (context) => list
+                .map((account) => _buildCardInvoiceRow(
+                      account,
+                      textColor: Colors.grey.shade700,
+                    ))
+                .toList(),
+            onChanged: null,
           ),
-          items: list
-              .map((account) => DropdownMenuItem(
-                    value: account,
-                    child: Text(_accountDisplayLabel(account)),
-                  ))
-              .toList(),
-          onChanged: (account) {
-            setState(() {
-              _selectedAccount = account;
-            });
-          },
-        ),
         const SizedBox(height: 12),
         _buildDueDateField(account: currentValue),
       ],
@@ -446,7 +643,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
     } else if (effectiveAccount != null) {
       dueDate = _getAccountDueDate(effectiveAccount);
     }
-    final label = widget.isRecebimento ? 'Recebimento' : 'Vencimento';
+    final label = _effectiveRecebimento ? 'Recebimento' : 'Vencimento';
     final text = dueDate != null ? DateFormat('dd/MM/yyyy').format(dueDate) : '-';
     return TextFormField(
       initialValue: text,
@@ -463,14 +660,14 @@ class _PaymentDialogState extends State<PaymentDialog> {
   Future<void> _savePayment() async {
     // Validações
     if (_selectedAccount == null) {
-      _showError(widget.isRecebimento
+      _showError(_effectiveRecebimento
           ? 'Selecione uma conta a receber'
           : 'Selecione uma conta a pagar');
       return;
     }
 
     if (_selectedMethod == null) {
-      _showError(widget.isRecebimento
+      _showError(_effectiveRecebimento
           ? 'Selecione uma forma de recebimento'
           : 'Selecione uma forma de pagamento');
       return;
@@ -521,7 +718,7 @@ class _PaymentDialogState extends State<PaymentDialog> {
     } catch (e, stackTrace) {
       debugPrint('❌ Erro ao salvar pagamento: $e');
       debugPrint('Stack: $stackTrace');
-      _showError(widget.isRecebimento
+      _showError(_effectiveRecebimento
           ? 'Erro ao salvar recebimento: $e'
           : 'Erro ao salvar pagamento: $e');
     }
@@ -536,36 +733,30 @@ class _PaymentDialogState extends State<PaymentDialog> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
+      final appBarColor = _resolveAppBarColor();
+      final appBarFg = _resolveAppBarTextColor(appBarColor);
       return Scaffold(
         appBar: AppBar(
           title:
-              Text(widget.isRecebimento ? 'Lançar Recebimento' : 'Lançar Pagamento'),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: DialogCloseButton(
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-          ],
+              Text(_effectiveRecebimento ? 'Lançar Recebimento' : 'Lançar Pagamento'),
+          backgroundColor: appBarColor,
+          foregroundColor: appBarFg,
+          elevation: 0,
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
+    final appBarColor = _resolveAppBarColor();
+    final appBarFg = _resolveAppBarTextColor(appBarColor);
+
     return Scaffold(
       appBar: AppBar(
         title:
-            Text(widget.isRecebimento ? 'Lançar Recebimento' : 'Lançar Pagamento'),
+            Text(_effectiveRecebimento ? 'Lançar Recebimento' : 'Lançar Pagamento'),
         elevation: 0,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: DialogCloseButton(
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-        ],
+        backgroundColor: appBarColor,
+        foregroundColor: appBarFg,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -578,31 +769,137 @@ class _PaymentDialogState extends State<PaymentDialog> {
               color: Colors.grey.shade800,
             ),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            children: [
-              ChoiceChip(
-                label: const Text('Conta Avulsa'),
-                selected: _accountType == PaymentAccountType.regular,
-                onSelected: _isAccountLocked
-                    ? null
-                    : (_) => _onAccountTypeChanged(PaymentAccountType.regular),
-              ),
-              ChoiceChip(
-                label: const Text('Cartão de Crédito'),
-                selected: _accountType == PaymentAccountType.creditCard,
-                onSelected: _isAccountLocked
-                    ? null
-                    : (_) =>
-                        _onAccountTypeChanged(PaymentAccountType.creditCard),
-              ),
-            ],
+          const SizedBox(height: 6),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact = constraints.maxWidth < 480;
+              final amountBox = _selectedAccount != null
+                  ? IntrinsicWidth(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        constraints: const BoxConstraints(minWidth: 220, minHeight: 48),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _effectiveRecebimento ? Colors.blue : Colors.red,
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 6,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _effectiveRecebimento ? 'Total a Receber' : 'Total a Pagar',
+                              style: TextStyle(
+                                color: _effectiveRecebimento ? Colors.blue : Colors.red,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerRight,
+                                child: Text(
+                                  UtilBrasilFields.obterReal(_selectedAccount?.value ?? 0.0),
+                                  style: TextStyle(
+                                    color: _effectiveRecebimento ? Colors.blue : Colors.red,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 45,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink();
+              return isCompact
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            ChoiceChip(
+                              label: const Text('Conta Avulsa'),
+                              selected: _accountType == PaymentAccountType.regular,
+                              onSelected: _isAccountLocked
+                                  ? null
+                                  : (_) => _onAccountTypeChanged(PaymentAccountType.regular),
+                            ),
+                            ChoiceChip(
+                              label: const Text('Cartão de Crédito'),
+                              selected: _accountType == PaymentAccountType.creditCard,
+                              onSelected: _isAccountLocked
+                                  ? null
+                                  : (_) =>
+                                      _onAccountTypeChanged(PaymentAccountType.creditCard),
+                            ),
+                          ],
+                        ),
+                        if (_selectedAccount != null) ...[
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: amountBox,
+                          ),
+                        ],
+                      ],
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              ChoiceChip(
+                                label: const Text('Conta Avulsa'),
+                                selected: _accountType == PaymentAccountType.regular,
+                                onSelected: _isAccountLocked
+                                    ? null
+                                    : (_) => _onAccountTypeChanged(PaymentAccountType.regular),
+                              ),
+                              ChoiceChip(
+                                label: const Text('Cartão de Crédito'),
+                                selected: _accountType == PaymentAccountType.creditCard,
+                                onSelected: _isAccountLocked
+                                    ? null
+                                    : (_) =>
+                                        _onAccountTypeChanged(PaymentAccountType.creditCard),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_selectedAccount != null) ...[
+                          const SizedBox(width: 12),
+                          amountBox,
+                        ],
+                      ],
+                    );
+            },
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           Text(
             _accountType == PaymentAccountType.regular
-                ? (widget.isRecebimento ? 'Conta a Receber' : 'Conta a Pagar')
+                ? (_effectiveRecebimento ? 'Conta a Receber' : 'Conta a Pagar')
                 : 'Fatura do Cartão',
             style: TextStyle(
               fontSize: 16,
@@ -610,13 +907,45 @@ class _PaymentDialogState extends State<PaymentDialog> {
               color: Colors.grey.shade800,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _buildAccountSelector(),
+          const SizedBox(height: 24),
+
+          // Seção: Data do Pagamento/Recebimento
+          Text(
+            _effectiveRecebimento ? 'Data do Recebimento' : 'Data do Pagamento',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Colors.grey.shade800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          InkWell(
+            onTap: _selectDate,
+            child: InputDecorator(
+              decoration: buildOutlinedInputDecoration(
+                label:
+                    _effectiveRecebimento ? 'Data do Recebimento' : 'Data do Pagamento',
+                icon: Icons.calendar_today,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    DateFormat('dd/MM/yyyy').format(_paymentDate),
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const Icon(Icons.calendar_month, color: Colors.grey),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 24),
 
           // Seção: Forma de Pagamento
           Text(
-            widget.isRecebimento ? 'Forma de Recebimento' : 'Forma de Pagamento',
+            _effectiveRecebimento ? 'Forma de Recebimento' : 'Forma de Pagamento',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -626,8 +955,9 @@ class _PaymentDialogState extends State<PaymentDialog> {
           const SizedBox(height: 12),
           DropdownButtonFormField<PaymentMethod>(
             initialValue: _selectedMethod,
+            isExpanded: true,
             decoration: buildOutlinedInputDecoration(
-              label: widget.isRecebimento
+              label: _effectiveRecebimento
                   ? 'Selecione a forma de recebimento'
                   : 'Selecione a forma de pagamento',
               icon: Icons.payment,
@@ -635,9 +965,11 @@ class _PaymentDialogState extends State<PaymentDialog> {
             items: _paymentMethods
                 .map((method) => DropdownMenuItem(
                       value: method,
-                      child: Text(method.name),
+                      child: _buildPaymentMethodRow(method),
                     ))
                 .toList(),
+            selectedItemBuilder: (context) =>
+                _paymentMethods.map((method) => _buildPaymentMethodRow(method)).toList(),
             onChanged: (method) {
               setState(() {
                 _selectedMethod = method;
@@ -697,17 +1029,19 @@ class _PaymentDialogState extends State<PaymentDialog> {
             const SizedBox(height: 12),
             DropdownButtonFormField<Account>(
               initialValue: _selectedCard,
+              isExpanded: true,
               decoration: buildOutlinedInputDecoration(
                 label: 'Selecione um cartão',
                 icon: Icons.credit_card,
               ),
-              items: _paymentCards
+              items: (_paymentCards..sort((a, b) => a.dueDay.compareTo(b.dueDay)))
                   .map((card) => DropdownMenuItem(
                         value: card,
-                        child: Text(
-                          '${card.cardBank} - ${card.description}',
-                        ),
+                        child: _buildPaymentCardRow(card),
                       ))
+                  .toList(),
+              selectedItemBuilder: (context) => (_paymentCards..sort((a, b) => a.dueDay.compareTo(b.dueDay)))
+                  .map((card) => _buildPaymentCardRow(card))
                   .toList(),
               onChanged: (card) {
                 setState(() {
@@ -717,38 +1051,6 @@ class _PaymentDialogState extends State<PaymentDialog> {
             ),
             const SizedBox(height: 24),
           ],
-
-          // Seção: Data do Pagamento/Recebimento
-          Text(
-            widget.isRecebimento ? 'Data do Recebimento' : 'Data do Pagamento',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey.shade800,
-            ),
-          ),
-          const SizedBox(height: 12),
-          InkWell(
-            onTap: _selectDate,
-            child: InputDecorator(
-              decoration: buildOutlinedInputDecoration(
-                label:
-                    widget.isRecebimento ? 'Data do Recebimento' : 'Data do Pagamento',
-                icon: Icons.calendar_today,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    DateFormat('dd/MM/yyyy').format(_paymentDate),
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const Icon(Icons.calendar_month, color: Colors.grey),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
 
           // Seção: Observações
           Text(

@@ -13,7 +13,6 @@ import '../screens/account_types_screen.dart';
 import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
 import '../services/default_account_categories_service.dart';
-import '../widgets/dialog_close_button.dart';
 import '../utils/installment_utils.dart';
 
 enum _EditScope { single, forward, all }
@@ -394,17 +393,24 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
   }
 
   Widget _buildSummaryHeader() {
-    final label = '${widget.card.cardBank ?? 'Cartao'} • ${widget.card.cardBrand ?? 'Bandeira'}';
-    final limitText = (widget.card.cardLimit != null && widget.card.cardLimit! > 0)
-        ? 'Limite ${UtilBrasilFields.obterReal(widget.card.cardLimit!)}'
-        : 'Limite não informado';
-    final dueText = 'Vencimento: dia ${widget.card.dueDay.toString().padLeft(2, '0')}'
-        .replaceAll('dia 00', 'dia --');
+    final cardColor = widget.card.cardColor != null
+        ? Color(widget.card.cardColor!)
+        : AppColors.primary;
+    final fgColor = foregroundColorFor(cardColor);
+    final dueText = widget.card.dueDay.toString().padLeft(2, '0')
+        .replaceAll('00', '--');
+    final brand = (widget.card.cardBrand ?? 'Cartao').trim();
+    final description = (widget.card.cardBank ?? widget.card.description).trim();
+    final label = [brand, description].where((s) => s.isNotEmpty).join(' ');
+    final brandLogo = _buildCardBrandLogo();
 
     return Card(
-      color: AppColors.primary.withValues(alpha: 0.08),
+      color: cardColor,
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Colors.black, width: 0.6),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -412,32 +418,27 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
           children: [
             Row(
               children: [
+                Text(
+                  dueText,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 36,
+                    color: fgColor,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                SizedBox(width: 42, height: 25, child: brandLogo),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     label,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                      color: fgColor,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
-                  ),
-                  child: Text(dueText, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
-                  ),
-                  child: Text(limitText, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                 ),
               ],
             ),
@@ -445,11 +446,21 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
             // Recorrência simples
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const Text('Marcar como despesa recorrente (assinatura)'),
-              subtitle: Text(_isEditing
-                  ? 'Não é possível alternar recorrência durante a edição'
-                  : 'Será considerada em faturas futuras a partir deste mês'),
+              title: Text(
+                'Marcar como despesa recorrente (assinatura)',
+                style: TextStyle(color: fgColor, fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                _isEditing
+                    ? 'Não é possível alternar recorrência durante a edição'
+                    : 'Será considerada em faturas futuras a partir deste mês',
+                style: TextStyle(color: fgColor.withValues(alpha: 0.8)),
+              ),
               value: _isRecurrent,
+              activeThumbColor: fgColor,
+              activeTrackColor: fgColor.withValues(alpha: 0.25),
+              inactiveThumbColor: fgColor.withValues(alpha: 0.7),
+              inactiveTrackColor: fgColor.withValues(alpha: 0.2),
               onChanged: _isEditing
                   ? null
                   : (val) {
@@ -461,6 +472,32 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
         ),
       ),
     );
+  }
+
+  Widget _buildCardBrandLogo() {
+    final brand = (widget.card.cardBrand ?? '').trim().toUpperCase();
+    String? assetPath;
+    if (brand == 'VISA') {
+      assetPath = 'assets/icons/cc_visa.png';
+    } else if (brand == 'AMEX' || brand == 'AMERICAN EXPRESS' || brand == 'AMERICANEXPRESS') {
+      assetPath = 'assets/icons/cc_amex.png';
+    } else if (brand == 'MASTER' || brand == 'MASTERCARD' || brand == 'MASTER CARD') {
+      assetPath = 'assets/icons/cc_mc.png';
+    } else if (brand == 'ELO') {
+      assetPath = 'assets/icons/cc_elo.png';
+    }
+
+    if (assetPath != null) {
+      return Image.asset(
+        assetPath,
+        package: 'finance_app',
+        width: 28,
+        height: 18,
+        fit: BoxFit.contain,
+      );
+    }
+
+    return const Icon(Icons.credit_card, size: 18);
   }
 
   Widget _buildColorPalette() {
@@ -902,25 +939,37 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
+                  color: widget.card.cardColor != null
+                      ? Color(widget.card.cardColor!)
+                      : Theme.of(context).colorScheme.surface,
                   border: Border(
                     bottom: BorderSide(color: Colors.grey.shade300),
                   ),
                 ),
                 child: Row(
                   children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      color: widget.card.cardColor != null
+                          ? foregroundColorFor(Color(widget.card.cardColor!))
+                          : null,
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         'Nova Despesa - ${widget.card.cardBank ?? "Cartao"}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
+                          color: widget.card.cardColor != null
+                              ? foregroundColorFor(Color(widget.card.cardColor!))
+                              : null,
                         ),
                         overflow: TextOverflow.ellipsis,
+                        softWrap: false,
+                        textAlign: TextAlign.left,
                       ),
-                    ),
-                    DialogCloseButton(
-                      onPressed: () => Navigator.pop(context),
                     ),
                   ],
                 ),
@@ -964,7 +1013,7 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                             key: ValueKey(_selectedType?.id),
                             initialValue: _getValidatedSelectedType(),
                             decoration: buildOutlinedInputDecoration(
-                              label: 'Tabela Pai (Contas a Pagar)',
+                              label: 'Conta a Pagar',
                               icon: Icons.account_balance_wallet,
                             ),
                             items: _typesList
@@ -996,7 +1045,7 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                               });
                               _reloadCategoriesForSelectedType();
                             },
-                            validator: (val) => val == null ? 'Selecione a tabela pai' : null,
+                            validator: (val) => val == null ? 'Selecione a conta a pagar' : null,
                           ),
                           const SizedBox(height: 12),
                           Row(
@@ -1026,7 +1075,7 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                               key: ValueKey(_selectedCategory?.id),
                               initialValue: _getValidatedSelectedCategory(),
                               decoration: buildOutlinedInputDecoration(
-                                label: 'Categoria (Filha)',
+                                label: 'Categoria',
                                 icon: Icons.label,
                               ),
                               items: _categories
@@ -1051,7 +1100,7 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                                     .toList();
                               },
                               onChanged: (val) => setState(() => _selectedCategory = val),
-                              validator: (val) => val == null ? 'Selecione a categoria filha' : null,
+                              validator: (val) => val == null ? 'Selecione a categoria' : null,
                             )
                           else
                             Container(
