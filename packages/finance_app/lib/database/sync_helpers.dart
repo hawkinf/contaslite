@@ -189,13 +189,14 @@ class SyncTables {
     'payments',
   ];
 
-  /// Tabelas em ordem reversa para pull
+  /// Tabelas em ordem de dependência para pull (mesma ordem do push)
+  /// Primeiro as tabelas sem FK, depois as que dependem delas
   static const List<String> orderedForPull = [
-    'payment_methods',
-    'account_types',
-    'account_descriptions',
-    'banks',
-    'accounts',
-    'payments',
+    'account_types',        // sem dependências
+    'account_descriptions', // depende de account_types
+    'banks',                // sem dependências
+    'payment_methods',      // sem dependências
+    'accounts',             // depende de account_types, account_descriptions, self-reference (cardId)
+    'payments',             // depende de accounts, payment_methods, banks
   ];
 }

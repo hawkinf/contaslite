@@ -35,7 +35,11 @@
       "Bash(Where-Object { $_FullName -notlike \"*.history*\" })",
       "Bash(Select-Object FullName)",
       "Bash(ls -la \"c:\\\\flutter\\\\Contaslite\\\\assets\\\\icons\"\" 2>&1 || echo \"Directory not found \")",
-      "Bash(ls -la \"c:\\\\flutter\\\\Contaslite\\\\packages\\\\finance_app\\\\assets\\\\icons\"\" 2>&1 || echo \"Directory not found \")"
+      "Bash(ls -la \"c:\\\\flutter\\\\Contaslite\\\\packages\\\\finance_app\\\\assets\\\\icons\"\" 2>&1 || echo \"Directory not found \")",
+      "Bash(ssh root@192.227.184.162:*)",
+      "Bash(ssh:*)",
+      "Bash(scp:*)",
+      "Bash(curl:*)"
     ]
   }
 }

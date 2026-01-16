@@ -1,8 +1,7 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
-const User = require('../models/User');
-const RefreshToken = require('../models/RefreshToken');
+const { User, RefreshToken, AccountType, PaymentMethod } = require('../models');
 const jwtConfig = require('../config/jwt');
 const logger = require('../utils/logger');
 
@@ -69,6 +68,15 @@ const register = async (req, res) => {
       password_hash: password, // Será hasheada no beforeCreate hook
       name
     });
+
+    // Criar dados padrão para o novo usuário
+    try {
+      await createDefaultDataForUser(user.id);
+      logger.info(`Default data created for user: ${user.id}`);
+    } catch (defaultError) {
+      logger.warn(`Failed to create default data for user ${user.id}:`, defaultError.message);
+      // Não falha o registro se os dados padrão não puderem ser criados
+    }
 
     // Gerar tokens
     const { accessToken, refreshToken, expiresIn } = await generateTokens(user.id);
@@ -323,6 +331,46 @@ const generateTokens = async (userId) => {
     refreshToken,
     expiresIn: 3600 // 1 hora em segundos
   };
+};
+
+/**
+ * Cria dados padrão para um novo usuário (tipos de conta e métodos de pagamento)
+ */
+const createDefaultDataForUser = async (userId) => {
+  // Criar tipos de conta padrão
+  const defaultAccountTypes = [
+    { name: 'Cartões de Crédito', logo: '💳' },
+    { name: 'Consumo', logo: '🛒' },
+    { name: 'Saúde', logo: '🏥' },
+    { name: 'Educação', logo: '📚' },
+    { name: 'Moradia', logo: '🏠' },
+    { name: 'Transporte', logo: '🚗' }
+  ];
+
+  for (const type of defaultAccountTypes) {
+    await AccountType.create({
+      user_id: userId,
+      name: type.name,
+      logo: type.logo
+    });
+  }
+
+  // Criar métodos de pagamento padrão
+  const defaultPaymentMethods = [
+    { name: 'Cartão de Crédito', type: 'credit_card', icon_code: 0xe19f, requires_bank: false, usage: 0 },
+    { name: 'Crédito em conta', type: 'credit', icon_code: 0xe1f5, requires_bank: true, usage: 1 },
+    { name: 'Dinheiro', type: 'cash', icon_code: 0xe19e, requires_bank: false, usage: 2 },
+    { name: 'Débito C/C', type: 'debit', icon_code: 0xe19f, requires_bank: true, usage: 0 },
+    { name: 'Internet Banking', type: 'transfer', icon_code: 0xe157, requires_bank: true, usage: 2 },
+    { name: 'PIX', type: 'pix', icon_code: 0xef6e, requires_bank: true, usage: 2 }
+  ];
+
+  for (const method of defaultPaymentMethods) {
+    await PaymentMethod.create({
+      user_id: userId,
+      ...method
+    });
+  }
 };
 
 module.exports = {

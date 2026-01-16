@@ -6,6 +6,9 @@ require('dotenv').config();
 const { testConnection } = require('./config/database');
 const logger = require('./utils/logger');
 
+// Carregar modelos (inicializa associações)
+const { sequelize } = require('./models');
+
 // Routes
 const authRoutes = require('./routes/auth');
 const syncRoutes = require('./routes/sync');
@@ -84,8 +87,7 @@ const startServer = async () => {
 
     // Sincronizar modelos (apenas em dev, em prod use migrations)
     if (process.env.NODE_ENV === 'development') {
-      const { sequelize } = require('./config/database');
-      await sequelize.sync({ alter: false });
+      await sequelize.sync({ alter: true });
       logger.info('Database models synchronized');
     }
 

@@ -1,53 +1,176 @@
 const { Op } = require('sequelize');
-const Account = require('../models/Account');
+const { modelsByTableName } = require('../models');
 const logger = require('../utils/logger');
 
 /**
+ * Tabelas suportadas para sincronização
+ */
+const SUPPORTED_TABLES = [
+  'accounts',
+  'account_types',
+  'account_descriptions',
+  'banks',
+  'payment_methods',
+  'payments'
+];
+
+/**
  * POST /api/sync/push
- * Envia alterações locais para o servidor
+ * Recebe alterações do cliente e processa no servidor
+ *
+ * Body esperado:
+ * {
+ *   table: 'accounts',
+ *   creates: [{ ...dados }],
+ *   updates: [{ id, ...dados }],
+ *   deletes: ['server_id1', 'server_id2']
+ * }
+ *
+ * Resposta:
+ * {
+ *   created: [{ local_id, server_id }],
+ *   updated: [{ local_id, server_id }],
+ *   conflicts: [{ server_data }],
+ *   serverTimestamp: 'ISO8601'
+ * }
  */
 const push = async (req, res) => {
   try {
     const userId = req.userId;
-    const { changes } = req.body;
+    const { table, creates, updates, deletes } = req.body;
 
-    if (!changes || typeof changes !== 'object') {
+    // Validar tabela
+    if (!table || !SUPPORTED_TABLES.includes(table)) {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'Formato de changes inválido'
+        message: `Tabela inválida: ${table}. Tabelas suportadas: ${SUPPORTED_TABLES.join(', ')}`
       });
     }
 
-    const processed = {};
-    const conflicts = [];
+    const Model = modelsByTableName[table];
+    if (!Model) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: `Modelo não encontrado para tabela: ${table}`
+      });
+    }
+
     const serverTimestamp = new Date();
+    const result = {
+      created: [],
+      updated: [],
+      conflicts: [],
+      serverTimestamp: serverTimestamp.toISOString()
+    };
 
-    // Processar contas (accounts)
-    if (changes.accounts && Array.isArray(changes.accounts)) {
-      processed.accounts = [];
-
-      for (const change of changes.accounts) {
+    // Processar criações
+    if (creates && Array.isArray(creates)) {
+      for (const data of creates) {
         try {
-          const result = await processAccountChange(userId, change, serverTimestamp, conflicts);
-          if (result) {
-            processed.accounts.push(result);
-          }
+          const localId = data.id || data.local_id;
+          const modelData = Model.fromFlutterData ? Model.fromFlutterData(data, userId) : { ...data, user_id: userId };
+
+          // Remover id local para não conflitar
+          delete modelData.id;
+          delete modelData.local_id;
+
+          const record = await Model.create(modelData);
+
+          result.created.push({
+            local_id: localId,
+            server_id: String(record.id)
+          });
+
+          logger.debug(`[${table}] Criado: local_id=${localId}, server_id=${record.id}`);
         } catch (error) {
-          logger.error(`Error processing account change:`, error);
-          // Continuar processando outros registros
+          logger.error(`[${table}] Erro ao criar registro:`, error.message);
         }
       }
     }
 
-    // TODO: Processar outras tabelas (categories, payment_methods, etc.)
+    // Processar atualizações
+    if (updates && Array.isArray(updates)) {
+      for (const data of updates) {
+        try {
+          const localId = data.local_id || data.id;
+          const serverId = data.server_id;
 
-    logger.info(`Sync push completed for user ${userId}: ${processed.accounts?.length || 0} accounts processed`);
+          if (!serverId) {
+            logger.warn(`[${table}] Update sem server_id ignorado: local_id=${localId}`);
+            continue;
+          }
 
-    return res.status(200).json({
-      processed,
-      conflicts,
-      serverTimestamp: serverTimestamp.toISOString()
-    });
+          const record = await Model.findOne({
+            where: { id: serverId, user_id: userId },
+            paranoid: false
+          });
+
+          if (!record) {
+            logger.warn(`[${table}] Registro não encontrado: server_id=${serverId}`);
+            continue;
+          }
+
+          // Verificar conflito (server-wins)
+          const clientUpdatedAt = data.updated_at ? new Date(data.updated_at) : null;
+          if (clientUpdatedAt && record.updated_at && record.updated_at > clientUpdatedAt) {
+            // Conflito: servidor tem versão mais recente
+            result.conflicts.push({
+              local_id: localId,
+              server_id: serverId,
+              server_data: record.toFlutterData ? record.toFlutterData() : record.toJSON()
+            });
+            logger.debug(`[${table}] Conflito detectado: server_id=${serverId}`);
+            continue;
+          }
+
+          // Aplicar atualização
+          const modelData = Model.fromFlutterData ? Model.fromFlutterData(data, userId) : data;
+          delete modelData.id;
+          delete modelData.user_id;
+          delete modelData.server_id;
+          delete modelData.local_id;
+
+          await record.update(modelData);
+
+          result.updated.push({
+            local_id: localId,
+            server_id: serverId
+          });
+
+          logger.debug(`[${table}] Atualizado: server_id=${serverId}`);
+        } catch (error) {
+          logger.error(`[${table}] Erro ao atualizar registro:`, error.message);
+        }
+      }
+    }
+
+    // Processar exclusões (soft delete)
+    if (deletes && Array.isArray(deletes)) {
+      for (const serverId of deletes) {
+        try {
+          if (!serverId) continue;
+
+          const record = await Model.findOne({
+            where: { id: serverId, user_id: userId },
+            paranoid: false
+          });
+
+          if (record) {
+            await record.update({
+              deleted_at: serverTimestamp,
+              updated_at: serverTimestamp
+            });
+            logger.debug(`[${table}] Deletado: server_id=${serverId}`);
+          }
+        } catch (error) {
+          logger.error(`[${table}] Erro ao deletar registro:`, error.message);
+        }
+      }
+    }
+
+    logger.info(`[SYNC PUSH] ${table}: ${result.created.length} criados, ${result.updated.length} atualizados, ${deletes?.length || 0} deletados, ${result.conflicts.length} conflitos`);
+
+    return res.status(200).json(result);
 
   } catch (error) {
     logger.error('Sync push error:', error);
@@ -59,13 +182,40 @@ const push = async (req, res) => {
 };
 
 /**
- * GET /api/sync/pull?since={timestamp}
- * Baixa alterações do servidor desde último sync
+ * GET /api/sync/pull
+ * Retorna alterações do servidor desde último sync
+ *
+ * Query params:
+ * - table: nome da tabela (obrigatório)
+ * - since: timestamp ISO8601 (opcional, retorna tudo se não fornecido)
+ *
+ * Resposta:
+ * {
+ *   records: [{ id, ...dados }],
+ *   deleted: ['server_id1', 'server_id2'],
+ *   server_timestamp: 'ISO8601'
+ * }
  */
 const pull = async (req, res) => {
   try {
     const userId = req.userId;
-    const since = req.query.since;
+    const { table, since } = req.query;
+
+    // Validar tabela
+    if (!table || !SUPPORTED_TABLES.includes(table)) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: `Tabela inválida: ${table}. Tabelas suportadas: ${SUPPORTED_TABLES.join(', ')}`
+      });
+    }
+
+    const Model = modelsByTableName[table];
+    if (!Model) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: `Modelo não encontrado para tabela: ${table}`
+      });
+    }
 
     // Validar timestamp
     let sinceDate = null;
@@ -79,54 +229,43 @@ const pull = async (req, res) => {
       }
     }
 
-    const whereClause = {
-      user_id: userId
-    };
+    // Construir query
+    const whereClause = { user_id: userId };
 
-    // Filtrar por data se fornecida
     if (sinceDate) {
-      whereClause.updated_at = {
-        [Op.gt]: sinceDate
-      };
+      whereClause.updated_at = { [Op.gt]: sinceDate };
     }
 
-    // Buscar contas (incluindo deletadas para soft delete)
-    const accounts = await Account.findAll({
+    // Buscar registros (incluindo deletados para soft delete)
+    const allRecords = await Model.findAll({
       where: whereClause,
-      paranoid: false, // Incluir registros com deleted_at
+      paranoid: false,
       order: [['updated_at', 'ASC']],
-      limit: 1000 // Paginação
+      limit: 1000
     });
 
-    // TODO: Buscar outras tabelas (categories, payment_methods, etc.)
+    // Separar registros ativos e deletados
+    const records = [];
+    const deleted = [];
 
-    const data = {
-      accounts: accounts.map(acc => ({
-        id: acc.id,
-        typeId: acc.type_id,
-        categoryId: acc.category_id,
-        subcategoryId: acc.subcategory_id,
-        paymentMethodId: acc.payment_method_id,
-        description: acc.description,
-        amount: parseFloat(acc.amount),
-        dueDate: acc.due_date,
-        paymentDate: acc.payment_date,
-        status: acc.status,
-        notes: acc.notes,
-        updatedAt: acc.updated_at.toISOString(),
-        deletedAt: acc.deleted_at ? acc.deleted_at.toISOString() : null
-      }))
-    };
+    for (const record of allRecords) {
+      if (record.deleted_at) {
+        deleted.push(String(record.id));
+      } else {
+        const data = record.toFlutterData ? record.toFlutterData() : record.toJSON();
+        records.push(data);
+      }
+    }
 
-    const serverTimestamp = new Date();
-    const hasMore = accounts.length >= 1000;
+    const serverTimestamp = new Date().toISOString();
 
-    logger.info(`Sync pull completed for user ${userId}: ${accounts.length} accounts returned`);
+    logger.info(`[SYNC PULL] ${table}: ${records.length} registros, ${deleted.length} deletados (since: ${since || 'início'})`);
 
     return res.status(200).json({
-      data,
-      serverTimestamp: serverTimestamp.toISOString(),
-      hasMore
+      records,
+      deleted,
+      server_timestamp: serverTimestamp,
+      user_id: userId
     });
 
   } catch (error) {
@@ -139,111 +278,42 @@ const pull = async (req, res) => {
 };
 
 /**
- * Processa uma mudança individual de conta
+ * GET /api/sync/status
+ * Retorna status da sincronização para o usuário
  */
-const processAccountChange = async (userId, change, serverTimestamp, conflicts) => {
-  const { localId, serverId, action, data, updatedAt } = change;
+const status = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const stats = {};
 
-  // CREATE
-  if (action === 'create') {
-    const newAccount = await Account.create({
+    for (const table of SUPPORTED_TABLES) {
+      const Model = modelsByTableName[table];
+      if (Model) {
+        const count = await Model.count({
+          where: { user_id: userId }
+        });
+        stats[table] = count;
+      }
+    }
+
+    return res.status(200).json({
       user_id: userId,
-      ...data,
-      created_at: serverTimestamp,
-      updated_at: serverTimestamp
+      tables: stats,
+      supported_tables: SUPPORTED_TABLES,
+      server_time: new Date().toISOString()
     });
 
-    return {
-      localId,
-      serverId: newAccount.id,
-      action: 'created',
-      serverTimestamp: serverTimestamp.toISOString()
-    };
+  } catch (error) {
+    logger.error('Sync status error:', error);
+    return res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Erro ao obter status de sincronização'
+    });
   }
-
-  // UPDATE
-  if (action === 'update') {
-    if (!serverId) {
-      throw new Error('serverId é obrigatório para updates');
-    }
-
-    const account = await Account.findOne({
-      where: { id: serverId, user_id: userId }
-    });
-
-    if (!account) {
-      throw new Error(`Conta ${serverId} não encontrada`);
-    }
-
-    // Detectar conflito: server-wins
-    const clientUpdatedAt = new Date(updatedAt);
-    if (account.updated_at > clientUpdatedAt) {
-      // Conflito! Servidor tem versão mais recente
-      conflicts.push({
-        localId,
-        serverId,
-        table: 'accounts',
-        reason: 'Server version is newer',
-        serverVersion: {
-          id: account.id,
-          status: account.status,
-          updatedAt: account.updated_at.toISOString()
-        },
-        resolution: 'server_wins'
-      });
-
-      return {
-        localId,
-        serverId,
-        action: 'conflict',
-        serverTimestamp: account.updated_at.toISOString()
-      };
-    }
-
-    // Sem conflito, aplicar update
-    await account.update({
-      ...data,
-      updated_at: serverTimestamp
-    });
-
-    return {
-      localId,
-      serverId,
-      action: 'updated',
-      serverTimestamp: serverTimestamp.toISOString()
-    };
-  }
-
-  // DELETE
-  if (action === 'delete') {
-    if (!serverId) {
-      throw new Error('serverId é obrigatório para deletes');
-    }
-
-    const account = await Account.findOne({
-      where: { id: serverId, user_id: userId }
-    });
-
-    if (account) {
-      // Soft delete
-      await account.update({
-        deleted_at: serverTimestamp,
-        updated_at: serverTimestamp
-      });
-    }
-
-    return {
-      localId,
-      serverId,
-      action: 'deleted',
-      serverTimestamp: serverTimestamp.toISOString()
-    };
-  }
-
-  throw new Error(`Ação inválida: ${action}`);
 };
 
 module.exports = {
   push,
-  pull
+  pull,
+  status
 };

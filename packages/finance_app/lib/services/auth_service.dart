@@ -78,7 +78,7 @@ class AuthService {
         _apiBaseUrl = 'http://${config.host}:3000';
       } else {
         // URL padrão se nada estiver configurado
-        _apiBaseUrl = 'http://contaslite.hawk.com.br:3000';
+        _apiBaseUrl = 'http://192.227.184.162:3000';
         debugPrint('⚠️  Nenhuma URL configurada, usando padrão: $_apiBaseUrl');
       }
 
@@ -436,6 +436,12 @@ class AuthService {
       debugPrint('🔐 Iniciando timer de refresh...');
       _startRefreshTimer();
       debugPrint('🔐 Timer de refresh iniciado');
+
+      // Inicializar SyncService após login bem-sucedido
+      debugPrint('🔄 Inicializando SyncService...');
+      await SyncService.instance.initialize();
+      SyncService.instance.startBackgroundSync();
+      debugPrint('🔄 SyncService inicializado e background sync iniciado');
 
       debugPrint('✅ Autenticação bem sucedida: ${user.email}');
     } catch (e, stackTrace) {

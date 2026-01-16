@@ -6,7 +6,7 @@ import '../services/prefs_service.dart';
 import '../services/sync_service.dart';
 import '../services/auth_service.dart';
 import '../database/postgresql_impl.dart';
-import 'postgres_data_explorer_screen.dart';
+import 'api_data_explorer_screen.dart';
 
 class DatabaseSettingsScreen extends StatefulWidget {
   const DatabaseSettingsScreen({super.key});
@@ -192,7 +192,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
 
   void _setDefaultApiUrl() {
     setState(() {
-      _apiUrlController.text = 'http://contaslite.hawk.com.br:3000';
+      _apiUrlController.text = 'http://192.227.184.162:3000';
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -553,7 +553,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
                     controller: _apiUrlController,
                     decoration: InputDecoration(
                       labelText: 'URL Completa da API',
-                      hintText: 'http://contaslite.hawk.com.br:3000',
+                      hintText: 'http://192.227.184.162:3000',
                       filled: true,
                       fillColor: Theme.of(context).colorScheme.surface,
                       border: OutlineInputBorder(
@@ -996,15 +996,17 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
             child: Column(
               children: [
                 ElevatedButton.icon(
-                  onPressed: _isEnabled ? _openDataExplorer : null,
+                  onPressed: AuthService.instance.isAuthenticated ? _openDataExplorer : null,
                   icon: const Icon(Icons.open_in_new),
                   label: const Text('Abrir Explorador de Dados'),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'Permite navegação completa das tabelas e registros do banco',
+                Text(
+                  AuthService.instance.isAuthenticated
+                    ? 'Permite navegação completa das tabelas e registros do servidor'
+                    : 'Faça login para acessar o explorador de dados',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],
             ),
@@ -1113,7 +1115,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
   void _openDataExplorer() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const PostgresDataExplorerScreen()),
+      MaterialPageRoute(builder: (_) => const ApiDataExplorerScreen()),
     );
   }
 

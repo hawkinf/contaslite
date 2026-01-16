@@ -1742,11 +1742,123 @@ class DatabaseHelper {
     );
   }
 
+  /// Obtém o ID local de um registro pelo server_id
+  /// Usado para resolver referências FK no pull
+  Future<int?> getLocalIdFromServerId(String table, String serverId) async {
+    final db = await database;
+    final result = await db.query(
+      table,
+      columns: ['id'],
+      where: 'server_id = ?',
+      whereArgs: [serverId],
+      limit: 1,
+    );
+    if (result.isEmpty) return null;
+    return result.first['id'] as int?;
+  }
+
+  /// Converte valor para String para busca de server_id
+  String? _toServerIdString(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value;
+    if (value is int) return value.toString();
+    return value.toString();
+  }
+
+  /// Resolve referências FK do servidor para IDs locais (usado no pull)
+  /// O servidor retorna IDs como integers, então precisamos converter para string
+  /// para buscar o registro local pelo server_id
+  Future<Map<String, dynamic>> resolveServerReferencesToLocal(
+    String table,
+    Map<String, dynamic> serverData,
+  ) async {
+    final resolved = Map<String, dynamic>.from(serverData);
+
+    if (table == 'account_descriptions') {
+      // Resolver accountId (FK para account_types)
+      final accountIdStr = _toServerIdString(serverData['accountId']);
+      if (accountIdStr != null) {
+        final localAccountTypeId = await getLocalIdFromServerId('account_types', accountIdStr);
+        if (localAccountTypeId != null) {
+          resolved['accountId'] = localAccountTypeId;
+        } else {
+          debugPrint('⚠️ [PULL] accountId (account_type) $accountIdStr não encontrado localmente');
+        }
+      }
+    } else if (table == 'accounts') {
+      // Resolver typeId (server_id → local id)
+      final typeIdStr = _toServerIdString(serverData['typeId']);
+      if (typeIdStr != null) {
+        final localTypeId = await getLocalIdFromServerId('account_types', typeIdStr);
+        if (localTypeId != null) {
+          resolved['typeId'] = localTypeId;
+        } else {
+          debugPrint('⚠️ [PULL] typeId $typeIdStr não encontrado localmente');
+        }
+      }
+
+      // Resolver categoryId
+      final categoryIdStr = _toServerIdString(serverData['categoryId']);
+      if (categoryIdStr != null) {
+        final localCategoryId = await getLocalIdFromServerId('account_descriptions', categoryIdStr);
+        resolved['categoryId'] = localCategoryId; // pode ser null
+      }
+
+      // Resolver cardId (self-reference)
+      final cardIdStr = _toServerIdString(serverData['cardId']);
+      if (cardIdStr != null) {
+        final localCardId = await getLocalIdFromServerId('accounts', cardIdStr);
+        resolved['cardId'] = localCardId; // pode ser null se cartão ainda não sincronizado
+      }
+    } else if (table == 'payments') {
+      // Resolver account_id
+      final accountIdStr = _toServerIdString(serverData['account_id']);
+      if (accountIdStr != null) {
+        final localAccountId = await getLocalIdFromServerId('accounts', accountIdStr);
+        if (localAccountId != null) {
+          resolved['account_id'] = localAccountId;
+        } else {
+          debugPrint('⚠️ [PULL] account_id $accountIdStr não encontrado localmente');
+        }
+      }
+
+      // Resolver payment_method_id
+      final paymentMethodIdStr = _toServerIdString(serverData['payment_method_id']);
+      if (paymentMethodIdStr != null) {
+        final localMethodId = await getLocalIdFromServerId('payment_methods', paymentMethodIdStr);
+        if (localMethodId != null) {
+          resolved['payment_method_id'] = localMethodId;
+        } else {
+          debugPrint('⚠️ [PULL] payment_method_id $paymentMethodIdStr não encontrado localmente');
+        }
+      }
+
+      // Resolver bank_account_id
+      final bankAccountIdStr = _toServerIdString(serverData['bank_account_id']);
+      if (bankAccountIdStr != null) {
+        final localBankId = await getLocalIdFromServerId('banks', bankAccountIdStr);
+        resolved['bank_account_id'] = localBankId; // pode ser null
+      }
+
+      // Resolver credit_card_id
+      final creditCardIdStr = _toServerIdString(serverData['credit_card_id']);
+      if (creditCardIdStr != null) {
+        final localCardId = await getLocalIdFromServerId('accounts', creditCardIdStr);
+        resolved['credit_card_id'] = localCardId; // pode ser null
+      }
+    }
+
+    return resolved;
+  }
+
   /// Aplica dados do servidor (server wins)
   Future<void> applyServerData(String table, Map<String, dynamic> serverData) async {
     final db = await database;
     final serverId = serverData['id'] as String?;
     if (serverId == null) return;
+
+    // Resolver referências FK do servidor para IDs locais
+    final resolvedData = await resolveServerReferencesToLocal(table, serverData);
 
     // Buscar registro local pelo server_id
     final local = await db.query(
@@ -1756,19 +1868,19 @@ class DatabaseHelper {
       limit: 1,
     );
 
-    serverData['sync_status'] = SyncStatus.synced.value;
-    serverData['last_synced_at'] = DateTime.now().toIso8601String();
-    serverData['server_id'] = serverId;
-    serverData.remove('id'); // Remover ID do servidor
+    resolvedData['sync_status'] = SyncStatus.synced.value;
+    resolvedData['last_synced_at'] = DateTime.now().toIso8601String();
+    resolvedData['server_id'] = serverId;
+    resolvedData.remove('id'); // Remover ID do servidor
 
     if (local.isEmpty) {
       // Novo registro do servidor
-      await db.insert(table, serverData);
+      await db.insert(table, resolvedData);
     } else {
       // Atualizar registro existente (server wins)
       await db.update(
         table,
-        serverData,
+        resolvedData,
         where: 'server_id = ?',
         whereArgs: [serverId],
       );
@@ -1872,5 +1984,144 @@ class DatabaseHelper {
       }
     }
     await clearSyncMetadata();
+  }
+
+  /// Obtém o server_id de um registro pelo ID local
+  /// Usado para resolver referências FK antes do push
+  Future<String?> getServerIdFromLocalId(String table, int localId) async {
+    final db = await database;
+    final result = await db.query(
+      table,
+      columns: ['server_id'],
+      where: 'id = ?',
+      whereArgs: [localId],
+      limit: 1,
+    );
+    if (result.isEmpty) return null;
+    return result.first['server_id'] as String?;
+  }
+
+  /// Resolve referências FK de account_descriptions para server_id
+  /// Converte accountId local para server_id do account_type
+  Future<Map<String, dynamic>> resolveAccountDescriptionReferences(
+    Map<String, dynamic> descData,
+  ) async {
+    final resolved = Map<String, dynamic>.from(descData);
+
+    // Resolver accountId (referência ao tipo de conta)
+    final accountId = descData['accountId'];
+    if (accountId != null && accountId is int) {
+      final accountTypeServerId = await getServerIdFromLocalId('account_types', accountId);
+      if (accountTypeServerId != null) {
+        resolved['accountId'] = accountTypeServerId;
+      } else {
+        debugPrint('⚠️ accountId (account_type) $accountId não tem server_id ainda');
+      }
+    }
+
+    return resolved;
+  }
+
+  /// Resolve referências FK de accounts para server_id
+  /// Converte IDs locais para server_id das tabelas relacionadas
+  Future<Map<String, dynamic>> resolveAccountReferences(
+    Map<String, dynamic> accountData,
+  ) async {
+    final resolved = Map<String, dynamic>.from(accountData);
+
+    // Resolver typeId (referência ao tipo de conta)
+    final typeId = accountData['typeId'];
+    if (typeId != null && typeId is int) {
+      final typeServerId = await getServerIdFromLocalId('account_types', typeId);
+      if (typeServerId != null) {
+        resolved['typeId'] = typeServerId;
+      } else {
+        debugPrint('⚠️ typeId $typeId não tem server_id ainda');
+      }
+    }
+
+    // Resolver categoryId (referência à descrição/categoria)
+    final categoryId = accountData['categoryId'];
+    if (categoryId != null && categoryId is int) {
+      final categoryServerId = await getServerIdFromLocalId('account_descriptions', categoryId);
+      if (categoryServerId != null) {
+        resolved['categoryId'] = categoryServerId;
+      } else {
+        debugPrint('⚠️ categoryId $categoryId não tem server_id ainda, removendo referência');
+        resolved.remove('categoryId');
+      }
+    }
+
+    // Resolver cardId (referência ao cartão de crédito pai)
+    final cardId = accountData['cardId'];
+    if (cardId != null && cardId is int) {
+      final cardServerId = await getServerIdFromLocalId('accounts', cardId);
+      if (cardServerId != null) {
+        resolved['cardId'] = cardServerId;
+      } else {
+        // Cartão pai ainda não foi sincronizado
+        // Remover referência para evitar erro - será resolvido na próxima sync
+        debugPrint('⚠️ cardId $cardId não tem server_id ainda, removendo referência');
+        resolved.remove('cardId');
+      }
+    }
+
+    return resolved;
+  }
+
+  /// Resolve referências FK de payments para server_id
+  /// Converte IDs locais para server_id das tabelas relacionadas
+  Future<Map<String, dynamic>> resolvePaymentReferences(
+    Map<String, dynamic> paymentData,
+  ) async {
+    final resolved = Map<String, dynamic>.from(paymentData);
+
+    // Resolver account_id (referência à conta)
+    final accountId = paymentData['account_id'];
+    if (accountId != null && accountId is int) {
+      final accountServerId = await getServerIdFromLocalId('accounts', accountId);
+      if (accountServerId != null) {
+        resolved['account_id'] = accountServerId;
+      } else {
+        debugPrint('⚠️ account_id $accountId não tem server_id ainda');
+      }
+    }
+
+    // Resolver payment_method_id (referência ao método de pagamento)
+    final paymentMethodId = paymentData['payment_method_id'];
+    if (paymentMethodId != null && paymentMethodId is int) {
+      final methodServerId = await getServerIdFromLocalId('payment_methods', paymentMethodId);
+      if (methodServerId != null) {
+        resolved['payment_method_id'] = methodServerId;
+      } else {
+        debugPrint('⚠️ payment_method_id $paymentMethodId não tem server_id ainda');
+      }
+    }
+
+    // Resolver bank_account_id (referência ao banco)
+    final bankAccountId = paymentData['bank_account_id'];
+    if (bankAccountId != null && bankAccountId is int) {
+      final bankServerId = await getServerIdFromLocalId('banks', bankAccountId);
+      if (bankServerId != null) {
+        resolved['bank_account_id'] = bankServerId;
+      } else {
+        debugPrint('⚠️ bank_account_id $bankAccountId não tem server_id ainda, removendo referência');
+        resolved.remove('bank_account_id');
+      }
+    }
+
+    // Resolver credit_card_id (referência ao cartão de crédito)
+    final creditCardId = paymentData['credit_card_id'];
+    if (creditCardId != null && creditCardId is int) {
+      final cardServerId = await getServerIdFromLocalId('accounts', creditCardId);
+      if (cardServerId != null) {
+        resolved['credit_card_id'] = cardServerId;
+      } else {
+        debugPrint('⚠️ credit_card_id $creditCardId não tem server_id ainda, removendo referência');
+        resolved.remove('credit_card_id');
+      }
+    }
+
+    return resolved;
   }
 }

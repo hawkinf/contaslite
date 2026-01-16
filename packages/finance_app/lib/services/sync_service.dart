@@ -46,7 +46,10 @@ class SyncService {
     if (config.apiUrl != null && config.apiUrl!.isNotEmpty) {
       _apiBaseUrl = config.apiUrl;
     } else if (config.enabled && config.host.isNotEmpty) {
-      _apiBaseUrl = 'http://${config.host}:8080';
+      _apiBaseUrl = 'http://${config.host}:3000';
+    } else {
+      // URL padrão se nada estiver configurado
+      _apiBaseUrl = 'http://192.227.184.162:3000';
     }
 
     debugPrint('🔧 SyncService inicializado com URL: $_apiBaseUrl');
@@ -283,6 +286,154 @@ class SyncService {
     return true;
   }
 
+  /// Push de accounts em duas fases para garantir que cartões sejam sincronizados antes das despesas
+  Future<SyncResult> _pushAccountsInTwoPhases() async {
+    int totalPushed = 0;
+    int totalConflicts = 0;
+    const table = 'accounts';
+
+    // Buscar todos os registros pendentes
+    final rawCreates = await _db.getPendingCreates(table);
+    final rawUpdates = await _db.getPendingUpdates(table);
+    final deletes = await _db.getPendingDeletes(table);
+
+    if (rawCreates.isEmpty && rawUpdates.isEmpty && deletes.isEmpty) {
+      return SyncResult.successful();
+    }
+
+    // Separar cartões (cardBrand != null, cardId == null) das despesas de cartão (cardId != null)
+    final cardCreates = rawCreates.where((r) => r['cardBrand'] != null && r['cardId'] == null).toList();
+    final cardUpdates = rawUpdates.where((r) => r['cardBrand'] != null && r['cardId'] == null).toList();
+
+    final cardExpenseCreates = rawCreates.where((r) => r['cardId'] != null).toList();
+    final cardExpenseUpdates = rawUpdates.where((r) => r['cardId'] != null).toList();
+
+    // Contas normais (sem cardBrand e sem cardId)
+    final normalCreates = rawCreates.where((r) => r['cardBrand'] == null && r['cardId'] == null).toList();
+    final normalUpdates = rawUpdates.where((r) => r['cardBrand'] == null && r['cardId'] == null).toList();
+
+    // FASE 1: Sincronizar cartões e contas normais (não dependem de cardId)
+    final phase1Creates = [...cardCreates, ...normalCreates];
+    final phase1Updates = [...cardUpdates, ...normalUpdates];
+
+    if (phase1Creates.isNotEmpty || phase1Updates.isNotEmpty || deletes.isNotEmpty) {
+      // Resolver referências FK (typeId, categoryId)
+      final resolvedCreates = await Future.wait(
+        phase1Creates.map((r) => _db.resolveAccountReferences(r)),
+      );
+      final resolvedUpdates = await Future.wait(
+        phase1Updates.map((r) => _db.resolveAccountReferences(r)),
+      );
+
+      debugPrint('📤 Push accounts (Fase 1 - cartões e normais): ${resolvedCreates.length} creates, ${resolvedUpdates.length} updates, ${deletes.length} deletes');
+
+      final result1 = await _pushTableData(
+        table: table,
+        creates: resolvedCreates,
+        updates: resolvedUpdates,
+        deletes: deletes,
+      );
+      totalPushed += result1.recordsPushed;
+      totalConflicts += result1.conflictsResolved;
+    }
+
+    // FASE 2: Sincronizar despesas de cartão (agora os cartões já têm server_id)
+    if (cardExpenseCreates.isNotEmpty || cardExpenseUpdates.isNotEmpty) {
+      // Resolver referências FK incluindo cardId agora que cartões foram sincronizados
+      final resolvedCreates = await Future.wait(
+        cardExpenseCreates.map((r) => _db.resolveAccountReferences(r)),
+      );
+      final resolvedUpdates = await Future.wait(
+        cardExpenseUpdates.map((r) => _db.resolveAccountReferences(r)),
+      );
+
+      debugPrint('📤 Push accounts (Fase 2 - despesas cartão): ${resolvedCreates.length} creates, ${resolvedUpdates.length} updates');
+
+      final result2 = await _pushTableData(
+        table: table,
+        creates: resolvedCreates,
+        updates: resolvedUpdates,
+        deletes: [], // Deletes já foram enviados na fase 1
+      );
+      totalPushed += result2.recordsPushed;
+      totalConflicts += result2.conflictsResolved;
+    }
+
+    return SyncResult.successful(pushed: totalPushed, conflicts: totalConflicts);
+  }
+
+  /// Helper para enviar dados de uma tabela ao servidor
+  Future<SyncResult> _pushTableData({
+    required String table,
+    required List<Map<String, dynamic>> creates,
+    required List<Map<String, dynamic>> updates,
+    required List<Map<String, dynamic>> deletes,
+  }) async {
+    int totalPushed = 0;
+    int totalConflicts = 0;
+
+    final response = await _httpClient!
+        .post(
+          Uri.parse('$_apiBaseUrl/api/sync/push'),
+          headers: AuthService.instance.getAuthHeaders(),
+          body: jsonEncode({
+            'table': table,
+            'creates': creates,
+            'updates': updates,
+            'deletes': deletes.map((d) => d['server_id']).where((id) => id != null).toList(),
+          }),
+        )
+        .timeout(const Duration(seconds: 60));
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      // Processar registros criados (receber server_id)
+      final created = data['created'] as List<dynamic>? ?? [];
+      for (final item in created) {
+        final localId = item['local_id'] as int?;
+        final serverId = item['server_id'] as String?;
+        if (localId != null && serverId != null) {
+          await _db.markAsSynced(table, localId, serverId);
+          totalPushed++;
+        }
+      }
+
+      // Processar registros atualizados
+      final updated = data['updated'] as List<dynamic>? ?? [];
+      for (final item in updated) {
+        final localId = item['local_id'] as int?;
+        final serverId = item['server_id'] as String?;
+        if (localId != null && serverId != null) {
+          await _db.markAsSynced(table, localId, serverId);
+          totalPushed++;
+        }
+      }
+
+      // Processar conflitos (server wins)
+      final conflicts = data['conflicts'] as List<dynamic>? ?? [];
+      for (final conflict in conflicts) {
+        final serverData = conflict['server_data'] as Map<String, dynamic>?;
+        if (serverData != null) {
+          await _db.applyServerData(table, serverData);
+          totalConflicts++;
+        }
+      }
+
+      // Remover registros deletados localmente após confirmação
+      if (deletes.isNotEmpty) {
+        await _db.purgePendingDeletes(table);
+      }
+    } else if (response.statusCode == 401) {
+      // Token expirado - não fazer retry aqui, deixar para _pushChanges principal
+      throw Exception('Token expirado');
+    } else {
+      debugPrint('❌ Erro no push de $table: ${response.statusCode}');
+    }
+
+    return SyncResult.successful(pushed: totalPushed, conflicts: totalConflicts);
+  }
+
   /// Push de mudanças locais para o servidor
   Future<SyncResult> _pushChanges() async {
     int totalPushed = 0;
@@ -290,13 +441,48 @@ class SyncService {
 
     for (final table in SyncTables.orderedForPush) {
       try {
+        // Para accounts, sincronizar em duas fases:
+        // Fase 1: Cartões de crédito (cardBrand != null) - não têm cardId
+        // Fase 2: Despesas de cartão (cardId != null) - dependem dos cartões
+        if (table == 'accounts') {
+          final result = await _pushAccountsInTwoPhases();
+          totalPushed += result.recordsPushed;
+          totalConflicts += result.conflictsResolved;
+          continue;
+        }
+
         // Buscar registros pendentes
-        final creates = await _db.getPendingCreates(table);
-        final updates = await _db.getPendingUpdates(table);
+        final rawCreates = await _db.getPendingCreates(table);
+        final rawUpdates = await _db.getPendingUpdates(table);
         final deletes = await _db.getPendingDeletes(table);
 
-        if (creates.isEmpty && updates.isEmpty && deletes.isEmpty) {
+        if (rawCreates.isEmpty && rawUpdates.isEmpty && deletes.isEmpty) {
           continue;
+        }
+
+        // Resolver referências FK para server_id antes de enviar
+        List<Map<String, dynamic>> creates;
+        List<Map<String, dynamic>> updates;
+
+        if (table == 'account_descriptions') {
+          // Resolver accountId para server_id do account_type
+          creates = await Future.wait(
+            rawCreates.map((r) => _db.resolveAccountDescriptionReferences(r)),
+          );
+          updates = await Future.wait(
+            rawUpdates.map((r) => _db.resolveAccountDescriptionReferences(r)),
+          );
+        } else if (table == 'payments') {
+          // Resolver accountId para server_id da conta
+          creates = await Future.wait(
+            rawCreates.map((r) => _db.resolvePaymentReferences(r)),
+          );
+          updates = await Future.wait(
+            rawUpdates.map((r) => _db.resolvePaymentReferences(r)),
+          );
+        } else {
+          creates = rawCreates;
+          updates = rawUpdates;
         }
 
         debugPrint('📤 Push $table: ${creates.length} creates, ${updates.length} updates, ${deletes.length} deletes');

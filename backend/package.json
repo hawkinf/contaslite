@@ -6,8 +6,10 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
-    "migrate": "node src/scripts/migrate.js",
-    "seed": "node src/scripts/seed.js",
+    "migrate": "node scripts/migrate.js",
+    "migrate:reset": "node scripts/migrate.js --reset",
+    "seed": "node scripts/seed.js",
+    "seed:clean": "node scripts/seed.js --clean",
     "test": "jest --coverage",
     "lint": "eslint src/"
   },
