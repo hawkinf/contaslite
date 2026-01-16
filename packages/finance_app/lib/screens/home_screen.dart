@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/prefs_service.dart';
 import 'calendar_screen.dart';
-import 'credit_card_screen.dart';
-import 'dashboard_screen.dart';
-import 'recebimentos_screen.dart';
 import 'settings_screen.dart';
 import 'database_screen.dart';
 import 'holidays_screen.dart';
@@ -31,19 +28,13 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _screens = [
-      // Primeira aba: Contas a Pagar (exclui Recebimentos)
-      const DashboardScreen(excludeTypeNameFilter: 'Recebimentos'),
-      // Segunda aba: Contas a Receber
-      const RecebimentosScreen(),
-      // Terceira aba: Cartões
-      const CreditCardScreen(),
-      // Quarta aba: Preferências
+      // Preferências
       const SettingsScreen(),
-      // Quinta aba: Calendário
+      // Calendário
       const CalendarScreen(),
-      // Sexta aba: Feriados
+      // Feriados
       const HolidaysScreen(),
-      // Sétima aba: Tabelas (Database)
+      // Tabelas (Database)
       const DatabaseScreen(),
     ];
     final requestedIndex = widget.initialTabIndex;

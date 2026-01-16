@@ -1,5 +1,4 @@
 import 'package:finance_app/screens/account_types_screen.dart';
-import 'package:finance_app/screens/credit_card_screen.dart';
 import 'package:finance_app/screens/dashboard_screen.dart' as contas_dash;
 import 'package:finance_app/screens/bank_accounts_screen.dart';
 import 'package:finance_app/screens/payment_methods_screen.dart';
@@ -370,9 +369,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
   // GlobalKeys para capturar screenshots dos calendários
   final GlobalKey _calendarGridKey = GlobalKey();
   final GlobalKey _annualCalendarKey = GlobalKey();
-  final GlobalKey<NavigatorState> _cardsNavigatorKey = GlobalKey<NavigatorState>();
-  final GlobalKey<NavigatorState> _contasPagarNavigatorKey = GlobalKey<NavigatorState>();
-  final GlobalKey<NavigatorState> _recebimentosNavigatorKey = GlobalKey<NavigatorState>();
 
   final List<int> availableYears = List.generate(11, (index) => DateTime.now().year - 5 + index);
 
@@ -389,17 +385,17 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     // Inicializar cidades ANTES de usar em outros métodos
     _initializeCities();
     _animationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
-    _tabController = TabController(length: 7, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) return;
-      if (_tabController.index <= 2) {
+      if (_tabController.index == 0) {
         if (_skipNextContasReset) {
           _skipNextContasReset = false;
         } else {
           _resetContasDateRangeIfSingleDay();
         }
       }
-      if (_tabController.index == 4 && mounted) {
+      if (_tabController.index == 1 && mounted) {
         setState(() {
           _monthlyTotalsFuture = _loadMonthlyTotals(_calendarMonth, _selectedYear);
         });
@@ -4118,10 +4114,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     controller: _tabController,
                     dividerColor: Colors.transparent,
                     tabs: const [
-                      Tab(text: 'Contas', icon: Icon(Icons.dashboard_customize)),
-                      Tab(text: 'Contas a Pagar', icon: Icon(Icons.receipt_long)),
-                      Tab(text: 'Contas a Receber', icon: Icon(Icons.savings)),
-                      Tab(text: 'Cartőes', icon: Icon(Icons.credit_card)),
+                      Tab(text: 'Contas', icon: Icon(Icons.dashboard_outlined)),
                       Tab(text: 'Calendário', icon: Icon(Icons.calendar_month)),
                       Tab(text: 'Feriados', icon: Icon(Icons.list_alt)),
                       Tab(text: 'Tabelas', icon: Icon(Icons.table_chart)),
@@ -4135,61 +4128,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                       children: [
                         // ABA 1: CONTAS (visão consolidada)
                         const ContasResumoTab(),
-                        // ABA 2: CONTAS A PAGAR
-                        PopScope(
-                          canPop: false,
-                          onPopInvokedWithResult: (didPop, result) {
-                            if (_contasPagarNavigatorKey.currentState?.canPop() ?? false) {
-                              _contasPagarNavigatorKey.currentState!.pop();
-                            } else if (!didPop) {
-                              Navigator.of(context).maybePop();
-                            }
-                          },
-                          child: Navigator(
-                            key: _contasPagarNavigatorKey,
-                            onGenerateRoute: (settings) => MaterialPageRoute(
-                              builder: (_) => const ContasTab(),
-                              settings: settings,
-                            ),
-                          ),
-                        ),
-                        // ABA 3: RECEBIMENTOS
-                        PopScope(
-                          canPop: false,
-                          onPopInvokedWithResult: (didPop, result) {
-                            if (_recebimentosNavigatorKey.currentState?.canPop() ?? false) {
-                              _recebimentosNavigatorKey.currentState!.pop();
-                            } else if (!didPop) {
-                              Navigator.of(context).maybePop();
-                            }
-                          },
-                          child: Navigator(
-                            key: _recebimentosNavigatorKey,
-                            onGenerateRoute: (settings) => MaterialPageRoute(
-                              builder: (_) => const RecebimentosTab(),
-                              settings: settings,
-                            ),
-                          ),
-                        ),
-                        // ABA 4: CARTÕES (navegação interna mantém as abas visíveis)
-                        PopScope(
-                          canPop: false,
-                          onPopInvokedWithResult: (didPop, result) {
-                            if (_cardsNavigatorKey.currentState?.canPop() ?? false) {
-                              _cardsNavigatorKey.currentState!.pop();
-                            } else if (!didPop) {
-                              Navigator.of(context).maybePop();
-                            }
-                          },
-                          child: Navigator(
-                            key: _cardsNavigatorKey,
-                            onGenerateRoute: (settings) => MaterialPageRoute(
-                              builder: (_) => const CreditCardScreen(),
-                              settings: settings,
-                            ),
-                          ),
-                        ),
-                        // ABA 5: CALENDARIO
+                        // ABA 2: CALENDARIO
                         SingleChildScrollView(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -4211,7 +4150,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                             ],
                           ),
                         ),
-                        // ABA 6: FERIADOS
+                        // ABA 3: FERIADOS
                         SingleChildScrollView(
                           child: FutureBuilder<List<Holiday>>(
                             future: _holidaysFuture,
@@ -4460,7 +4399,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                             },
                           ),
                         ),
-                        // ABA 7: TABELAS
+                        // ABA 4: TABELAS
                         const TablesScreen(),
 ],
                     ),
