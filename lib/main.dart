@@ -4758,8 +4758,15 @@ class _RecebimentosTabState extends State<RecebimentosTab> {
   }
 }
 
-class TablesScreen extends StatelessWidget {
+class TablesScreen extends StatefulWidget {
   const TablesScreen({super.key});
+
+  @override
+  State<TablesScreen> createState() => _TablesScreenState();
+}
+
+class _TablesScreenState extends State<TablesScreen> {
+  Widget? _currentScreen;
 
   @override
   Widget build(BuildContext context) {
@@ -4790,41 +4797,54 @@ class TablesScreen extends StatelessWidget {
       ),
     ];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tabelas'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-      ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: items.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          final item = items[index];
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Theme.of(context)
-                  .colorScheme
-                  .primary
-                  .withValues(alpha: 0.12),
-              child: Icon(
-                item.icon,
-                color: Theme.of(context).colorScheme.primary,
-              ),
+    if (_currentScreen != null) {
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 8, top: 8, right: 8, bottom: 0),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  tooltip: 'Voltar',
+                  onPressed: () => setState(() => _currentScreen = null),
+                ),
+                const SizedBox(width: 8),
+                const Text('Tabelas', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              ],
             ),
-            title: Text(item.title),
-            subtitle: Text(item.subtitle),
-            trailing: const Icon(Icons.chevron_right),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            tileColor: Theme.of(context).cardColor,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => item.builder()),
+          ),
+          const Divider(height: 1),
+          Expanded(child: _currentScreen!),
+        ],
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: items.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return ListTile(
+          leading: CircleAvatar(
+            backgroundColor: Theme.of(context)
+                .colorScheme
+                .primary
+                .withValues(alpha: 0.12),
+            child: Icon(
+              item.icon,
+              color: Theme.of(context).colorScheme.primary,
             ),
-          );
-        },
-      ),
+          ),
+          title: Text(item.title),
+          subtitle: Text(item.subtitle),
+          trailing: const Icon(Icons.chevron_right),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          tileColor: Theme.of(context).cardColor,
+          onTap: () => setState(() => _currentScreen = item.builder()),
+        );
+      },
     );
   }
 }

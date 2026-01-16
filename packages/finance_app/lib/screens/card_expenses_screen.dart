@@ -283,14 +283,14 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
             headerRow,
           ],
           _buildSummaryStrip(),
-          const SizedBox(height: 8),
+          const SizedBox(height: 2),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _visibleExpenses.isEmpty
                     ? const Center(child: Text('Nenhuma despesa nesta fatura.'))
                     : ListView.builder(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         itemCount: _visibleExpenses.length,
                         itemBuilder: (context, index) {
                           return _buildExpenseItem(_visibleExpenses[index]);
@@ -302,7 +302,49 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     );
 
     if (widget.inline) {
-      return body;
+      final size = MediaQuery.of(context).size;
+      return Stack(
+        children: [
+          SizedBox(
+            width: size.width,
+            height: size.height,
+            child: body,
+          ),
+          Positioned(
+            right: 32,
+            bottom: 64,
+            child: Material(
+              color: Colors.deepPurple,
+              borderRadius: BorderRadius.circular(12),
+              elevation: 4,
+              child: InkWell(
+                onTap: _openNewExpense,
+                borderRadius: BorderRadius.circular(12),
+                child: const SizedBox(
+                  width: 70,
+                  height: 70,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.credit_card, color: Colors.white, size: 24),
+                      SizedBox(height: 4),
+                      Text(
+                        'Lançar\nDespesa',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
     }
 
     return Scaffold(
