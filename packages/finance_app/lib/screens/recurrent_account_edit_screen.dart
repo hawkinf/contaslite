@@ -148,16 +148,40 @@ class _RecurrentAccountEditScreenState
     final targetYear = widget.account.year ?? now.year;
     final startDate = DateTime(targetYear, targetMonth, 1);
     final endDate = DateTime(targetYear, targetMonth + 1, 0);
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PaymentDialog(
-          startDate: startDate,
-          endDate: endDate,
-          preselectedAccount: widget.account,
-          isRecebimento: widget.isRecebimento,
-        ),
-      ),
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final media = MediaQuery.of(dialogContext);
+        final viewInsets = media.viewInsets.bottom;
+        final maxWidth = (media.size.width * 0.92).clamp(280.0, 720.0);
+        final availableHeight = media.size.height - viewInsets;
+        final maxHeight = (availableHeight * 0.9).clamp(420.0, 900.0);
+        return AnimatedPadding(
+          duration: const Duration(milliseconds: 200),
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: viewInsets + 16,
+          ),
+          child: Dialog(
+            insetPadding: EdgeInsets.zero,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: maxWidth,
+                maxHeight: maxHeight,
+              ),
+              child: PaymentDialog(
+                startDate: startDate,
+                endDate: endDate,
+                preselectedAccount: widget.account,
+                isRecebimento: widget.isRecebimento,
+              ),
+            ),
+          ),
+        );
+      },
     );
     if (result == true) {
       await _loadPaymentInfo();

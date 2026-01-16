@@ -1950,14 +1950,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Dialog.fullscreen(
-        child: PaymentDialog(
-          startDate: _startDate,
-          endDate: _endDate,
-          isRecebimento: _isRecebimentosFilter,
-          preselectedAccount: account,
-        ),
-      ),
+      builder: (dialogContext) {
+        final media = MediaQuery.of(dialogContext);
+        final viewInsets = media.viewInsets.bottom;
+        final maxWidth = (media.size.width * 0.92).clamp(280.0, 720.0);
+        final availableHeight = media.size.height - viewInsets;
+        final maxHeight = (availableHeight * 0.9).clamp(420.0, 900.0);
+        return AnimatedPadding(
+          duration: const Duration(milliseconds: 200),
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: viewInsets + 16,
+          ),
+          child: Dialog(
+            insetPadding: EdgeInsets.zero,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: maxWidth,
+                maxHeight: maxHeight,
+              ),
+              child: PaymentDialog(
+                startDate: _startDate,
+                endDate: _endDate,
+                isRecebimento: _isRecebimentosFilter,
+                preselectedAccount: account,
+              ),
+            ),
+          ),
+        );
+      },
     );
     if (mounted) {
       _refresh();
@@ -2011,10 +2034,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _openCardEditor(Account account) async {
     await showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (_) => Dialog.fullscreen(
-        child: CreditCardFormScreen(cardToEdit: account),
-      ),
+      builder: (_) => CreditCardFormScreen(cardToEdit: account),
     );
     if (mounted) {
       _refresh();

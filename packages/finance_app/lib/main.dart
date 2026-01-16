@@ -179,6 +179,11 @@ class _FinanceAppState extends State<FinanceApp> with WidgetsBindingObserver {
       colorSchemeSeed: Colors.blue,
       textTheme: GoogleFonts.robotoTextTheme(),
       scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+      dialogTheme: DialogThemeData(
+        backgroundColor: Colors.white,
+        titleTextStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      ),
       cardTheme: CardThemeData(
         color: Colors.white,
         elevation: 2,
@@ -205,6 +210,11 @@ class _FinanceAppState extends State<FinanceApp> with WidgetsBindingObserver {
       brightness: Brightness.dark,
       colorSchemeSeed: Colors.blue,
       scaffoldBackgroundColor: const Color(0xFF121212),
+      dialogTheme: DialogThemeData(
+        backgroundColor: const Color(0xFF1E1E1E),
+        titleTextStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      ),
       cardTheme: CardThemeData(
         color: const Color(0xFF1E1E1E),
         elevation: 4,

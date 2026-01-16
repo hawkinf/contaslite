@@ -11,6 +11,10 @@ import '../widgets/app_input_decoration.dart';
 import '../services/prefs_service.dart';
 import '../widgets/date_range_app_bar.dart';
 import '../widgets/dialog_close_button.dart';
+import '../widgets/mastercard_logo.dart';
+import '../widgets/visa_logo.dart';
+import '../widgets/elo_logo.dart';
+import '../widgets/amex_logo.dart';
 
 class _CreditCardForm extends StatefulWidget {
   final Account? cardToEdit;
@@ -154,28 +158,102 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
     return result;
   }
 
+  Widget _buildBrandRow(String brand, {bool compactLogo = false}) {
+    final normalized = brand.trim().toUpperCase();
+    Widget? logo;
+    Widget? assetLogo;
+    if (normalized == 'MASTERCARD' || normalized == 'MASTER CARD' || normalized == 'MASTER') {
+      assetLogo = Image.asset(
+        'assets/icons/cc_mc.png',
+        package: 'finance_app',
+        width: 28,
+        height: 18,
+        fit: BoxFit.contain,
+      );
+      logo = compactLogo ? assetLogo : const MastercardLogo(width: 28, height: 18);
+    } else if (normalized == 'ELO') {
+      assetLogo = Image.asset(
+        'assets/icons/cc_elo.png',
+        package: 'finance_app',
+        width: 28,
+        height: 18,
+        fit: BoxFit.contain,
+      );
+      logo = compactLogo ? assetLogo : const EloLogo(width: 28, height: 18);
+    } else if (normalized == 'VISA') {
+      assetLogo = Image.asset(
+        'assets/icons/cc_visa.png',
+        package: 'finance_app',
+        width: 28,
+        height: 18,
+        fit: BoxFit.contain,
+      );
+      logo = compactLogo ? assetLogo : const VisaLogo(width: 32, height: 18);
+    } else if (normalized == 'AMEX' || normalized == 'AMERICAN EXPRESS' || normalized == 'AMERICANEXPRESS') {
+      assetLogo = Image.asset(
+        'assets/icons/cc_amex.png',
+        package: 'finance_app',
+        width: 28,
+        height: 18,
+        fit: BoxFit.contain,
+      );
+      logo = compactLogo ? assetLogo : const AmexLogo(width: 28, height: 18);
+    }
+    final displayLogo = compactLogo ? (assetLogo ?? logo) : logo;
+    return Row(
+      children: [
+        SizedBox(
+          width: 34,
+          height: 20,
+          child: Center(
+            child: displayLogo ?? const Icon(Icons.credit_card, size: 18),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            brand,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<DateTimeRange>(
       valueListenable: PrefsService.dateRangeNotifier,
       builder: (context, range, _) {
+        final isEditing = widget.cardToEdit != null;
+        final editColor = isEditing && widget.cardToEdit?.cardColor != null
+            ? Color(widget.cardToEdit!.cardColor!)
+            : Colors.deepPurple.shade700;
+        final editFg = foregroundColorFor(editColor);
         return Scaffold(
-      appBar: DateRangeAppBar(
-          title: widget.cardToEdit != null ? 'Editar Cartão' : 'Novo Cartão',
-          range: range,
-          onPrevious: () => PrefsService.shiftDateRange(-1),
-          onNext: () => PrefsService.shiftDateRange(1),
-          backgroundColor: Colors.deepPurple.shade700,
-          foregroundColor: Colors.white,
-          actions: [
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: DialogCloseButton(
-                onPressed: () => Navigator.pop(context),
-              ),
+      appBar: isEditing
+          ? AppBar(
+              title: const Text('Editar Cartão'),
+              backgroundColor: editColor,
+              foregroundColor: editFg,
+              elevation: 0,
+            )
+          : DateRangeAppBar(
+              title: 'Novo Cartão',
+              range: range,
+              onPrevious: () => PrefsService.shiftDateRange(-1),
+              onNext: () => PrefsService.shiftDateRange(1),
+              backgroundColor: Colors.deepPurple.shade700,
+              foregroundColor: Colors.white,
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: DialogCloseButton(
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
         body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
@@ -232,11 +310,21 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
               
               DropdownButtonFormField<String>(
                 value: _brands.contains(_selectedBrand) ? _selectedBrand : null,
+                isExpanded: true,
+                selectedItemBuilder: (context) =>
+                    _brands.map((b) => _buildBrandRow(b, compactLogo: true)).toList(),
                 decoration: buildOutlinedInputDecoration(
                   label: 'Bandeira',
                   icon: Icons.flag,
                 ),
-                items: _brands.map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
+                items: _brands
+                    .map(
+                      (b) => DropdownMenuItem(
+                        value: b,
+                        child: _buildBrandRow(b, compactLogo: true),
+                      ),
+                    )
+                    .toList(),
                 onChanged: (val) => setState(() => _selectedBrand = val),
                 hint: const Text('Selecione'),
               ),

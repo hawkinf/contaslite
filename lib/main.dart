@@ -277,6 +277,7 @@ class _MyAppState extends State<MyApp> {
               backgroundColor: lightColorScheme.surface,
               titleTextStyle: TextStyle(color: lightColorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.w600),
               contentTextStyle: TextStyle(color: lightColorScheme.onSurface),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
             ),
             dividerColor: lightColorScheme.outline,
           ),
@@ -317,6 +318,7 @@ class _MyAppState extends State<MyApp> {
               backgroundColor: darkColorScheme.surface,
               titleTextStyle: TextStyle(color: darkColorScheme.onSurface, fontSize: 18, fontWeight: FontWeight.w600),
               contentTextStyle: TextStyle(color: darkColorScheme.onSurface),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
             ),
             dividerColor: darkColorScheme.outline,
             textTheme: TextTheme(
