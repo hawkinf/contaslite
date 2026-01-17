@@ -1854,8 +1854,10 @@ class DatabaseHelper {
   /// Aplica dados do servidor (server wins)
   Future<void> applyServerData(String table, Map<String, dynamic> serverData) async {
     final db = await database;
-    final serverId = serverData['id'] as String?;
-    if (serverId == null) return;
+    // Converter id para String (servidor pode retornar int ou String)
+    final rawId = serverData['id'];
+    final serverId = rawId?.toString();
+    if (serverId == null || serverId.isEmpty) return;
 
     // Resolver referências FK do servidor para IDs locais
     final resolvedData = await resolveServerReferencesToLocal(table, serverData);

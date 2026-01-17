@@ -28,4 +28,10 @@ router.post('/refresh', authController.refresh);
  */
 router.post('/logout', authenticate, authController.logout);
 
+/**
+ * POST /api/auth/google
+ * Autentica usuário via Google Sign-In
+ */
+router.post('/google', authController.googleAuth);
+
 module.exports = router;

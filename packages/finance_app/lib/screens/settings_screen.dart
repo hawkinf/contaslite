@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/holiday_service.dart';
 import '../services/prefs_service.dart';
 import '../services/auth_service.dart';
+import '../services/google_auth_service.dart';
 import '../services/sync_service.dart';
 import '../models/user.dart';
 import '../database/sync_helpers.dart';
@@ -432,6 +433,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (confirm == true) {
       await AuthService.instance.logout();
+      await GoogleAuthService.instance.signOut();
       await SyncService.instance.resetSync();
       if (mounted) {
         Navigator.pushReplacement(

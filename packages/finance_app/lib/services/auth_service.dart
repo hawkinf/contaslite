@@ -97,6 +97,12 @@ class AuthService {
     _apiBaseUrl = url;
   }
 
+  /// Configura os tokens internamente (usado pelo GoogleAuthService)
+  void setTokens(AuthTokens tokens) {
+    _tokens = tokens;
+    _startRefreshTimer();
+  }
+
   /// Restaura sessão salva anteriormente
   Future<void> restoreSession() async {
     try {
@@ -350,8 +356,9 @@ class AuthService {
       }
     }
 
-    // Limpar tokens, mas manter email/senha salvos para auto-login
+    // Limpar tokens E credenciais salvas para que o logout seja persistente
     await SecureCredentialStorage.clearTokensOnly();
+    await SecureCredentialStorage.clearSavedCredentials();
     _tokens = null;
     currentUserNotifier.value = null;
     authStateNotifier.value = AuthState.unauthenticated;

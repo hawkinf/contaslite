@@ -1,4 +1,4 @@
-package com.example.contaslite
+package com.hawk.contaslite
 
 import io.flutter.embedding.android.FlutterActivity
 

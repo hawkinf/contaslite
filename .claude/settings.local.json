@@ -39,7 +39,9 @@
       "Bash(ssh root@192.227.184.162:*)",
       "Bash(ssh:*)",
       "Bash(scp:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(flutter pub deps:*)",
+      "Bash(ls \"c:\\\\flutter\\\\Contaslite\\\\packages\\\\finance_app\\\\assets\\\\icons\"\" 2>/dev/null || echo \"Pasta não existe ou vazia \")"
     ]
   }
 }

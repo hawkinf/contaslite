@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/google_auth_service.dart';
 import '../services/prefs_service.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -17,6 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   String? _errorMessage;
@@ -74,6 +76,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() {
         _isLoading = false;
         _errorMessage = result.error;
+      });
+    }
+  }
+
+  Future<void> _registerWithGoogle() async {
+    setState(() {
+      _isGoogleLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await GoogleAuthService.instance.initialize();
+      final result = await GoogleAuthService.instance.signInWithGoogle();
+
+      if (!mounted) return;
+
+      if (result.success) {
+        debugPrint('✅ Registro com Google bem-sucedido');
+      } else {
+        setState(() {
+          _isGoogleLoading = false;
+          if (result.errorCode != 'CANCELLED') {
+            _errorMessage = result.error;
+          }
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isGoogleLoading = false;
+        _errorMessage = 'Erro ao registrar com Google: $e';
       });
     }
   }
@@ -307,6 +340,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 24),
+
+                    // Divisor
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: Colors.grey[400])),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'ou',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        ),
+                        Expanded(child: Divider(color: Colors.grey[400])),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Botão Google Sign-In
+                    SizedBox(
+                      height: 50,
+                      child: OutlinedButton.icon(
+                        onPressed: (_isLoading || _isGoogleLoading)
+                            ? null
+                            : _registerWithGoogle,
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          side: BorderSide(
+                            color: Colors.grey[400]!,
+                          ),
+                        ),
+                        icon: _isGoogleLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const _GoogleLogo(size: 20),
+                        label: Text(
+                          _isGoogleLoading
+                              ? 'Conectando...'
+                              : 'Registrar com Google',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: theme.brightness == Brightness.dark
+                                ? Colors.white
+                                : Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -316,4 +404,96 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
+}
+
+/// Widget que desenha o logo oficial do Google com as 4 cores
+class _GoogleLogo extends StatelessWidget {
+  final double size;
+
+  const _GoogleLogo({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        painter: _GoogleLogoPainter(),
+      ),
+    );
+  }
+}
+
+class _GoogleLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double s = size.width;
+    final double centerX = s / 2;
+    final double centerY = s / 2;
+    final double radius = s * 0.45;
+    final double strokeWidth = s * 0.18;
+
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.butt;
+
+    // Azul (direita)
+    paint.color = const Color(0xFF4285F4);
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(centerX, centerY), radius: radius),
+      -0.4, // ~-23 graus
+      1.2,  // ~69 graus
+      false,
+      paint,
+    );
+
+    // Verde (inferior direito)
+    paint.color = const Color(0xFF34A853);
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(centerX, centerY), radius: radius),
+      0.8,  // ~46 graus
+      1.2,  // ~69 graus
+      false,
+      paint,
+    );
+
+    // Amarelo (inferior esquerdo)
+    paint.color = const Color(0xFFFBBC05);
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(centerX, centerY), radius: radius),
+      2.0,  // ~115 graus
+      1.0,  // ~57 graus
+      false,
+      paint,
+    );
+
+    // Vermelho (superior)
+    paint.color = const Color(0xFFEA4335);
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(centerX, centerY), radius: radius),
+      3.0,  // ~172 graus
+      1.8,  // ~103 graus (até o topo)
+      false,
+      paint,
+    );
+
+    // Barra horizontal azul do G
+    final barPaint = Paint()
+      ..color = const Color(0xFF4285F4)
+      ..style = PaintingStyle.fill;
+
+    canvas.drawRect(
+      Rect.fromLTWH(
+        centerX - strokeWidth * 0.1,
+        centerY - strokeWidth / 2,
+        radius + strokeWidth / 2,
+        strokeWidth,
+      ),
+      barPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

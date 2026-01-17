@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Permissão de internet necessária para Google Sign-In -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
-        android:label="contaslite"
+        android:label="ContasLite"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

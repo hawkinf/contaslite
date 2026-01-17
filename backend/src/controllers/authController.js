@@ -1,9 +1,13 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
+const { OAuth2Client } = require('google-auth-library');
 const { User, RefreshToken, AccountType, PaymentMethod } = require('../models');
 const jwtConfig = require('../config/jwt');
 const logger = require('../utils/logger');
+
+// Cliente OAuth2 do Google para verificação de tokens
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 /**
  * POST /api/auth/register
@@ -373,9 +377,136 @@ const createDefaultDataForUser = async (userId) => {
   }
 };
 
+/**
+ * POST /api/auth/google
+ * Autentica usuário via Google Sign-In
+ */
+const googleAuth = async (req, res) => {
+  try {
+    const { idToken, email, name, photoUrl } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'ID Token do Google é obrigatório'
+      });
+    }
+
+    // Verificar o token do Google
+    let googlePayload;
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken: idToken,
+        audience: process.env.GOOGLE_CLIENT_ID
+      });
+      googlePayload = ticket.getPayload();
+    } catch (verifyError) {
+      logger.warn('Google token verification failed:', verifyError.message);
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Token do Google inválido ou expirado'
+      });
+    }
+
+    // Extrair informações do token verificado
+    const googleEmail = googlePayload.email;
+    const googleName = googlePayload.name || name;
+    const googlePicture = googlePayload.picture || photoUrl;
+    const googleSub = googlePayload.sub; // ID único do Google
+
+    if (!googleEmail) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: 'Email não encontrado no token do Google'
+      });
+    }
+
+    // Buscar ou criar usuário
+    let user = await User.findOne({ where: { email: googleEmail } });
+    let isNewUser = false;
+
+    if (!user) {
+      // Criar novo usuário (sem senha, pois usa Google)
+      isNewUser = true;
+      user = await User.create({
+        email: googleEmail,
+        password_hash: null, // Usuários Google não têm senha
+        name: googleName || googleEmail.split('@')[0],
+        google_id: googleSub,
+        photo_url: googlePicture,
+        is_active: true
+      });
+
+      // Criar dados padrão para o novo usuário
+      try {
+        await createDefaultDataForUser(user.id);
+        logger.info(`Default data created for Google user: ${user.id}`);
+      } catch (defaultError) {
+        logger.warn(`Failed to create default data for user ${user.id}:`, defaultError.message);
+      }
+
+      logger.info(`New user registered via Google: ${user.id} - ${user.email}`);
+    } else {
+      // Atualizar informações do Google se necessário
+      const updates = {};
+      if (!user.google_id && googleSub) {
+        updates.google_id = googleSub;
+      }
+      if (googlePicture && user.photo_url !== googlePicture) {
+        updates.photo_url = googlePicture;
+      }
+      if (googleName && !user.name) {
+        updates.name = googleName;
+      }
+      updates.last_login = new Date();
+
+      if (Object.keys(updates).length > 0) {
+        await user.update(updates);
+      }
+
+      logger.info(`User logged in via Google: ${user.id} - ${user.email}`);
+    }
+
+    // Verificar se está ativo
+    if (!user.is_active) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'Conta desativada'
+      });
+    }
+
+    // Gerar tokens JWT do nosso sistema
+    const { accessToken, refreshToken, expiresIn } = await generateTokens(user.id);
+
+    const statusCode = isNewUser ? 201 : 200;
+
+    return res.status(statusCode).json({
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        photoUrl: user.photo_url,
+        createdAt: user.created_at
+      },
+      accessToken,
+      refreshToken,
+      expiresIn,
+      isNewUser
+    });
+
+  } catch (error) {
+    logger.error('Google Auth error:', error);
+    return res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Erro ao autenticar com Google'
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
   refresh,
-  logout
+  logout,
+  googleAuth
 };

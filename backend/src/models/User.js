@@ -18,7 +18,7 @@ const User = sequelize.define('User', {
   },
   password_hash: {
     type: DataTypes.STRING(255),
-    allowNull: false
+    allowNull: true // Permite null para usuários Google
   },
   name: {
     type: DataTypes.STRING(255),
@@ -26,6 +26,15 @@ const User = sequelize.define('User', {
     validate: {
       len: [2, 255]
     }
+  },
+  google_id: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    unique: true
+  },
+  photo_url: {
+    type: DataTypes.STRING(500),
+    allowNull: true
   },
   is_active: {
     type: DataTypes.BOOLEAN,
@@ -47,6 +56,7 @@ const User = sequelize.define('User', {
   timestamps: false,
   indexes: [
     { fields: ['email'] },
+    { fields: ['google_id'] },
     { fields: ['created_at'] }
   ]
 });

@@ -37,6 +37,10 @@ dependencies:
   crypto: ^3.0.3
   # flutter_secure_storage: ^9.0.0  # Removido temporariamente - ATL não disponível no Windows
 
+  # Autenticação Google
+  google_sign_in: ^6.2.1
+  url_launcher: ^6.2.0
+
   # Exportação PDF
   pdf: ^3.11.0
   printing: ^5.12.0
