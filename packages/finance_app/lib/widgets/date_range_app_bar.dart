@@ -53,7 +53,7 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
       PrefsService.embeddedMode && title == null
           ? Size.zero
           : Size.fromHeight(
-              showFilters ? 80 : (toolbarHeight ?? (title == null ? 64 : 76)),
+              showFilters ? 96 : (toolbarHeight ?? (title == null ? 64 : 76)),
             );
 
   @override
@@ -88,79 +88,107 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
     final defaultMonthStyle = monthStyle ??
         TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: effectiveForegroundColor);
 
+    final Widget? filtersBadge = showFilters ? _buildFiltersBadge() : null;
+
     return AppBar(
       centerTitle: true,
       toolbarHeight: preferredSize.height,
       backgroundColor: backgroundColor,
       foregroundColor: foregroundColor,
       leading: leading,
-      title: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (title != null)
-            Text(
-              title!,
-              style: defaultTitleStyle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: Icon(Icons.chevron_left, size: 28, color: effectiveForegroundColor),
-                onPressed: onPrevious,
-                tooltip: 'Mês anterior',
-              ),
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    monthLabel,
-                    style: defaultMonthStyle,
+      title: SizedBox(
+        width: double.infinity,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (title != null)
+                  Text(
+                    title!,
+                    style: defaultTitleStyle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.chevron_left, size: 28, color: effectiveForegroundColor),
+                      onPressed: onPrevious,
+                      tooltip: 'Mês anterior',
+                    ),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          monthLabel,
+                          style: defaultMonthStyle,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.chevron_right, size: 28, color: effectiveForegroundColor),
+                      onPressed: onNext,
+                      tooltip: 'Próximo mês',
+                    ),
+                  ],
                 ),
-              ),
-              IconButton(
-                icon: Icon(Icons.chevron_right, size: 28, color: effectiveForegroundColor),
-                onPressed: onNext,
-                tooltip: 'Próximo mês',
-              ),
-            ],
-          ),
-          if (showFilters)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildSwitchRow('Pagar', filterContasPagar, onFilterContasPagarChanged, Colors.red),
-                  const SizedBox(width: 16),
-                  _buildSwitchRow('Receber', filterContasReceber, onFilterContasReceberChanged, Colors.blue),
-                  const SizedBox(width: 16),
-                  _buildSwitchRow('Cartões', filterCartoes, onFilterCartoesChanged, Colors.white),
-                ],
-              ),
+              ],
             ),
-        ],
+            if (filtersBadge != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: filtersBadge,
+              ),
+          ],
+        ),
       ),
       actions: actions ?? [],
     );
   }
-  
+
+  Widget _buildFiltersBadge() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.black, width: 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSwitchRow('Pagar', filterContasPagar, onFilterContasPagarChanged, Colors.red),
+            const SizedBox(height: 0),
+            _buildSwitchRow('Receber', filterContasReceber, onFilterContasReceberChanged, Colors.blue),
+            const SizedBox(height: 0),
+            _buildSwitchRow('Cartões', filterCartoes, onFilterCartoesChanged, Colors.black),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSwitchRow(String label, bool value, ValueChanged<bool>? onChanged, Color switchColor) {
+    final Color labelColor = value ? switchColor : switchColor.withValues(alpha: 0.6);
+
     return SizedBox(
-      height: 28,
+      height: 24,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 36,
-            height: 20,
+            width: 30,
+            height: 16,
             child: Transform.scale(
-              scale: 0.7,
+              scale: 0.6,
               child: Switch(
                 value: value,
                 onChanged: onChanged,
@@ -176,9 +204,9 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 11,
-              fontWeight: value ? FontWeight.bold : FontWeight.normal,
-              color: value ? switchColor : switchColor.withValues(alpha: 0.5),
+              fontSize: 9,
+              fontWeight: value ? FontWeight.w700 : FontWeight.w500,
+              color: labelColor,
             ),
           ),
         ],
