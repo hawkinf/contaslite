@@ -989,7 +989,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(12),
@@ -1002,27 +1002,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   'A RECEBER',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 11,
+                                    fontSize: 6,
                                     color: Colors.green.shade700,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 1),
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
                                   child: Text(
                                     UtilBrasilFields.obterReal(_totalLancadoReceber),
                                     style: TextStyle(
-                                      fontSize: (isCompactHeight ? 16.0 : 20.0) * 2.0,
+                                      fontSize: (isCompactHeight ? 16.0 : 20.0),
                                       fontWeight: FontWeight.bold,
                                       color: Colors.green.shade700,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 1),
                                 Text(
                                   '(${UtilBrasilFields.obterReal(_totalPrevistoReceber)})',
                                   style: TextStyle(
-                                    fontSize: 10 * 1.3,
+                                    fontSize: 10 * 0.65,
                                     color: Colors.grey.shade700,
                                     fontStyle: FontStyle.italic,
                                   ),
@@ -1034,7 +1034,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(12),
@@ -1047,27 +1047,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   'A PAGAR',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 11,
+                                    fontSize: 6,
                                     color: Colors.red.shade700,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 1),
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
                                   child: Text(
                                     UtilBrasilFields.obterReal(_totalLancadoPagar),
                                     style: TextStyle(
-                                      fontSize: (isCompactHeight ? 16.0 : 20.0) * 2.0,
+                                      fontSize: (isCompactHeight ? 16.0 : 20.0),
                                       fontWeight: FontWeight.bold,
                                       color: Colors.red.shade700,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 1),
                                 Text(
                                   '(${UtilBrasilFields.obterReal(_totalPrevistoPagar)})',
                                   style: TextStyle(
-                                    fontSize: 10 * 1.3,
+                                    fontSize: 10 * 0.65,
                                     color: Colors.grey.shade700,
                                     fontStyle: FontStyle.italic,
                                   ),
