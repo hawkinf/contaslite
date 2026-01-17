@@ -1,6 +1,6 @@
 import 'package:finance_app/screens/account_types_screen.dart';
-import 'package:finance_app/screens/dashboard_screen.dart' as contas_dash;
 import 'package:finance_app/screens/bank_accounts_screen.dart';
+import 'package:finance_app/screens/dashboard_screen.dart' as contas_dash;
 import 'package:finance_app/screens/payment_methods_screen.dart';
 import 'package:finance_app/screens/recebimentos_table_screen.dart';
 import 'package:finance_app/screens/settings_screen.dart';
@@ -4460,6 +4460,11 @@ class _ContasResumoTabState extends State<ContasResumoTab> {
         _error = e;
       });
     }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   @override

@@ -121,9 +121,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoading = false;
   double _totalPeriod = 0.0;
   double _totalForecast = 0.0;
-  // Totais para visão combinada
   double _totalPrevistoPagar = 0.0;
   double _totalPrevistoReceber = 0.0;
+  // Totais para visão combinada
   double _totalLancadoPagar = 0.0;
   double _totalLancadoReceber = 0.0;
   Map<int, _InstallmentSummary> _installmentSummaries = {};
@@ -981,96 +981,96 @@ class _DashboardScreenState extends State<DashboardScreen> {
               );
               final listBottomPadding = isCompactHeight ? 72.0 : 100.0;
 
-              Widget buildTotalBox(String label, double value, Color valueColor) {
-                return Expanded(
-                  child: Container(
-                    padding: cardPadding,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).cardColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.black, width: 1.0),
-                      boxShadow: const [
-                        BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          label,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                            color: _adaptiveGreyTextColor(context, Colors.grey),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            UtilBrasilFields.obterReal(value),
-                            style: TextStyle(
-                              fontSize: isCompactHeight ? 16.0 : 20.0,
-                              fontWeight: FontWeight.bold,
-                              color: valueColor,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-
               final headerWidget = isCombined
                 ? Container(
                     padding: headerPadding,
                     color: headerColor,
                     child: Row(
                       children: [
-                        // Lado esquerdo: Previsões
                         Expanded(
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.black, width: 1.0),
+                              border: Border.all(color: Colors.green.shade700, width: 1.0),
                             ),
                             child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                Text('PREVISÕES', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.grey.shade700)),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    buildTotalBox('A PAGAR', _totalPrevistoPagar, AppColors.error),
-                                    const SizedBox(width: 8),
-                                    buildTotalBox('A RECEBER', _totalPrevistoReceber, AppColors.success),
-                                  ],
+                                Text(
+                                  'A RECEBER',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11,
+                                    color: Colors.green.shade700,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    UtilBrasilFields.obterReal(_totalLancadoReceber),
+                                    style: TextStyle(
+                                      fontSize: (isCompactHeight ? 16.0 : 20.0) * 2.0,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green.shade700,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '(${UtilBrasilFields.obterReal(_totalPrevistoReceber)})',
+                                  style: TextStyle(
+                                    fontSize: 10 * 1.3,
+                                    color: Colors.grey.shade700,
+                                    fontStyle: FontStyle.italic,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
                         ),
                         const SizedBox(width: 12),
-                        // Lado direito: Lançados
                         Expanded(
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: Theme.of(context).cardColor,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.black, width: 1.0),
+                              border: Border.all(color: Colors.red.shade700, width: 1.0),
                             ),
                             child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                Text('LANÇADOS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.grey.shade700)),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    buildTotalBox('A PAGAR', _totalLancadoPagar, Colors.red.shade800),
-                                    const SizedBox(width: 8),
-                                    buildTotalBox('A RECEBER', _totalLancadoReceber, Colors.green.shade800),
-                                  ],
+                                Text(
+                                  'A PAGAR',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11,
+                                    color: Colors.red.shade700,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    UtilBrasilFields.obterReal(_totalLancadoPagar),
+                                    style: TextStyle(
+                                      fontSize: (isCompactHeight ? 16.0 : 20.0) * 2.0,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.red.shade700,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '(${UtilBrasilFields.obterReal(_totalPrevistoPagar)})',
+                                  style: TextStyle(
+                                    fontSize: 10 * 1.3,
+                                    color: Colors.grey.shade700,
+                                    fontStyle: FontStyle.italic,
+                                  ),
                                 ),
                               ],
                             ),
