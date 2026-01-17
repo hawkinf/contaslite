@@ -1390,19 +1390,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     Color containerBg;
     Color cardColor;
-    Color textColor;
-    Color subTextColor;
     late Color typeColor;
 
     final String? typeName = _typeNames[account.typeId]?.toLowerCase();
     final bool isRecebimento = _isRecebimentosFilter || (typeName != null && typeName.contains('receb'));
     final Color receberColor = Colors.lightBlue.shade300;
-    final Color receberBorderColor = AppColors.primary;
     final Color pagarColor = Colors.red.shade300;
-    final Color pagarBorderColor = AppColors.error;
-    // Border color não é mais usado; manter const evita warning de variáveis não utilizadas.
-    // ignore: unused_local_variable
-    const Color cardBorderColor = Color(0xFF8B4513);
 
     if (isCard) {
         Color userColor = (account.cardColor != null)
@@ -1410,9 +1403,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           : AppColors.cardPurpleDark;
         cardColor = userColor;
         containerBg = Colors.transparent;
-        textColor = foregroundColorFor(userColor);
-        subTextColor = textColor;
-        // ...existing code...
         typeColor = userColor;
     } else {
       final int? accountColorValue = account.cardColor;
@@ -1421,25 +1411,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final Color accent = customColor ?? (isRecebimento ? receberColor : pagarColor);
       containerBg = accent.withValues(alpha: 0.12);
       cardColor = (customColor ?? Theme.of(context).cardColor).withValues(alpha: 0.97);
-      // ...existing code...
-      if (customColor != null) {
-        textColor = foregroundColorFor(customColor);
-        subTextColor = textColor;
-      } else {
-        textColor = foregroundColorFor(cardColor);
-        subTextColor = textColor;
-        if (isAlertDay) {
-          textColor = Colors.white;
-          subTextColor = Colors.white70;
-        } else if (isRecurrent) {
-        } else {
-        }
-        if (Theme.of(context).brightness == Brightness.dark && !isRecurrent) {
-        }
-        if (isAlertDay && !isRecurrent && !isRecebimento) {
-        }
-      }
-
       typeColor = accent;
     }
 
@@ -1498,8 +1469,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final Color cardActionIconColor = Colors.grey.shade600;
     final Color cardActionIconBg = Colors.white.withValues(
         alpha: Theme.of(context).brightness == Brightness.light ? 0.85 : 0.75);
-    final double childIconHeight = categorySize * 1.3;
-    final double childIconWidth = categorySize * 1.8;
+    final double childIconHeight = categorySize * 1.625;
+    final double childIconWidth = categorySize * 2.25;
 
     Widget? buildCardBrandBadge(String? brand) {
       final normalized = (brand ?? '').trim().toUpperCase();
@@ -1664,32 +1635,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ]
     ]);
 
+    // Altura fixa para todos os cards
+    const double cardFixedHeight = 115.0;
+
     Widget buildCardBody({required EdgeInsets padding, required List<Widget> children}) {
       final double borderWidth = 3.5;
-          final Color borderColor = isCard
-            ? foregroundColorFor(cardColor)
-            : (isRecebimento ? receberBorderColor : pagarBorderColor);
+      // Borda adaptativa: branca se card escuro, preta se card claro
+      final Color borderColor = cardIsDark ? Colors.white : Colors.black;
       return Container(
         color: isCard ? null : containerBg,
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-        child: Card(
-          color: cardColor,
-          elevation: 2,
-          margin: EdgeInsets.zero,
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(color: borderColor, width: borderWidth),
-          ),
-          child: InkWell(
-            onTap: () async {
-              if (isCard) {
-                await _openCardExpenses(account);
-              } else {
-                await _showEditSpecificDialog(account);
-              }
-            },
-            child: Padding(padding: padding, child: Column(children: children)),
+        child: SizedBox(
+          height: cardFixedHeight,
+          child: Card(
+            color: cardColor,
+            elevation: 2,
+            margin: EdgeInsets.zero,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: borderColor, width: borderWidth),
+            ),
+            child: InkWell(
+              onTap: () async {
+                if (isCard) {
+                  await _openCardExpenses(account);
+                } else {
+                  await _showEditSpecificDialog(account);
+                }
+              },
+              child: Padding(
+                padding: padding,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: children,
+                ),
+              ),
+            ),
           ),
         ),
       );
@@ -1712,9 +1694,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Furos com borda adaptativa ao fundo do card
     final Color holeFill = Colors.grey.shade300;
     final Color holeBorder = cardIsDark ? Colors.white : Colors.black;
-    // Cor do texto: verde para receber, vermelho para pagar, preto demais casos
+    // Cor do texto: verde para receber, vermelho para pagar (se não for recebimento, é pagamento)
     final Color calendarContentColor =
-        isRecebimento ? Colors.green.shade700 : (isPagamento ? Colors.red.shade700 : Colors.black);
+        isRecebimento ? Colors.green.shade700 : Colors.red.shade700;
 
     // Widget do calendário principal
     final Widget calendarCore = SizedBox(
@@ -1847,6 +1829,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         height: childIconHeight,
         child: FittedBox(fit: BoxFit.scaleDown, child: childIcon),
         );
+    final String cardBrandName =
+        (account.cardBrand?.trim().isNotEmpty ?? false) ? account.cardBrand!.trim() : '';
+    // Reaproveita cleanedDescription já calculado acima, removendo "Fatura:" no início e a bandeira do final.
+    String cleanedCardDescription = account.description
+        .replaceFirst(RegExp(r'^\s*Fatura:\s*', caseSensitive: false), '')
+        .trim();
+    // Remove a bandeira do final da descrição se existir (ex: "- MASTERCARD")
+    if (cardBrandName.isNotEmpty) {
+      cleanedCardDescription = cleanedCardDescription
+          .replaceFirst(RegExp('\\s*-\\s*${RegExp.escape(cardBrandName)}\$', caseSensitive: false), '')
+          .trim();
+    }
+    final String headerTitle = isCard
+        ? '$cardBrandName${cleanedCardDescription.isNotEmpty ? ' - $cleanedCardDescription' : ''}'
+        : '$childLabel - ${secondaryDescription.isNotEmpty ? secondaryDescription : account.description}';
 
     return buildCardBody(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
@@ -1866,105 +1863,151 @@ class _DashboardScreenState extends State<DashboardScreen> {
             calendarBadge,
             const SizedBox(width: 12),
             Expanded(
-              child: Column(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            if (parentIcon != null) ...[
-                              parentIcon,
-                              const SizedBox(width: 6),
-                            ],
-                            Expanded(
-                              child: Text(
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: calendarBadgeBg.withValues(alpha: cardIsDark ? 0.2 : 0.6),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: cardIsDark ? Colors.white : Colors.black,
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (parentIcon != null) ...[
+                                parentIcon,
+                                const SizedBox(width: 4),
+                              ],
+                              Text(
                                 categoryParent ?? _typeNames[account.typeId] ?? 'Outro',
                                 style: TextStyle(
-                                  fontSize: categorySize,
-                                  fontWeight: FontWeight.bold,
-                                  color: textColor,
+                                  fontSize: categorySize * 0.9,
+                                  fontWeight: FontWeight.w700,
+                                  color: cardIsDark ? Colors.white : Colors.black,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (showPrevisto)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: Text(
+                            'Previsto: $previstoDisplay',
+                            style: TextStyle(
+                              fontSize: valueMainSize * 0.7,
+                              fontWeight: FontWeight.w600,
+                              color: cardIsDark ? Colors.white70 : Colors.grey.shade700,
                             ),
-                            const SizedBox(width: 8),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  lancadoDisplay,
-                                  style: TextStyle(
-                                    fontSize: valueMainSize,
-                                    fontWeight: FontWeight.w800,
-                                    color: isRecebimento
-                                        ? Colors.blue.shade700
-                                        : Colors.red.shade700,
-                                  ),
-                                ),
-                                if (showPrevisto)
-                                  Text(
-                                    'Previsto: $previstoDisplay',
-                                    style: TextStyle(
-                                      fontSize: valueMainSize * 0.7,
-                                      fontWeight: FontWeight.w600,
-                                      color: _adaptiveGreyTextColor(
-                                          context, Colors.grey.shade600),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
+                          ),
+                        ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isRecebimento ? Colors.green.shade600 : Colors.red.shade600,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: cardIsDark ? Colors.white : Colors.black,
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          lancadoDisplay,
+                          style: TextStyle(
+                            fontSize: valueMainSize,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 2),
+                ],
+              ),
+                  if (isCard) const SizedBox(height: 5),
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            if (isCard && brandBadge != null) ...[
+                      if (isCard && brandBadge != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: cardIsDark
+                                ? Colors.white.withValues(alpha: 0.15)
+                                : Colors.black.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: cardIsDark ? Colors.white : Colors.black,
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
                               brandBadge,
-                              const SizedBox(width: 8),
-                            ] else if (headerChildIcon != null) ...[
-                              headerChildIcon,
-                              const SizedBox(width: 6),
-                            ],
-                            Expanded(
-                              child: Text(
-                                '$childLabel - ${secondaryDescription.isNotEmpty ? secondaryDescription : account.description}',
+                              const SizedBox(width: 4),
+                              Text(
+                                headerTitle,
                                 style: TextStyle(
                                   fontSize: descriptionSize,
                                   fontWeight: FontWeight.w600,
-                                  color: subTextColor,
+                                  color: cardIsDark ? Colors.white : Colors.black,
                                 ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
                               ),
+                            ],
+                          ),
+                        )
+                      else ...[
+                        if (headerChildIcon != null) ...[
+                          headerChildIcon,
+                          const SizedBox(width: 4),
+                        ],
+                        Expanded(
+                          child: Text(
+                            headerTitle,
+                            style: TextStyle(
+                              fontSize: descriptionSize,
+                              fontWeight: FontWeight.w600,
+                              color: cardIsDark ? Colors.white : Colors.black,
                             ),
-                          ],
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
+                      ],
+                      const Spacer(),
                       actionButtons,
                     ],
                   ),
                   if (installmentDisplay.isInstallment)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          installmentBadge,
-                          const SizedBox(width: 8),
-                          nextDueBadge,
-                        ],
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        installmentBadge,
+                        const SizedBox(width: 8),
+                        nextDueBadge,
+                      ],
                     ),
                   if (isPaid)
                     Padding(
