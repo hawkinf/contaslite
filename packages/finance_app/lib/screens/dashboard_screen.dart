@@ -37,6 +37,50 @@ class _InstallmentSummary {
   });
 }
 
+class _CalendarHole extends StatelessWidget {
+  final Color fill;
+  final Color border;
+  const _CalendarHole({required this.fill, required this.border});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 12,
+      height: 12,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          center: Alignment.topLeft,
+          radius: 0.8,
+          colors: [
+            fill.withValues(alpha: 0.95),
+            fill.withValues(alpha: 0.7),
+          ],
+        ),
+        border: Border.all(color: border, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Container(
+          width: 4,
+          height: 4,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: border.withValues(alpha: 0.4),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
 class _SeriesSummary {
   final double totalAmount;
   final List<double> remainingFromIndex;
@@ -1360,8 +1404,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // ignore: unused_local_variable
     const Color cardBorderColor = Color(0xFF8B4513);
 
-    Color dayNumberColor;
-
     if (isCard) {
         Color userColor = (account.cardColor != null)
           ? Color(account.cardColor!)
@@ -1372,7 +1414,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         subTextColor = textColor;
         // ...existing code...
         typeColor = userColor;
-        dayNumberColor = textColor;
     } else {
       final int? accountColorValue = account.cardColor;
       final bool usesCustomColor = accountColorValue != null;
@@ -1400,10 +1441,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
 
       typeColor = accent;
-      dayNumberColor = isRecebimento ? receberBorderColor : pagarBorderColor;
     }
 
     final Color accentColor = typeColor;
+    final bool isPagamento = !isRecebimento && (typeName?.contains('pag') ?? true);
     final breakdown = isCard ? CardBreakdown.parse(account.observation) : const CardBreakdown(total: 0, installments: 0, oneOff: 0, subscriptions: 0);
     final double previstoValue = isCard
         ? (breakdown.total > 0 ? breakdown.total : account.value)
@@ -1520,7 +1561,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             style: const TextStyle(
                 fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)));
     final String nextDueLabel = installmentSummary?.nextDueDate != null
-        ? '${DateFormat('dd/MM/yy').format(installmentSummary!.nextDueDate!)} (${DateFormat('EEE', 'pt_BR').format(installmentSummary!.nextDueDate!).replaceAll('.', '').toUpperCase()})'
+        ? '${DateFormat('dd/MM/yy').format(installmentSummary!.nextDueDate!)} (${DateFormat('EEE', 'pt_BR').format(installmentSummary.nextDueDate!).replaceAll('.', '').toUpperCase()})'
         : '-';
     final Color nextDateColor = cardIsDark ? Colors.white : Colors.black87;
     final Widget nextDueBadge = Container(
@@ -1655,12 +1696,142 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     final bool dateAdjusted = originalDate != effectiveDate;
-    final String effectiveLabel = DateFormat('dd/MM').format(effectiveDate);
     final String originalLabel = DateFormat('dd/MM').format(originalDate);
     final String weekdayLabel = DateFormat('EEE', 'pt_BR')
         .format(effectiveDate)
         .replaceAll('.', '')
         .toUpperCase();
+    final double calendarWidth = 70;
+    final double calendarHeight = 88;
+    // Calendário sempre branco, borda adapta ao fundo do card
+    const Color calendarBadgeBg = Colors.white;
+    final Color calendarBorder = cardIsDark ? Colors.white : Colors.black;
+    final Color calendarTopBar =
+        isRecebimento ? Colors.green.shade600 : (isPagamento ? Colors.red.shade600 : Colors.orange.shade700);
+    final BorderRadius calendarRadius = BorderRadius.circular(10);
+    // Furos com borda adaptativa ao fundo do card
+    final Color holeFill = Colors.grey.shade300;
+    final Color holeBorder = cardIsDark ? Colors.white : Colors.black;
+    // Cor do texto: verde para receber, vermelho para pagar, preto demais casos
+    final Color calendarContentColor =
+        isRecebimento ? Colors.green.shade700 : (isPagamento ? Colors.red.shade700 : Colors.black);
+
+    // Widget do calendário principal
+    final Widget calendarCore = SizedBox(
+      width: calendarWidth,
+      height: calendarHeight,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: calendarRadius,
+          color: calendarBadgeBg,
+          boxShadow: [
+            BoxShadow(
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: cardIsDark ? 0.3 : 0.15),
+            ),
+          ],
+          border: Border.all(color: calendarBorder, width: 2),
+        ),
+        child: ClipRRect(
+          borderRadius: calendarRadius,
+          child: Stack(
+            children: [
+              // Barra superior colorida com borda completa
+              Align(
+                alignment: Alignment.topCenter,
+                child: Container(
+                  height: calendarHeight * 0.24,
+                  decoration: BoxDecoration(
+                    color: calendarTopBar,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(8),
+                      topRight: Radius.circular(8),
+                    ),
+                    border: Border.all(color: calendarBorder, width: 1.5),
+                  ),
+                ),
+              ),
+              // Furos do calendário - posicionados na barra superior
+              Positioned(
+                top: calendarHeight * 0.08,
+                left: 12,
+                child: _CalendarHole(fill: holeFill, border: holeBorder),
+              ),
+              Positioned(
+                top: calendarHeight * 0.08,
+                right: 12,
+                child: _CalendarHole(fill: holeFill, border: holeBorder),
+              ),
+              // Conteúdo central (dia e dia da semana)
+              Positioned(
+                top: calendarHeight * 0.26,
+                left: 4,
+                right: 4,
+                bottom: 4,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        effectiveDate.day.toString().padLeft(2, '0'),
+                        style: TextStyle(
+                          fontSize: dayNumberSize,
+                          height: 1.0,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -1,
+                          color: calendarContentColor,
+                        ),
+                      ),
+                      Text(
+                        weekdayLabel,
+                        style: TextStyle(
+                          fontSize: weekdaySize,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                          color: calendarContentColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    // Widget completo com texto lateral esquerdo se data ajustada (usando Stack para não deslocar a folhinha)
+    final Color originalDateColor = cardIsDark ? Colors.white : Colors.black;
+    final Widget calendarBadge = dateAdjusted
+        ? Stack(
+            clipBehavior: Clip.none,
+            children: [
+              calendarCore,
+              Positioned(
+                left: -18,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: RotatedBox(
+                    quarterTurns: 3,
+                    child: Text(
+                      originalLabel,
+                      style: TextStyle(
+                        fontSize: smallDateSize * 1.2,
+                        fontWeight: FontWeight.bold,
+                        color: originalDateColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          )
+        : calendarCore;
     final Widget? parentIcon = (parentLogo?.isNotEmpty ?? false)
         ? Text(parentLogo!, style: TextStyle(fontSize: categorySize * 0.95))
         : null;
@@ -1692,39 +1863,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  effectiveDate.day.toString().padLeft(2, '0'),
-                  style: TextStyle(
-                    fontSize: dayNumberSize,
-                    fontWeight: FontWeight.w900,
-                    color: dayNumberColor,
-                    height: 1.0,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  weekdayLabel,
-                  style: TextStyle(
-                    fontSize: weekdaySize,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
-                ),
-                if (dateAdjusted) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    '($originalLabel)',
-                    style: TextStyle(
-                      fontSize: smallDateSize,
-                      color: textColor,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+            calendarBadge,
             const SizedBox(width: 12),
             Expanded(
               child: Column(
