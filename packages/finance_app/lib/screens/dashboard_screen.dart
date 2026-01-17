@@ -1002,7 +1002,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   'A RECEBER',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 6,
+                                    fontSize: 6 * 1.3,
                                     color: Colors.green.shade700,
                                   ),
                                 ),
@@ -1012,7 +1012,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   child: Text(
                                     UtilBrasilFields.obterReal(_totalLancadoReceber),
                                     style: TextStyle(
-                                      fontSize: (isCompactHeight ? 16.0 : 20.0),
+                                      fontSize: (isCompactHeight ? 16.0 : 20.0) * 1.3,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.green.shade700,
                                     ),
@@ -1022,7 +1022,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 Text(
                                   '(${UtilBrasilFields.obterReal(_totalPrevistoReceber)})',
                                   style: TextStyle(
-                                    fontSize: 10 * 0.65,
+                                    fontSize: 10 * 0.65 * 1.5,
                                     color: Colors.grey.shade700,
                                     fontStyle: FontStyle.italic,
                                   ),
@@ -1047,7 +1047,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   'A PAGAR',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 6,
+                                    fontSize: 6 * 1.3,
                                     color: Colors.red.shade700,
                                   ),
                                 ),
@@ -1057,7 +1057,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   child: Text(
                                     UtilBrasilFields.obterReal(_totalLancadoPagar),
                                     style: TextStyle(
-                                      fontSize: (isCompactHeight ? 16.0 : 20.0),
+                                      fontSize: (isCompactHeight ? 16.0 : 20.0) * 1.3,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.red.shade700,
                                     ),
@@ -1067,7 +1067,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 Text(
                                   '(${UtilBrasilFields.obterReal(_totalPrevistoPagar)})',
                                   style: TextStyle(
-                                    fontSize: 10 * 0.65,
+                                    fontSize: 10 * 0.65 * 1.5,
                                     color: Colors.grey.shade700,
                                     fontStyle: FontStyle.italic,
                                   ),
@@ -1505,19 +1505,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final Widget? brandBadge = isCard ? buildCardBrandBadge(account.cardBrand) : null;
     final installmentDisplay = resolveInstallmentDisplay(account);
-    final Color installmentBadgeBg = installmentDisplay.isInstallment
-        ? accentColor.withValues(alpha: 0.12)
-        : accentColor.withValues(alpha: 0.18);
-    final Color installmentBadgeTextColor = foregroundColorFor(installmentBadgeBg);
+    final Color parceladoFillColor =
+        isRecebimento ? Colors.green.shade600 : Colors.red.shade600;
+    final bool cardIsDark =
+        ThemeData.estimateBrightnessForColor(cardColor) == Brightness.dark;
+    final Color parceladoBorderColor = cardIsDark ? Colors.white : Colors.black;
     final Widget installmentBadge = Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-            color: installmentBadgeBg, borderRadius: BorderRadius.circular(8)),
+            color: parceladoFillColor,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: parceladoBorderColor, width: 1.25)),
         child: Text(installmentDisplay.labelText,
+            style: const TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)));
+    final String nextDueLabel = installmentSummary?.nextDueDate != null
+        ? '${DateFormat('dd/MM/yy').format(installmentSummary!.nextDueDate!)} (${DateFormat('EEE', 'pt_BR').format(installmentSummary!.nextDueDate!).replaceAll('.', '').toUpperCase()})'
+        : '-';
+    final Color nextDateColor = cardIsDark ? Colors.white : Colors.black87;
+    final Widget nextDueBadge = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+            color: (cardIsDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: parceladoBorderColor, width: 1.0)),
+        child: Text('Próx: $nextDueLabel',
             style: TextStyle(
-                fontSize: badgeSize,
-                fontWeight: FontWeight.w600,
-                color: installmentBadgeTextColor)));
+                fontSize: smallDateSize, fontWeight: FontWeight.w700, color: nextDateColor)));
 
       final bool highlightLaunchAction = isRecebimento;
       final bool canLaunchPayment = highlightLaunchAction || !isPaid;
@@ -1532,7 +1546,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         // Ícone de lançamento de valor para cartão de crédito
         InkWell(
             onTap: () => _showCartaoValueDialog(account),
-            child: _actionIcon(Icons.attach_money, Colors.orange.shade50,
+            child: _actionIcon(Icons.rocket_launch, Colors.orange.shade50,
                 Colors.orange.shade700, enabled: true, size: iconSize, surfaceColor: cardColor)),
         const SizedBox(width: 6),
         InkWell(
@@ -1557,13 +1571,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (isRecebimento) ...[
             InkWell(
                 onTap: () => _showRecebimentoValueDialog(account),
-                child: _actionIcon(Icons.attach_money, Colors.lightBlue.shade50,
+                child: _actionIcon(Icons.rocket_launch, Colors.lightBlue.shade50,
                     AppColors.primary, enabled: true, size: iconSize, surfaceColor: cardColor)),
             const SizedBox(width: 8),
           ] else if (isRecurrent) ...[
             InkWell(
                 onTap: () => _showDespesaValueDialog(account),
-                child: _actionIcon(Icons.attach_money, Colors.orange.shade50,
+                child: _actionIcon(Icons.rocket_launch, Colors.orange.shade50,
                     Colors.orange.shade700, enabled: true, size: iconSize, surfaceColor: cardColor)),
             const SizedBox(width: 8),
           ],
@@ -1643,7 +1657,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final bool dateAdjusted = originalDate != effectiveDate;
     final String effectiveLabel = DateFormat('dd/MM').format(effectiveDate);
     final String originalLabel = DateFormat('dd/MM').format(originalDate);
-    final String weekdayLabel = DateFormat('EEE', 'pt_BR').format(effectiveDate).toUpperCase();
+    final String weekdayLabel = DateFormat('EEE', 'pt_BR')
+        .format(effectiveDate)
+        .replaceAll('.', '')
+        .toUpperCase();
     final Widget? parentIcon = (parentLogo?.isNotEmpty ?? false)
         ? Text(parentLogo!, style: TextStyle(fontSize: categorySize * 0.95))
         : null;
@@ -1705,16 +1722,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       color: textColor,
                     ),
                   ),
-                ] else ...[
-                  const SizedBox(height: 1),
-                  Text(
-                    effectiveLabel,
-                      style: TextStyle(
-                        fontSize: smallDateSize,
-                        fontWeight: FontWeight.w600,
-                        color: textColor,
-                      ),
-                  ),
                 ],
               ],
             ),
@@ -1774,9 +1781,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      if (installmentDisplay.isInstallment)
-                        installmentBadge,
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -1814,12 +1818,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   if (installmentDisplay.isInstallment)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        'Parcela ${installmentDisplay.labelText}${installmentSummary != null ? ' • Restante: ${UtilBrasilFields.obterReal(installmentSummary.remainingAmount)}' : ''}${installmentSummary?.nextDueDate != null ? ' • Próx: ${DateFormat('dd/MM').format(installmentSummary!.nextDueDate!)}' : ''}',
-                        style: TextStyle(
-                          fontSize: smallDateSize,
-                          color: _adaptiveGreyTextColor(context, Colors.grey.shade600),
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          installmentBadge,
+                          const SizedBox(width: 8),
+                          nextDueBadge,
+                        ],
                       ),
                     ),
                   if (isPaid)
