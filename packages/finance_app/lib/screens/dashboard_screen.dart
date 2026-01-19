@@ -1053,22 +1053,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 const SizedBox(height: 1),
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    UtilBrasilFields.obterReal(_totalLancadoReceber),
-                                    style: TextStyle(
-                                      fontSize: (isCompactHeight ? 16.0 : 20.0) * 1.3,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green.shade700,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 1),
-                                Text(
-                                  '(${UtilBrasilFields.obterReal(_totalPrevistoReceber)})',
-                                  style: TextStyle(
-                                    fontSize: 10 * 0.65 * 1.5,
-                                    color: Colors.grey.shade700,
-                                    fontStyle: FontStyle.italic,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        UtilBrasilFields.obterReal(_totalLancadoReceber),
+                                        style: TextStyle(
+                                          fontSize: (isCompactHeight ? 16.0 : 20.0) * 1.3,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.green.shade700,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '(${UtilBrasilFields.obterReal(_totalPrevistoReceber)})',
+                                        style: TextStyle(
+                                          fontSize: 10 * 0.65 * 1.1,
+                                          color: Colors.grey.shade700,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -1098,22 +1103,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 const SizedBox(height: 1),
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    UtilBrasilFields.obterReal(_totalLancadoPagar),
-                                    style: TextStyle(
-                                      fontSize: (isCompactHeight ? 16.0 : 20.0) * 1.3,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.red.shade700,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 1),
-                                Text(
-                                  '(${UtilBrasilFields.obterReal(_totalPrevistoPagar)})',
-                                  style: TextStyle(
-                                    fontSize: 10 * 0.65 * 1.5,
-                                    color: Colors.grey.shade700,
-                                    fontStyle: FontStyle.italic,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        UtilBrasilFields.obterReal(_totalLancadoPagar),
+                                        style: TextStyle(
+                                          fontSize: (isCompactHeight ? 16.0 : 20.0) * 1.3,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.red.shade700,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        '(${UtilBrasilFields.obterReal(_totalPrevistoPagar)})',
+                                        style: TextStyle(
+                                          fontSize: 10 * 0.65 * 1.1,
+                                          color: Colors.grey.shade700,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -1397,12 +1407,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final String? typeName = _typeNames[account.typeId]?.toLowerCase();
     final bool isRecebimento = _isRecebimentosFilter || (typeName != null && typeName.contains('receb'));
     final Color receberColor = Colors.lightBlue.shade300;
-    final Color receberBorderColor = AppColors.primary;
     final Color pagarColor = Colors.red.shade300;
-    final Color pagarBorderColor = AppColors.error;
-    // Border color não é mais usado; manter const evita warning de variáveis não utilizadas.
-    // ignore: unused_local_variable
-    const Color cardBorderColor = Color(0xFF8B4513);
 
     if (isCard) {
         Color userColor = (account.cardColor != null)
@@ -1457,8 +1462,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final String lancadoDisplay =
         UtilBrasilFields.obterReal(lancadoValue ?? previstoValue);
     final String previstoDisplay = UtilBrasilFields.obterReal(previstoValue);
-    final bool showPrevisto =
-        lancadoValue != null && previstoValue != lancadoValue;
+    // Mostrar previsto somente quando há estimatedValue definido e diferente do value
+    final bool showPrevisto = !isCard &&
+        account.estimatedValue != null &&
+        account.estimatedValue!.abs() > 0.009 &&
+        (account.estimatedValue! - account.value).abs() > 0.009;
 
     final cleanedDescription =
         cleanAccountDescription(account).replaceAll('Fatura: ', '').trim();
@@ -1495,9 +1503,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
         account.id != null ? _installmentSummaries[account.id!] : null;
     final bool isPaid =
         account.id != null && _paymentInfo.containsKey(account.id!);
-    final Color cardActionIconColor = Colors.grey.shade600;
-    final Color cardActionIconBg = Colors.white.withValues(
-        alpha: Theme.of(context).brightness == Brightness.light ? 0.85 : 0.75);
+
+    // Próxima fatura do cartão (mês seguinte ao vencimento atual exibido)
+    DateTime cardNextDueDate = DateTime.now();
+    if (isCard) {
+      final currentYear = account.year ?? _startDate.year;
+      final currentMonth = account.month ?? _startDate.month;
+      int nextMonth = currentMonth + 1;
+      int nextYear = currentYear;
+      if (nextMonth > 12) {
+        nextMonth = 1;
+        nextYear += 1;
+      }
+      int day = account.dueDay;
+      final maxDay = DateUtils.getDaysInMonth(nextYear, nextMonth);
+      if (day > maxDay) day = maxDay;
+      cardNextDueDate = DateTime(nextYear, nextMonth, day);
+    }
+    final String cardNextDueLabel = DateFormat('dd/MM').format(cardNextDueDate);
+    final bool hasRecurrence = account.isRecurrent || account.recurrenceId != null;
+    // Cores padronizadas para action buttons - adaptativas ao fundo do card
+    final bool isCardDark = ThemeData.estimateBrightnessForColor(cardColor) == Brightness.dark;
+    final Color actionIconBg = isCardDark ? Colors.white : Colors.grey.shade100;
+    final Color actionIconColor = isCardDark ? Colors.grey.shade800 : Colors.grey.shade700;
     final double childIconHeight = categorySize * 1.3;
     final double childIconWidth = categorySize * 1.8;
 
@@ -1574,61 +1602,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
             style: TextStyle(
                 fontSize: smallDateSize, fontWeight: FontWeight.w700, color: nextDateColor)));
 
-      final bool highlightLaunchAction = isRecebimento;
-      final bool canLaunchPayment = highlightLaunchAction || !isPaid;
+      final bool canLaunchPayment = !isPaid;
+      // Ordem dos botões: Editar → Lançamento → Pagamento → Despesa cartão → Lixeira
       final actionButtons = Row(mainAxisSize: MainAxisSize.min, children: [
-        if (isCard) ...[
-        // Editar cartão de crédito
+        // 1. EDITAR (lápis) - sempre primeiro em todos os cards
         InkWell(
-            onTap: () => _openCardEditor(account),
-            child: _actionIcon(Icons.edit, cardActionIconBg, cardActionIconColor,
+            onTap: () => isCard ? _openCardEditor(account) : _showEditSpecificDialog(account),
+            child: _actionIcon(Icons.edit, actionIconBg, actionIconColor,
                 size: iconSize, surfaceColor: cardColor)),
         const SizedBox(width: 6),
-        // Ícone de lançamento de valor para cartão de crédito
-        InkWell(
-            onTap: () => _showCartaoValueDialog(account),
-            child: _actionIcon(Icons.rocket_launch, Colors.orange.shade50,
-                Colors.orange.shade700, enabled: true, size: iconSize, surfaceColor: cardColor)),
-        const SizedBox(width: 6),
-        InkWell(
-            onTap: () => _showExpenseDialog(account),
-            child: _actionIcon(Icons.add_shopping_cart,
-                cardActionIconBg, cardActionIconColor, size: iconSize, surfaceColor: cardColor)),
-        const SizedBox(width: 6),
-        if (account.id != null)
+
+        // 2. LANÇAMENTO (rocket) - quando aplicável
+        if (isCard) ...[
           InkWell(
-            onTap: () => _confirmDelete(account),
-            child: _borderedIcon(
-              Icons.delete,
-              size: iconSize,
-              iconColor: foregroundColorFor(cardColor),
-              borderColor: foregroundColorFor(cardColor),
-              borderWidth: 1.5,
-              padding: const EdgeInsets.all(5),
-            ),
-          ),
-        ] else ...[
-          // Ícone de lançamento de valor para recebimentos E despesas recorrentes
-          if (isRecebimento) ...[
-            InkWell(
-                onTap: () => _showRecebimentoValueDialog(account),
-                child: _actionIcon(Icons.rocket_launch, Colors.lightBlue.shade50,
-                    AppColors.primary, enabled: true, size: iconSize, surfaceColor: cardColor)),
-            const SizedBox(width: 8),
-          ] else if (isRecurrent) ...[
-            InkWell(
-                onTap: () => _showDespesaValueDialog(account),
-                child: _actionIcon(Icons.rocket_launch, Colors.orange.shade50,
-                    Colors.orange.shade700, enabled: true, size: iconSize, surfaceColor: cardColor)),
-            const SizedBox(width: 8),
-          ],
+              onTap: () => _showCartaoValueDialog(account),
+              child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
+                  size: iconSize, surfaceColor: cardColor)),
+          const SizedBox(width: 6),
+          // 3. PAGAMENTO DA FATURA (dinheiro) - para cartões de crédito
           InkWell(
               onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
-              child: _actionIcon(Icons.payments, Colors.blue.shade50,
-                  AppColors.primary,
+              child: _actionIcon(Icons.attach_money, actionIconBg, actionIconColor,
                   enabled: canLaunchPayment, size: iconSize, surfaceColor: cardColor)),
-        const SizedBox(width: 8),
-        if (isRecurrent && account.recurrenceId == null)
+          const SizedBox(width: 6),
+        ] else if (isRecebimento) ...[
+          InkWell(
+              onTap: () => _showRecebimentoValueDialog(account),
+              child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
+                  size: iconSize, surfaceColor: cardColor)),
+          const SizedBox(width: 6),
+        ] else if (isRecurrent && account.recurrenceId == null) ...[
           InkWell(
               onTap: () async {
                 Account parentRecurrence = account;
@@ -1638,9 +1641,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     final parentAccount = await DatabaseHelper.instance.readAccountById(parentId);
                     if (parentAccount != null) {
                       parentRecurrence = parentAccount;
-                      debugPrint('✅ Encontrada recorrência PAI: ${account.id} → ${parentRecurrence.id} (isRecurrent=${parentRecurrence.isRecurrent})');
-                    } else {
-                      debugPrint('⚠️ Recorrência PAI não encontrada (ID: $parentId)');
                     }
                   } catch (e) {
                     debugPrint('❌ Erro ao buscar recorrência PAI: $e');
@@ -1648,27 +1648,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 }
                 if (mounted) _showLaunchDialog(parentRecurrence);
               },
-              child: _actionIcon(Icons.rocket_launch,
-                  Colors.green.shade50, AppColors.successDark, size: iconSize, surfaceColor: cardColor)),
-        if (isRecurrent && account.recurrenceId == null)
-          const SizedBox(width: 8),
+              child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
+                  size: iconSize, surfaceColor: cardColor)),
+          const SizedBox(width: 6),
+        ] else if (isRecurrent && account.recurrenceId != null) ...[
+          InkWell(
+              onTap: () => _showDespesaValueDialog(account),
+              child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
+                  size: iconSize, surfaceColor: cardColor)),
+          const SizedBox(width: 6),
+        ],
+
+        // 3. PAGAMENTO (ícone de dinheiro) - para contas não-cartão
+        if (!isCard) ...[
+          InkWell(
+              onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
+              child: _actionIcon(Icons.attach_money, actionIconBg, actionIconColor,
+                  enabled: canLaunchPayment, size: iconSize, surfaceColor: cardColor)),
+          const SizedBox(width: 6),
+        ],
+
+        // 4. DESPESA NO CARTÃO (carrinho) - apenas para cartões de crédito
+        if (isCard) ...[
+          InkWell(
+              onTap: () => _showExpenseDialog(account),
+              child: _actionIcon(Icons.add_shopping_cart, actionIconBg, actionIconColor,
+                  size: iconSize, surfaceColor: cardColor)),
+          const SizedBox(width: 6),
+        ],
+
+        // Botão UNDO - para desfazer lançamento de recorrência
+        if (!isCard && account.recurrenceId != null && account.id != null && !isPaid) ...[
+          InkWell(
+            onTap: () => _undoLaunch(account),
+            child: _actionIcon(Icons.undo, actionIconBg, actionIconColor,
+                size: iconSize, surfaceColor: cardColor),
+          ),
+          const SizedBox(width: 6),
+        ],
+
+        // 5. LIXEIRA (delete) - sempre por último
+        if (account.id != null)
           InkWell(
               onTap: () => _confirmDelete(account),
-              child: _actionIcon(
-                Icons.delete,
-                Colors.red.shade50,
-                foregroundColorFor(cardColor),
-                size: iconSize,
-                borderColor: foregroundColorFor(cardColor),
-                borderWidth: 1.3)),
-      ]
-    ]);
+              child: _actionIcon(Icons.delete, actionIconBg, actionIconColor,
+                  size: iconSize, surfaceColor: cardColor)),
+      ]);
 
     Widget buildCardBody({required EdgeInsets padding, required List<Widget> children}) {
       final double borderWidth = 3.5;
-          final Color borderColor = isCard
-            ? foregroundColorFor(cardColor)
-            : (isRecebimento ? receberBorderColor : pagarBorderColor);
+          final Color borderColor = ThemeData.estimateBrightnessForColor(cardColor) == Brightness.dark
+              ? Colors.white
+              : Colors.black;
       return Container(
         color: isCard ? null : containerBg,
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -1706,15 +1737,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Calendário sempre branco, borda adapta ao fundo do card
     const Color calendarBadgeBg = Colors.white;
     final Color calendarBorder = cardIsDark ? Colors.white : Colors.black;
+    // Topo mantém esquema anterior (verde receber, vermelho pagar, laranja para demais)
     final Color calendarTopBar =
         isRecebimento ? Colors.green.shade600 : (isPagamento ? Colors.red.shade600 : Colors.orange.shade700);
+    // Textos seguem regra nova (verde receber, vermelho pagar/cartões)
+    final Color calendarEmphasis = isRecebimento ? Colors.green.shade700 : Colors.red.shade700;
     final BorderRadius calendarRadius = BorderRadius.circular(10);
     // Furos com borda adaptativa ao fundo do card
     final Color holeFill = Colors.grey.shade300;
     final Color holeBorder = cardIsDark ? Colors.white : Colors.black;
     // Cor do texto: verde para receber, vermelho para pagar, preto demais casos
-    final Color calendarContentColor =
-        isRecebimento ? Colors.green.shade700 : (isPagamento ? Colors.red.shade700 : Colors.black);
+    final Color calendarContentColor = calendarEmphasis;
 
     // Widget do calendário principal
     final Widget calendarCore = SizedBox(
@@ -1872,11 +1905,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            if (parentIcon != null) ...[
-                              parentIcon,
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  if (parentIcon != null) ...[
+                                    parentIcon,
                               const SizedBox(width: 6),
                             ],
                             Expanded(
@@ -1892,30 +1925,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  lancadoDisplay,
-                                  style: TextStyle(
-                                    fontSize: valueMainSize,
-                                    fontWeight: FontWeight.w800,
-                                    color: isRecebimento
-                                        ? Colors.blue.shade700
-                                        : Colors.red.shade700,
-                                  ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: isRecebimento
+                                      ? Colors.green.shade700
+                                      : Colors.red.shade700,
+                                  width: 1.2,
                                 ),
-                                if (showPrevisto)
-                                  Text(
-                                    'Previsto: $previstoDisplay',
-                                    style: TextStyle(
-                                      fontSize: valueMainSize * 0.7,
-                                      fontWeight: FontWeight.w600,
-                                      color: _adaptiveGreyTextColor(
-                                          context, Colors.grey.shade600),
-                                    ),
-                                  ),
-                              ],
+                              ),
+                              child: Text(
+                                lancadoDisplay,
+                                style: TextStyle(
+                                  fontSize: valueMainSize,
+                                  fontWeight: FontWeight.w800,
+                                  color: isRecebimento
+                                      ? Colors.green.shade700
+                                      : Colors.red.shade700,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -1954,15 +1985,106 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       actionButtons,
                     ],
                   ),
-                  if (installmentDisplay.isInstallment)
+                  if (installmentDisplay.isInstallment || hasRecurrence || showPrevisto)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          installmentBadge,
-                          const SizedBox(width: 8),
-                          nextDueBadge,
+                          if (hasRecurrence && !isCard) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isRecebimento ? Colors.green.shade700 : Colors.red.shade700,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isRecebimento ? Colors.green.shade900 : Colors.red.shade900,
+                                  width: 1.25,
+                                ),
+                              ),
+                              child: const Text(
+                                'Recorrência',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            if (installmentDisplay.isInstallment) const SizedBox(width: 8),
+                          ],
+                          if (installmentDisplay.isInstallment) ...[
+                            installmentBadge,
+                            const SizedBox(width: 8),
+                            nextDueBadge,
+                          ],
+                          if (showPrevisto) ...[
+                            if (installmentDisplay.isInstallment || (hasRecurrence && !isCard))
+                              const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isRecebimento ? Colors.green.shade700 : Colors.red.shade700,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isRecebimento ? Colors.green.shade900 : Colors.red.shade900,
+                                  width: 1.25,
+                                ),
+                              ),
+                              child: Text(
+                                'Previsto: $previstoDisplay',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (isCard) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.black,
+                                  width: 1.25,
+                                ),
+                              ),
+                              child: Text(
+                                'Próx.: $cardNextDueLabel',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: _adaptiveGreyTextColor(
+                                      context, Colors.grey.shade800),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.black,
+                                  width: 1.25,
+                                ),
+                              ),
+                              child: Text(
+                                'Previsto: $previstoDisplay',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: _adaptiveGreyTextColor(
+                                      context, Colors.grey.shade800),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -2085,6 +2207,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           );
         }
+      }
+    }
+  }
+
+  Future<void> _undoLaunch(Account account) async {
+    // Só aplica para instâncias lançadas (filhas) de recorrência
+    if (account.id == null || account.recurrenceId == null) return;
+    try {
+      // Antes de remover a instância, garanta que o PAI tenha um valor previsto
+      final parentId = account.recurrenceId!;
+      final parent = await DatabaseHelper.instance.readAccountById(parentId);
+      if (parent != null) {
+        final double fallbackPrevisto =
+            (account.estimatedValue ?? account.value).abs() > 0.009
+                ? (account.estimatedValue ?? account.value)
+                : (parent.estimatedValue ?? parent.value);
+
+        if (fallbackPrevisto.abs() > 0.009 &&
+            (parent.estimatedValue ?? 0) != fallbackPrevisto) {
+          await DatabaseHelper.instance.updateAccount(
+            parent.copyWith(
+              estimatedValue: fallbackPrevisto,
+              value: parent.value == 0 ? fallbackPrevisto : parent.value,
+            ),
+          );
+        }
+      }
+
+      await DatabaseHelper.instance.deleteAccount(account.id!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lançamento desfeito — conta voltou para previsão'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        _refresh();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao desfazer lançamento: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -2519,17 +2688,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     UtilBrasilFields.converterMoedaParaDouble(
                         launchedValueController.text);
 
-                // Validação: valor não pode ser zero
-                if (finalValue == 0) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(
-                      content: Text('Valor lançado não pode ser zero'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                  return;
-                }
-
                 debugPrint('🚀 Lançando recorrência:');
                 debugPrint('   - Recorrência ID: ${rule.id}');
                 debugPrint('   - Descrição: ${rule.description}');
@@ -2544,6 +2702,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   finalDate.year,
                 );
 
+                // Se valor zero, remover lançamento existente (ou manter sem lançar)
+                if (finalValue == 0) {
+                  if (existingInstance != null) {
+                    debugPrint('🧹 Removendo instância lançada (valor zero) ID=${existingInstance.id}');
+                    await DatabaseHelper.instance.deleteAccount(existingInstance.id!);
+                  } else {
+                    debugPrint('ℹ️ Valor zero informado e nenhuma instância lançada — mantendo apenas previsão.');
+                  }
+                  if (mounted) {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Lançamento removido — conta voltou a previsão'),
+                        backgroundColor: Colors.orange,
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                    _refresh();
+                  }
+                  return;
+                }
+
                 if (existingInstance != null) {
                   // ATUALIZAR a instância existente com o valor lançado
                   debugPrint('📝 Atualizando instância existente ID=${existingInstance.id} com valor $finalValue');
@@ -2553,7 +2733,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     categoryId: existingInstance.categoryId,
                     description: existingInstance.description,
                     value: finalValue,
-                    estimatedValue: existingInstance.estimatedValue,
+                    estimatedValue: averageValue, // garantir que o valor médio atualizado seja persistido
                     dueDay: finalDate.day,
                     month: finalDate.month,
                     year: finalDate.year,
@@ -2574,7 +2754,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     categoryId: rule.categoryId,
                     description: rule.description,
                     value: finalValue,
-                    estimatedValue: rule.estimatedValue,
+                    estimatedValue: averageValue, // persistir valor médio atualizado
                     dueDay: finalDate.day,
                     month: finalDate.month,
                     year: finalDate.year,
@@ -2783,6 +2963,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   valueController.text);
 
                               try {
+                                final recurrenceKey = account.recurrenceId ?? (account.isRecurrent ? account.id : null);
+
+                                if (finalValue == 0 && recurrenceKey != null) {
+                                  // Valor zero: remover lançamento para este mês (se existir) e voltar à previsão
+                                  Account? instanceToDelete = account.recurrenceId != null && account.id != null
+                                      ? account
+                                      : await DatabaseHelper.instance.findInstanceByRecurrenceAndMonth(
+                                          recurrenceKey, finalDate.month, finalDate.year);
+
+                                  if (instanceToDelete != null && instanceToDelete.id != null) {
+                                    await DatabaseHelper.instance.deleteAccount(instanceToDelete.id!);
+                                  }
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Lançamento removido — conta voltou a previsão'),
+                                        backgroundColor: Colors.orange,
+                                      ),
+                                    );
+                                    _refresh();
+                                  }
+                                  return;
+                                }
+
                                 final updated = account.copyWith(
                                   value: finalValue,
                                   dueDay: finalDate.day,
@@ -2968,6 +3173,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   valueController.text);
 
                               try {
+                                final recurrenceKey = account.recurrenceId ?? (account.isRecurrent ? account.id : null);
+
+                                if (finalValue == 0 && recurrenceKey != null) {
+                                  // Valor zero: remover lançamento para este mês (se existir) e voltar à previsão
+                                  Account? instanceToDelete = account.recurrenceId != null && account.id != null
+                                      ? account
+                                      : await DatabaseHelper.instance.findInstanceByRecurrenceAndMonth(
+                                          recurrenceKey, finalDate.month, finalDate.year);
+
+                                  if (instanceToDelete != null && instanceToDelete.id != null) {
+                                    await DatabaseHelper.instance.deleteAccount(instanceToDelete.id!);
+                                  }
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Lançamento removido — conta voltou a previsão'),
+                                        backgroundColor: Colors.orange,
+                                      ),
+                                    );
+                                    _refresh();
+                                  }
+                                  return;
+                                }
+
                                 final updated = account.copyWith(
                                   value: finalValue,
                                   dueDay: finalDate.day,

@@ -95,6 +95,10 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
       toolbarHeight: preferredSize.height,
       backgroundColor: backgroundColor,
       foregroundColor: foregroundColor,
+      elevation: 0,
+      shape: const Border(
+        bottom: BorderSide(color: Colors.black54, width: 1),
+      ),
       leading: leading,
       title: SizedBox(
         width: double.infinity,
@@ -116,27 +120,46 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(
-                      icon: Icon(Icons.chevron_left, size: 28, color: effectiveForegroundColor),
-                      onPressed: onPrevious,
-                      tooltip: 'Mês anterior',
-                    ),
                     Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          monthLabel,
-                          style: defaultMonthStyle,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.black, width: 1),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left, size: 20, color: Colors.black),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: onPrevious,
+                          tooltip: 'Mês anterior',
                         ),
-                      ),
+                        const SizedBox(width: 6),
+                        Text(
+                          monthLabel,
+                          style: defaultMonthStyle.copyWith(color: Colors.black),
+                        ),
+                        const SizedBox(width: 6),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right, size: 20, color: Colors.black),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: onNext,
+                          tooltip: 'Próximo mês',
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      icon: Icon(Icons.chevron_right, size: 28, color: effectiveForegroundColor),
-                      onPressed: onNext,
-                      tooltip: 'Próximo mês',
-                    ),
-                  ],
+                  ),
                 ),
+              ),
+            ],
+          ),
               ],
             ),
             if (filtersBadge != null)
