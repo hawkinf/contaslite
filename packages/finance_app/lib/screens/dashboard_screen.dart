@@ -182,6 +182,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _periodFilter = 'month'; // 'month', 'currentWeek', 'nextWeek'
   final GlobalKey _filterButtonKey = GlobalKey(); // Key para posicionar o popup
 
+  // Controle do FAB durante scroll
+  bool _isFabVisible = true;
+  double _lastScrollOffset = 0;
+
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification is ScrollUpdateNotification) {
+      final currentOffset = notification.metrics.pixels;
+      final delta = currentOffset - _lastScrollOffset;
+
+      // Scroll para baixo (delta > 0) -> esconde FAB
+      // Scroll para cima (delta < 0) -> mostra FAB
+      if (delta > 2 && _isFabVisible) {
+        setState(() => _isFabVisible = false);
+      } else if (delta < -2 && !_isFabVisible) {
+        setState(() => _isFabVisible = true);
+      }
+
+      _lastScrollOffset = currentOffset;
+    }
+    return false;
+  }
+
 
   @override
   void dispose() {
@@ -847,6 +869,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final totalRemaining = math.max(0.0, totalForecast - totalPaid);
 
       // Calcular totais separados para visão combinada
+      // Total Lançado = soma de contas lançadas + contas que não precisam ser lançadas
+      // Total Previsto = se não lançada usa previsto, se lançada usa o valor lançado
       double previstoPagar = 0.0;
       double previstoReceber = 0.0;
       double lancadoPagar = 0.0;
@@ -857,19 +881,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final typeName = typeMap[item.typeId]?.toLowerCase() ?? '';
         final isRecebimento = typeName.contains('receb');
 
+        // Identificar se é uma conta pai de recorrência (template, não deve ser somada no lançado)
+        final isRecurrenceParent = item.isRecurrent && item.recurrenceId == null && !isCard;
+
         double itemPrevisto = 0.0;
         double itemLancado = 0.0;
-        
-        if (isCard && item.isRecurrent) {
+
+        if (isCard) {
           final breakdown = CardBreakdown.parse(item.observation);
-          itemPrevisto = breakdown.total;
-          // Para cartões, o lançado é o value (fatura lançada)
+          // Previsto do cartão vem do breakdown
+          final cardPrevisto = breakdown.total > 0 ? breakdown.total : item.value;
+          // Lançado é o value da fatura
           itemLancado = item.value;
-        } else {
-          // Usar estimatedValue (Previsto) quando disponível, senão usar value
+          // Previsto: se tem valor lançado, usa lançado; senão usa previsto
+          itemPrevisto = itemLancado > 0.01 ? itemLancado : cardPrevisto;
+        } else if (isRecurrenceParent) {
+          // Conta pai de recorrência: não soma no lançado, mas soma no previsto
           itemPrevisto = item.estimatedValue ?? item.value;
-          // Lançado é sempre o value
-          itemLancado = item.value;
+          itemLancado = 0.0; // Não conta no total lançado
+        } else {
+          // Conta normal ou filha de recorrência
+          final valorPrevisto = item.estimatedValue ?? item.value;
+          final valorLancado = item.value;
+
+          // Total lançado: valor da conta (se > 0)
+          itemLancado = valorLancado;
+
+          // Total previsto: se lançado > 0, usa lançado; senão usa previsto
+          itemPrevisto = valorLancado > 0.01 ? valorLancado : valorPrevisto;
         }
 
         if (isRecebimento) {
@@ -993,8 +1032,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                onNext: () => _changeMonth(1),
                backgroundColor: appBarBg,
                foregroundColor: appBarFg,
-               actions: _buildAppBarActions(includeFilter: true),
-               showFilters: _isCombinedView,
+               actions: _buildAppBarActions(includeFilter: !_inlinePreserveAppBar),
+               showFilters: _isCombinedView && !_inlinePreserveAppBar,
                filterContasPagar: _showContasPagar,
                filterContasReceber: _showContasReceber,
                filterCartoes: _showCartoesCredito,
@@ -1031,49 +1070,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     color: headerColor,
                     child: Row(
                       children: [
+                        // Card A RECEBER
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.all(4),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).cardColor,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.green.shade700, width: 1.0),
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.green.shade600,
+                                  Colors.green.shade800,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.green.shade400.withValues(alpha: 0.4),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'A RECEBER',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 6 * 1.3,
-                                    color: Colors.green.shade700,
-                                  ),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        Icons.trending_up_rounded,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'A RECEBER',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 11,
+                                        color: Colors.white,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 1),
+                                const SizedBox(height: 8),
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        UtilBrasilFields.obterReal(_totalLancadoReceber),
-                                        style: TextStyle(
-                                          fontSize: (isCompactHeight ? 16.0 : 20.0) * 1.3,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.green.shade700,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        '(${UtilBrasilFields.obterReal(_totalPrevistoReceber)})',
-                                        style: TextStyle(
-                                          fontSize: 10 * 0.65 * 1.1,
-                                          color: Colors.grey.shade700,
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                      ),
-                                    ],
+                                  child: Text(
+                                    UtilBrasilFields.obterReal(_totalLancadoReceber),
+                                    style: TextStyle(
+                                      fontSize: isCompactHeight ? 22.0 : 26.0,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Previsto: ${UtilBrasilFields.obterReal(_totalPrevistoReceber)}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white.withValues(alpha: 0.8),
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ],
@@ -1081,49 +1147,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
                         const SizedBox(width: 12),
+                        // Card A PAGAR
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.all(4),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).cardColor,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.red.shade700, width: 1.0),
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.red.shade500,
+                                  Colors.red.shade800,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.red.shade400.withValues(alpha: 0.4),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'A PAGAR',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 6 * 1.3,
-                                    color: Colors.red.shade700,
-                                  ),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        Icons.trending_down_rounded,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'A PAGAR',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 11,
+                                        color: Colors.white,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 1),
+                                const SizedBox(height: 8),
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        UtilBrasilFields.obterReal(_totalLancadoPagar),
-                                        style: TextStyle(
-                                          fontSize: (isCompactHeight ? 16.0 : 20.0) * 1.3,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.red.shade700,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        '(${UtilBrasilFields.obterReal(_totalPrevistoPagar)})',
-                                        style: TextStyle(
-                                          fontSize: 10 * 0.65 * 1.1,
-                                          color: Colors.grey.shade700,
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                      ),
-                                    ],
+                                  child: Text(
+                                    UtilBrasilFields.obterReal(_totalLancadoPagar),
+                                    style: TextStyle(
+                                      fontSize: isCompactHeight ? 22.0 : 26.0,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Previsto: ${UtilBrasilFields.obterReal(_totalPrevistoPagar)}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.white.withValues(alpha: 0.8),
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ],
@@ -1226,24 +1319,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           )
                         : _displayList.isEmpty
                             ? Center(child: Text(emptyText))
-                            : ListView.builder(
-                                padding: EdgeInsets.fromLTRB(
-                                    0, 0, 0, listBottomPadding),
-                                itemCount: _displayList.length,
-                                itemBuilder: (context, index) {
-                                  try {
-                                    return _buildAccountCard(_displayList[index]);
-                                  } catch (e) {
-                                    debugPrint(
-                                        '? Erro ao renderizar card $index: $e');
-                                    return Container(
-                                      padding: const EdgeInsets.all(12),
-                                      margin: const EdgeInsets.all(8),
-                                      color: Colors.red.shade50,
-                                      child: Text('Erro ao renderizar: $e'),
-                                    );
-                                  }
-                                })),
+                            : NotificationListener<ScrollNotification>(
+                                onNotification: _handleScrollNotification,
+                                child: ListView.builder(
+                                  padding: EdgeInsets.fromLTRB(
+                                      0, 0, 0, listBottomPadding),
+                                  itemCount: _displayList.length,
+                                  itemBuilder: (context, index) {
+                                    try {
+                                      return _buildAccountCard(_displayList[index]);
+                                    } catch (e) {
+                                      debugPrint(
+                                          '? Erro ao renderizar card $index: $e');
+                                      return Container(
+                                        padding: const EdgeInsets.all(12),
+                                        margin: const EdgeInsets.all(8),
+                                        color: Colors.red.shade50,
+                                        child: Text('Erro ao renderizar: $e'),
+                                      );
+                                    }
+                                  },
+                                ),
+                              )),
               ]);
           },
         ),
@@ -1261,23 +1358,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
             : SafeArea(
                 child: Padding(
                   padding: EdgeInsets.only(right: fabRight, bottom: fabBottom),
-                  child: FloatingActionButton(
-                    heroTag: null,
-                    tooltip: _isRecebimentosFilter
-                        ? 'Novo recebimento'
-                        : 'Novo lancamento',
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    onPressed: _isRecebimentosFilter
-                        ? _openRecebimentoForm
-                        : _showQuickActions,
-                    mini: isCompactFab,
-                    child: _borderedIcon(
-                      Icons.add,
-                      iconColor: Colors.white,
-                      borderColor: Colors.white,
-                      size: isCompactFab ? 20 : 24,
-                      padding: const EdgeInsets.all(6),
+                  child: AnimatedScale(
+                    scale: _isFabVisible ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 200),
+                    child: AnimatedOpacity(
+                      opacity: _isFabVisible ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: FloatingActionButton(
+                        heroTag: null,
+                        tooltip: _isRecebimentosFilter
+                            ? 'Novo recebimento'
+                            : 'Novo lancamento',
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        onPressed: _isFabVisible
+                            ? (_isRecebimentosFilter
+                                ? _openRecebimentoForm
+                                : _showQuickActions)
+                            : null,
+                        mini: isCompactFab,
+                        child: _borderedIcon(
+                          Icons.add,
+                          iconColor: Colors.white,
+                          borderColor: Colors.white,
+                          size: isCompactFab ? 20 : 24,
+                          padding: const EdgeInsets.all(6),
+                        ),
+                      ),
                     ),
                   ),
                 ),
