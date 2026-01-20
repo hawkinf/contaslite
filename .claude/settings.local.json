@@ -41,7 +41,27 @@
       "Bash(scp:*)",
       "Bash(curl:*)",
       "Bash(flutter pub deps:*)",
-      "Bash(ls \"c:\\\\flutter\\\\Contaslite\\\\packages\\\\finance_app\\\\assets\\\\icons\"\" 2>/dev/null || echo \"Pasta não existe ou vazia \")"
+      "Bash(ls \"c:\\\\flutter\\\\Contaslite\\\\packages\\\\finance_app\\\\assets\\\\icons\"\" 2>/dev/null || echo \"Pasta não existe ou vazia \")",
+      "Bash(where:*)",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -batch -pw \"VVEAW1pJm6xy9sp805\" root@contaslite.hawk.com.br \"ls -la /var/www/\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" root@contaslite.hawk.com.br \"echo connected\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"ls -la /var/www/\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"ls -la /var/www/contaslite-backend/src/routes/\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"ls -la /var/www/contaslite-backend/\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"ls -la /var/www/contaslite-backend/backend/\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"ls -la /var/www/contaslite-backend/backend/src/\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"ls -la /var/www/contaslite-backend/backend/src/routes/\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"cat /var/www/contaslite-backend/backend/src/routes/auth.js\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"ls -la /var/www/contaslite-backend/backend/src/controllers/\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"ls -la /var/www/contaslite-backend/backend/src/models/\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"cat /var/www/contaslite-backend/backend/src/models/index.js\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"cat > /var/www/contaslite-backend/backend/src/routes/user.js << ''EOF''\nconst express = require\\(''express''\\);\nconst router = express.Router\\(\\);\nconst userController = require\\(''../controllers/userController''\\);\nconst authenticate = require\\(''../middleware/authenticate''\\);\n\n/**\n * DELETE /api/user/data\n * Apaga todos os dados do usuário autenticado\n * Requer autenticação\n */\nrouter.delete\\(''/data'', authenticate, userController.deleteAllUserData\\);\n\nmodule.exports = router;\nEOF\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"systemctl restart contaslite-backend && systemctl status contaslite-backend\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"pm2 list\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"pm2 restart contaslite-api && sleep 3 && pm2 logs contaslite-api --lines 20\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"pm2 logs contaslite-api --lines 5 --nostream\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"curl -s http://localhost:3000/health\")",
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"curl -s -X DELETE http://localhost:3000/api/user/data\")"
     ]
   }
 }

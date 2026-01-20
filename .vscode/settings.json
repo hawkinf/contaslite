@@ -5,5 +5,9 @@
   "dart.flutterSdkPath": "C:\\Users\\hawk\\flutter",
   "dart.breakOnExceptions": "none",
   "dart.evaluateToStringInDebugViews": false,
-  "dart.showInspectorNotificationsForWidgetErrors": false
+  "dart.showInspectorNotificationsForWidgetErrors": false,
+  "chat.tools.terminal.autoApprove": {
+    "cls": true,
+    "Get-Process": true
+  }
 }

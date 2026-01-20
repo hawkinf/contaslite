@@ -28,12 +28,13 @@ class _InstallmentSummary {
   final double totalAmount;
   final double remainingAmount;
   final DateTime? nextDueDate;
-
+  final double? nextValue;
 
   const _InstallmentSummary({
     required this.totalAmount,
     required this.remainingAmount,
     this.nextDueDate,
+    this.nextValue,
   });
 }
 
@@ -104,17 +105,20 @@ class _SeriesSummary {
       return null;
     }
     DateTime? nextDueDate;
+    double? nextValue;
     final nextIndex = idx + 1;
     if (nextIndex < orderedInstallments.length) {
       final nextAccount = orderedInstallments[nextIndex];
       final nextYear = nextAccount.year ?? DateTime.now().year;
       final nextMonth = nextAccount.month ?? DateTime.now().month;
       nextDueDate = DateTime(nextYear, nextMonth, nextAccount.dueDay);
+      nextValue = nextAccount.value;
     }
     return _InstallmentSummary(
       totalAmount: totalAmount,
       remainingAmount: remainingFromIndex[idx],
       nextDueDate: nextDueDate,
+      nextValue: nextValue,
     );
   }
 }
@@ -810,6 +814,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
       
       processedList.sort((a, b) => a.dueDay.compareTo(b.dueDay));
+      
       final double totalForecast = processedList.fold(0.0, (sum, item) {
         if (item.cardBrand != null && item.isRecurrent) {
           final breakdown = CardBreakdown.parse(item.observation);
@@ -1013,7 +1018,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               backgroundColor: appBarBg,
               foregroundColor: appBarFg,
               leading: IconButton(
-                icon: _borderedIcon(Icons.arrow_back, size: 20),
+                icon: _borderedIcon(Icons.arrow_back, size: 20, iconColor: Colors.white),
                 tooltip: 'Voltar',
                 onPressed: () {
                   final monthStart = DateTime(_startDate.year, _startDate.month, 1);
@@ -1073,7 +1078,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         // Card A RECEBER
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.topLeft,
@@ -1086,8 +1091,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.green.shade400.withValues(alpha: 0.4),
-                                  blurRadius: 8,
+                                  color: Colors.green.shade400.withValues(alpha: 0.5),
+                                  blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
                               ],
@@ -1098,47 +1103,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 Row(
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.all(6),
+                                      padding: const EdgeInsets.all(7),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.2),
+                                        color: Colors.white.withValues(alpha: 0.25),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: const Icon(
                                         Icons.trending_up_rounded,
                                         color: Colors.white,
-                                        size: 16,
+                                        size: 18,
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      'A RECEBER',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 11,
-                                        color: Colors.white,
-                                        letterSpacing: 0.5,
+                                    const SizedBox(width: 10),
+                                    const Expanded(
+                                      child: Text(
+                                        'A RECEBER',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                          color: Colors.white,
+                                          letterSpacing: 0.6,
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 10),
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
                                   child: Text(
                                     UtilBrasilFields.obterReal(_totalLancadoReceber),
                                     style: TextStyle(
-                                      fontSize: isCompactHeight ? 22.0 : 26.0,
-                                      fontWeight: FontWeight.w800,
+                                      fontSize: isCompactHeight ? 24.0 : 28.0,
+                                      fontWeight: FontWeight.w900,
                                       color: Colors.white,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 4),
                                 Text(
                                   'Previsto: ${UtilBrasilFields.obterReal(_totalPrevistoReceber)}',
                                   style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.white.withValues(alpha: 0.8),
+                                    fontSize: 11,
+                                    color: Colors.white.withValues(alpha: 0.85),
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -1150,7 +1158,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         // Card A PAGAR
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.topLeft,
@@ -1163,8 +1171,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.red.shade400.withValues(alpha: 0.4),
-                                  blurRadius: 8,
+                                  color: Colors.red.shade400.withValues(alpha: 0.5),
+                                  blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
                               ],
@@ -1175,47 +1183,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 Row(
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.all(6),
+                                      padding: const EdgeInsets.all(7),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.2),
+                                        color: Colors.white.withValues(alpha: 0.25),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: const Icon(
                                         Icons.trending_down_rounded,
                                         color: Colors.white,
-                                        size: 16,
+                                        size: 18,
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    const Text(
-                                      'A PAGAR',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 11,
-                                        color: Colors.white,
-                                        letterSpacing: 0.5,
+                                    const SizedBox(width: 10),
+                                    const Expanded(
+                                      child: Text(
+                                        'A PAGAR',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                          color: Colors.white,
+                                          letterSpacing: 0.6,
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 10),
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
                                   child: Text(
                                     UtilBrasilFields.obterReal(_totalLancadoPagar),
                                     style: TextStyle(
-                                      fontSize: isCompactHeight ? 22.0 : 26.0,
-                                      fontWeight: FontWeight.w800,
+                                      fontSize: isCompactHeight ? 24.0 : 28.0,
+                                      fontWeight: FontWeight.w900,
                                       color: Colors.white,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 4),
                                 Text(
                                   'Previsto: ${UtilBrasilFields.obterReal(_totalPrevistoPagar)}',
                                   style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.white.withValues(alpha: 0.8),
+                                    fontSize: 11,
+                                    color: Colors.white.withValues(alpha: 0.85),
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -1479,11 +1490,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     int day = account.dueDay;
     int maxDays = DateUtils.getDaysInMonth(year, month);
     if (day > maxDays) day = maxDays;
+    
     final originalDate = DateTime(year, month, day);
     final isWeekend = HolidayService.isWeekend(originalDate);
     final isHoliday =
         HolidayService.isHoliday(originalDate, PrefsService.cityNotifier.value);
     final isAlertDay = isWeekend || isHoliday;
+    
     DateTime effectiveDate = originalDate;
     if (isAlertDay) {
       if (account.payInAdvance) {
@@ -1558,22 +1571,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final Color accentColor = typeColor;
     final bool isPagamento = !isRecebimento && (typeName?.contains('pag') ?? true);
     final breakdown = isCard ? CardBreakdown.parse(account.observation) : const CardBreakdown(total: 0, installments: 0, oneOff: 0, subscriptions: 0);
+    // Valor previsto para exibir no badge (estimatedValue para recorrências)
     final double previstoValue = isCard
         ? (breakdown.total > 0 ? breakdown.total : account.value)
-        : (isRecurrent && account.recurrenceId != null && account.value <= 0.01
+        : (isRecurrent && account.recurrenceId != null
             ? (account.estimatedValue ?? account.value)
             : account.value);
+    // Valor lançado: sempre account.value (mostra 0,00 se não lançado)
     final double? lancadoValue = (!isCard && isRecurrent && account.recurrenceId == null)
         ? null
         : account.value;
     final String lancadoDisplay =
         UtilBrasilFields.obterReal(lancadoValue ?? previstoValue);
     final String previstoDisplay = UtilBrasilFields.obterReal(previstoValue);
-    // Mostrar previsto somente quando há estimatedValue definido e diferente do value
+    // Mostrar previsto para contas recorrentes filhas que têm estimatedValue definido
     final bool showPrevisto = !isCard &&
+        isRecurrent &&
+        account.recurrenceId != null &&
         account.estimatedValue != null &&
-        account.estimatedValue!.abs() > 0.009 &&
-        (account.estimatedValue! - account.value).abs() > 0.009;
+        account.estimatedValue!.abs() > 0.009;
 
     final cleanedDescription =
         cleanAccountDescription(account).replaceAll('Fatura: ', '').trim();
@@ -1686,6 +1702,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final bool cardIsDark =
         ThemeData.estimateBrightnessForColor(cardColor) == Brightness.dark;
     final Color parceladoBorderColor = cardIsDark ? Colors.white : Colors.black;
+    // Identificar se é parcela única (não recorrente, não parcelada, total == 1)
+    final bool isSinglePayment = !hasRecurrence && !installmentDisplay.isInstallment && !isCard;
     final Widget installmentBadge = Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
@@ -1695,8 +1713,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Text(installmentDisplay.labelText,
             style: const TextStyle(
                 fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)));
-    final String nextDueLabel = installmentSummary?.nextDueDate != null
-        ? '${DateFormat('dd/MM/yy').format(installmentSummary!.nextDueDate!)} (${DateFormat('EEE', 'pt_BR').format(installmentSummary.nextDueDate!).replaceAll('.', '').toUpperCase()})'
+    // Badge para parcela única
+    final Widget singlePaymentBadge = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+            color: parceladoFillColor,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: parceladoBorderColor, width: 1.25)),
+        child: const Text('Parcela Única',
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)));
+    final String nextValueLabel = installmentSummary?.nextValue != null
+        ? UtilBrasilFields.obterReal(installmentSummary!.nextValue!)
         : '-';
     final Color nextDateColor = cardIsDark ? Colors.white : Colors.black87;
     final Widget nextDueBadge = Container(
@@ -1705,7 +1733,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             color: (cardIsDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: parceladoBorderColor, width: 1.0)),
-        child: Text('Próx: $nextDueLabel',
+        child: Text('Próx: $nextValueLabel',
             style: TextStyle(
                 fontSize: smallDateSize, fontWeight: FontWeight.w700, color: nextDateColor)));
 
@@ -1758,7 +1786,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
                   size: iconSize, surfaceColor: cardColor)),
           const SizedBox(width: 6),
-        ] else if (isRecurrent && account.recurrenceId != null) ...[
+        ] else if (isRecurrent && account.recurrenceId != null && account.value == 0) ...[
+          // Foguete só aparece se value == 0 (não foi lançada ainda)
           InkWell(
               onTap: () => _showDespesaValueDialog(account),
               child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
@@ -1784,8 +1813,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(width: 6),
         ],
 
-        // Botão UNDO - para desfazer lançamento de recorrência
-        if (!isCard && account.recurrenceId != null && account.id != null && !isPaid) ...[
+        // Botão UNDO - para desfazer lançamento de recorrência (só aparece se value > 0, ou seja, foi lançada)
+        if (!isCard && account.recurrenceId != null && account.id != null && !isPaid && account.value > 0) ...[
           InkWell(
             onTap: () => _undoLaunch(account),
             child: _actionIcon(Icons.undo, actionIconBg, actionIconColor,
@@ -2092,12 +2121,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       actionButtons,
                     ],
                   ),
-                  if (installmentDisplay.isInstallment || hasRecurrence || showPrevisto)
+                  if (installmentDisplay.isInstallment || hasRecurrence || showPrevisto || isSinglePayment)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          // Badge Parcela Única (não recorrente, não parcelada)
+                          if (isSinglePayment) ...[
+                            singlePaymentBadge,
+                          ],
+                          // Badge Recorrência
                           if (hasRecurrence && !isCard) ...[
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -2120,13 +2154,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             if (installmentDisplay.isInstallment) const SizedBox(width: 8),
                           ],
+                          // Badge Parcela X/Y e Próx valor
                           if (installmentDisplay.isInstallment) ...[
                             installmentBadge,
                             const SizedBox(width: 8),
                             nextDueBadge,
                           ],
+                          // Badge Previsto (para recorrências)
                           if (showPrevisto) ...[
-                            if (installmentDisplay.isInstallment || (hasRecurrence && !isCard))
+                            if (installmentDisplay.isInstallment || (hasRecurrence && !isCard) || isSinglePayment)
                               const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -2366,6 +2402,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _handlePayAction(Account account) async {
+    // Se for uma recorrência PAI não lançada (sem id ou com id mas recurrenceId null e isRecurrent true),
+    // precisamos criar a instância filha ANTES de abrir o diálogo de pagamento
+    Account accountToUse = account;
+    
+    final isRecurrenceParent = account.isRecurrent && account.recurrenceId == null && account.cardBrand == null;
+    
+    if (isRecurrenceParent) {
+      try {
+        final month = account.month ?? _startDate.month;
+        final year = account.year ?? _startDate.year;
+        
+        // Verificar se já existe uma instância lançada para este mês
+        Account? existingInstance = await DatabaseHelper.instance.findInstanceByRecurrenceAndMonth(
+          account.id!,
+          month,
+          year,
+        );
+        
+        if (existingInstance != null) {
+          // Usar a instância já existente
+          accountToUse = existingInstance;
+          debugPrint('💰 Usando instância existente: id=${existingInstance.id}');
+        } else {
+          // Criar nova instância filha para este mês específico
+          final newInstance = account.copyWith(
+            id: null, // Novo registro
+            recurrenceId: account.id, // Link para o pai
+            isRecurrent: false, // Instância não é recorrente
+            month: month,
+            year: year,
+          );
+          
+          final newId = await DatabaseHelper.instance.createAccount(newInstance);
+          accountToUse = newInstance.copyWith(id: newId);
+          
+          debugPrint('💰 Criada nova instância para pagamento: id=$newId, recurrenceId=${account.id}, month=$month, year=$year');
+        }
+      } catch (e) {
+        debugPrint('❌ Erro ao criar instância de recorrência para pagamento: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao preparar conta para pagamento: $e')),
+          );
+        }
+        return;
+      }
+    }
+    
     await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -2394,7 +2478,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 startDate: _startDate,
                 endDate: _endDate,
                 isRecebimento: _isRecebimentosFilter,
-                preselectedAccount: account,
+                preselectedAccount: accountToUse,
               ),
             ),
           ),
@@ -2947,7 +3031,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       builder: (ctx) {
         final media = MediaQuery.of(ctx);
-        final maxWidth = (media.size.width * 0.9).clamp(300.0, 420.0);
+        final maxWidth = (media.size.width * 0.9).clamp(300.0, 520.0);
         final primaryColor = Theme.of(ctx).colorScheme.primary;
 
         return Dialog(
@@ -3156,7 +3240,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       builder: (ctx) {
         final media = MediaQuery.of(ctx);
-        final maxWidth = (media.size.width * 0.9).clamp(300.0, 420.0);
+        final maxWidth = (media.size.width * 0.9).clamp(300.0, 520.0);
         final despesaColor = Colors.orange.shade700;
 
         return Dialog(
@@ -3363,7 +3447,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       builder: (ctx) {
         final media = MediaQuery.of(ctx);
-        final maxWidth = (media.size.width * 0.9).clamp(300.0, 420.0);
+        final maxWidth = (media.size.width * 0.9).clamp(300.0, 520.0);
         final cartaoColor = Colors.orange.shade700;
 
         return Dialog(

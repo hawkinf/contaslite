@@ -70,6 +70,14 @@ class AccountFormScreen extends StatefulWidget {
   State<AccountFormScreen> createState() => _AccountFormScreenState();
 }
 
+class _LaunchInfo {
+  final double total;
+  final String? dateLabel;
+  final bool hadPayment;
+
+  const _LaunchInfo({required this.total, this.dateLabel, required this.hadPayment});
+}
+
 class _AccountFormScreenState extends State<AccountFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descController = TextEditingController();
@@ -111,6 +119,80 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   bool _isSaving = false;
   bool _isLoadingData = true; // Indica se está carregando dados iniciais
   bool _isDisposed = false; // Flag para evitar operações após dispose
+
+  // Soma pagamentos ligados a uma conta pai e todas as contas com recurrenceId = parentId
+  Future<_LaunchInfo> _sumPaymentsForRecurrence(int parentId) async {
+    double total = 0.0;
+    bool hasAnyPayment = false;
+    DateTime? latestDate;
+
+    final db = await DatabaseHelper.instance.database;
+
+    // Pagamentos diretamente ligados ao pai
+    final parentPays = await DatabaseHelper.instance.readPaymentsByAccountId(parentId);
+    debugPrint('💳 Pagamentos no pai ($parentId): ${parentPays.length} -> [${parentPays.map((p) => '${p.accountId}:${p.value}').join(', ')}]');
+    if (parentPays.isNotEmpty) hasAnyPayment = true;
+    for (final payment in parentPays) {
+      total += payment.value;
+      final parsed = DateTime.tryParse(payment.paymentDate);
+      if (parsed != null) {
+        if (latestDate == null) {
+          latestDate = parsed;
+        } else if (parsed.isAfter(latestDate)) {
+          latestDate = parsed;
+        }
+      }
+    }
+    // Removido fallback: não somar value do pai sem pagamentos
+
+    // Buscar todas as contas (filhas) desta recorrência, independentemente de mês/ano
+    final childRows = await db.query(
+      'accounts',
+      columns: ['id', 'value', 'isRecurrent', 'month', 'year', 'description'],
+      where: 'recurrenceId = ?',
+      whereArgs: [parentId],
+    );
+    for (final row in childRows) {
+      final childId = row['id'] as int?;
+      if (childId == null) continue;
+      final childValue = (row['value'] as num?)?.toDouble() ?? 0.0;
+      final childIsRecurrent = (row['isRecurrent'] as int? ?? 0) == 1;
+      final childMonth = row['month'];
+      final childYear = row['year'];
+      final childDesc = row['description'];
+
+      debugPrint('🧾 Conta filha ($childId) ${childDesc ?? ''} [$childMonth/$childYear] valor=$childValue isRec=$childIsRecurrent');
+
+      final childPays = await DatabaseHelper.instance.readPaymentsByAccountId(childId);
+      debugPrint('💳 Pagamentos na filha ($childId): ${childPays.length} -> [${childPays.map((p) => '${p.accountId}:${p.value}').join(', ')}]');
+      if (childPays.isNotEmpty) hasAnyPayment = true;
+      for (final payment in childPays) {
+        total += payment.value;
+        final parsed = DateTime.tryParse(payment.paymentDate);
+        if (parsed != null) {
+          if (latestDate == null) {
+            latestDate = parsed;
+          } else if (parsed.isAfter(latestDate)) {
+            latestDate = parsed;
+          }
+        }
+      }
+
+      // Removido fallback: não somar value das filhas sem pagamentos
+      // Valor Lançado só deve refletir pagamentos reais
+    }
+
+    // Removido fallback: Valor Lançado só deve aparecer quando há pagamentos reais
+    // Se não há pagamentos, total permanece 0 e campos ficam vazios
+
+    debugPrint('💰 Total lançado (pai + todas as filhas) para recurrenceId=$parentId: $total (pagamentos? $hasAnyPayment)');
+    final dateLabel = latestDate != null
+        ? (latestDate.day == 1
+            ? DateFormat('MM/yyyy').format(latestDate)
+            : DateFormat('dd/MM/yyyy').format(latestDate))
+        : null;
+    return _LaunchInfo(total: total, dateLabel: dateLabel, hadPayment: hasAnyPayment);
+  }
 
   String get _typeLabel =>
       widget.isRecebimento ? 'Tipo de Recebimento' : 'Tipo da Conta';
@@ -214,8 +296,8 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     _recurrentStartYear = now.year;
     _recurrentStartYearController.text = _recurrentStartYear.toString();
     
-    // Valor Lançado sempre zero
-    _recurrentLaunchedValueController.text = '0,00';
+    // Valor Lançado vazio para nova conta (só preenchido via action button)
+    _recurrentLaunchedValueController.text = '';
     
     _dateMaskFormatter = TextInputFormatter.withFunction((oldValue, newValue) {
       // Remove non-digits
@@ -275,14 +357,22 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               debugPrint(
                   '✅ Recorrência pai carregada: ${parent.description}, valor=${parent.value}');
 
+              // Buscar valor lançado (pagamentos do pai + de TODAS as filhas)
+              _LaunchInfo totalLaunched = const _LaunchInfo(total: 0.0, dateLabel: null, hadPayment: false);
+              if (parent.id != null) {
+                totalLaunched = await _sumPaymentsForRecurrence(parent.id!);
+              }
+
               if (mounted) {
                 setState(() {
                   _descController.text = parent.description;
-                  _totalValueController.text =
-                      UtilBrasilFields.obterReal(parent.value);
-                  _recurrentValueController.text =
-                      UtilBrasilFields.obterReal(parent.value);
-                  _recurrentLaunchedValueController.text = '0,00';
+                    // Usar estimatedValue se disponível para o valor médio
+                    final avgValue = parent.estimatedValue ?? parent.value;
+                    _totalValueController.text =
+                      UtilBrasilFields.obterReal(avgValue);
+                    _recurrentValueController.text =
+                      UtilBrasilFields.obterReal(avgValue);
+                  _recurrentLaunchedValueController.text = totalLaunched.total > 0 ? UtilBrasilFields.obterReal(totalLaunched.total) : '';
                   _recurrentDay = parent.dueDay;
                   _payInAdvance = parent.payInAdvance;
                   _observationController.text = parent.observation ?? "";
@@ -302,17 +392,26 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           }
         });
       } else if (acc.isRecurrent) {
+        // A conta PAI tem month/year próprios, usar diretamente do acc
+        debugPrint('🔧 Editando pai recorrente: id=${acc.id}, month=${acc.month}, year=${acc.year}');
+        
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           try {
-            // Buscar apenas as filhas desta recorrência
-            final children = await DatabaseHelper.instance.getAccountsByRecurrenceId(acc.id!);
-            if (children.isNotEmpty && mounted) {
-              final first = children.first;
+            // Calcular valor lançado do pai + todas as filhas
+            _LaunchInfo totalLaunched = const _LaunchInfo(total: 0.0, dateLabel: null, hadPayment: false);
+            if (acc.id != null) {
+              totalLaunched = await _sumPaymentsForRecurrence(acc.id!);
+            }
+            
+            if (mounted) {
               setState(() {
-                _recurrentStartMonth = (first.month ?? DateTime.now().month) - 1;
-                _recurrentStartYear = first.year ?? DateTime.now().year;
-                _recurrentStartYearController.text =
-                    _recurrentStartYear.toString();
+                // Usar month/year do PAI, não das filhas!
+                _recurrentStartMonth = (acc.month ?? DateTime.now().month) - 1;
+                _recurrentStartYear = acc.year ?? DateTime.now().year;
+                _recurrentStartYearController.text = _recurrentStartYear.toString();
+                _recurrentLaunchedValueController.text = totalLaunched.total > 0 ? UtilBrasilFields.obterReal(totalLaunched.total) : '';
+
+                debugPrint('🔧 Valores setados: mês=$_recurrentStartMonth, ano=$_recurrentStartYear, lançado=${totalLaunched.total}');
               });
             }
           } catch (e) {
@@ -324,8 +423,19 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       // Inicializar com dados da conta (será substituído pelo pai se for filha)
       _editingAccount = acc;
       _descController.text = acc.description;
-      _recurrentValueController.text = UtilBrasilFields.obterReal(acc.value);
-      _recurrentLaunchedValueController.text = '0,00';
+      // Usar estimatedValue se disponível, senão usar value
+      final avgValue = acc.estimatedValue ?? acc.value;
+      _recurrentValueController.text = UtilBrasilFields.obterReal(avgValue);
+      // Buscar valor lançado inicial - só preenche se houver pagamentos (total > 0)
+      if (acc.id != null) {
+        _sumPaymentsForRecurrence(acc.id!).then((info) {
+          if (mounted) {
+            setState(() {
+              _recurrentLaunchedValueController.text = info.total > 0 ? UtilBrasilFields.obterReal(info.total) : '';
+            });
+          }
+        });
+      }
       _recurrentDay = acc.dueDay;
       _payInAdvance = acc.payInAdvance;
       _observationController.text = acc.observation ?? "";
@@ -1472,7 +1582,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           const SizedBox(height: 12),
           Row(children: [
             Expanded(
-              flex: 1,
+              flex: 2,
               child: _buildFieldWithIcon(
                 icon: Icons.trending_flat,
                 label: 'Valor Médio',
@@ -1495,32 +1605,52 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             ),
             const SizedBox(width: 12),
             Expanded(
-              flex: 1,
+              flex: 2,
               child: _buildFieldWithIcon(
                 icon: Icons.attach_money,
                 label: 'Valor Lançado',
                 child: TextFormField(
                   controller: _recurrentLaunchedValueController,
+                  readOnly: true,
+                  enableInteractiveSelection: false,
                   keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    CentavosInputFormatter(moeda: true),
-                  ],
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
                   decoration: buildOutlinedInputDecoration(
                     label: 'Valor Lançado',
                     icon: Icons.attach_money,
+                  ).copyWith(
+                    fillColor: Colors.grey.shade50,
+                    filled: true,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: widget.isRecebimento ? Colors.green : Colors.red,
+                        width: 2,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                        color: widget.isRecebimento ? Colors.green : Colors.red,
+                        width: 2,
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
+
           ]),
         ],
       ),
       const SizedBox(height: 20),
-      // Dia Vencimento
+      // Dia Vencimento, Mês Inicial e Ano Inicial
       Row(children: [
         Expanded(
-          flex: 2,
+          flex: 1,
           child: _buildFieldWithIcon(
             icon: Icons.calendar_today,
             label: 'Dia Venc.',
@@ -1537,10 +1667,8 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               onChanged: (val) => setState(() => _recurrentDay = val!),
             ),
           ),
-        )
-      ]),
-      const SizedBox(height: 20),
-      Row(children: [
+        ),
+        const SizedBox(width: 12),
         Expanded(
           flex: 1,
           child: _buildFieldWithIcon(
@@ -1566,7 +1694,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         Expanded(
           flex: 1,
           child: _buildFieldWithIcon(
@@ -2190,7 +2318,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             typeId: _selectedType!.id!,
             categoryId: _selectedCategory?.id ?? accountToUpdate.categoryId,
             description: _descController.text,
-            value: launchedVal > 0.01 ? launchedVal : 0,
+            value: 0,  // ✅ PAI RECORRENTE SEMPRE COM VALUE = 0 (é apenas um template!)
             estimatedValue: averageVal,
             dueDay: _recurrentDay,
             isRecurrent: true,
@@ -2202,12 +2330,55 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             cardColor: _selectedColor,
           );
 
-          if (option == 1) {
+          // Verificar mudança de dia base e perguntar escopo
+          final previousDay = accountToUpdate.dueDay;
+          final dayChanged = _recurrentDay != previousDay;
+          int dayOption = 1;
+          if (dayChanged) {
+            if (!mounted) return;
+            final changeDayOption = await showDialog<int>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Confirmar Mudança de Dia Base'),
+                content: RichText(
+                  text: TextSpan(
+                    text: 'O dia base de ',
+                    children: [
+                      TextSpan(
+                        text: previousDay.toString().padLeft(2, '0'),
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                      ),
+                      const TextSpan(text: ' foi alterado para '),
+                      TextSpan(
+                        text: _recurrentDay.toString().padLeft(2, '0'),
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+                      ),
+                      const TextSpan(text: '.\n\nAplicar somente nessa, nas futuras, ou em todas as parcelas?'),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(ctx, 0), child: const Text('Cancelar')),
+                  TextButton(onPressed: () => Navigator.pop(ctx, 1), child: const Text('Somente essa')),
+                  TextButton(onPressed: () => Navigator.pop(ctx, 2), child: const Text('Essa e as futuras')),
+                  FilledButton(style: FilledButton.styleFrom(backgroundColor: AppColors.success), onPressed: () => Navigator.pop(ctx, 3), child: const Text('Todas as parcelas')),
+                ],
+              ),
+            );
+            if (!mounted) return;
+            if (changeDayOption == 0) {
+              setState(() => _isSaving = false);
+              return;
+            }
+            dayOption = (changeDayOption ?? 1);
+          }
+
+          if (option == 1 && dayOption == 1) {
             // Apenas esta conta (comportamento atual)
             debugPrint('  Account.value antes de atualizar: ${updated.value}');
             await DatabaseHelper.instance.updateAccount(updated);
             debugPrint('  Account atualizada com id: ${updated.id}');
-          } else if (option == 2) {
+          } else {
             // Esta e daqui pra frente - APENAS ATUALIZA, NÃO CRIA
 
             // 1. Atualizar o pai (definição da recorrência)
@@ -2229,18 +2400,22 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             } else {
               // Buscar apenas as filhas desta recorrência (não TODAS as contas)
               final children = await DatabaseHelper.instance.getAccountsByRecurrenceId(recurrenceId);
-              var futureAccounts = children.where((a) {
-                final accDate = DateTime(a.year ?? 0, a.month ?? 0, 1);
-                final today = DateTime(currentYear, currentMonth, 1);
-                return accDate.isAtSameMomentAs(today) || accDate.isAfter(today);
-              }).toList();
+              List<Account> accountsToUpdate;
+              if (dayOption == 3) {
+                accountsToUpdate = children.where((a) => a.month != null && a.year != null).toList();
+              } else {
+                accountsToUpdate = children.where((a) {
+                  final accDate = DateTime(a.year ?? 0, a.month ?? 0, 1);
+                  final today = DateTime(currentYear, currentMonth, 1);
+                  return accDate.isAtSameMomentAs(today) || accDate.isAfter(today);
+                }).where((a) => a.month != null && a.year != null).toList();
+              }
 
-              debugPrint(
-                  '  🔄 Atualizando ${futureAccounts.length} parcelas futuras (recurrence_id=$recurrenceId)');
+              debugPrint('  🔄 Atualizando ${accountsToUpdate.length} parcelas (escopo=${dayOption == 3 ? 'todas' : 'futuras'}) (recurrence_id=$recurrenceId)');
 
               final duplicatesToRemove = <Account>[];
               final groupedByPeriod = <String, List<Account>>{};
-              for (final future in futureAccounts) {
+              for (final future in accountsToUpdate) {
                 if (future.month == null || future.year == null) continue;
                 final key = '${future.year}-${future.month}-${future.dueDay}';
                 groupedByPeriod.putIfAbsent(key, () => []).add(future);
@@ -2265,29 +2440,36 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                     .map((d) => d.id)
                     .whereType<int>()
                     .toSet();
-                futureAccounts = futureAccounts
-                    .where((a) => !duplicateIds.contains(a.id))
-                    .toList();
+                accountsToUpdate = accountsToUpdate
+                  .where((a) => !duplicateIds.contains(a.id))
+                  .toList();
               }
 
-              for (final future in futureAccounts) {
+              for (final future in accountsToUpdate) {
                 final updatedFuture = future.copyWith(
                   typeId: _selectedType!.id!,
                   categoryId: _selectedCategory?.id ?? future.categoryId,
                   description: _descController.text,
                   value: launchedVal > 0.01 ? launchedVal : 0,
                   estimatedValue: averageVal,
-                  dueDay: _recurrentDay,
                   observation: _observationController.text,
                   cardColor: _selectedColor,
                 );
-                await DatabaseHelper.instance.updateAccount(updatedFuture);
+                if (dayChanged) {
+                  final raw = DateTime(future.year!, future.month!, _recurrentDay);
+                  final city = PrefsService.cityNotifier.value;
+                  final adj = HolidayService.adjustDateToBusinessDay(raw, city);
+                  final adjDate = adj.date;
+                  final applied = updatedFuture.copyWith(dueDay: adjDate.day, month: adjDate.month, year: adjDate.year);
+                  await DatabaseHelper.instance.updateAccount(applied);
+                } else {
+                  await DatabaseHelper.instance.updateAccount(updatedFuture);
+                }
                 debugPrint(
                     '  ✓ Atualizada: ${future.description} (${future.month}/${future.year})');
               }
 
-              debugPrint(
-                  '  ✅ ${futureAccounts.length} parcelas futuras atualizadas');
+              debugPrint('  ✅ ${accountsToUpdate.length} parcelas atualizadas');
             }
           }
         } else {
@@ -2348,22 +2530,47 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                   continue;
                 }
                 final isCurrent = installment.id == acc.id;
-                final updatedInstallment = installment.copyWith(
-                  typeId: _selectedType!.id!,
-                  categoryId:
-                      _selectedCategory?.id ?? installment.categoryId,
-                  description: _descController.text,
-                  value: newValue,
-                  payInAdvance: _payInAdvance,
-                  observation: _observationController.text,
-                  cardColor: _selectedColor,
-                  dueDay: isCurrent ? editDate.day : installment.dueDay,
-                  month: isCurrent ? editDate.month : installment.month,
-                  year: isCurrent ? editDate.year : installment.year,
-                );
-                if (updatedInstallment.id != null) {
-                  await DatabaseHelper.instance
-                      .updateAccount(updatedInstallment);
+                if (!isCurrent) {
+                  final targetDay = editDate.day;
+                  final baseYear = installment.year ?? DateTime.now().year;
+                  final baseMonth = installment.month ?? DateTime.now().month;
+                  final raw = DateTime(baseYear, baseMonth, targetDay);
+                  final city = PrefsService.cityNotifier.value;
+                  final adj = HolidayService.adjustDateToBusinessDay(raw, city);
+                  final adjDate = adj.date;
+                  final updatedInstallment = installment.copyWith(
+                    typeId: _selectedType!.id!,
+                    categoryId: _selectedCategory?.id ?? installment.categoryId,
+                    description: _descController.text,
+                    value: newValue,
+                    payInAdvance: _payInAdvance,
+                    observation: _observationController.text,
+                    cardColor: _selectedColor,
+                    dueDay: adjDate.day,
+                    month: adjDate.month,
+                    year: adjDate.year,
+                  );
+                  if (updatedInstallment.id != null) {
+                    await DatabaseHelper.instance.updateAccount(updatedInstallment);
+                  }
+                } else {
+                  final updatedInstallment = installment.copyWith(
+                    typeId: _selectedType!.id!,
+                    categoryId:
+                        _selectedCategory?.id ?? installment.categoryId,
+                    description: _descController.text,
+                    value: newValue,
+                    payInAdvance: _payInAdvance,
+                    observation: _observationController.text,
+                    cardColor: _selectedColor,
+                    dueDay: editDate.day,
+                    month: editDate.month,
+                    year: editDate.year,
+                  );
+                  if (updatedInstallment.id != null) {
+                    await DatabaseHelper.instance
+                        .updateAccount(updatedInstallment);
+                  }
                 }
               }
             }
@@ -2429,7 +2636,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             typeId: _selectedType!.id!,
             categoryId: _selectedCategory?.id,
             description: _descController.text,
-            value: launchedVal > 0.01 ? launchedVal : 0,
+            value: 0,  // ✅ PAI RECORRENTE SEMPRE COM VALUE = 0 (é apenas um template!)
             estimatedValue: val,
             dueDay: _recurrentDay,
             isRecurrent: true,
@@ -2470,9 +2677,10 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             final maxDay = daysInMonth(targetYear, targetMonth);
             final dueDay = _recurrentDay.clamp(1, maxDay).toInt();
             final rawDueDate = DateTime(targetYear, targetMonth, dueDay);
+            final city = PrefsService.cityNotifier.value;
             final adjustmentResult = HolidayService.adjustDateToBusinessDay(
               rawDueDate,
-              'Brasília'
+              city
             );
             final adjustedDate = adjustmentResult.date;
             final adjustedDay = adjustedDate.day;
@@ -2488,13 +2696,20 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             final plannedMonth = referenceDate.month;
             final plannedYear = referenceDate.year;
             debugPrint(
-                '  → Instância planejada: $plannedMonth/$plannedYear (ajustada para $adjustedDay/$adjustedMonth/$adjustedYear)');
+                '  → Instância planejada: $plannedMonth/$plannedYear (ajustada para $adjustedDay/$adjustedMonth/$adjustedYear, cidade=$city)');
 
+            // 🚀 AUTO-LANÇAMENTO: Se Valor Lançado > 0, todas as instâncias são criadas já lançadas
+            final launchedText = _recurrentLaunchedValueController.text.trim();
+            final launchedValue = launchedText.isNotEmpty
+                ? UtilBrasilFields.converterMoedaParaDouble(launchedText)
+                : 0.0;
+            final shouldAutoLaunch = launchedValue > 0;
+            
             final monthlyAccount = Account(
               typeId: _selectedType!.id!,
               categoryId: _selectedCategory?.id,
               description: _descController.text,
-              value: 0,
+              value: shouldAutoLaunch ? launchedValue : 0,
               estimatedValue: val,
               dueDay: adjustedDate.day,
               month: adjustedDate.month,
@@ -2505,6 +2720,10 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               observation: _observationController.text,
               cardColor: _selectedColor,
             );
+            
+            if (shouldAutoLaunch) {
+              debugPrint('  💰 Instância auto-lançada com valor R\$ ${launchedValue.toStringAsFixed(2)}');
+            }
 
             await DatabaseHelper.instance.createAccount(monthlyAccount);
             debugPrint('  ✓ Instância criada: ${adjustedDate.month}/${adjustedDate.year}');
@@ -2543,7 +2762,8 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               typeId: _selectedType!.id!,
               categoryId: _selectedCategory?.id,
               description: _descController.text + " (Assinatura)",
-              value: val,
+              value: 0,  // ✅ PAI RECORRENTE SEMPRE COM VALUE = 0
+              estimatedValue: val,
               dueDay: dt.day,
               month: dt.month,
               year: dt.year,

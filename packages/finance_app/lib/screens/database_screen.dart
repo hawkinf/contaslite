@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import '../database/db_helper.dart';
+import '../services/auth_service.dart';
 import '../services/database_initialization_service.dart';
 import '../services/pdf_export_service.dart';
 import '../widgets/app_input_decoration.dart';
@@ -461,6 +462,8 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
     final confirmController = TextEditingController();
     final parentContext = context;
     String tipoPessoa = 'Ambos (PF e PJ)';
+    bool alsoDeleteFromServer = false;
+    final isAuthenticated = AuthService.instance.isAuthenticated;
 
     await showDialog(
       context: parentContext,
@@ -498,6 +501,28 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
                   });
                 },
               ),
+              if (isAuthenticated) ...[
+                const SizedBox(height: 16),
+                CheckboxListTile(
+                  value: alsoDeleteFromServer,
+                  onChanged: (value) {
+                    setDialogState(() {
+                      alsoDeleteFromServer = value ?? false;
+                    });
+                  },
+                  title: const Text(
+                    'Também apagar do servidor PostgreSQL',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  subtitle: const Text(
+                    'Remove os dados sincronizados na nuvem',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  activeColor: Colors.red,
+                ),
+              ],
               const SizedBox(height: 16),
               const Text(
                 'Para confirmar, digite SIM no campo abaixo:',
@@ -526,8 +551,12 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
               onPressed: () async {
                 if (confirmController.text.trim() == 'SIM') {
                   final selectedTipoPessoa = tipoPessoa;
+                  final deleteFromServer = alsoDeleteFromServer;
                   if (mounted) Navigator.pop(dialogContext);
-                  await _wipeAndRecreateDatabaseWithFeedback(tipoPessoa: selectedTipoPessoa);
+                  await _wipeAndRecreateDatabaseWithFeedback(
+                    tipoPessoa: selectedTipoPessoa,
+                    alsoDeleteFromServer: deleteFromServer,
+                  );
                 } else {
                   if (mounted) {
                     Navigator.pop(dialogContext);
@@ -548,7 +577,10 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
     );
   }
 
-  Future<void> _wipeAndRecreateDatabaseWithFeedback({String tipoPessoa = 'Ambos (PF e PJ)'}) async {
+  Future<void> _wipeAndRecreateDatabaseWithFeedback({
+    String tipoPessoa = 'Ambos (PF e PJ)',
+    bool alsoDeleteFromServer = false,
+  }) async {
     if (!mounted) return;
 
     final logNotifier = ValueNotifier<List<String>>([]);
@@ -598,8 +630,24 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
     await Future.delayed(const Duration(milliseconds: 120));
 
     try {
-      addLog('Apagando tabelas e registros...');
+      // Se solicitado, apagar dados do servidor primeiro
+      if (alsoDeleteFromServer) {
+        addLog('Apagando dados do servidor PostgreSQL...');
+        try {
+          await AuthService.instance.deleteAllUserData();
+          addLog('Dados do servidor apagados com sucesso.');
+        } catch (e) {
+          addLog('Erro ao apagar do servidor: $e');
+          // Continua mesmo com erro no servidor
+        }
+      }
+
+      addLog('Apagando tabelas e registros locais...');
       await DatabaseHelper.instance.clearDatabase();
+
+      // Limpa metadados de sincronização
+      addLog('Limpando metadados de sincronização...');
+      await DatabaseHelper.instance.clearSyncMetadata();
 
       addLog('Recriando categorias e formas de pagamento padrão...');
       await DatabaseInitializationService.instance.populateDefaultData(tipoPessoa: tipoPessoa);
@@ -616,8 +664,10 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Banco apagado e recriado com sucesso.'),
+        SnackBar(
+          content: Text(alsoDeleteFromServer
+            ? 'Banco local e servidor apagados e recriados com sucesso.'
+            : 'Banco apagado e recriado com sucesso.'),
           backgroundColor: Colors.green,
         ),
       );
