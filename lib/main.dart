@@ -348,6 +348,9 @@ class HolidayScreen extends StatefulWidget {
 }
 
 class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateMixin {
+  static const double _calendarAppBarHeight = 56;
+  static const TextStyle _calendarBadgeTextStyle =
+      TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black);
   late int _selectedYear;
   late int _calendarMonth;
   late DateTime _selectedWeek;
@@ -357,6 +360,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
   late Future<void> _contasInitFuture;
   late Future<Map<int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount})>>
       _monthlyTotalsFuture;
+  Future<Map<int, ({double pagar, double receber})>> _annualTotalsFuture = Future.value({});
   late AnimationController _animationController;
   late TabController _tabController;
   bool _isLoading = false;
@@ -407,6 +411,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     _holidaysFuture = _getHolidaysForDisplay(_selectedYear);
     _contasInitFuture = configureContasDatabaseIfNeeded();
     _monthlyTotalsFuture = _loadMonthlyTotals(_calendarMonth, _selectedYear);
+    _annualTotalsFuture = _loadAnnualTotals(_selectedYear);
 
     // Carregar próximo feriado
     _getNextHoliday().then((data) {
@@ -443,6 +448,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       _selectedWeek = now;
       _holidaysFuture = _getHolidaysForDisplay(_selectedYear);
       _monthlyTotalsFuture = _loadMonthlyTotals(_calendarMonth, _selectedYear);
+      _annualTotalsFuture = _loadAnnualTotals(_selectedYear);
     });
     _savePreferences();
   }
@@ -515,6 +521,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       _selectedYear += delta;
       _holidaysFuture = _getHolidaysForDisplay(_selectedYear);
       _monthlyTotalsFuture = _loadMonthlyTotals(_calendarMonth, _selectedYear);
+      _annualTotalsFuture = _loadAnnualTotals(_selectedYear);
     });
   }
 
@@ -604,6 +611,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     required DateTime now,
     required Map<String, String> holidayNames,
     required Set<String> holidayDays,
+    required Map<int, ({double pagar, double receber})> annualTotals,
+    required bool totalsReady,
   }) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallMobile = screenWidth < 600;
@@ -620,6 +629,10 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     final borderColor = isDarkMode ? Colors.white : Colors.black;
     final neutralTextColor = Theme.of(context).colorScheme.onSurface;
     final holidayEntryColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75);
+    final moneyFormat = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+    final monthTotals = annualTotals[month];
+    final totalPagar = monthTotals?.pagar ?? 0.0;
+    final totalReceber = monthTotals?.receber ?? 0.0;
 
     final monthHolidayEntries = <MapEntry<int, String>>[];
     for (int day = 1; day <= daysInMonth; day++) {
@@ -630,6 +643,33 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       }
     }
     final visibleHolidayEntries = monthHolidayEntries.take(4).toList();
+
+    Widget buildTotalBadge({required Color color, required String value}) {
+      return SizedBox(
+        width: double.infinity,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: isSmallMobile ? 3 : 4),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: isSmallMobile ? 9.5 : 11.5,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Card(
       elevation: 1,
@@ -750,7 +790,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
               },
             ),
             if (visibleHolidayEntries.isNotEmpty) ...[
-              Expanded(
+              Flexible(
+                fit: FlexFit.loose,
                 child: SingleChildScrollView(
                   child: Padding(
                     padding: const EdgeInsets.only(left: 4, right: 4),
@@ -774,6 +815,23 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                 ),
               ),
             ],
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.only(left: 4, right: 4, top: 4, bottom: 4),
+              child: Column(
+                children: [
+                  buildTotalBadge(
+                    color: Colors.red.shade600,
+                    value: totalsReady ? moneyFormat.format(totalPagar) : '...',
+                  ),
+                  SizedBox(height: isSmallMobile ? 3 : 4),
+                  buildTotalBadge(
+                    color: Colors.green.shade600,
+                    value: totalsReady ? moneyFormat.format(totalReceber) : '...',
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -968,6 +1026,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     _holidaysCache.clear();
     setState(() {
       _holidaysFuture = _getHolidaysForDisplay(_selectedYear);
+      _annualTotalsFuture = _loadAnnualTotals(_selectedYear);
       _isLoading = false;
     });
     _animationController.forward();
@@ -2671,6 +2730,21 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     }
   }
 
+  Future<Map<int, ({double pagar, double receber})>> _loadAnnualTotals(int year) async {
+    final totalsByMonth = <int, ({double pagar, double receber})>{};
+    for (int month = 1; month <= 12; month++) {
+      final totalsByDay = await _loadMonthlyTotals(month, year);
+      double pagar = 0.0;
+      double receber = 0.0;
+      for (final totals in totalsByDay.values) {
+        pagar += totals.previsto + totals.lancado;
+        receber += totals.recebimentos;
+      }
+      totalsByMonth[month] = (pagar: pagar, receber: receber);
+    }
+    return totalsByMonth;
+  }
+
   Future<
           Map<
               String,
@@ -2860,83 +2934,136 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
             child: Column(
               children: [
                 if (isSmallMobile)
-                  Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          IconButton(
-                            color: Theme.of(context).colorScheme.primary,
-                            icon: const Icon(Icons.chevron_left, size: 28),
-                            onPressed: () => _changeMonth(-1),
-                            tooltip: 'Mês anterior',
-                          ),
-                          Flexible(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                '$monthName $_selectedYear',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            color: Theme.of(context).colorScheme.primary,
-                            icon: const Icon(Icons.chevron_right, size: 28),
-                            onPressed: () => _changeMonth(1),
-                            tooltip: 'Próximo mês',
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 100,
-                            height: 32,
+                  Container(
+                    height: _calendarAppBarHeight,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade600,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Align(
+                          alignment: Alignment.center,
+                          child: IntrinsicWidth(
                             child: Container(
                               decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: Theme.of(context).colorScheme.outline,
-                                  width: 2,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(color: Colors.blue.shade600, width: 1.5),
                               ),
-                              child: DropdownButton<String>(
-                                value: _calendarType,
-                                isExpanded: true,
-                                underline: const SizedBox(),
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
-                                items: const [
-                                  DropdownMenuItem<String>(value: 'semanal', child: Text('Semanal')),
-                                  DropdownMenuItem<String>(value: 'mensal', child: Text('Mensal')),
-                                  DropdownMenuItem<String>(value: 'anual', child: Text('Anual')),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    onPressed: () => _changeMonth(-1),
+                                    tooltip: 'Mês anterior',
+                                    splashRadius: 16,
+                                    icon: const Icon(Icons.chevron_left, size: 24, color: Colors.black),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      '$monthName $_selectedYear',
+                                      style: _calendarBadgeTextStyle,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: () => _changeMonth(1),
+                                    tooltip: 'Próximo mês',
+                                    splashRadius: 16,
+                                    icon: const Icon(Icons.chevron_right, size: 24, color: Colors.black),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                                  ),
                                 ],
-                                onChanged: (type) {
-                                  if (type != null) {
-                                    setState(() {
-                                      _calendarType = type;
-                                    });
-                                    _savePreferences();
-                                  }
-                                },
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 96,
+                                height: 32,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    border: Border.all(
+                                      color: Colors.blue.shade600,
+                                      width: 1.5,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: DropdownButton<String>(
+                                    value: _calendarType,
+                                    isExpanded: true,
+                                    underline: const SizedBox(),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                    dropdownColor: Colors.white,
+                                    iconEnabledColor: Colors.black,
+                                    selectedItemBuilder: (context) => [
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          'Semanal',
+                                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.black),
+                                        ),
+                                      ),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          'Mensal',
+                                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.black),
+                                        ),
+                                      ),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          'Anual',
+                                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.black),
+                                        ),
+                                      ),
+                                    ],
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black,
+                                    ),
+                                    items: const [
+                                      DropdownMenuItem<String>(value: 'semanal', child: Text('Semanal')),
+                                      DropdownMenuItem<String>(value: 'mensal', child: Text('Mensal')),
+                                      DropdownMenuItem<String>(value: 'anual', child: Text('Anual')),
+                                    ],
+                                    onChanged: (type) {
+                                      if (type != null) {
+                                        setState(() {
+                                          _calendarType = type;
+                                        });
+                                        _savePreferences();
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   )
                 else
                   Container(
-                     height: 56,
+                     height: _calendarAppBarHeight,
                      padding: const EdgeInsets.symmetric(horizontal: 12),
                      decoration: BoxDecoration(
                       color: Colors.blue.shade600,
@@ -2947,47 +3074,44 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                        children: [
                         Align(
                           alignment: Alignment.center,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: Colors.blue.shade600, width: 1.5),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  onPressed: () => _changeMonth(-1),
-                                  tooltip: 'Mês anterior',
-                                  splashRadius: 16,
-                                  icon: const Icon(Icons.chevron_left, size: 20, color: Colors.black),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                ),
-                                Flexible(
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
+                          child: IntrinsicWidth(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(color: Colors.blue.shade600, width: 1.5),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    onPressed: () => _changeMonth(-1),
+                                    tooltip: 'Mês anterior',
+                                    splashRadius: 16,
+                                    icon: const Icon(Icons.chevron_left, size: 24, color: Colors.black),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                                  ),
+                                  Expanded(
                                     child: Text(
                                       '$monthName $_selectedYear',
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black,
-                                      ),
+                                      style: _calendarBadgeTextStyle,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       textAlign: TextAlign.center,
                                     ),
                                   ),
-                                ),
-                                IconButton(
-                                  onPressed: () => _changeMonth(1),
-                                  tooltip: 'Próximo mês',
-                                  splashRadius: 16,
-                                  icon: const Icon(Icons.chevron_right, size: 20, color: Colors.black),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                ),
-                              ],
+                                  IconButton(
+                                    onPressed: () => _changeMonth(1),
+                                    tooltip: 'Próximo mês',
+                                    splashRadius: 16,
+                                    icon: const Icon(Icons.chevron_right, size: 24, color: Colors.black),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -3435,6 +3559,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
 
   // --- CALENDÁRIO SEMANAL ---
   Widget _buildWeeklyCalendar() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallMobile = screenWidth < 600;
     final startOfWeek = _selectedWeek.subtract(Duration(days: _selectedWeek.weekday % 7));
     final weekDays = <({String label, DateTime date})>[];
     final dayLabels = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
@@ -3550,7 +3676,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     Column(
                       children: [
                         Container(
-                          height: 56,
+                          height: _calendarAppBarHeight,
                           padding: const EdgeInsets.symmetric(horizontal: 12),
                           decoration: BoxDecoration(
                             color: Colors.blue.shade600,
@@ -3561,90 +3687,116 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                             children: [
                               Align(
                                 alignment: Alignment.center,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(24),
-                                    border: Border.all(color: Colors.blue.shade600, width: 1.5),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  child: Text(
-                                    'Semana #$weekNumber  ${monthNamesComplete[startOfWeek.month - 1].toUpperCase()} ${startOfWeek.year}',
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.black,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: SizedBox(
-                                  width: 120,
-                                  height: 32,
+                                child: IntrinsicWidth(
                                   child: Container(
                                     decoration: BoxDecoration(
                                       color: Colors.white,
-                                      border: Border.all(
-                                        color: Colors.blue.shade600,
-                                        width: 1.5,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
+                                      borderRadius: BorderRadius.circular(24),
+                                      border: Border.all(color: Colors.blue.shade600, width: 1.5),
                                     ),
-                                    child: DropdownButton<String>(
-                                      value: _calendarType,
-                                      isExpanded: true,
-                                      underline: const SizedBox(),
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                                      dropdownColor: Colors.white,
-                                      iconEnabledColor: Colors.black,
-                                      selectedItemBuilder: (context) => [
-                                        Align(
-                                          alignment: Alignment.centerLeft,
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          onPressed: () => _changeWeek(-1),
+                                          tooltip: 'Semana anterior',
+                                          splashRadius: 16,
+                                          icon: const Icon(Icons.chevron_left, size: 24, color: Colors.black),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                                        ),
+                                        Expanded(
                                           child: Text(
-                                            'Semanal',
-                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black),
+                                            'Semana #$weekNumber  ${monthNamesComplete[startOfWeek.month - 1].toUpperCase()} ${startOfWeek.year}',
+                                            style: _calendarBadgeTextStyle,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            textAlign: TextAlign.center,
                                           ),
                                         ),
-                                        Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Text(
-                                            'Mensal',
-                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black),
-                                          ),
-                                        ),
-                                        Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Text(
-                                            'Anual',
-                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black),
-                                          ),
+                                        IconButton(
+                                          onPressed: () => _changeWeek(1),
+                                          tooltip: 'Próxima semana',
+                                          splashRadius: 16,
+                                          icon: const Icon(Icons.chevron_right, size: 24, color: Colors.black),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                                         ),
                                       ],
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black,
-                                      ),
-                                      items: const [
-                                        DropdownMenuItem<String>(value: 'semanal', child: Text('Semanal')),
-                                        DropdownMenuItem<String>(value: 'mensal', child: Text('Mensal')),
-                                        DropdownMenuItem<String>(value: 'anual', child: Text('Anual')),
-                                      ],
-                                      onChanged: (type) {
-                                        if (type != null) {
-                                          setState(() {
-                                            _calendarType = type;
-                                          });
-                                          _savePreferences();
-                                        }
-                                      },
                                     ),
                                   ),
+                                ),
+                              ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: isSmallMobile ? 96 : 120,
+                                height: 32,
+                                child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          border: Border.all(
+                                            color: Colors.blue.shade600,
+                                            width: 1.5,
+                                          ),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: DropdownButton<String>(
+                                          value: _calendarType,
+                                          isExpanded: true,
+                                          underline: const SizedBox(),
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                          dropdownColor: Colors.white,
+                                          iconEnabledColor: Colors.black,
+                                          selectedItemBuilder: (context) => [
+                                            Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                'Semanal',
+                                                style: TextStyle(fontSize: isSmallMobile ? 10 : 11, fontWeight: FontWeight.w600, color: Colors.black),
+                                              ),
+                                            ),
+                                            Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                'Mensal',
+                                                style: TextStyle(fontSize: isSmallMobile ? 10 : 11, fontWeight: FontWeight.w600, color: Colors.black),
+                                              ),
+                                            ),
+                                            Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                'Anual',
+                                                style: TextStyle(fontSize: isSmallMobile ? 10 : 11, fontWeight: FontWeight.w600, color: Colors.black),
+                                              ),
+                                            ),
+                                          ],
+                                          style: TextStyle(
+                                            fontSize: isSmallMobile ? 10 : 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black,
+                                          ),
+                                          items: const [
+                                            DropdownMenuItem<String>(value: 'semanal', child: Text('Semanal')),
+                                            DropdownMenuItem<String>(value: 'mensal', child: Text('Mensal')),
+                                            DropdownMenuItem<String>(value: 'anual', child: Text('Anual')),
+                                          ],
+                                          onChanged: (type) {
+                                            if (type != null) {
+                                              setState(() {
+                                                _calendarType = type;
+                                              });
+                                              _savePreferences();
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -3819,18 +3971,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        SizedBox(
-                          width: 50,
-                          child: Center(
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              iconSize: 40,
-                              icon: Icon(Icons.arrow_circle_left_rounded),
-                              color: Theme.of(context).colorScheme.primary,
-                              onPressed: () => _changeWeek(-1),
-                            ),
-                          ),
-                        ),
                         Expanded(
                           child: Column(
                             children: weekDays.map((day) {
@@ -3988,18 +4128,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                             }).toList(),
                           ),
                         ),
-                        SizedBox(
-                          width: 50,
-                          child: Center(
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              iconSize: 40,
-                              icon: Icon(Icons.arrow_circle_right_rounded),
-                              color: Theme.of(context).colorScheme.primary,
-                              onPressed: () => _changeWeek(1),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ],
@@ -4037,137 +4165,224 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           }
         }
 
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onHorizontalDragStart: (_) => _horizontalDragDistance = 0,
-          onHorizontalDragUpdate: (details) {
-            _horizontalDragDistance += details.delta.dx;
-          },
-          onHorizontalDragCancel: () => _horizontalDragDistance = 0,
-          onHorizontalDragEnd: (details) {
-            _handleHorizontalSwipe(
-              details,
-              onSwipeLeft: () => _changeYear(1),
-              onSwipeRight: () => _changeYear(-1),
-            );
-          },
-          child: Card(
-            elevation: 1,
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: Padding(
-              padding: EdgeInsets.all(isSmallMobile ? 8 : 16),
-                child: Column(
-                children: [
+        return FutureBuilder<Map<int, ({double pagar, double receber})>>(
+          future: _annualTotalsFuture,
+          builder: (context, totalsSnapshot) {
+            final annualTotals = totalsSnapshot.data ?? <int, ({double pagar, double receber})>{};
+            final totalsReady = totalsSnapshot.connectionState == ConnectionState.done;
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragStart: (_) => _horizontalDragDistance = 0,
+              onHorizontalDragUpdate: (details) {
+                _horizontalDragDistance += details.delta.dx;
+              },
+              onHorizontalDragCancel: () => _horizontalDragDistance = 0,
+              onHorizontalDragEnd: (details) {
+                _handleHorizontalSwipe(
+                  details,
+                  onSwipeLeft: () => _changeYear(1),
+                  onSwipeRight: () => _changeYear(-1),
+                );
+              },
+              child: Card(
+                elevation: 1,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: Padding(
+                  padding: EdgeInsets.all(isSmallMobile ? 8 : 16),
+                  child: Column(
+                    children: [
                   // CABECALHO COM CONTROLES DO ANO E TIPO DE CALENDARIO
                   if (isSmallMobile)
                     Column(
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.chevron_left),
-                              onPressed: () => _changeYear(-1),
-                              tooltip: 'Ano anterior',
-                              iconSize: 28,
-                            ),
-                            Text(
-                              '$_selectedYear',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.blue,
-                                letterSpacing: 1.2,
+                        Container(
+                          height: _calendarAppBarHeight,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade600,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Align(
+                                alignment: Alignment.center,
+                                child: IntrinsicWidth(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(24),
+                                      border: Border.all(color: Colors.blue.shade600, width: 1.5),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          onPressed: () => _changeYear(-1),
+                                          tooltip: 'Ano anterior',
+                                          splashRadius: 16,
+                                          icon: const Icon(Icons.chevron_left, size: 24, color: Colors.black),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                                        ),
+                                        Expanded(
+                                          child: Text(
+                                            '$_selectedYear',
+                                            style: _calendarBadgeTextStyle,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                        IconButton(
+                                          onPressed: () => _changeYear(1),
+                                          tooltip: 'Proximo ano',
+                                          splashRadius: 16,
+                                          icon: const Icon(Icons.chevron_right, size: 24, color: Colors.black),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ),
-                              textAlign: TextAlign.center,
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.chevron_right),
-                              onPressed: () => _changeYear(1),
-                              tooltip: 'Proximo ano',
-                              iconSize: 28,
-                            ),
-                          ],
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 96,
+                                  height: 32,
+                                  child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          border: Border.all(
+                                            color: Colors.blue.shade600,
+                                            width: 1.5,
+                                          ),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: DropdownButton<String>(
+                                          value: _calendarType,
+                                          isExpanded: true,
+                                          underline: const SizedBox(),
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                          dropdownColor: Colors.white,
+                                          iconEnabledColor: Colors.black,
+                                          selectedItemBuilder: (context) => [
+                                            Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                'Semanal',
+                                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.black),
+                                              ),
+                                            ),
+                                            Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                'Mensal',
+                                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.black),
+                                              ),
+                                            ),
+                                            Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                'Anual',
+                                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.black),
+                                              ),
+                                            ),
+                                          ],
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black,
+                                          ),
+                                          items: const [
+                                            DropdownMenuItem<String>(value: 'semanal', child: Text('Semanal')),
+                                            DropdownMenuItem<String>(value: 'mensal', child: Text('Mensal')),
+                                            DropdownMenuItem<String>(value: 'anual', child: Text('Anual')),
+                                          ],
+                                          onChanged: (type) {
+                                            if (type != null) {
+                                              setState(() {
+                                                _calendarType = type;
+                                              });
+                                              _savePreferences();
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             _buildTodayButton(),
-                            const SizedBox(width: 12),
-                            SizedBox(
-                              width: 100,
-                              height: 32,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Theme.of(context).colorScheme.outline,
-                                    width: 2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: DropdownButton<String>(
-                                  value: _calendarType,
-                                  isExpanded: true,
-                                  underline: const SizedBox(),
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
-                                  items: const [
-                                    DropdownMenuItem<String>(value: 'semanal', child: Text('Semanal')),
-                                    DropdownMenuItem<String>(value: 'mensal', child: Text('Mensal')),
-                                    DropdownMenuItem<String>(value: 'anual', child: Text('Anual')),
-                                  ],
-                                  onChanged: (type) {
-                                    if (type != null) {
-                                      setState(() {
-                                        _calendarType = type;
-                                      });
-                                      _savePreferences();
-                                    }
-                                  },
-                                ),
-                              ),
-                            ),
                           ],
                         ),
                       ],
                     )
                   else
-                    SizedBox(
-                      height: 72,
+                    Container(
+                      height: _calendarAppBarHeight,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade600,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
                           Align(
                             alignment: Alignment.center,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  onPressed: () => _changeYear(-1),
-                                  tooltip: 'Ano anterior',
-                                  splashRadius: 18,
-                                  icon: const Icon(Icons.chevron_left, color: Colors.blue),
-                                  iconSize: 32,
+                            child: IntrinsicWidth(
+                                  child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(color: Colors.blue.shade600, width: 1.5),
                                 ),
-                                Text(
-                                  '$_selectedYear',
-                                  style: TextStyle(
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.blue,
-                                    letterSpacing: 1.2,
-                                  ),
-                                  textAlign: TextAlign.center,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      onPressed: () => _changeYear(-1),
+                                      tooltip: 'Ano anterior',
+                                      splashRadius: 16,
+                                      icon: const Icon(Icons.chevron_left, size: 24, color: Colors.black),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                                    ),
+                                    Expanded(
+                                      child: Text(
+                                        '$_selectedYear',
+                                        style: _calendarBadgeTextStyle,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: () => _changeYear(1),
+                                      tooltip: 'Proximo ano',
+                                      splashRadius: 16,
+                                      icon: const Icon(Icons.chevron_right, size: 24, color: Colors.black),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                                    ),
+                                  ],
                                 ),
-                                IconButton(
-                                  onPressed: () => _changeYear(1),
-                                  tooltip: 'Proximo ano',
-                                  splashRadius: 18,
-                                  icon: const Icon(Icons.chevron_right, color: Colors.blue),
-                                  iconSize: 32,
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                           Align(
@@ -4180,9 +4395,10 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                   height: 32,
                                   child: Container(
                                     decoration: BoxDecoration(
+                                      color: Colors.white,
                                       border: Border.all(
-                                        color: Theme.of(context).colorScheme.outline,
-                                        width: 2,
+                                        color: Colors.blue.shade600,
+                                        width: 1.5,
                                       ),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
@@ -4191,7 +4407,36 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                       isExpanded: true,
                                       underline: const SizedBox(),
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
+                                      dropdownColor: Colors.white,
+                                      iconEnabledColor: Colors.black,
+                                      selectedItemBuilder: (context) => [
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            'Semanal',
+                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black),
+                                          ),
+                                        ),
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            'Mensal',
+                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black),
+                                          ),
+                                        ),
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            'Anual',
+                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black),
+                                          ),
+                                        ),
+                                      ],
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black,
+                                      ),
                                       items: const [
                                         DropdownMenuItem<String>(value: 'semanal', child: Text('Semanal')),
                                         DropdownMenuItem<String>(value: 'mensal', child: Text('Mensal')),
@@ -4240,6 +4485,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                     now: now,
                                     holidayNames: holidayNames,
                                     holidayDays: holidayDays,
+                                    annualTotals: annualTotals,
+                                    totalsReady: totalsReady,
                                   ),
                                 ),
                               ),
@@ -4283,11 +4530,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                       );
                     },
                   ),
-                ],
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ),
-      );
+            );
+          },
+        );
       },
     );
   }
@@ -4401,7 +4650,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                         Padding(
                           padding: const EdgeInsets.only(left: 12, right: 0),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                             decoration: BoxDecoration(
                               color: Colors.amber.shade400,
                               borderRadius: BorderRadius.circular(16),
