@@ -3549,57 +3549,106 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                   children: [
                     Column(
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                child: Text(
-                                  'Semana #$weekNumber - ${monthNamesComplete[startOfWeek.month - 1].toUpperCase()} ${startOfWeek.year}',
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.blue,
+                        Container(
+                          height: 56,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade600,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Align(
+                                alignment: Alignment.center,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(24),
+                                    border: Border.all(color: Colors.blue.shade600, width: 1.5),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  child: Text(
+                                    'Semana #$weekNumber  ${monthNamesComplete[startOfWeek.month - 1].toUpperCase()} ${startOfWeek.year}',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.black,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            SizedBox(
-                              width: 120,
-                              height: 32,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: Theme.of(context).colorScheme.outline,
-                                    width: 2,
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: SizedBox(
+                                  width: 120,
+                                  height: 32,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      border: Border.all(
+                                        color: Colors.blue.shade600,
+                                        width: 1.5,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: DropdownButton<String>(
+                                      value: _calendarType,
+                                      isExpanded: true,
+                                      underline: const SizedBox(),
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                                      dropdownColor: Colors.white,
+                                      iconEnabledColor: Colors.black,
+                                      selectedItemBuilder: (context) => [
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            'Semanal',
+                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black),
+                                          ),
+                                        ),
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            'Mensal',
+                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black),
+                                          ),
+                                        ),
+                                        Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            'Anual',
+                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black),
+                                          ),
+                                        ),
+                                      ],
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black,
+                                      ),
+                                      items: const [
+                                        DropdownMenuItem<String>(value: 'semanal', child: Text('Semanal')),
+                                        DropdownMenuItem<String>(value: 'mensal', child: Text('Mensal')),
+                                        DropdownMenuItem<String>(value: 'anual', child: Text('Anual')),
+                                      ],
+                                      onChanged: (type) {
+                                        if (type != null) {
+                                          setState(() {
+                                            _calendarType = type;
+                                          });
+                                          _savePreferences();
+                                        }
+                                      },
+                                    ),
                                   ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: DropdownButton<String>(
-                                  value: _calendarType,
-                                  isExpanded: true,
-                                  underline: const SizedBox(),
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
-                                  items: const [
-                                    DropdownMenuItem<String>(value: 'semanal', child: Text('Semanal')),
-                                    DropdownMenuItem<String>(value: 'mensal', child: Text('Mensal')),
-                                    DropdownMenuItem<String>(value: 'anual', child: Text('Anual')),
-                                  ],
-                                  onChanged: (type) {
-                                    if (type != null) {
-                                      setState(() {
-                                        _calendarType = type;
-                                      });
-                                      _savePreferences();
-                                    }
-                                  },
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Row(
