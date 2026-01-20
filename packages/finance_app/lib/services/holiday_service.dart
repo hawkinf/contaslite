@@ -1,4 +1,5 @@
 class HolidayService {
+  static final Map<String, Set<String>> _municipalHolidaysByCity = {};
   static const Map<String, List<String>> regions = {
     'Vale do Paraíba': [
       'Aparecida',
@@ -45,6 +46,21 @@ class HolidayService {
     ],
   };
 
+  static void setMunicipalHolidays(Map<String, Iterable<String>> byCity) {
+    _municipalHolidaysByCity
+      ..clear()
+      ..addAll(
+        byCity.map((city, dates) {
+          final normalizedCity = _normalizeCityKey(city);
+          final normalizedDates = dates
+              .map(_normalizeDateSuffix)
+              .whereType<String>()
+              .toSet();
+          return MapEntry(normalizedCity, normalizedDates);
+        }),
+      );
+  }
+
   static bool isHoliday(DateTime date, String city) {
     if (date.day == 1 && date.month == 1) return true;
     if (date.day == 21 && date.month == 4) return true;
@@ -55,6 +71,14 @@ class HolidayService {
     if (date.day == 15 && date.month == 11) return true;
     if (date.day == 25 && date.month == 12) return true;
 
+    final normalizedCity = _normalizeCityKey(city);
+    final municipalDates = _municipalHolidaysByCity[normalizedCity];
+    if (municipalDates != null) {
+      final key =
+          '${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      if (municipalDates.contains(key)) return true;
+    }
+
     // Exemplos simples de feriados municipais.
     if (city == 'São José dos Campos' && date.day == 27 && date.month == 7) return true;
     if (city == 'Taubaté' && date.day == 5 && date.month == 12) return true;
@@ -64,6 +88,19 @@ class HolidayService {
 
   static bool isWeekend(DateTime date) {
     return date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
+  }
+
+  static String _normalizeCityKey(String text) {
+    return text.toLowerCase().replaceAll(RegExp(r'[^a-z0-9 ]'), '');
+  }
+
+  static String? _normalizeDateSuffix(String date) {
+    final parts = date.split('-').where((part) => part.isNotEmpty).toList();
+    if (parts.length < 2) return null;
+    final month = parts[parts.length - 2].padLeft(2, '0');
+    final day = parts[parts.length - 1].padLeft(2, '0');
+    if (month.length != 2 || day.length != 2) return null;
+    return '$month-$day';
   }
 
   /// Retorna o nome do dia da semana em português
@@ -239,3 +276,4 @@ class HolidayService {
     return (date: adjusted, warning: null);
   }
 }
+

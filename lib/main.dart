@@ -350,7 +350,7 @@ class HolidayScreen extends StatefulWidget {
 class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateMixin {
   static const double _calendarAppBarHeight = 56;
   static const TextStyle _calendarBadgeTextStyle =
-      TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black);
+      TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue);
   late int _selectedYear;
   late int _calendarMonth;
   late DateTime _selectedWeek;
@@ -956,6 +956,14 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
 
     final preferredCity = contas_prefs.PrefsService.cityNotifier.value;
     _selectedCity = _findCityByName(preferredCity) ?? cities.first;
+    final municipalByCity = <String, List<String>>{};
+    for (final city in cities) {
+      municipalByCity[city.name] = city.municipalHolidays
+          .map((holiday) => holiday['date'])
+          .whereType<String>()
+          .toList();
+    }
+    HolidayService.setMunicipalHolidays(municipalByCity);
   }
 
   String _normalizeCity(String text) {
@@ -2961,7 +2969,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                     onPressed: () => _changeMonth(-1),
                                     tooltip: 'Mês anterior',
                                     splashRadius: 16,
-                                    icon: const Icon(Icons.chevron_left, size: 24, color: Colors.black),
+                                    icon: const Icon(Icons.chevron_left, size: 24, color: Colors.blue),
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                                   ),
@@ -2978,7 +2986,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                     onPressed: () => _changeMonth(1),
                                     tooltip: 'Próximo mês',
                                     splashRadius: 16,
-                                    icon: const Icon(Icons.chevron_right, size: 24, color: Colors.black),
+                                    icon: const Icon(Icons.chevron_right, size: 24, color: Colors.blue),
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                                   ),
@@ -3089,7 +3097,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                     onPressed: () => _changeMonth(-1),
                                     tooltip: 'Mês anterior',
                                     splashRadius: 16,
-                                    icon: const Icon(Icons.chevron_left, size: 24, color: Colors.black),
+                                    icon: const Icon(Icons.chevron_left, size: 24, color: Colors.blue),
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                                   ),
@@ -3106,7 +3114,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                     onPressed: () => _changeMonth(1),
                                     tooltip: 'Próximo mês',
                                     splashRadius: 16,
-                                    icon: const Icon(Icons.chevron_right, size: 24, color: Colors.black),
+                                    icon: const Icon(Icons.chevron_right, size: 24, color: Colors.blue),
                                     padding: EdgeInsets.zero,
                                     constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                                   ),
@@ -3702,7 +3710,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                           onPressed: () => _changeWeek(-1),
                                           tooltip: 'Semana anterior',
                                           splashRadius: 16,
-                                          icon: const Icon(Icons.chevron_left, size: 24, color: Colors.black),
+                                          icon: const Icon(Icons.chevron_left, size: 24, color: Colors.blue),
                                           padding: EdgeInsets.zero,
                                           constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                                         ),
@@ -3719,7 +3727,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                           onPressed: () => _changeWeek(1),
                                           tooltip: 'Próxima semana',
                                           splashRadius: 16,
-                                          icon: const Icon(Icons.chevron_right, size: 24, color: Colors.black),
+                                          icon: const Icon(Icons.chevron_right, size: 24, color: Colors.blue),
                                           padding: EdgeInsets.zero,
                                           constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                                         ),
@@ -4222,7 +4230,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                           onPressed: () => _changeYear(-1),
                                           tooltip: 'Ano anterior',
                                           splashRadius: 16,
-                                          icon: const Icon(Icons.chevron_left, size: 24, color: Colors.black),
+                                          icon: const Icon(Icons.chevron_left, size: 24, color: Colors.blue),
                                           padding: EdgeInsets.zero,
                                           constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                                         ),
@@ -4239,7 +4247,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                           onPressed: () => _changeYear(1),
                                           tooltip: 'Proximo ano',
                                           splashRadius: 16,
-                                          icon: const Icon(Icons.chevron_right, size: 24, color: Colors.black),
+                                          icon: const Icon(Icons.chevron_right, size: 24, color: Colors.blue),
                                           padding: EdgeInsets.zero,
                                           constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                                         ),
@@ -4359,7 +4367,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                       onPressed: () => _changeYear(-1),
                                       tooltip: 'Ano anterior',
                                       splashRadius: 16,
-                                      icon: const Icon(Icons.chevron_left, size: 24, color: Colors.black),
+                                      icon: const Icon(Icons.chevron_left, size: 24, color: Colors.blue),
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                                     ),
@@ -4376,7 +4384,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                       onPressed: () => _changeYear(1),
                                       tooltip: 'Proximo ano',
                                       splashRadius: 16,
-                                      icon: const Icon(Icons.chevron_right, size: 24, color: Colors.black),
+                                      icon: const Icon(Icons.chevron_right, size: 24, color: Colors.blue),
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
                                     ),
