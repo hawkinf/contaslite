@@ -1626,6 +1626,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         account.id != null ? _installmentSummaries[account.id!] : null;
     final bool isPaid =
         account.id != null && _paymentInfo.containsKey(account.id!);
+    final bool isCardInvoice = isCard && account.recurrenceId != null;
 
     // Próxima fatura do cartão (mês seguinte ao vencimento atual exibido)
     DateTime cardNextDueDate = DateTime.now();
@@ -1749,18 +1750,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         // 2. LANÇAMENTO (rocket) - quando aplicável
         if (isCard) ...[
-          InkWell(
-              onTap: () => _showCartaoValueDialog(account),
-              child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
-                  size: iconSize, surfaceColor: cardColor)),
-          const SizedBox(width: 6),
-          // 3. PAGAMENTO DA FATURA (dinheiro) - para cartões de crédito
+          if (!isCardInvoice) ...[
+            InkWell(
+                onTap: () => _showCartaoValueDialog(account),
+                child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
+                    size: iconSize, surfaceColor: cardColor)),
+            const SizedBox(width: 6),
+          ] else if (!isPaid && account.value > 0) ...[
+            InkWell(
+              onTap: () => _undoLaunch(account),
+              child: _actionIcon(Icons.undo, actionIconBg, actionIconColor,
+                  size: iconSize, surfaceColor: cardColor),
+            ),
+            const SizedBox(width: 6),
+          ],
+          // 3. PAGAMENTO DA FATURA (dinheiro) - para cartäes de cr‚dito
           InkWell(
               onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
               child: _actionIcon(Icons.attach_money, actionIconBg, actionIconColor,
                   enabled: canLaunchPayment, size: iconSize, surfaceColor: cardColor)),
           const SizedBox(width: 6),
         ] else if (isRecebimento) ...[
+
           InkWell(
               onTap: () => _showRecebimentoValueDialog(account),
               child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
@@ -3569,16 +3580,67 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   valueController.text);
 
                               try {
-                                final updated = account.copyWith(
-                                  value: finalValue,
-                                  dueDay: finalDate.day,
-                                  month: finalDate.month,
-                                  year: finalDate.year,
-                                );
-                                if (account.id != null) {
-                                  await DatabaseHelper.instance.updateAccount(updated);
-                                } else {
+                                if (account.id == null) {
+                                  final updated = account.copyWith(
+                                    value: finalValue,
+                                    dueDay: finalDate.day,
+                                    month: finalDate.month,
+                                    year: finalDate.year,
+                                  );
                                   await DatabaseHelper.instance.createAccount(updated);
+                                } else {
+                                  final parentId = account.id!;
+                                  final existingInstance =
+                                      await DatabaseHelper.instance.findInstanceByRecurrenceAndMonth(
+                                    parentId,
+                                    finalDate.month,
+                                    finalDate.year,
+                                  );
+
+                                  if (finalValue == 0) {
+                                    if (existingInstance != null) {
+                                      await DatabaseHelper.instance.deleteAccount(existingInstance.id!);
+                                    }
+                                  } else if (existingInstance != null) {
+                                    final updatedInstance = Account(
+                                      id: existingInstance.id,
+                                      typeId: existingInstance.typeId,
+                                      categoryId: existingInstance.categoryId,
+                                      description: existingInstance.description,
+                                      value: finalValue,
+                                      estimatedValue: previstoValue > 0 ? previstoValue : existingInstance.value,
+                                      dueDay: finalDate.day,
+                                      month: finalDate.month,
+                                      year: finalDate.year,
+                                      isRecurrent: false,
+                                      payInAdvance: existingInstance.payInAdvance,
+                                      recurrenceId: existingInstance.recurrenceId,
+                                      cardBrand: existingInstance.cardBrand,
+                                      cardColor: existingInstance.cardColor,
+                                      cardBank: existingInstance.cardBank,
+                                      observation: existingInstance.observation,
+                                    );
+                                    await DatabaseHelper.instance.updateAccount(updatedInstance);
+                                  } else {
+                                    final newAccount = Account(
+                                      typeId: account.typeId,
+                                      categoryId: account.categoryId,
+                                      description: account.description,
+                                      value: finalValue,
+                                      estimatedValue: previstoValue > 0 ? previstoValue : account.value,
+                                      dueDay: finalDate.day,
+                                      month: finalDate.month,
+                                      year: finalDate.year,
+                                      isRecurrent: false,
+                                      payInAdvance: account.payInAdvance,
+                                      recurrenceId: parentId,
+                                      cardBrand: account.cardBrand,
+                                      cardColor: account.cardColor,
+                                      cardBank: account.cardBank,
+                                      observation: account.observation,
+                                    );
+                                    await DatabaseHelper.instance.createAccount(newAccount);
+                                  }
                                 }
                               } catch (e) {
                                 debugPrint('❌ Erro ao lançar fatura: $e');
@@ -4184,6 +4246,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         size: tileSize,
                         iconSize: iconSize,
                         fontSize: fontSize,
+                        textColor: Colors.white,
+                        iconColor: Colors.white,
+                        iconBorderColor: Colors.white,
                         onTap: () async {
                           Navigator.pop(ctx);
                           await showDialog(
@@ -4251,6 +4316,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         size: tileSize,
                         iconSize: iconSize,
                         fontSize: fontSize,
+                        textColor: Colors.white,
+                        iconColor: Colors.white,
+                        iconBorderColor: Colors.white,
                         onTap: () {
                           Navigator.pop(ctx);
                           _openRecebimentoForm();
@@ -4305,8 +4373,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     double size = 110,
     double iconSize = 30,
     double fontSize = 13,
+    Color? textColor,
+    Color? iconColor,
+    Color? iconBorderColor,
   }) {
-    final fg = foregroundColorFor(color);
+    final fg = textColor ?? foregroundColorFor(color);
     final padding = math.max(8.0, size * 0.12);
     return InkWell(
       onTap: onTap,
@@ -4330,11 +4401,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            _borderedIcon(icon,
-                iconColor: fg,
-                size: iconSize,
-                padding: const EdgeInsets.all(4),
-                borderWidth: 1),
+            _borderedIcon(
+              icon,
+              iconColor: iconColor ?? fg,
+              size: iconSize,
+              padding: const EdgeInsets.all(4),
+              borderWidth: 1,
+              borderColor: iconBorderColor ?? fg,
+            ),
             const SizedBox(height: 6),
             Flexible(
               child: Text(

@@ -2462,8 +2462,11 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       
       // Mapeia IDs de contas que têm lançamentos
       final accountsWithPayments = <int>{};
+      final paymentsByAccountId = <int, double>{};
       for (final payment in allPayments) {
         accountsWithPayments.add(payment.accountId);
+        paymentsByAccountId[payment.accountId] =
+            (paymentsByAccountId[payment.accountId] ?? 0.0) + payment.value;
       }
       
       int? recebimentosTypeId;
@@ -2544,6 +2547,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
             'categoryName': categoryName,
             'isRecebimento': recebimentosTypeId != null && account.typeId == recebimentosTypeId,
             'value': account.value,
+            'launchedValue': account.id != null ? paymentsByAccountId[account.id!] : null,
             'description': account.description,
             'adjustedDate': adjustedDate,
             'originalDate': originalDate,
@@ -2838,7 +2842,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     final double holidayTextSize = baseFontSize * 1.10; // Larger holiday name
     final double minHolidayWidth = cellSize * 0.80;     // Min 80% of cell width
     final double maxHolidayWidth = cellSize * 0.95;     // Max 95% of cell width
-    const Color todayColor = Colors.purple;             // Purple for today
+    const Color todayColor = Colors.blue;               // Blue for today
 
     final moneyFormat = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     final dayAmountFormat =
@@ -3428,13 +3432,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 final previsto = dailyTotals?.previsto ?? 0.0;
                                 final lancado = dailyTotals?.lancado ?? 0.0;
                                 final recebimentos = dailyTotals?.recebimentos ?? 0.0;
+                                final hasTotals = (previsto + lancado) > 0 || recebimentos > 0;
                                 Color bgColor = adaptiveSurface(context);
                                 Color textColor = adaptiveOnSurface(context);
                                 final cellBorderColor = isDark ? Colors.white : Colors.black;
                                 double opacity = 1.0;
 
                                 if (isToday) {
-                                  // Today: purple text, no yellow circle
                                   textColor = Colors.black;
                                 } else if (isHoliday) {
                                   bgColor = isCurrentMonth ? Colors.green : (Colors.lightGreen[300] ?? Colors.lightGreen);
@@ -3470,6 +3474,26 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
+                                          if (isToday && hasTotals)
+                                            Padding(
+                                              padding: const EdgeInsets.only(bottom: 2),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(color: Colors.black, width: 1),
+                                                ),
+                                                child: Text(
+                                                  'HOJE',
+                                                  style: TextStyle(
+                                                    fontSize: hojeTextSize,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
                                           Text(
                                             day.toString(),
                                             style: TextStyle(
@@ -3517,12 +3541,24 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                 ),
                                               ),
                                             ),
-                                          if (isToday)
+                                          if (isToday && !hasTotals)
                                             Padding(
                                               padding: const EdgeInsets.only(top: 2),
-                                              child: Text(
-                                                'HOJE',
-                                                style: TextStyle(fontSize: hojeTextSize, fontWeight: FontWeight.w700, color: todayColor),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(color: Colors.black, width: 1),
+                                                ),
+                                                child: Text(
+                                                  'HOJE',
+                                                  style: TextStyle(
+                                                    fontSize: hojeTextSize,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                           if (isHoliday && holidayName != null)
@@ -3569,6 +3605,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
   Widget _buildWeeklyCalendar() {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallMobile = screenWidth < 600;
+    final double dayLabelWidth = isSmallMobile ? 52 : 64;
     final startOfWeek = _selectedWeek.subtract(Duration(days: _selectedWeek.weekday % 7));
     final weekDays = <({String label, DateTime date})>[];
     final dayLabels = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
@@ -3987,14 +4024,17 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                               final holidayKey = '${day.date.year}-${day.date.month.toString().padLeft(2, '0')}-${day.date.day.toString().padLeft(2, '0')}';
                               final isHoliday = holidayDays.contains(holidayKey);
                               final holidayName = isHoliday ? holidayNames[holidayKey] : null;
+                              final totalsKey =
+                                  '${day.date.year}-${day.date.month.toString().padLeft(2, '0')}-${day.date.day.toString().padLeft(2, '0')}';
+                              final dailyTotals = totalsByDate[totalsKey];
+                              final payTotal =
+                                  dailyTotals == null ? 0.0 : (dailyTotals.previsto + dailyTotals.lancado);
+                              final receiveTotal = dailyTotals?.recebimentos ?? 0.0;
 
                               Color bgColor = Colors.white;
                               Color textColor = Theme.of(context).colorScheme.onSurface;
 
-                              if (isToday) {
-                                bgColor = Colors.blue;
-                                textColor = Colors.white;
-                              } else if (isHoliday) {
+                              if (isHoliday) {
                                 bgColor = Colors.green;
                                 textColor = Colors.white;
                               } else if (day.label == 'DOM') {
@@ -4019,46 +4059,85 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(color: Colors.black, width: 1.5),
                                   ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                  child: Stack(
                                     children: [
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
                                       Row(
                                         children: [
-                                          Text(
-                                            day.label,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              color: textColor,
+                                          SizedBox(
+                                            width: dayLabelWidth,
+                                            child: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              alignment: Alignment.centerLeft,
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    day.label,
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: textColor,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    '${day.date.day}',
+                                                    style: TextStyle(
+                                                      fontSize: 18,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: textColor,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                           ),
                                           const SizedBox(width: 8),
-                                          Text(
-                                            '${day.date.day}',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              color: textColor,
+                                          if (payTotal > 0)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius: BorderRadius.circular(3),
+                                                border: Border.all(color: Colors.red.shade700, width: 1),
+                                              ),
+                                              child: Text(
+                                                'Total a Pagar: ${moneyFormat.format(payTotal)}',
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.red,
+                                                ),
+                                              ),
                                             ),
-                                          ),
+                                          const Spacer(),
+                                          if (receiveTotal > 0)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius: BorderRadius.circular(3),
+                                                border: Border.all(color: Colors.green.shade700, width: 1),
+                                              ),
+                                              child: Text(
+                                                'Total a Receber: ${moneyFormat.format(receiveTotal)}',
+                                                textAlign: TextAlign.right,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.green,
+                                                ),
+                                              ),
+                                            ),
                                         ],
                                       ),
-                                      const SizedBox(height: 6),
-                                      if (isToday)
-                                        Padding(
-                                          padding: const EdgeInsets.only(bottom: 6),
-                                          child: Text(
-                                            'HOJE',
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.red.shade700,
-                                            ),
-                                          ),
-                                        ),
+                                      const SizedBox(height: 5),
                                       if (isHoliday && holidayName != null)
                                         Padding(
-                                          padding: const EdgeInsets.only(bottom: 6),
+                                          padding: const EdgeInsets.only(bottom: 5),
                                           child: Text(
                                             holidayName,
                                             maxLines: 1,
@@ -4070,7 +4149,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                             ),
                                           ),
                                         ),
-                                      // Lista de contas do dia em badges
                                       FutureBuilder<List<Map<String, dynamic>>>(
                                         future: _getAccountsForDay(day.date.day, day.date.month, day.date.year),
                                         builder: (context, snapshot) {
@@ -4083,52 +4161,142 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                             return const SizedBox.shrink();
                                           }
 
-                                          return Wrap(
-                                            spacing: 4,
-                                            runSpacing: 3,
-                                            children: dayAccounts.map((accData) {
-                                              final isReceber = accData['isRecebimento'] as bool;
-                                              final value = accData['value'] as double;
-                                              final categoryName = accData['categoryName'] as String;
-                                              final typeIcon = accData['typeIcon'] as String;
-                                              final badgeBgColor = isReceber ? Colors.green.shade700 : Colors.red.shade700;
+                                          final payAccounts = dayAccounts.where((accData) {
+                                            final isReceber = accData['isRecebimento'] as bool;
+                                            final value = accData['value'] as double;
+                                            return !isReceber && value > 0;
+                                          }).toList();
+                                          final receiveAccounts = dayAccounts.where((accData) {
+                                            final isReceber = accData['isRecebimento'] as bool;
+                                            final value = accData['value'] as double;
+                                            final launchedValue = accData['launchedValue'] as double?;
+                                            final displayValue =
+                                                (launchedValue != null && launchedValue > 0) ? launchedValue : value;
+                                            return isReceber && displayValue > 0;
+                                          }).toList();
 
-                                              return Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                                                decoration: BoxDecoration(
-                                                  color: badgeBgColor,
-                                                  borderRadius: BorderRadius.circular(3),
-                                                ),
-                                                child: Row(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  children: [
+                                          if (payAccounts.isEmpty && receiveAccounts.isEmpty) {
+                                            return const SizedBox.shrink();
+                                          }
+
+                                          Widget buildAccountBadge(Map<String, dynamic> accData, bool alignRight) {
+                                            final value = accData['value'] as double;
+                                            final launchedValue = accData['launchedValue'] as double?;
+                                            final rawCategoryName = accData['categoryName'] as String;
+                                            final categoryName = rawCategoryName.contains('||')
+                                                ? rawCategoryName.split('||').last.trim()
+                                                : rawCategoryName;
+                                            final description = accData['description'] as String? ?? '';
+                                            final typeIcon = accData['typeIcon'] as String;
+                                            final isReceber = accData['isRecebimento'] as bool;
+                                            final account = accData['account'];
+                                            final isCard = isReceber && (account?.cardBrand != null);
+                                            final badgeBgColor =
+                                                isReceber ? Colors.green.shade700 : Colors.red.shade700;
+                                            final displayValue =
+                                                (launchedValue != null && launchedValue > 0) ? launchedValue : value;
+                                            final cardBank =
+                                                (account?.cardBank ?? account?.description ?? '').toString().trim();
+
+                                            return Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: badgeBgColor,
+                                                borderRadius: BorderRadius.circular(3),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  if (isCard)
+                                                    _buildCardBrandLogo(account?.cardBrand)
+                                                  else
                                                     Text(
                                                       typeIcon,
                                                       style: const TextStyle(
-                                                        fontSize: 9,
+                                                        fontSize: 14,
                                                         color: Colors.white,
                                                       ),
                                                     ),
-                                                    const SizedBox(width: 3),
-                                                    Flexible(
-                                                      child: Text(
-                                                        '$categoryName - ${moneyFormat.format(value)}',
-                                                        style: const TextStyle(
-                                                          fontSize: 8,
-                                                          fontWeight: FontWeight.w600,
-                                                          color: Colors.white,
-                                                        ),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow.ellipsis,
+                                                  const SizedBox(width: 3),
+                                                  Flexible(
+                                                    child: Text(
+                                                      isReceber
+                                                          ? (isCard
+                                                              ? '$cardBank ${moneyFormat.format(displayValue)}'
+                                                              : '$categoryName $description ${moneyFormat.format(displayValue)}')
+                                                          : '$categoryName $description ${moneyFormat.format(value)}',
+                                                      style: const TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight: FontWeight.w600,
+                                                        color: Colors.white,
                                                       ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      textAlign: alignRight ? TextAlign.right : TextAlign.left,
                                                     ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          }
+
+                                          return Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              SizedBox(width: dayLabelWidth + 8),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    for (final accData in payAccounts) ...[
+                                                      buildAccountBadge(accData, false),
+                                                      const SizedBox(height: 2),
+                                                    ],
                                                   ],
                                                 ),
-                                              );
-                                            }).toList(),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                                  children: [
+                                                    for (final accData in receiveAccounts) ...[
+                                                      Align(
+                                                        alignment: Alignment.centerRight,
+                                                        child: buildAccountBadge(accData, true),
+                                                      ),
+                                                      const SizedBox(height: 2),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
                                           );
                                         },
                                       ),
+                                        ],
+                                      ),
+                                      if (isToday)
+                                        Positioned(
+                                          left: 0,
+                                          top: 26,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue,
+                                              borderRadius: BorderRadius.circular(3),
+                                              border: Border.all(color: Colors.black, width: 1),
+                                            ),
+                                            child: const Text(
+                                              'HOJE',
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
                                     ],
                                   ),
                                 ),
@@ -4151,6 +4319,35 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
   }
 
   // --- CALENDÁRIO ANUAL ---
+  Widget _buildCardBrandLogo(String? brand) {
+    final normalized = (brand ?? '').trim().toUpperCase();
+    String? assetPath;
+    if (normalized == 'VISA') {
+      assetPath = 'assets/icons/cc_visa.png';
+    } else if (normalized == 'AMEX' || normalized == 'AMERICAN EXPRESS' || normalized == 'AMERICANEXPRESS') {
+      assetPath = 'assets/icons/cc_amex.png';
+    } else if (normalized == 'MASTER' || normalized == 'MASTERCARD' || normalized == 'MASTER CARD') {
+      assetPath = 'assets/icons/cc_mc.png';
+    } else if (normalized == 'ELO') {
+      assetPath = 'assets/icons/cc_elo.png';
+    }
+
+    if (assetPath != null) {
+      return Image.asset(
+        assetPath,
+        package: 'finance_app',
+        width: 14,
+        height: 14,
+        fit: BoxFit.contain,
+      );
+    }
+
+    return Text(
+      normalized.isEmpty ? 'CC' : normalized,
+      style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700),
+    );
+  }
+
   Widget _buildAnnualCalendar() {
     return FutureBuilder<List<Holiday>>(
       future: _holidaysFuture,
