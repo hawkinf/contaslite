@@ -1628,7 +1628,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ? null
         : (rawCategory.contains('||')
             ? rawCategory.split('||').first.trim()
-            : rawCategory.trim());
+            : null);
     final categoryChild = rawCategory == null
         ? null
         : (rawCategory.contains('||')
@@ -1643,9 +1643,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final childLabel = sanitizedCategoryChild?.isNotEmpty == true
         ? sanitizedCategoryChild!
         : fallbackDescription;
-    final secondaryDescription = (account.cardBrand?.trim().isNotEmpty == true)
-        ? account.cardBrand!.trim()
-        : fallbackDescription;
+    final String cardBankLabel = (account.cardBank ?? '').trim();
+    final String cardBrandLabel = (account.cardBrand ?? '').trim();
+    final String middleLineText = isCard
+        ? (cardBankLabel.isNotEmpty && cardBrandLabel.isNotEmpty
+            ? '$cardBankLabel - $cardBrandLabel'
+            : (cardBankLabel.isNotEmpty
+                ? cardBankLabel
+                : (cardBrandLabel.isNotEmpty
+                    ? cardBrandLabel
+                    : fallbackDescription)))
+        : (() {
+            final desc = fallbackDescription;
+            if (desc.isEmpty) return childLabel;
+            final childLower = childLabel.toLowerCase();
+            final descLower = desc.toLowerCase();
+            if (childLower == descLower || childLower.contains(descLower)) {
+              return childLabel;
+            }
+            return '$childLabel - $desc';
+          })();
     final installmentSummary =
         account.id != null ? _installmentSummaries[account.id!] : null;
     final bool isPaid =
@@ -2149,7 +2166,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ],
                                     Expanded(
                                       child: Text(
-                                        '$childLabel - ${secondaryDescription.isNotEmpty ? secondaryDescription : account.description}',
+                                        middleLineText,
                                         style: TextStyle(
                                       fontSize: descriptionSize - 2,
                                           fontWeight: FontWeight.w600,

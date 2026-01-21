@@ -18,6 +18,7 @@ import 'account_types_screen.dart';
 import 'recebimentos_table_screen.dart';
 import '../widgets/app_input_decoration.dart';
 import '../utils/installment_utils.dart';
+import '../widgets/icon_picker_dialog.dart';
 
 const List<String> _monthShortLabels = [
   'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
@@ -2942,6 +2943,121 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
     }
   }
 
+  Future<void> _editCategory(AccountCategory category) async {
+    final controller = TextEditingController(text: category.categoria);
+    final logoController = TextEditingController(text: category.logo ?? '');
+
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Editar Categoria'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: buildOutlinedInputDecoration(
+                label: 'Nome da categoria',
+                icon: Icons.label,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: logoController,
+                    decoration: buildOutlinedInputDecoration(
+                      label: 'Logo (emoji ou texto)',
+                      icon: Icons.image,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                FilledButton.icon(
+                  onPressed: () async {
+                    final selectedIcon = await showIconPickerDialog(
+                      ctx,
+                      initialIcon: logoController.text.isNotEmpty
+                          ? logoController.text
+                          : null,
+                    );
+                    if (selectedIcon != null) {
+                      logoController.text = selectedIcon;
+                    }
+                  },
+                  icon: const Icon(Icons.palette),
+                  label: const Text('Picker'),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final name = controller.text.trim();
+              final logo = logoController.text.trim();
+              Navigator.pop(ctx, {'name': name, 'logo': logo});
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result['name']!.isNotEmpty) {
+      final newName = result['name']!;
+      final newLogo = result['logo']!.isEmpty ? null : result['logo'];
+      final nameChanged = newName != category.categoria;
+      final logoChanged = newLogo != category.logo;
+
+      if (!nameChanged && !logoChanged) {
+        controller.dispose();
+        logoController.dispose();
+        return;
+      }
+
+      if (nameChanged) {
+        final exists = await DatabaseHelper.instance
+            .checkAccountCategoryExists(widget.typeId, newName);
+        if (exists) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Uma categoria com este nome ja existe'),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          }
+          controller.dispose();
+          logoController.dispose();
+          return;
+        }
+      }
+
+      final updated = category.copyWith(categoria: newName, logo: newLogo);
+      await DatabaseHelper.instance.updateAccountCategory(updated);
+
+      final refreshed =
+          await DatabaseHelper.instance.readAccountCategories(widget.typeId);
+      setState(() {
+        _categorias
+          ..clear()
+          ..addAll(refreshed);
+      });
+      widget.onCategoriasUpdated();
+    }
+
+    controller.dispose();
+    logoController.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -3024,12 +3140,37 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Expanded(
-                                child: Text(
-                                  cat.categoria,
-                                  style: const TextStyle(
-                                      fontSize: 14, color: Colors.black87),
-                                  overflow: TextOverflow.ellipsis,
+                                child: Row(
+                                  children: [
+                                    if (cat.logo != null &&
+                                        cat.logo!.isNotEmpty)
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(right: 8.0),
+                                        child: Text(
+                                          cat.logo!,
+                                          style:
+                                              const TextStyle(fontSize: 16),
+                                        ),
+                                      ),
+                                    Expanded(
+                                      child: Text(
+                                        cat.categoria,
+                                        style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.black87),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.edit,
+                                    color: Colors.blue, size: 20),
+                                onPressed: () => _editCategory(cat),
+                                tooltip: 'Editar',
+                                splashRadius: 20,
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete_outline,
