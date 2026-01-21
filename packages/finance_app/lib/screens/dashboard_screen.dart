@@ -41,13 +41,14 @@ class _InstallmentSummary {
 class _CalendarHole extends StatelessWidget {
   final Color fill;
   final Color border;
-  const _CalendarHole({required this.fill, required this.border});
+  final double scale;
+  const _CalendarHole({required this.fill, required this.border, this.scale = 1});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 12,
-      height: 12,
+      width: 12 * scale,
+      height: 12 * scale,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: RadialGradient(
@@ -58,19 +59,19 @@ class _CalendarHole extends StatelessWidget {
             fill.withValues(alpha: 0.7),
           ],
         ),
-        border: Border.all(color: border, width: 1.5),
+        border: Border.all(color: border, width: 1.5 * scale),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
+            blurRadius: 2 * scale,
+            offset: Offset(0, 1 * scale),
           ),
         ],
       ),
       child: Center(
         child: Container(
-          width: 4,
-          height: 4,
+          width: 4 * scale,
+          height: 4 * scale,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: border.withValues(alpha: 0.4),
@@ -1457,7 +1458,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       builder: (context, constraints) {
         // Calculate responsive font sizes based on screen width
         final screenWidth = constraints.maxWidth;
-        final baseFontSize = screenWidth / 50; // Base unit for scaling
+        const cardScale = 0.8;
+        final baseFontSize = screenWidth / 50 * cardScale; // Base unit for scaling
 
         // Define all font sizes proportionally
         final dayNumberSize = baseFontSize * 2.0;
@@ -1485,6 +1487,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           valueMainSize,
           paidSize,
           iconSize,
+          cardScale,
         );
       },
     );
@@ -1503,7 +1506,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     double valueMainSize,
     double paidSize,
     double iconSize,
+    double scale,
   ) {
+    double sp(double value) => value * scale;
     int year = account.year ?? _startDate.year;
     int month = account.month ?? _startDate.month;
     int day = account.dueDay;
@@ -1700,17 +1705,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       // Fallback para bandeiras não reconhecidas
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(4)),
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(sp(6)),
         ),
         child: Text(
           normalized,
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-          ),
+          style: TextStyle(fontSize: badgeSize, fontWeight: FontWeight.w700),
         ),
       );
     }
@@ -1725,35 +1727,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Identificar se é parcela única (não recorrente, não parcelada, total == 1)
     final bool isSinglePayment = !hasRecurrence && !installmentDisplay.isInstallment && !isCard;
     final Widget installmentBadge = Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
         decoration: BoxDecoration(
             color: parceladoFillColor,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: parceladoBorderColor, width: 1.25)),
+            borderRadius: BorderRadius.circular(sp(8)),
+            border: Border.all(color: parceladoBorderColor, width: sp(1.25))),
         child: Text(installmentDisplay.labelText,
-            style: const TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)));
+            style: TextStyle(fontSize: badgeSize, fontWeight: FontWeight.w700, color: Colors.white)));
     // Badge para parcela única
     final Widget singlePaymentBadge = Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
         decoration: BoxDecoration(
             color: parceladoFillColor,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: parceladoBorderColor, width: 1.25)),
-        child: const Text('Parcela Única',
-            style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)));
+            borderRadius: BorderRadius.circular(sp(8)),
+            border: Border.all(color: parceladoBorderColor, width: sp(1.25))),
+        child: Text('Parcela énica',
+            style: TextStyle(fontSize: badgeSize, fontWeight: FontWeight.w700, color: Colors.white)));
     final String nextValueLabel = installmentSummary?.nextValue != null
         ? UtilBrasilFields.obterReal(installmentSummary!.nextValue!)
         : '-';
     final Color nextDateColor = cardIsDark ? Colors.white : Colors.black87;
     final Widget nextDueBadge = Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
         decoration: BoxDecoration(
             color: (cardIsDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: parceladoBorderColor, width: 1.0)),
-        child: Text('Próx: $nextValueLabel',
+            borderRadius: BorderRadius.circular(sp(8)),
+            border: Border.all(color: parceladoBorderColor, width: sp(1.0))),
+        child: Text('Pr¢x: $nextValueLabel',
             style: TextStyle(
                 fontSize: smallDateSize, fontWeight: FontWeight.w700, color: nextDateColor)));
 
@@ -1764,8 +1764,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         InkWell(
             onTap: () => isCard ? _openCardEditor(account) : _showEditSpecificDialog(account),
             child: _actionIcon(Icons.edit, actionIconBg, actionIconColor,
-                size: iconSize, surfaceColor: cardColor)),
-        const SizedBox(width: 6),
+                size: iconSize, scale: scale, surfaceColor: cardColor)),
+        SizedBox(width: sp(6)),
 
         // 2. LANÇAMENTO (rocket) - quando aplicável
         if (isCard) ...[
@@ -1773,29 +1773,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
             InkWell(
                 onTap: () => _showCartaoValueDialog(account),
                 child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
-                    size: iconSize, surfaceColor: cardColor)),
-            const SizedBox(width: 6),
+                    size: iconSize, scale: scale, surfaceColor: cardColor)),
+            SizedBox(width: sp(6)),
           ] else if (!isPaid && account.value > 0) ...[
             InkWell(
               onTap: () => _undoLaunch(account),
               child: _actionIcon(Icons.undo, actionIconBg, actionIconColor,
-                  size: iconSize, surfaceColor: cardColor),
+                  size: iconSize, scale: scale, surfaceColor: cardColor),
             ),
-            const SizedBox(width: 6),
+            SizedBox(width: sp(6)),
           ],
           // 3. PAGAMENTO DA FATURA (dinheiro) - para cartäes de cr‚dito
           InkWell(
               onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
               child: _actionIcon(Icons.attach_money, actionIconBg, actionIconColor,
-                  enabled: canLaunchPayment, size: iconSize, surfaceColor: cardColor)),
-          const SizedBox(width: 6),
+                  enabled: canLaunchPayment, size: iconSize, scale: scale, surfaceColor: cardColor)),
+          SizedBox(width: sp(6)),
         ] else if (isRecebimento) ...[
 
           InkWell(
               onTap: () => _showRecebimentoValueDialog(account),
               child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
-                  size: iconSize, surfaceColor: cardColor)),
-          const SizedBox(width: 6),
+                  size: iconSize, scale: scale, surfaceColor: cardColor)),
+          SizedBox(width: sp(6)),
         ] else if (isRecurrent && account.recurrenceId == null) ...[
           InkWell(
               onTap: () async {
@@ -1814,15 +1814,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 if (mounted) _showLaunchDialog(parentRecurrence);
               },
               child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
-                  size: iconSize, surfaceColor: cardColor)),
-          const SizedBox(width: 6),
+                  size: iconSize, scale: scale, surfaceColor: cardColor)),
+          SizedBox(width: sp(6)),
         ] else if (isRecurrent && account.recurrenceId != null && account.value == 0) ...[
           // Foguete só aparece se value == 0 (não foi lançada ainda)
           InkWell(
               onTap: () => _showDespesaValueDialog(account),
               child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
-                  size: iconSize, surfaceColor: cardColor)),
-          const SizedBox(width: 6),
+                  size: iconSize, scale: scale, surfaceColor: cardColor)),
+          SizedBox(width: sp(6)),
         ],
 
         // 3. PAGAMENTO (ícone de dinheiro) - para contas não-cartão
@@ -1830,8 +1830,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           InkWell(
               onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
               child: _actionIcon(Icons.attach_money, actionIconBg, actionIconColor,
-                  enabled: canLaunchPayment, size: iconSize, surfaceColor: cardColor)),
-          const SizedBox(width: 6),
+                  enabled: canLaunchPayment, size: iconSize, scale: scale, surfaceColor: cardColor)),
+          SizedBox(width: sp(6)),
         ],
 
         // 4. DESPESA NO CARTÃO (carrinho) - apenas para cartões de crédito
@@ -1839,8 +1839,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           InkWell(
               onTap: () => _showExpenseDialog(account),
               child: _actionIcon(Icons.add_shopping_cart, actionIconBg, actionIconColor,
-                  size: iconSize, surfaceColor: cardColor)),
-          const SizedBox(width: 6),
+                  size: iconSize, scale: scale, surfaceColor: cardColor)),
+          SizedBox(width: sp(6)),
         ],
 
         // Botão UNDO - para desfazer lançamento de recorrência (só aparece se value > 0, ou seja, foi lançada)
@@ -1848,9 +1848,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           InkWell(
             onTap: () => _undoLaunch(account),
             child: _actionIcon(Icons.undo, actionIconBg, actionIconColor,
-                size: iconSize, surfaceColor: cardColor),
+                size: iconSize, scale: scale, surfaceColor: cardColor),
           ),
-          const SizedBox(width: 6),
+          SizedBox(width: sp(6)),
         ],
 
         // 5. LIXEIRA (delete) - sempre por último
@@ -1858,24 +1858,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
           InkWell(
               onTap: () => _confirmDelete(account),
               child: _actionIcon(Icons.delete, actionIconBg, actionIconColor,
-                  size: iconSize, surfaceColor: cardColor)),
+                  size: iconSize, scale: scale, surfaceColor: cardColor)),
       ]);
 
     Widget buildCardBody({required EdgeInsets padding, required List<Widget> children}) {
-      final double borderWidth = 3.5;
+      final double borderWidth = sp(3.5);
           final Color borderColor = ThemeData.estimateBrightnessForColor(cardColor) == Brightness.dark
               ? Colors.white
               : Colors.black;
       return Container(
         color: isCard ? null : containerBg,
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        padding: EdgeInsets.symmetric(vertical: sp(4), horizontal: sp(8)),
         child: Card(
           color: cardColor,
           elevation: 2,
           margin: EdgeInsets.zero,
           clipBehavior: Clip.antiAlias,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(sp(8)),
             side: BorderSide(color: borderColor, width: borderWidth),
           ),
           child: InkWell(
@@ -1898,8 +1898,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .format(effectiveDate)
         .replaceAll('.', '')
         .toUpperCase();
-    final double calendarWidth = 70;
-    final double calendarHeight = 88;
+    final double calendarWidth = sp(70);
+    final double calendarHeight = sp(88);
     // Calendário sempre branco, borda adapta ao fundo do card
     const Color calendarBadgeBg = Colors.white;
     final Color calendarBorder = cardIsDark ? Colors.white : Colors.black;
@@ -1908,7 +1908,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         isRecebimento ? Colors.green.shade600 : (isPagamento ? Colors.red.shade600 : Colors.orange.shade700);
     // Textos seguem regra nova (verde receber, vermelho pagar/cartões)
     final Color calendarEmphasis = isRecebimento ? Colors.green.shade700 : Colors.red.shade700;
-    final BorderRadius calendarRadius = BorderRadius.circular(10);
+    final BorderRadius calendarRadius = BorderRadius.circular(sp(10));
     // Furos com borda adaptativa ao fundo do card
     final Color holeFill = Colors.grey.shade300;
     final Color holeBorder = cardIsDark ? Colors.white : Colors.black;
@@ -1930,7 +1930,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               color: Colors.black.withValues(alpha: cardIsDark ? 0.3 : 0.15),
             ),
           ],
-          border: Border.all(color: calendarBorder, width: 2),
+          border: Border.all(color: calendarBorder, width: sp(2)),
         ),
         child: ClipRRect(
           borderRadius: calendarRadius,
@@ -1943,24 +1943,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   height: calendarHeight * 0.24,
                   decoration: BoxDecoration(
                     color: calendarTopBar,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(8),
-                      topRight: Radius.circular(8),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(sp(8)),
+                      topRight: Radius.circular(sp(8)),
                     ),
-                    border: Border.all(color: calendarBorder, width: 1.5),
+                    border: Border.all(color: calendarBorder, width: sp(1.5)),
                   ),
                 ),
               ),
               // Furos do calendário - posicionados na barra superior
               Positioned(
                 top: calendarHeight * 0.08,
-                left: 12,
-                child: _CalendarHole(fill: holeFill, border: holeBorder),
+                left: sp(12),
+                child: _CalendarHole(fill: holeFill, border: holeBorder, scale: scale),
               ),
               Positioned(
                 top: calendarHeight * 0.08,
-                right: 12,
-                child: _CalendarHole(fill: holeFill, border: holeBorder),
+                right: sp(12),
+                child: _CalendarHole(fill: holeFill, border: holeBorder, scale: scale),
               ),
               // Conteúdo central (dia e dia da semana)
               Positioned(
@@ -2048,22 +2048,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
 
     return buildCardBody(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+      padding: EdgeInsets.symmetric(vertical: sp(8), horizontal: sp(10)),
       children: [
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 6,
-              height: 82,
+              width: sp(6),
+              height: sp(82),
               decoration: BoxDecoration(
                 color: accentColor,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(sp(6)),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: sp(12)),
             calendarBadge,
-            const SizedBox(width: 12),
+            SizedBox(width: sp(12)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2076,7 +2076,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 children: [
                                   if (parentIcon != null) ...[
                                     parentIcon,
-                              const SizedBox(width: 6),
+                              SizedBox(width: sp(6)),
                             ],
                             Expanded(
                               child: Text(
@@ -2090,17 +2090,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: sp(8)),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              padding: EdgeInsets.symmetric(horizontal: sp(6), vertical: sp(3)),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(6),
+                                borderRadius: BorderRadius.circular(sp(6)),
                                 border: Border.all(
                                   color: isRecebimento
                                       ? Colors.green.shade700
                                       : Colors.red.shade700,
-                                  width: 1.2,
+                                  width: sp(1.2),
                                 ),
                               ),
                               child: Text(
@@ -2119,7 +2119,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: sp(2)),
                   Row(
                     children: [
                       Expanded(
@@ -2127,10 +2127,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           children: [
                             if (isCard && brandBadge != null) ...[
                               brandBadge,
-                              const SizedBox(width: 8),
+                              SizedBox(width: sp(8)),
                             ] else if (headerChildIcon != null) ...[
                               headerChildIcon,
-                              const SizedBox(width: 6),
+                              SizedBox(width: sp(6)),
                             ],
                             Expanded(
                               child: Text(
@@ -2147,13 +2147,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: sp(8)),
                       actionButtons,
                     ],
                   ),
                   if (installmentDisplay.isInstallment || hasRecurrence || showPrevisto || isSinglePayment)
                     Padding(
-                      padding: const EdgeInsets.only(top: 4),
+                      padding: EdgeInsets.only(top: sp(4)),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -2164,50 +2164,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           // Badge Recorrência
                           if (hasRecurrence && !isCard) ...[
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
                               decoration: BoxDecoration(
                                 color: isRecebimento ? Colors.green.shade700 : Colors.red.shade700,
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(sp(8)),
                                 border: Border.all(
                                   color: isRecebimento ? Colors.green.shade900 : Colors.red.shade900,
-                                  width: 1.25,
+                                  width: sp(1.25),
                                 ),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'Recorrência',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: badgeSize,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.white,
                                 ),
                               ),
                             ),
-                            if (installmentDisplay.isInstallment) const SizedBox(width: 8),
+                            if (installmentDisplay.isInstallment) SizedBox(width: sp(8)),
                           ],
                           // Badge Parcela X/Y e Próx valor
                           if (installmentDisplay.isInstallment) ...[
                             installmentBadge,
-                            const SizedBox(width: 8),
+                            SizedBox(width: sp(8)),
                             nextDueBadge,
                           ],
                           // Badge Previsto (para recorrências)
                           if (showPrevisto) ...[
                             if (installmentDisplay.isInstallment || (hasRecurrence && !isCard) || isSinglePayment)
-                              const SizedBox(width: 8),
+                              SizedBox(width: sp(8)),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
                               decoration: BoxDecoration(
                                 color: isRecebimento ? Colors.green.shade700 : Colors.red.shade700,
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(sp(8)),
                                 border: Border.all(
                                   color: isRecebimento ? Colors.green.shade900 : Colors.red.shade900,
-                                  width: 1.25,
+                                  width: sp(1.25),
                                 ),
                               ),
                               child: Text(
                                 'Previsto: $previstoDisplay',
-                                style: const TextStyle(
-                                  fontSize: 11,
+                                style: TextStyle(
+                                  fontSize: badgeSize,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.white,
                                 ),
@@ -2215,42 +2215,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ],
                           if (isCard) ...[
-                            const SizedBox(width: 8),
+                            SizedBox(width: sp(8)),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(sp(8)),
                                 border: Border.all(
                                   color: Colors.black,
-                                  width: 1.25,
+                                  width: sp(1.25),
                                 ),
                               ),
                               child: Text(
                                 'Próx.: $cardNextDueLabel',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: badgeSize,
                                   fontWeight: FontWeight.w700,
                                   color: _adaptiveGreyTextColor(
                                       context, Colors.grey.shade800),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: sp(8)),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(sp(8)),
                                 border: Border.all(
                                   color: Colors.black,
-                                  width: 1.25,
+                                  width: sp(1.25),
                                 ),
                               ),
                               child: Text(
                                 'Previsto: $previstoDisplay',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: badgeSize,
                                   fontWeight: FontWeight.w700,
                                   color: _adaptiveGreyTextColor(
                                       context, Colors.grey.shade800),
@@ -2263,28 +2263,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   if (isPaid)
                     Padding(
-                      padding: const EdgeInsets.only(top: 6),
+                      padding: EdgeInsets.only(top: sp(6)),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           InkWell(
                             onTap: () => _undoPayment(account),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              padding: EdgeInsets.symmetric(horizontal: sp(6), vertical: sp(3)),
                               decoration: BoxDecoration(
                                 color: Colors.orange.shade50,
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: Colors.orange.shade300, width: 1),
+                                borderRadius: BorderRadius.circular(sp(4)),
+                                border: Border.all(color: Colors.orange.shade300, width: sp(1)),
                               ),
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.undo, size: 14, color: AppColors.warningDark),
-                                  SizedBox(width: 4),
+                                  Icon(Icons.undo, size: sp(14), color: AppColors.warningDark),
+                                  SizedBox(width: sp(4)),
                                   Text(
                                     'Desfazer',
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: badgeSize,
                                       fontWeight: FontWeight.w600,
                                       color: AppColors.warningDark,
                                     ),
@@ -2293,7 +2293,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: sp(8)),
                           Text(
                             _isRecebimentosFilter ? '*** RECEBIDO ***' : '*** PAGO ***',
                             style: TextStyle(
@@ -2302,7 +2302,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               fontSize: paidSize,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: sp(8)),
                           Text(
                             'via ${_paymentInfo[account.id!]?['method_name'] ?? ''}',
                             style: TextStyle(
@@ -2313,7 +2313,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ],
                       ),
                     ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: sp(2)),
                 ],
               ),
             ),
@@ -2344,12 +2344,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            child: Text('Cancelar'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.orange),
-            child: const Text('Desfazer'),
+            child: Text('Desfazer'),
           ),
         ],
       ),
@@ -2574,6 +2574,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       double size = 16,
       Color? borderColor,
       double borderWidth = 1,
+      double scale = 1,
       Color? surfaceColor}) {
     Color resolvedBg = bg;
     if (surfaceColor != null) {
@@ -2589,12 +2590,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Opacity(
       opacity: enabled ? 1 : 0.6,
       child: Container(
-          padding: const EdgeInsets.all(5),
+          padding: EdgeInsets.all(5 * scale),
           decoration: BoxDecoration(
               color: displayBg,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(4 * scale),
               border: borderColor != null
-                  ? Border.all(color: borderColor, width: borderWidth)
+                  ? Border.all(color: borderColor, width: borderWidth * scale)
                   : null),
           child: Icon(icon, size: size, color: displayColor)),
     );
