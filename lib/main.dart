@@ -7,6 +7,7 @@ import 'package:finance_app/screens/settings_screen.dart';
 import 'package:finance_app/database/db_helper.dart';
 import 'package:finance_app/services/holiday_service.dart';
 import 'package:finance_app/widgets/backup_dialog.dart';
+import 'package:finance_app/models/account.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -358,7 +359,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
   late CityData _selectedCity;
   late Future<List<Holiday>> _holidaysFuture;
   late Future<void> _contasInitFuture;
-  late Future<Map<int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount})>>
+  late Future<Map<int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount, double avulsas, int avulsasCount, double recebimentosPrevisto, int recebimentosPrevistoCount, double recebimentosAvulsas, int recebimentosAvulsasCount})>>
       _monthlyTotalsFuture;
   Future<Map<int, ({double pagar, double receber})>> _annualTotalsFuture = Future.value({});
   late AnimationController _animationController;
@@ -2456,15 +2457,14 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
 
     try {
       final accounts = await DatabaseHelper.instance.readAllAccountsRaw();
+      final db = await DatabaseHelper.instance.database;
       final types = await DatabaseHelper.instance.readAllTypes();
       final categories = await DatabaseHelper.instance.readAllAccountCategories();
       final allPayments = await DatabaseHelper.instance.readAllPayments();
       
       // Mapeia IDs de contas que têm lançamentos
-      final accountsWithPayments = <int>{};
       final paymentsByAccountId = <int, double>{};
       for (final payment in allPayments) {
-        accountsWithPayments.add(payment.accountId);
         paymentsByAccountId[payment.accountId] =
             (paymentsByAccountId[payment.accountId] ?? 0.0) + payment.value;
       }
@@ -2483,20 +2483,86 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           if (t.id != null && (t.logo?.trim().isNotEmpty ?? false))
             t.id!: t.logo!.trim(),
       };
+      final accountById = <int, dynamic>{};
+      for (final acc in accounts) {
+        if (acc.id != null) {
+          accountById[acc.id!] = acc;
+        }
+      }
+
+      bool hasRecurrenceStarted(Account rec) {
+        final hasStartDate = rec.year != null && rec.month != null;
+        if (!hasStartDate) return true;
+        final recYear = _normalizeYear(rec.year);
+        return recYear < year || (recYear == year && rec.month! <= month);
+      }
 
       final dayAccounts = <Map<String, dynamic>>[];
       final seenIds = <int>{};  // Para evitar duplicatas
+      final launchedCardParents = <String>{};
+      final launchedRecurringParents = <String>{};
+      for (final account in accounts) {
+        final hasLaunchInstance =
+            account.value > 0 || (account.id != null && (paymentsByAccountId[account.id!] ?? 0) > 0);
+        if (account.recurrenceId != null && account.cardBrand == null && hasLaunchInstance) {
+          final parentId = account.recurrenceId!;
+          final childMonth = account.month ?? month;
+          final childYear = _normalizeYear(account.year);
+          launchedRecurringParents.add('$parentId-$childMonth-$childYear');
+        }
+        if (account.recurrenceId != null && account.cardBrand != null && hasLaunchInstance) {
+          final parentId = account.recurrenceId!;
+          final childMonth = account.month ?? month;
+          final childYear = _normalizeYear(account.year);
+          launchedCardParents.add('$parentId-$childMonth-$childYear');
+        }
+      }
+
+      final cardForecastById = <int, double>{};
+      final cardParents = accounts
+          .where((a) => a.cardBrand != null && a.recurrenceId == null && a.id != null)
+          .toList();
+      for (final card in cardParents) {
+        if (card.id == null) continue;
+        final expenses = await DatabaseHelper.instance.getCardExpensesForMonth(
+            card.id!, month, year);
+        final recurringRes = await db.query(
+          'accounts',
+          where: 'cardId = ? AND isRecurrent = 1',
+          whereArgs: [card.id],
+        );
+        final subs = recurringRes.map((e) => Account.fromMap(e)).toList();
+
+        double totalForecast = 0.0;
+        for (final exp in expenses) {
+          totalForecast += exp.value;
+        }
+        for (final sub in subs) {
+          if (expenses.any((e) => e.recurrenceId == sub.id)) continue;
+          if (!hasRecurrenceStarted(sub)) continue;
+          totalForecast += sub.value;
+        }
+        if (totalForecast > 0) {
+          cardForecastById[card.id!] = totalForecast;
+        }
+      }
 
       for (final account in accounts) {
-        // Ignora templates de recorrência sem mês/ano para evitar duplicar com as instâncias geradas
-        if (account.isRecurrent && (account.month == null || account.year == null)) {
-          continue;
+        if (account.observation == '[CANCELADA]') continue;
+        if (account.cardBrand != null && account.recurrenceId == null) {
+          final parentKey = '${account.id}-${account.month ?? month}-${_normalizeYear(account.year)}';
+          if (launchedCardParents.contains(parentKey)) {
+            continue;
+          }
         }
-
-        // FILTRO PRINCIPAL: Apenas contas com lançamento OU parceladas
-        final isInstallment = account.installmentTotal != null && account.installmentIndex != null;
-        if (account.id != null && !accountsWithPayments.contains(account.id) && !isInstallment) {
-          continue;
+        if (account.isRecurrent && account.recurrenceId == null && account.cardBrand == null) {
+          final parentKey = '${account.id}-${account.month ?? month}-${_normalizeYear(account.year)}';
+          if (launchedRecurringParents.contains(parentKey)) {
+            continue;
+          }
+          if (!hasRecurrenceStarted(account)) {
+            continue;
+          }
         }
 
         final accYear = account.year != null ? _normalizeYear(account.year) : year;
@@ -2525,7 +2591,15 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           }
 
           final typeName = typeMap[account.typeId] ?? 'Outro';
-          final typeIcon = typeLogoMap[account.typeId] ?? '📋';
+          String typeIcon = typeLogoMap[account.typeId] ?? '📋';
+          if (account.recurrenceId != null) {
+            final parent = accountById[account.recurrenceId!];
+            final parentTypeId = parent?.typeId;
+            final parentIcon = parentTypeId != null ? typeLogoMap[parentTypeId] : null;
+            if (parentIcon != null && parentIcon.isNotEmpty) {
+              typeIcon = parentIcon;
+            }
+          }
 
           // Busca categoria secundária
           String categoryName = 'Outros';
@@ -2540,13 +2614,33 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
             }
           }
 
+          final hasLaunch = account.id != null && (paymentsByAccountId[account.id!] ?? 0) > 0;
+          final isInstallment = account.installmentTotal != null || account.installmentIndex != null;
+          final isRecurringParent =
+              account.isRecurrent && account.recurrenceId == null && !isInstallment;
+          final isRecurringChild = account.recurrenceId != null;
+          final isCardParent = account.cardBrand != null && account.recurrenceId == null;
+          final plannedValue = (account.estimatedValue != null && account.estimatedValue! > 0)
+              ? account.estimatedValue!
+              : account.value;
+          double effectiveValue = account.value;
+          if (!hasLaunch && isRecurringParent) {
+            effectiveValue = plannedValue;
+          }
+          if (!hasLaunch && isCardParent && account.id != null && cardForecastById.containsKey(account.id)) {
+            effectiveValue = cardForecastById[account.id!]!;
+          }
           dayAccounts.add({
             'account': account,
             'typeName': typeName,
             'typeIcon': typeIcon,
             'categoryName': categoryName,
             'isRecebimento': recebimentosTypeId != null && account.typeId == recebimentosTypeId,
-            'value': account.value,
+            'isRecurringParent': isRecurringParent,
+            'isRecurringChild': isRecurringChild,
+            'isCardParent': isCardParent,
+            'isInstallment': isInstallment,
+            'value': effectiveValue,
             'launchedValue': account.id != null ? paymentsByAccountId[account.id!] : null,
             'description': account.description,
             'adjustedDate': adjustedDate,
@@ -2563,7 +2657,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     }
   }
 
-  Future<Map<int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount})>>
+  Future<Map<int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount, double avulsas, int avulsasCount, double recebimentosPrevisto, int recebimentosPrevistoCount, double recebimentosAvulsas, int recebimentosAvulsasCount})>>
       _loadMonthlyTotals(int month, int year) async {
     try {
       await _contasInitFuture;
@@ -2573,7 +2667,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
 
     try {
       final accounts = await DatabaseHelper.instance.readAllAccountsRaw();
+      final db = await DatabaseHelper.instance.database;
       final types = await DatabaseHelper.instance.readAllTypes();
+      final allPayments = await DatabaseHelper.instance.readAllPayments();
       int? recebimentosTypeId;
       for (final type in types) {
         if (type.name.trim().toLowerCase() == 'recebimentos') {
@@ -2584,7 +2680,11 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       bool isRecebimento(dynamic acc) =>
           recebimentosTypeId != null && acc.typeId == recebimentosTypeId;
       final totalsByDay =
-          <int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount})>{};
+          <int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount, double avulsas, int avulsasCount, double recebimentosPrevisto, int recebimentosPrevistoCount, double recebimentosAvulsas, int recebimentosAvulsasCount})>{};
+      final paymentAccountIds = <int>{};
+      for (final payment in allPayments) {
+        paymentAccountIds.add(payment.accountId);
+      }
 
       bool hasRecurrenceStarted(dynamic acc) {
         if (acc.year == null || acc.month == null) return true;
@@ -2595,7 +2695,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
 
       void addPrevisto(int dueDay, double value) {
         final current = totalsByDay[dueDay] ??
-            (previsto: 0.0, lancado: 0.0, previstoCount: 0, lancadoCount: 0, recebimentos: 0.0, recebimentosCount: 0);
+            (previsto: 0.0, lancado: 0.0, previstoCount: 0, lancadoCount: 0, recebimentos: 0.0, recebimentosCount: 0, avulsas: 0.0, avulsasCount: 0, recebimentosPrevisto: 0.0, recebimentosPrevistoCount: 0, recebimentosAvulsas: 0.0, recebimentosAvulsasCount: 0);
         totalsByDay[dueDay] = (
           previsto: current.previsto + value,
           lancado: current.lancado,
@@ -2603,12 +2703,18 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           lancadoCount: current.lancadoCount,
           recebimentos: current.recebimentos,
           recebimentosCount: current.recebimentosCount,
+          avulsas: current.avulsas,
+          avulsasCount: current.avulsasCount,
+          recebimentosPrevisto: current.recebimentosPrevisto,
+          recebimentosPrevistoCount: current.recebimentosPrevistoCount,
+          recebimentosAvulsas: current.recebimentosAvulsas,
+          recebimentosAvulsasCount: current.recebimentosAvulsasCount,
         );
       }
 
       void addLancado(int dueDay, double value) {
         final current = totalsByDay[dueDay] ??
-            (previsto: 0.0, lancado: 0.0, previstoCount: 0, lancadoCount: 0, recebimentos: 0.0, recebimentosCount: 0);
+            (previsto: 0.0, lancado: 0.0, previstoCount: 0, lancadoCount: 0, recebimentos: 0.0, recebimentosCount: 0, avulsas: 0.0, avulsasCount: 0, recebimentosPrevisto: 0.0, recebimentosPrevistoCount: 0, recebimentosAvulsas: 0.0, recebimentosAvulsasCount: 0);
         totalsByDay[dueDay] = (
           previsto: current.previsto,
           lancado: current.lancado + value,
@@ -2616,12 +2722,18 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           lancadoCount: current.lancadoCount + 1,
           recebimentos: current.recebimentos,
           recebimentosCount: current.recebimentosCount,
+          avulsas: current.avulsas,
+          avulsasCount: current.avulsasCount,
+          recebimentosPrevisto: current.recebimentosPrevisto,
+          recebimentosPrevistoCount: current.recebimentosPrevistoCount,
+          recebimentosAvulsas: current.recebimentosAvulsas,
+          recebimentosAvulsasCount: current.recebimentosAvulsasCount,
         );
       }
 
       void addRecebimento(int dueDay, double value) {
         final current = totalsByDay[dueDay] ??
-            (previsto: 0.0, lancado: 0.0, previstoCount: 0, lancadoCount: 0, recebimentos: 0.0, recebimentosCount: 0);
+            (previsto: 0.0, lancado: 0.0, previstoCount: 0, lancadoCount: 0, recebimentos: 0.0, recebimentosCount: 0, avulsas: 0.0, avulsasCount: 0, recebimentosPrevisto: 0.0, recebimentosPrevistoCount: 0, recebimentosAvulsas: 0.0, recebimentosAvulsasCount: 0);
         totalsByDay[dueDay] = (
           previsto: current.previsto,
           lancado: current.lancado,
@@ -2629,6 +2741,69 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           lancadoCount: current.lancadoCount,
           recebimentos: current.recebimentos + value,
           recebimentosCount: current.recebimentosCount + 1,
+          avulsas: current.avulsas,
+          avulsasCount: current.avulsasCount,
+          recebimentosPrevisto: current.recebimentosPrevisto,
+          recebimentosPrevistoCount: current.recebimentosPrevistoCount,
+          recebimentosAvulsas: current.recebimentosAvulsas,
+          recebimentosAvulsasCount: current.recebimentosAvulsasCount,
+        );
+      }
+
+      void addAvulsa(int dueDay, double value) {
+        final current = totalsByDay[dueDay] ??
+            (previsto: 0.0, lancado: 0.0, previstoCount: 0, lancadoCount: 0, recebimentos: 0.0, recebimentosCount: 0, avulsas: 0.0, avulsasCount: 0, recebimentosPrevisto: 0.0, recebimentosPrevistoCount: 0, recebimentosAvulsas: 0.0, recebimentosAvulsasCount: 0);
+        totalsByDay[dueDay] = (
+          previsto: current.previsto,
+          lancado: current.lancado,
+          previstoCount: current.previstoCount,
+          lancadoCount: current.lancadoCount,
+          recebimentos: current.recebimentos,
+          recebimentosCount: current.recebimentosCount,
+          avulsas: current.avulsas + value,
+          avulsasCount: current.avulsasCount + 1,
+          recebimentosPrevisto: current.recebimentosPrevisto,
+          recebimentosPrevistoCount: current.recebimentosPrevistoCount,
+          recebimentosAvulsas: current.recebimentosAvulsas,
+          recebimentosAvulsasCount: current.recebimentosAvulsasCount,
+        );
+      }
+
+      void addRecebimentoPrevisto(int dueDay, double value) {
+        final current = totalsByDay[dueDay] ??
+            (previsto: 0.0, lancado: 0.0, previstoCount: 0, lancadoCount: 0, recebimentos: 0.0, recebimentosCount: 0, avulsas: 0.0, avulsasCount: 0, recebimentosPrevisto: 0.0, recebimentosPrevistoCount: 0, recebimentosAvulsas: 0.0, recebimentosAvulsasCount: 0);
+        totalsByDay[dueDay] = (
+          previsto: current.previsto,
+          lancado: current.lancado,
+          previstoCount: current.previstoCount,
+          lancadoCount: current.lancadoCount,
+          recebimentos: current.recebimentos,
+          recebimentosCount: current.recebimentosCount,
+          avulsas: current.avulsas,
+          avulsasCount: current.avulsasCount,
+          recebimentosPrevisto: current.recebimentosPrevisto + value,
+          recebimentosPrevistoCount: current.recebimentosPrevistoCount + 1,
+          recebimentosAvulsas: current.recebimentosAvulsas,
+          recebimentosAvulsasCount: current.recebimentosAvulsasCount,
+        );
+      }
+
+      void addRecebimentoAvulsa(int dueDay, double value) {
+        final current = totalsByDay[dueDay] ??
+            (previsto: 0.0, lancado: 0.0, previstoCount: 0, lancadoCount: 0, recebimentos: 0.0, recebimentosCount: 0, avulsas: 0.0, avulsasCount: 0, recebimentosPrevisto: 0.0, recebimentosPrevistoCount: 0, recebimentosAvulsas: 0.0, recebimentosAvulsasCount: 0);
+        totalsByDay[dueDay] = (
+          previsto: current.previsto,
+          lancado: current.lancado,
+          previstoCount: current.previstoCount,
+          lancadoCount: current.lancadoCount,
+          recebimentos: current.recebimentos,
+          recebimentosCount: current.recebimentosCount,
+          avulsas: current.avulsas,
+          avulsasCount: current.avulsasCount,
+          recebimentosPrevisto: current.recebimentosPrevisto,
+          recebimentosPrevistoCount: current.recebimentosPrevistoCount,
+          recebimentosAvulsas: current.recebimentosAvulsas + value,
+          recebimentosAvulsasCount: current.recebimentosAvulsasCount + 1,
         );
       }
 
@@ -2679,6 +2854,17 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           .toList();
 
       final childrenByRecurrence = <int, List<dynamic>>{};
+      final payRecurringParents = <int, dynamic>{};
+      final receiveRecurringParents = <int, dynamic>{};
+      for (final acc in accounts) {
+        if (!acc.isRecurrent || acc.recurrenceId != null) continue;
+        if (acc.id == null) continue;
+        if (isRecebimento(acc)) {
+          receiveRecurringParents[acc.id!] = acc;
+        } else if (acc.cardId == null) {
+          payRecurringParents[acc.id!] = acc;
+        }
+      }
       for (final acc in monthAccounts) {
         final recurrenceId = acc.recurrenceId;
         if (recurrenceId == null) continue;
@@ -2689,7 +2875,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
         if (acc.isRecurrent) continue;
         if (acc.recurrenceId != null) continue;
         final effectiveDay = getEffectiveDay(acc, month, year);
-        addLancado(effectiveDay, acc.value);
+        final hasLaunch =
+            acc.value > 0 || (acc.id != null && paymentAccountIds.contains(acc.id));
+        if (hasLaunch) {
+          addLancado(effectiveDay, acc.value);
+        } else {
+          addAvulsa(effectiveDay, acc.value);
+        }
       }
 
       for (final entry in childrenByRecurrence.entries) {
@@ -2697,7 +2889,17 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
         list.sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
         final selected = list.first;
         final effectiveDay = getEffectiveDay(selected, month, year);
-        addLancado(effectiveDay, selected.value);
+        final hasLaunch =
+            selected.value > 0 || (selected.id != null && paymentAccountIds.contains(selected.id));
+        if (hasLaunch) {
+          addLancado(effectiveDay, selected.value);
+        } else {
+          final parent = payRecurringParents[entry.key];
+          if (parent != null) {
+            final previstoValue = parent.estimatedValue ?? parent.value;
+            addPrevisto(effectiveDay, previstoValue);
+          }
+        }
       }
 
       for (final acc in accounts) {
@@ -2708,9 +2910,38 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
         if (!hasRecurrenceStarted(acc)) continue;
         final recurrenceId = acc.id;
         if (recurrenceId == null) continue;
-        if (childrenByRecurrence.containsKey(recurrenceId)) continue;
         final effectiveDay = getEffectiveDay(acc, month, year);
-        addPrevisto(effectiveDay, acc.value);
+        final previstoValue = acc.estimatedValue ?? acc.value;
+        addPrevisto(effectiveDay, previstoValue);
+      }
+
+      // Previstos de cartao de credito (fatura prevista do mes)
+      final cardParents = accounts
+          .where((acc) => acc.cardBrand != null && acc.recurrenceId == null && acc.id != null)
+          .toList();
+      for (final card in cardParents) {
+        if (card.id == null) continue;
+        final expenses = await DatabaseHelper.instance.getCardExpensesForMonth(
+            card.id!, month, year);
+        final recurringRes = await db.query(
+          'accounts',
+          where: 'cardId = ? AND isRecurrent = 1',
+          whereArgs: [card.id],
+        );
+        final subs = recurringRes.map((e) => Account.fromMap(e)).toList();
+
+        double totalForecast = 0.0;
+        for (final exp in expenses) {
+          totalForecast += exp.value;
+        }
+        for (final sub in subs) {
+          if (expenses.any((e) => e.recurrenceId == sub.id)) continue;
+          if (!hasRecurrenceStarted(sub)) continue;
+          totalForecast += sub.value;
+        }
+        if (totalForecast <= 0) continue;
+        final effectiveDay = getEffectiveDay(card, month, year);
+        addPrevisto(effectiveDay, totalForecast);
       }
 
       final recebimentosByRecurrence = <int, List<dynamic>>{};
@@ -2724,7 +2955,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
         if (acc.isRecurrent) continue;
         if (acc.recurrenceId != null) continue;
         final effectiveDay = getEffectiveDay(acc, month, year);
-        addRecebimento(effectiveDay, acc.value);
+        final hasLaunch =
+            acc.value > 0 || (acc.id != null && paymentAccountIds.contains(acc.id));
+        if (hasLaunch) {
+          addRecebimento(effectiveDay, acc.value);
+        } else {
+          addRecebimentoAvulsa(effectiveDay, acc.value);
+        }
       }
 
       for (final entry in recebimentosByRecurrence.entries) {
@@ -2732,8 +2969,29 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
         list.sort((a, b) => (b.id ?? 0).compareTo(a.id ?? 0));
         final selected = list.first;
         final effectiveDay = getEffectiveDay(selected, month, year);
-        addRecebimento(effectiveDay, selected.value);
+        final hasLaunch =
+            selected.value > 0 || (selected.id != null && paymentAccountIds.contains(selected.id));
+        if (hasLaunch) {
+          addRecebimento(effectiveDay, selected.value);
+        } else {
+          final parent = receiveRecurringParents[entry.key];
+          if (parent != null) {
+            final previstoValue = parent.estimatedValue ?? parent.value;
+            addRecebimentoPrevisto(effectiveDay, previstoValue);
+          }
+        }
       }
+
+      for (final entry in receiveRecurringParents.entries) {
+        if (recebimentosByRecurrence.containsKey(entry.key)) continue;
+        final acc = entry.value;
+        if (!hasRecurrenceStarted(acc)) continue;
+        final effectiveDay = getEffectiveDay(acc, month, year);
+        final previstoValue = acc.estimatedValue ?? acc.value;
+        addRecebimentoPrevisto(effectiveDay, previstoValue);
+      }
+
+      // Recebimentos entram no total somente quando houver lancamento.
 
       return totalsByDay;
     } catch (e) {
@@ -2766,7 +3024,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                 int previstoCount,
                 int lancadoCount,
                 double recebimentos,
-                int recebimentosCount
+                int recebimentosCount,
+                double avulsas,
+                int avulsasCount,
+                double recebimentosPrevisto,
+                int recebimentosPrevistoCount,
+                double recebimentosAvulsas,
+                int recebimentosAvulsasCount
               })>> _loadWeeklyTotals(DateTime startOfWeek) async {
     final dates = List.generate(7, (i) => startOfWeek.add(Duration(days: i)));
 
@@ -2776,7 +3040,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     }
 
     final totalsByMonthKey =
-        <String, Map<int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount})>>{};
+        <String, Map<int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount, double avulsas, int avulsasCount, double recebimentosPrevisto, int recebimentosPrevistoCount, double recebimentosAvulsas, int recebimentosAvulsasCount})>>{};
 
     await Future.wait(
       monthKeys.entries.map((entry) async {
@@ -2792,6 +3056,12 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       lancadoCount: 0,
       recebimentos: 0.0,
       recebimentosCount: 0,
+      avulsas: 0.0,
+      avulsasCount: 0,
+      recebimentosPrevisto: 0.0,
+      recebimentosPrevistoCount: 0,
+      recebimentosAvulsas: 0.0,
+      recebimentosAvulsasCount: 0,
     );
 
     final result = <
@@ -2802,7 +3072,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           int previstoCount,
           int lancadoCount,
           double recebimentos,
-          int recebimentosCount
+          int recebimentosCount,
+          double avulsas,
+          int avulsasCount,
+          double recebimentosPrevisto,
+          int recebimentosPrevistoCount,
+          double recebimentosAvulsas,
+          int recebimentosAvulsasCount
         })>{};
 
     for (final date in dates) {
@@ -2912,7 +3188,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
         }
 
         return FutureBuilder<
-            Map<int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount})>>(
+            Map<int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount, double avulsas, int avulsasCount, double recebimentosPrevisto, int recebimentosPrevistoCount, double recebimentosAvulsas, int recebimentosAvulsasCount})>>(
           future: _monthlyTotalsFuture,
           builder: (context, totalsSnapshot) {
             final totalsByDay = totalsSnapshot.data ?? {};
@@ -2924,9 +3200,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
               final daily = totalsByDay[day];
               if (daily == null) continue;
               monthPayTotal += (daily.previsto + daily.lancado);
-              monthPayPrevistoTotal += daily.previsto;
+              monthPayPrevistoTotal += (daily.previsto + daily.avulsas);
               monthReceiveTotal += daily.recebimentos;
-              monthReceivePrevistoTotal += daily.recebimentos;
+              monthReceivePrevistoTotal += (daily.recebimentosPrevisto + daily.recebimentosAvulsas);
             }
             return GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -3674,7 +3950,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                   int previstoCount,
                   int lancadoCount,
                   double recebimentos,
-                  int recebimentosCount
+                  int recebimentosCount,
+                  double avulsas,
+                  int avulsasCount,
+                  double recebimentosPrevisto,
+                  int recebimentosPrevistoCount,
+                  double recebimentosAvulsas,
+                  int recebimentosAvulsasCount
                 })>>(
           future: _loadWeeklyTotals(startOfWeek),
           builder: (context, totalsSnapshot) {
@@ -3688,10 +3970,10 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                   '${day.date.year}-${day.date.month.toString().padLeft(2, '0')}-${day.date.day.toString().padLeft(2, '0')}';
               final daily = totalsByDate[key];
               if (daily == null) continue;
-              weekPayTotal += (daily.previsto + daily.lancado);
-              weekPayPrevistoTotal += daily.previsto;
+              weekPayTotal += (daily.lancado + daily.avulsas);
+              weekPayPrevistoTotal += (daily.previsto + daily.avulsas);
               weekReceiveTotal += daily.recebimentos;
-              weekReceivePrevistoTotal += daily.recebimentos;
+              weekReceivePrevistoTotal += (daily.recebimentosPrevisto + daily.recebimentosAvulsas);
             }
 
             return GestureDetector(
@@ -4028,7 +4310,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                   '${day.date.year}-${day.date.month.toString().padLeft(2, '0')}-${day.date.day.toString().padLeft(2, '0')}';
                               final dailyTotals = totalsByDate[totalsKey];
                               final payTotal =
-                                  dailyTotals == null ? 0.0 : (dailyTotals.previsto + dailyTotals.lancado);
+                                  dailyTotals == null ? 0.0 : (dailyTotals.lancado + dailyTotals.avulsas);
                               final receiveTotal = dailyTotals?.recebimentos ?? 0.0;
 
                               Color bgColor = Colors.white;
@@ -4100,7 +4382,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                                               decoration: BoxDecoration(
-                                                color: Colors.white,
+                                                color: Colors.red.shade700,
                                                 borderRadius: BorderRadius.circular(3),
                                                 border: Border.all(color: Colors.red.shade700, width: 1),
                                               ),
@@ -4109,7 +4391,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                 style: const TextStyle(
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w700,
-                                                  color: Colors.red,
+                                                  color: Colors.white,
                                                 ),
                                               ),
                                             ),
@@ -4118,7 +4400,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                                               decoration: BoxDecoration(
-                                                color: Colors.white,
+                                                color: Colors.green.shade700,
                                                 borderRadius: BorderRadius.circular(3),
                                                 border: Border.all(color: Colors.green.shade700, width: 1),
                                               ),
@@ -4128,7 +4410,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                 style: const TextStyle(
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w700,
-                                                  color: Colors.green,
+                                                  color: Colors.white,
                                                 ),
                                               ),
                                             ),
@@ -4164,15 +4446,34 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                           final payAccounts = dayAccounts.where((accData) {
                                             final isReceber = accData['isRecebimento'] as bool;
                                             final value = accData['value'] as double;
-                                            return !isReceber && value > 0;
+                                            final launchedValue = accData['launchedValue'] as double?;
+                                            final hasLaunch = launchedValue != null && launchedValue > 0;
+                                            final isUnlaunchedZero =
+                                                !hasLaunch && value <= 0;
+                                            return !isReceber && (value > 0 || isUnlaunchedZero || hasLaunch);
                                           }).toList();
                                           final receiveAccounts = dayAccounts.where((accData) {
                                             final isReceber = accData['isRecebimento'] as bool;
                                             final value = accData['value'] as double;
                                             final launchedValue = accData['launchedValue'] as double?;
-                                            final displayValue =
-                                                (launchedValue != null && launchedValue > 0) ? launchedValue : value;
-                                            return isReceber && displayValue > 0;
+                                            final hasLaunch = launchedValue != null && launchedValue > 0;
+                                            final isRecurringChild = accData['isRecurringChild'] as bool? ?? false;
+                                            final isRecurringParent = accData['isRecurringParent'] as bool? ?? false;
+                                            final isCardParent = accData['isCardParent'] as bool? ?? false;
+                                            final isParentEntry = isRecurringParent || isCardParent;
+                                            final isUnlaunchedZero =
+                                                !hasLaunch && value <= 0;
+                                            if (!isReceber) return false;
+                                            if (hasLaunch) {
+                                              return true;
+                                            }
+                                            if (isParentEntry && value > 0) {
+                                              return true;
+                                            }
+                                            if (isRecurringChild && isUnlaunchedZero) {
+                                              return false;
+                                            }
+                                            return value > 0;
                                           }).toList();
 
                                           if (payAccounts.isEmpty && receiveAccounts.isEmpty) {
@@ -4182,27 +4483,35 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                           Widget buildAccountBadge(Map<String, dynamic> accData, bool alignRight) {
                                             final value = accData['value'] as double;
                                             final launchedValue = accData['launchedValue'] as double?;
-                                            final rawCategoryName = accData['categoryName'] as String;
-                                            final categoryName = rawCategoryName.contains('||')
-                                                ? rawCategoryName.split('||').last.trim()
-                                                : rawCategoryName;
                                             final description = accData['description'] as String? ?? '';
                                             final typeIcon = accData['typeIcon'] as String;
                                             final isReceber = accData['isRecebimento'] as bool;
                                             final account = accData['account'];
                                             final isCard = isReceber && (account?.cardBrand != null);
-                                            final badgeBgColor =
+                                            final badgeColor =
                                                 isReceber ? Colors.green.shade700 : Colors.red.shade700;
+                                            final hasLaunch = launchedValue != null && launchedValue > 0;
+                                            final isRecurringParent = accData['isRecurringParent'] as bool? ?? false;
+                                            final isCardParent = accData['isCardParent'] as bool? ?? false;
+                                            final isInstallment = accData['isInstallment'] as bool? ?? false;
+                                            final isParentEntry = isRecurringParent || isCardParent;
                                             final displayValue =
-                                                (launchedValue != null && launchedValue > 0) ? launchedValue : value;
+                                                isParentEntry && hasLaunch ? launchedValue : value;
                                             final cardBank =
                                                 (account?.cardBank ?? account?.description ?? '').toString().trim();
+                                            final displayDescription = isCard && cardBank.isNotEmpty
+                                                ? cardBank
+                                                : description;
+                                            final showPlannedMark =
+                                                isParentEntry && !hasLaunch && value > 0 && !isInstallment;
 
                                             return Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                              constraints: const BoxConstraints(minHeight: 20),
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                               decoration: BoxDecoration(
-                                                color: badgeBgColor,
+                                                color: Colors.white,
                                                 borderRadius: BorderRadius.circular(3),
+                                                border: Border.all(color: badgeColor, width: 1.5),
                                               ),
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
@@ -4214,24 +4523,33 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                       typeIcon,
                                                       style: const TextStyle(
                                                         fontSize: 14,
-                                                        color: Colors.white,
                                                       ),
                                                     ),
                                                   const SizedBox(width: 3),
                                                   Flexible(
-                                                    child: Text(
-                                                      isReceber
-                                                          ? (isCard
-                                                              ? '$cardBank ${moneyFormat.format(displayValue)}'
-                                                              : '$categoryName $description ${moneyFormat.format(displayValue)}')
-                                                          : '$categoryName $description ${moneyFormat.format(value)}',
-                                                      style: const TextStyle(
-                                                        fontSize: 14,
-                                                        fontWeight: FontWeight.w600,
-                                                        color: Colors.white,
+                                                    child: Text.rich(
+                                                      TextSpan(
+                                                        children: [
+                                                          TextSpan(
+                                                            text:
+                                                                '$displayDescription ${moneyFormat.format(displayValue)}',
+                                                            style: TextStyle(
+                                                              fontSize: 14,
+                                                              fontWeight: FontWeight.w600,
+                                                              color: showPlannedMark ? Colors.brown : badgeColor,
+                                                            ),
+                                                          ),
+                                                          if (showPlannedMark)
+                                                            const TextSpan(
+                                                              text: ' P',
+                                                              style: TextStyle(
+                                                                fontSize: 14,
+                                                                fontWeight: FontWeight.w600,
+                                                                color: Colors.brown,
+                                                              ),
+                                                            ),
+                                                        ],
                                                       ),
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
                                                       textAlign: alignRight ? TextAlign.right : TextAlign.left,
                                                     ),
                                                   ),

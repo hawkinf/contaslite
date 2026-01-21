@@ -996,7 +996,8 @@ class DatabaseHelper {
     final db = await database;
     final maps = await db.query(
       'accounts',
-      where: 'cardBrand IS NOT NULL',
+      where:
+          'cardBrand IS NOT NULL AND recurrenceId IS NULL AND (month IS NULL OR month = 0) AND (year IS NULL OR year = 0)',
       orderBy: 'cardBank ASC',
     );
     return maps.map((json) => Account.fromMap(json)).toList();
