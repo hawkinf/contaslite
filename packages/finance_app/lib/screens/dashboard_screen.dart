@@ -615,7 +615,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               debugPrint('   - ${acc.description} (id=${acc.id}, recurrenceId=${acc.recurrenceId}, value=${acc.value})');
             }
           }
-          processedList.addAll(monthAccounts);
+          processedList.addAll(
+            monthAccounts.where((account) => !(account.cardBrand != null && account.recurrenceId == null)),
+          );
 
           // Adicionar recorrências não lançadas neste mês
           for (var rec in recurrents) {
@@ -813,7 +815,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
         debugPrint('✓ Filtro de período ($_periodFilter): $beforePeriod → ${processedList.length} contas');
       }
       
-      processedList.sort((a, b) => a.dueDay.compareTo(b.dueDay));
+      processedList.sort((a, b) {
+        final dayCompare = a.dueDay.compareTo(b.dueDay);
+        if (dayCompare != 0) return dayCompare;
+        final aIsCard = a.cardBrand != null;
+        final bIsCard = b.cardBrand != null;
+        final aType = typeMap[a.typeId]?.toLowerCase() ?? '';
+        final bType = typeMap[b.typeId]?.toLowerCase() ?? '';
+        final aIsReceb = aType.contains('receb');
+        final bIsReceb = bType.contains('receb');
+        int rank(dynamic acc, bool isCard, bool isReceb) {
+          if (isCard) return 0;
+          if (!isReceb) return 1;
+          return 2;
+        }
+        final aRank = rank(a, aIsCard, aIsReceb);
+        final bRank = rank(b, bIsCard, bIsReceb);
+        return aRank.compareTo(bRank);
+      });
       
       final double totalForecast = processedList.fold(0.0, (sum, item) {
         if (item.cardBrand != null && item.isRecurrent) {
@@ -895,11 +914,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (isCard) {
           final breakdown = CardBreakdown.parse(item.observation);
           // Previsto do cartão vem do breakdown
-          final cardPrevisto = breakdown.total > 0 ? breakdown.total : item.value;
+          final cardPrevisto = breakdown.total;
           // Lançado é o value da fatura
           itemLancado = item.value;
           // Previsto: se tem valor lançado, usa lançado; senão usa previsto
-          itemPrevisto = itemLancado > 0.01 ? itemLancado : cardPrevisto;
+          itemPrevisto = cardPrevisto;
         } else if (isRecurrenceParent) {
           // Conta pai de recorrência: não soma no lançado, mas soma no previsto
           itemPrevisto = item.estimatedValue ?? item.value;
@@ -1573,7 +1592,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final breakdown = isCard ? CardBreakdown.parse(account.observation) : const CardBreakdown(total: 0, installments: 0, oneOff: 0, subscriptions: 0);
     // Valor previsto para exibir no badge (estimatedValue para recorrências)
     final double previstoValue = isCard
-        ? (breakdown.total > 0 ? breakdown.total : account.value)
+        ? breakdown.total
         : (isRecurrent && account.recurrenceId != null
             ? (account.estimatedValue ?? account.value)
             : account.value);

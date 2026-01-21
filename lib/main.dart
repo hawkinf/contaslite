@@ -2877,10 +2877,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
         final effectiveDay = getEffectiveDay(acc, month, year);
         final hasLaunch =
             acc.value > 0 || (acc.id != null && paymentAccountIds.contains(acc.id));
+        addAvulsa(effectiveDay, acc.value);
         if (hasLaunch) {
           addLancado(effectiveDay, acc.value);
-        } else {
-          addAvulsa(effectiveDay, acc.value);
         }
       }
 
@@ -2893,12 +2892,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
             selected.value > 0 || (selected.id != null && paymentAccountIds.contains(selected.id));
         if (hasLaunch) {
           addLancado(effectiveDay, selected.value);
-        } else {
-          final parent = payRecurringParents[entry.key];
-          if (parent != null) {
-            final previstoValue = parent.estimatedValue ?? parent.value;
-            addPrevisto(effectiveDay, previstoValue);
-          }
         }
       }
 
@@ -2957,10 +2950,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
         final effectiveDay = getEffectiveDay(acc, month, year);
         final hasLaunch =
             acc.value > 0 || (acc.id != null && paymentAccountIds.contains(acc.id));
+        addRecebimentoAvulsa(effectiveDay, acc.value);
         if (hasLaunch) {
           addRecebimento(effectiveDay, acc.value);
-        } else {
-          addRecebimentoAvulsa(effectiveDay, acc.value);
         }
       }
 
@@ -2973,17 +2965,10 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
             selected.value > 0 || (selected.id != null && paymentAccountIds.contains(selected.id));
         if (hasLaunch) {
           addRecebimento(effectiveDay, selected.value);
-        } else {
-          final parent = receiveRecurringParents[entry.key];
-          if (parent != null) {
-            final previstoValue = parent.estimatedValue ?? parent.value;
-            addRecebimentoPrevisto(effectiveDay, previstoValue);
-          }
         }
       }
 
       for (final entry in receiveRecurringParents.entries) {
-        if (recebimentosByRecurrence.containsKey(entry.key)) continue;
         final acc = entry.value;
         if (!hasRecurrenceStarted(acc)) continue;
         final effectiveDay = getEffectiveDay(acc, month, year);
@@ -3970,11 +3955,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                   '${day.date.year}-${day.date.month.toString().padLeft(2, '0')}-${day.date.day.toString().padLeft(2, '0')}';
               final daily = totalsByDate[key];
               if (daily == null) continue;
-              weekPayTotal += (daily.lancado + daily.avulsas);
+              weekPayTotal += daily.lancado;
               weekPayPrevistoTotal += (daily.previsto + daily.avulsas);
               weekReceiveTotal += daily.recebimentos;
               weekReceivePrevistoTotal += (daily.recebimentosPrevisto + daily.recebimentosAvulsas);
             }
+            final displayWeekPayTotal = weekPayTotal;
+            final displayWeekReceiveTotal = weekReceiveTotal;
 
             return GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -4188,7 +4175,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                       fit: BoxFit.scaleDown,
                                       alignment: Alignment.centerLeft,
                                       child: Text(
-                                        moneyFormat.format(weekPayTotal),
+                                              moneyFormat.format(displayWeekPayTotal),
                                         style: const TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w900,
@@ -4268,7 +4255,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                       fit: BoxFit.scaleDown,
                                       alignment: Alignment.centerLeft,
                                       child: Text(
-                                        moneyFormat.format(weekReceiveTotal),
+                                              moneyFormat.format(displayWeekReceiveTotal),
                                         style: const TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w900,
@@ -4309,10 +4296,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                               final totalsKey =
                                   '${day.date.year}-${day.date.month.toString().padLeft(2, '0')}-${day.date.day.toString().padLeft(2, '0')}';
                               final dailyTotals = totalsByDate[totalsKey];
-                              final payTotal =
-                                  dailyTotals == null ? 0.0 : (dailyTotals.lancado + dailyTotals.avulsas);
-                              final receiveTotal = dailyTotals?.recebimentos ?? 0.0;
-
                               Color bgColor = Colors.white;
                               Color textColor = Theme.of(context).colorScheme.onSurface;
 
@@ -4346,111 +4329,26 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                       Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                      Row(
-                                        children: [
-                                          SizedBox(
-                                            width: dayLabelWidth,
-                                            child: FittedBox(
-                                              fit: BoxFit.scaleDown,
-                                              alignment: Alignment.centerLeft,
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Text(
-                                                    day.label,
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: textColor,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    '${day.date.day}',
-                                                    style: TextStyle(
-                                                      fontSize: 18,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: textColor,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          if (payTotal > 0)
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                                              decoration: BoxDecoration(
-                                                color: Colors.red.shade700,
-                                                borderRadius: BorderRadius.circular(3),
-                                                border: Border.all(color: Colors.red.shade700, width: 1),
-                                              ),
-                                              child: Text(
-                                                'Total a Pagar: ${moneyFormat.format(payTotal)}',
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                            ),
-                                          const Spacer(),
-                                          if (receiveTotal > 0)
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                                              decoration: BoxDecoration(
-                                                color: Colors.green.shade700,
-                                                borderRadius: BorderRadius.circular(3),
-                                                border: Border.all(color: Colors.green.shade700, width: 1),
-                                              ),
-                                              child: Text(
-                                                'Total a Receber: ${moneyFormat.format(receiveTotal)}',
-                                                textAlign: TextAlign.right,
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 5),
-                                      if (isHoliday && holidayName != null)
-                                        Padding(
-                                          padding: const EdgeInsets.only(bottom: 5),
-                                          child: Text(
-                                            holidayName,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w600,
-                                              color: textColor,
-                                            ),
-                                          ),
-                                        ),
                                       FutureBuilder<List<Map<String, dynamic>>>(
                                         future: _getAccountsForDay(day.date.day, day.date.month, day.date.year),
                                         builder: (context, snapshot) {
-                                          if (!snapshot.hasData) {
-                                            return const SizedBox.shrink();
-                                          }
-
                                           final dayAccounts = snapshot.data ?? [];
-                                          if (dayAccounts.isEmpty) {
-                                            return const SizedBox.shrink();
-                                          }
-
+                                          final hasAccounts = dayAccounts.isNotEmpty;
                                           final payAccounts = dayAccounts.where((accData) {
                                             final isReceber = accData['isRecebimento'] as bool;
                                             final value = accData['value'] as double;
                                             final launchedValue = accData['launchedValue'] as double?;
                                             final hasLaunch = launchedValue != null && launchedValue > 0;
-                                            final isUnlaunchedZero =
-                                                !hasLaunch && value <= 0;
-                                            return !isReceber && (value > 0 || isUnlaunchedZero || hasLaunch);
+                                            final isRecurringChild = accData['isRecurringChild'] as bool? ?? false;
+                                            final isRecurringParent = accData['isRecurringParent'] as bool? ?? false;
+                                            final isCardParent = accData['isCardParent'] as bool? ?? false;
+                                            final isParentEntry = isRecurringParent || isCardParent;
+                                            final isUnlaunchedZero = !hasLaunch && value <= 0;
+                                            if (isReceber) return false;
+                                            if (hasLaunch) return true;
+                                            if (isParentEntry && value > 0) return true;
+                                            if (isRecurringChild && isUnlaunchedZero) return false;
+                                            return value > 0;
                                           }).toList();
                                           final receiveAccounts = dayAccounts.where((accData) {
                                             final isReceber = accData['isRecebimento'] as bool;
@@ -4476,9 +4374,28 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                             return value > 0;
                                           }).toList();
 
-                                          if (payAccounts.isEmpty && receiveAccounts.isEmpty) {
-                                            return const SizedBox.shrink();
+                                          double accountDisplayValue(Map<String, dynamic> accData) {
+                                            final value = accData['value'] as double;
+                                            final launchedValue = accData['launchedValue'] as double?;
+                                            final hasLaunch = launchedValue != null && launchedValue > 0;
+                                            final isRecurringParent =
+                                                accData['isRecurringParent'] as bool? ?? false;
+                                            final isCardParent = accData['isCardParent'] as bool? ?? false;
+                                            final isParentEntry = isRecurringParent || isCardParent;
+                                            if (hasLaunch && launchedValue != null && launchedValue > 0) {
+                                              return isParentEntry ? launchedValue : value;
+                                            }
+                                            return value;
                                           }
+
+                                          final payTotal =
+                                              payAccounts.fold<double>(0.0, (sum, acc) => sum + accountDisplayValue(acc));
+                                          final receiveTotal = receiveAccounts.fold<double>(
+                                              0.0, (sum, acc) => sum + accountDisplayValue(acc));
+                                          final showPayTotal =
+                                              hasAccounts && (payTotal > 0 || (dailyTotals?.previsto ?? 0) > 0);
+                                          final showReceiveTotal = hasAccounts &&
+                                              (receiveTotal > 0 || (dailyTotals?.recebimentosPrevisto ?? 0) > 0);
 
                                           Widget buildAccountBadge(Map<String, dynamic> accData, bool alignRight) {
                                             final value = accData['value'] as double;
@@ -4558,36 +4475,129 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                             );
                                           }
 
-                                          return Row(
+                                          return Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              SizedBox(width: dayLabelWidth + 8),
-                                              Expanded(
-                                                child: Column(
+                                              Row(
+                                                children: [
+                                                  SizedBox(
+                                                    width: dayLabelWidth,
+                                                    child: FittedBox(
+                                                      fit: BoxFit.scaleDown,
+                                                      alignment: Alignment.centerLeft,
+                                                      child: Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          Text(
+                                                            day.label,
+                                                            style: TextStyle(
+                                                              fontSize: 14,
+                                                              fontWeight: FontWeight.bold,
+                                                              color: textColor,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(width: 8),
+                                                          Text(
+                                                            '${day.date.day}',
+                                                            style: TextStyle(
+                                                              fontSize: 18,
+                                                              fontWeight: FontWeight.bold,
+                                                              color: textColor,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  if (showPayTotal)
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.red.shade700,
+                                                        borderRadius: BorderRadius.circular(3),
+                                                        border: Border.all(color: Colors.red.shade700, width: 1),
+                                                      ),
+                                                      child: Text(
+                                                        moneyFormat.format(payTotal),
+                                                        style: const TextStyle(
+                                                          fontSize: 14,
+                                                          fontWeight: FontWeight.w700,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  const Spacer(),
+                                                  if (showReceiveTotal)
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.green.shade700,
+                                                        borderRadius: BorderRadius.circular(3),
+                                                        border: Border.all(color: Colors.green.shade700, width: 1),
+                                                      ),
+                                                      child: Text(
+                                                        moneyFormat.format(receiveTotal),
+                                                        textAlign: TextAlign.right,
+                                                        style: const TextStyle(
+                                                          fontSize: 14,
+                                                          fontWeight: FontWeight.w700,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 5),
+                                              if (isHoliday && holidayName != null)
+                                                Padding(
+                                                  padding: const EdgeInsets.only(bottom: 5),
+                                                  child: Text(
+                                                    holidayName,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      fontSize: 9,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: textColor,
+                                                    ),
+                                                  ),
+                                                ),
+                                              if (payAccounts.isEmpty && receiveAccounts.isEmpty)
+                                                const SizedBox.shrink()
+                                              else
+                                                Row(
                                                   crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
-                                                    for (final accData in payAccounts) ...[
-                                                      buildAccountBadge(accData, false),
-                                                      const SizedBox(height: 2),
-                                                    ],
-                                                  ],
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                                  children: [
-                                                    for (final accData in receiveAccounts) ...[
-                                                      Align(
-                                                        alignment: Alignment.centerRight,
-                                                        child: buildAccountBadge(accData, true),
+                                                    SizedBox(width: dayLabelWidth + 8),
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          for (final accData in payAccounts) ...[
+                                                            buildAccountBadge(accData, false),
+                                                            const SizedBox(height: 2),
+                                                          ],
+                                                        ],
                                                       ),
-                                                      const SizedBox(height: 2),
-                                                    ],
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                                        children: [
+                                                          for (final accData in receiveAccounts) ...[
+                                                            Align(
+                                                              alignment: Alignment.centerRight,
+                                                              child: buildAccountBadge(accData, true),
+                                                            ),
+                                                            const SizedBox(height: 2),
+                                                          ],
+                                                        ],
+                                                      ),
+                                                    ),
                                                   ],
                                                 ),
-                                              ),
                                             ],
                                           );
                                         },
