@@ -2034,6 +2034,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final Widget? parentIcon = (parentLogo?.isNotEmpty ?? false)
         ? Text(parentLogo!, style: TextStyle(fontSize: categorySize * 0.95))
         : null;
+    final Widget? parentIconBox = parentIcon == null
+        ? null
+        : SizedBox(
+            width: childIconWidth,
+            height: childIconHeight,
+            child: FittedBox(fit: BoxFit.scaleDown, child: parentIcon),
+          );
     final Widget? childIcon = isCard
         ? brandBadge
         : ((childLogo?.isNotEmpty ?? false)
@@ -2046,6 +2053,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         height: childIconHeight,
         child: FittedBox(fit: BoxFit.scaleDown, child: childIcon),
         );
+    final bool showBadgesRow =
+        installmentDisplay.isInstallment || hasRecurrence || showPrevisto || isSinglePayment;
 
     return buildCardBody(
       padding: EdgeInsets.symmetric(vertical: sp(8), horizontal: sp(10)),
@@ -2065,256 +2074,273 @@ class _DashboardScreenState extends State<DashboardScreen> {
             calendarBadge,
             SizedBox(width: sp(12)),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  if (parentIcon != null) ...[
-                                    parentIcon,
-                              SizedBox(width: sp(6)),
-                            ],
-                            Expanded(
-                              child: Text(
-                                categoryParent ?? _typeNames[account.typeId] ?? 'Outro',
-                                style: TextStyle(
-                                  fontSize: categorySize,
-                                  fontWeight: FontWeight.bold,
-                                  color: textColor,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            SizedBox(width: sp(8)),
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: sp(6), vertical: sp(3)),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(sp(6)),
-                                border: Border.all(
-                                  color: isRecebimento
-                                      ? Colors.green.shade700
-                                      : Colors.red.shade700,
-                                  width: sp(1.2),
-                                ),
-                              ),
-                              child: Text(
-                                lancadoDisplay,
-                                style: TextStyle(
-                                  fontSize: valueMainSize,
-                                  fontWeight: FontWeight.w800,
-                                  color: isRecebimento
-                                      ? Colors.green.shade700
-                                      : Colors.red.shade700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: sp(2)),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            if (isCard && brandBadge != null) ...[
-                              brandBadge,
-                              SizedBox(width: sp(8)),
-                            ] else if (headerChildIcon != null) ...[
-                              headerChildIcon,
-                              SizedBox(width: sp(6)),
-                            ],
-                            Expanded(
-                              child: Text(
-                                '$childLabel - ${secondaryDescription.isNotEmpty ? secondaryDescription : account.description}',
-                                style: TextStyle(
-                                  fontSize: descriptionSize,
-                                  fontWeight: FontWeight.w600,
-                                  color: subTextColor,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: sp(8)),
-                      actionButtons,
-                    ],
-                  ),
-                  if (installmentDisplay.isInstallment || hasRecurrence || showPrevisto || isSinglePayment)
-                    Padding(
-                      padding: EdgeInsets.only(top: sp(4)),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Badge Parcela Única (não recorrente, não parcelada)
-                          if (isSinglePayment) ...[
-                            singlePaymentBadge,
-                          ],
-                          // Badge Recorrência
-                          if (hasRecurrence && !isCard) ...[
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
-                              decoration: BoxDecoration(
-                                color: isRecebimento ? Colors.green.shade700 : Colors.red.shade700,
-                                borderRadius: BorderRadius.circular(sp(8)),
-                                border: Border.all(
-                                  color: isRecebimento ? Colors.green.shade900 : Colors.red.shade900,
-                                  width: sp(1.25),
-                                ),
-                              ),
-                              child: Text(
-                                'Recorrência',
-                                style: TextStyle(
-                                  fontSize: badgeSize,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                            if (installmentDisplay.isInstallment) SizedBox(width: sp(8)),
-                          ],
-                          // Badge Parcela X/Y e Próx valor
-                          if (installmentDisplay.isInstallment) ...[
-                            installmentBadge,
-                            SizedBox(width: sp(8)),
-                            nextDueBadge,
-                          ],
-                          // Badge Previsto (para recorrências)
-                          if (showPrevisto) ...[
-                            if (installmentDisplay.isInstallment || (hasRecurrence && !isCard) || isSinglePayment)
-                              SizedBox(width: sp(8)),
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
-                              decoration: BoxDecoration(
-                                color: isRecebimento ? Colors.green.shade700 : Colors.red.shade700,
-                                borderRadius: BorderRadius.circular(sp(8)),
-                                border: Border.all(
-                                  color: isRecebimento ? Colors.green.shade900 : Colors.red.shade900,
-                                  width: sp(1.25),
-                                ),
-                              ),
-                              child: Text(
-                                'Previsto: $previstoDisplay',
-                                style: TextStyle(
-                                  fontSize: badgeSize,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ],
-                          if (isCard) ...[
-                            SizedBox(width: sp(8)),
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(sp(8)),
-                                border: Border.all(
-                                  color: Colors.black,
-                                  width: sp(1.25),
-                                ),
-                              ),
-                              child: Text(
-                                'Próx.: $cardNextDueLabel',
-                                style: TextStyle(
-                                  fontSize: badgeSize,
-                                  fontWeight: FontWeight.w700,
-                                  color: _adaptiveGreyTextColor(
-                                      context, Colors.grey.shade800),
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: sp(8)),
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(sp(8)),
-                                border: Border.all(
-                                  color: Colors.black,
-                                  width: sp(1.25),
-                                ),
-                              ),
-                              child: Text(
-                                'Previsto: $previstoDisplay',
-                                style: TextStyle(
-                                  fontSize: badgeSize,
-                                  fontWeight: FontWeight.w700,
-                                  color: _adaptiveGreyTextColor(
-                                      context, Colors.grey.shade800),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  if (isPaid)
-                    Padding(
-                      padding: EdgeInsets.only(top: sp(6)),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          InkWell(
-                            onTap: () => _undoPayment(account),
-                            child: Container(
-                              padding: EdgeInsets.symmetric(horizontal: sp(6), vertical: sp(3)),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.shade50,
-                                borderRadius: BorderRadius.circular(sp(4)),
-                                border: Border.all(color: Colors.orange.shade300, width: sp(1)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.undo, size: sp(14), color: AppColors.warningDark),
-                                  SizedBox(width: sp(4)),
-                                  Text(
-                                    'Desfazer',
-                                    style: TextStyle(
-                                      fontSize: badgeSize,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.warningDark,
-                                    ),
+              child: SizedBox(
+                height: calendarHeight,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              if (parentIconBox != null) ...[
+                                parentIconBox,
+                                SizedBox(width: sp(6)),
+                              ],
+                              Expanded(
+                                child: Text(
+                                  categoryParent ?? _typeNames[account.typeId] ?? 'Outro',
+                                  style: TextStyle(
+                                    fontSize: categorySize,
+                                    fontWeight: FontWeight.bold,
+                                    color: textColor,
                                   ),
-                                ],
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                            ),
+                              SizedBox(width: sp(8)),
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: sp(6), vertical: sp(3)),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(sp(6)),
+                                  border: Border.all(
+                                    color: isRecebimento
+                                        ? Colors.green.shade700
+                                        : Colors.red.shade700,
+                                    width: sp(1.2),
+                                  ),
+                                ),
+                                child: Text(
+                                  lancadoDisplay,
+                                  style: TextStyle(
+                                    fontSize: valueMainSize,
+                                    fontWeight: FontWeight.w800,
+                                    color: isRecebimento
+                                        ? Colors.green.shade700
+                                        : Colors.red.shade700,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          SizedBox(width: sp(8)),
-                          Text(
-                            _isRecebimentosFilter ? '*** RECEBIDO ***' : '*** PAGO ***',
-                            style: TextStyle(
-                              color: AppColors.successDark,
-                              fontWeight: FontWeight.bold,
-                              fontSize: paidSize,
-                            ),
+                        ),
+                      ],
+                    ),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Transform.translate(
+                          offset: Offset(0, -sp(8)),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    if (isCard && brandBadge != null) ...[
+                                      brandBadge,
+                                      SizedBox(width: sp(8)),
+                                    ] else if (headerChildIcon != null) ...[
+                                      headerChildIcon,
+                                      SizedBox(width: sp(6)),
+                                    ],
+                                    Expanded(
+                                      child: Text(
+                                        '$childLabel - ${secondaryDescription.isNotEmpty ? secondaryDescription : account.description}',
+                                        style: TextStyle(
+                                      fontSize: descriptionSize - 2,
+                                          fontWeight: FontWeight.w600,
+                                          color: subTextColor,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          SizedBox(width: sp(8)),
-                          Text(
-                            'via ${_paymentInfo[account.id!]?['method_name'] ?? ''}',
-                            style: TextStyle(
-                              fontSize: smallDateSize,
-                              color: _adaptiveGreyTextColor(context, Colors.grey.shade600),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
-                  SizedBox(height: sp(2)),
-                ],
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (showBadgesRow)
+                                Padding(
+                                  padding: EdgeInsets.only(top: sp(4)),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (isSinglePayment) ...[
+                                        singlePaymentBadge,
+                                      ],
+                                      if (hasRecurrence && !isCard) ...[
+                                        Container(
+                                          padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
+                                          decoration: BoxDecoration(
+                                            color: isRecebimento ? Colors.green.shade700 : Colors.red.shade700,
+                                            borderRadius: BorderRadius.circular(sp(8)),
+                                            border: Border.all(
+                                              color: isRecebimento ? Colors.green.shade900 : Colors.red.shade900,
+                                              width: sp(1.25),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Recorrência',
+                                            style: TextStyle(
+                                              fontSize: badgeSize,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                        if (installmentDisplay.isInstallment) SizedBox(width: sp(8)),
+                                      ],
+                                      if (installmentDisplay.isInstallment) ...[
+                                        installmentBadge,
+                                        SizedBox(width: sp(8)),
+                                        nextDueBadge,
+                                      ],
+                                      if (showPrevisto) ...[
+                                        if (installmentDisplay.isInstallment || (hasRecurrence && !isCard) || isSinglePayment)
+                                          SizedBox(width: sp(8)),
+                                        Container(
+                                          padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
+                                          decoration: BoxDecoration(
+                                            color: isRecebimento ? Colors.green.shade700 : Colors.red.shade700,
+                                            borderRadius: BorderRadius.circular(sp(8)),
+                                            border: Border.all(
+                                              color: isRecebimento ? Colors.green.shade900 : Colors.red.shade900,
+                                              width: sp(1.25),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Previsto: $previstoDisplay',
+                                            style: TextStyle(
+                                              fontSize: badgeSize,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                      if (isCard) ...[
+                                        SizedBox(width: sp(8)),
+                                        Container(
+                                          padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(sp(8)),
+                                            border: Border.all(
+                                              color: Colors.black,
+                                              width: sp(1.25),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Próx.: $cardNextDueLabel',
+                                            style: TextStyle(
+                                              fontSize: badgeSize,
+                                              fontWeight: FontWeight.w700,
+                                              color: _adaptiveGreyTextColor(
+                                                  context, Colors.grey.shade800),
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(width: sp(8)),
+                                        Container(
+                                          padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(sp(8)),
+                                            border: Border.all(
+                                              color: Colors.black,
+                                              width: sp(1.25),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Previsto: $previstoDisplay',
+                                            style: TextStyle(
+                                              fontSize: badgeSize,
+                                              fontWeight: FontWeight.w700,
+                                              color: _adaptiveGreyTextColor(
+                                                  context, Colors.grey.shade800),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              if (isPaid)
+                                Padding(
+                                  padding: EdgeInsets.only(top: sp(6)),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      InkWell(
+                                        onTap: () => _undoPayment(account),
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(horizontal: sp(6), vertical: sp(3)),
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange.shade50,
+                                            borderRadius: BorderRadius.circular(sp(4)),
+                                            border: Border.all(color: Colors.orange.shade300, width: sp(1)),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.undo, size: sp(14), color: AppColors.warningDark),
+                                              SizedBox(width: sp(4)),
+                                              Text(
+                                                'Desfazer',
+                                                style: TextStyle(
+                                                  fontSize: badgeSize,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: AppColors.warningDark,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: sp(8)),
+                                      Text(
+                                        _isRecebimentosFilter ? '*** RECEBIDO ***' : '*** PAGO ***',
+                                        style: TextStyle(
+                                          color: AppColors.successDark,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: paidSize,
+                                        ),
+                                      ),
+                                      SizedBox(width: sp(8)),
+                                      Text(
+                                        'via ${_paymentInfo[account.id!]?['method_name'] ?? ''}',
+                                        style: TextStyle(
+                                          fontSize: smallDateSize,
+                                          color: _adaptiveGreyTextColor(context, Colors.grey.shade600),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: sp(8)),
+                        actionButtons,
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -2344,12 +2370,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancelar'),
+            child: const Text('Cancelar'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.orange),
-            child: Text('Desfazer'),
+            child: const Text('Desfazer'),
           ),
         ],
       ),

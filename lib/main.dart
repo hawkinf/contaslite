@@ -4382,7 +4382,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                 accData['isRecurringParent'] as bool? ?? false;
                                             final isCardParent = accData['isCardParent'] as bool? ?? false;
                                             final isParentEntry = isRecurringParent || isCardParent;
-                                            if (hasLaunch && launchedValue != null && launchedValue > 0) {
+                                            if (hasLaunch) {
                                               return isParentEntry ? launchedValue : value;
                                             }
                                             return value;
