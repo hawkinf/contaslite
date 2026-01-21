@@ -185,8 +185,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Novos filtros
   bool _hidePaidAccounts = true; // Ocultar contas pagas/recebidas (true = oculta)
   String _periodFilter = 'month'; // 'month', 'currentWeek', 'nextWeek'
-  final GlobalKey _filterButtonKey = GlobalKey(); // Key para posicionar o popup
-
   // Controle do FAB durante scroll
   bool _isFabVisible = true;
   double _lastScrollOffset = 0;
@@ -304,93 +302,116 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   bool get _isCombinedView => widget.typeNameFilter == null && widget.excludeTypeNameFilter == null;
 
-  List<Widget> _buildAppBarActions({required bool includeFilter}) {
+  List<Widget> _buildAppBarActions({
+    required bool includeFilter,
+    Color? badgeFillColor,
+  }) {
     if (!includeFilter) return <Widget>[];
-    
-    // Botão de filtro com popup
+    final Color baseColor =
+        badgeFillColor ?? Theme.of(context).appBarTheme.backgroundColor ?? Colors.blue;
+    final Color fillColor = Color.lerp(baseColor, Colors.white, 0.28) ?? baseColor;
+    // Botao de filtro com badge
     return <Widget>[
-      PopupMenuButton<String>(
-        key: _filterButtonKey,
-        icon: Badge(
-          isLabelVisible: _hidePaidAccounts || _periodFilter != 'month',
-          backgroundColor: Colors.orange,
-          smallSize: 8,
-          child: const Icon(Icons.filter_list, color: Colors.white),
+      Transform.translate(
+        offset: const Offset(-8, 0),
+        child: IntrinsicWidth(
+          child: Container(
+            margin: const EdgeInsets.only(left: 20, right: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+            decoration: BoxDecoration(
+            color: fillColor,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.black, width: 1),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  blurRadius: 2,
+                  offset: const Offset(-1, -1),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.white, width: 1),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Checkbox(
+                    value: _hidePaidAccounts,
+                    onChanged: (value) {
+                      setState(() => _hidePaidAccounts = value ?? true);
+                      _loadData();
+                    },
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    side: const BorderSide(color: Colors.transparent, width: 0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    activeColor: Colors.transparent,
+                    checkColor: Colors.white,
+                  ),
+                ),
+                    const SizedBox(width: 6),
+                  const Text(
+                    'Ocultar Contas Pagas',
+                    style: TextStyle(fontSize: 13.2, fontWeight: FontWeight.w700, color: Colors.white),
+                  ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.black, width: 2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _periodFilter,
+                      isDense: true,
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _periodFilter = value);
+                        _applyPeriodFilter(value);
+                      },
+                    icon: const Icon(Icons.arrow_drop_down, size: 16, color: Colors.white),
+                    style: const TextStyle(fontSize: 13.2, fontWeight: FontWeight.w700, color: Colors.white),
+                      alignment: Alignment.center,
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'month',
+                          child: Center(child: Text('Mês inteiro')),
+                        ),
+                        DropdownMenuItem(
+                          value: 'currentWeek',
+                          child: Center(child: Text('Semana atual')),
+                        ),
+                        DropdownMenuItem(
+                          value: 'nextWeek',
+                          child: Center(child: Text('Próxima semana')),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-        tooltip: 'Filtros',
-        offset: const Offset(0, 45),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        itemBuilder: (context) => [
-          // Checkbox ocultar pagas
-          PopupMenuItem<String>(
-            enabled: false,
-            padding: EdgeInsets.zero,
-            child: StatefulBuilder(
-              builder: (context, setStateLocal) => CheckboxListTile(
-                value: _hidePaidAccounts,
-                onChanged: (value) {
-                  setState(() => _hidePaidAccounts = value ?? true);
-                  setStateLocal(() {});
-                  _loadData();
-                },
-                title: const Text('Ocultar Contas Pagas/Recebidas', style: TextStyle(fontSize: 14)),
-                controlAffinity: ListTileControlAffinity.leading,
-                dense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-              ),
-            ),
-          ),
-          const PopupMenuDivider(),
-          // Título período
-          const PopupMenuItem<String>(
-            enabled: false,
-            height: 32,
-            child: Text('Período:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-          ),
-          // Opções de período
-          PopupMenuItem<String>(
-            value: 'month',
-            child: Row(
-              children: [
-                Icon(Icons.calendar_month, size: 18, color: _periodFilter == 'month' ? AppColors.primary : Colors.grey),
-                const SizedBox(width: 8),
-                const Text('Mês inteiro'),
-                const Spacer(),
-                if (_periodFilter == 'month') const Icon(Icons.check, size: 18, color: AppColors.primary),
-              ],
-            ),
-          ),
-          PopupMenuItem<String>(
-            value: 'currentWeek',
-            child: Row(
-              children: [
-                Icon(Icons.today, size: 18, color: _periodFilter == 'currentWeek' ? AppColors.primary : Colors.grey),
-                const SizedBox(width: 8),
-                const Text('Semana atual'),
-                const Spacer(),
-                if (_periodFilter == 'currentWeek') const Icon(Icons.check, size: 18, color: AppColors.primary),
-              ],
-            ),
-          ),
-          PopupMenuItem<String>(
-            value: 'nextWeek',
-            child: Row(
-              children: [
-                Icon(Icons.next_week, size: 18, color: _periodFilter == 'nextWeek' ? AppColors.primary : Colors.grey),
-                const SizedBox(width: 8),
-                const Text('Próxima semana'),
-                const Spacer(),
-                if (_periodFilter == 'nextWeek') const Icon(Icons.check, size: 18, color: AppColors.primary),
-              ],
-            ),
-          ),
-        ],
-        onSelected: (value) {
-          if (value == 'month' || value == 'currentWeek' || value == 'nextWeek') {
-            setState(() => _periodFilter = value);
-            _applyPeriodFilter(value);
-          }
-        },
       ),
     ];
   }
@@ -1057,7 +1078,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                onNext: () => _changeMonth(1),
                backgroundColor: appBarBg,
                foregroundColor: appBarFg,
-               actions: _buildAppBarActions(includeFilter: !_inlinePreserveAppBar),
+               actions: _buildAppBarActions(
+                 includeFilter: !_inlinePreserveAppBar,
+                 badgeFillColor: appBarBg,
+               ),
                showFilters: _isCombinedView && !_inlinePreserveAppBar,
                filterContasPagar: _showContasPagar,
                filterContasReceber: _showContasReceber,
@@ -1088,6 +1112,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 vertical: isCompactHeight ? 8 : 12,
               );
               final listBottomPadding = isCompactHeight ? 72.0 : 100.0;
+              const headerScale = 0.8;
+              double hs(double value) => value * headerScale;
 
               final headerWidget = isCombined
                 ? Container(
@@ -1098,7 +1124,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         // Card A RECEBER
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            padding: EdgeInsets.symmetric(horizontal: hs(16), vertical: hs(14)),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.topLeft,
@@ -1108,12 +1134,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   Colors.green.shade800,
                                 ],
                               ),
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(hs(16)),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.green.shade400.withValues(alpha: 0.5),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
+                                  blurRadius: hs(12),
+                                  offset: Offset(0, hs(4)),
                                 ),
                               ],
                             ),
@@ -1123,53 +1149,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 Row(
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.all(7),
+                                      padding: EdgeInsets.all(hs(7)),
                                       decoration: BoxDecoration(
                                         color: Colors.white.withValues(alpha: 0.25),
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(hs(8)),
                                       ),
                                       child: const Icon(
                                         Icons.trending_up_rounded,
                                         color: Colors.white,
-                                        size: 18,
+                                        size: 18 * headerScale,
                                       ),
                                     ),
-                                    const SizedBox(width: 10),
-                                    const Expanded(
-                                      child: Text(
-                                        'A RECEBER',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 12,
-                                          color: Colors.white,
-                                          letterSpacing: 0.6,
+                                    SizedBox(width: hs(10)),
+                                    Expanded(
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: RichText(
+                                          text: TextSpan(
+                                            style: const TextStyle(color: Colors.white),
+                                            children: [
+                                              TextSpan(
+                                                text: UtilBrasilFields.obterReal(_totalLancadoReceber),
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: hs(32),
+                                                  letterSpacing: 0.6,
+                                                ),
+                                              ),
+                                              TextSpan(
+                                                text: ' / Previsto: ${UtilBrasilFields.obterReal(_totalPrevistoReceber)}',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: hs(32) * 0.65,
+                                                  color: Colors.white.withValues(alpha: 0.9),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 10),
-                                FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    UtilBrasilFields.obterReal(_totalLancadoReceber),
-                                    style: TextStyle(
-                                      fontSize: isCompactHeight ? 24.0 : 28.0,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Previsto: ${UtilBrasilFields.obterReal(_totalPrevistoReceber)}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.white.withValues(alpha: 0.85),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
+                                SizedBox(height: hs(8)),
                               ],
                             ),
                           ),
@@ -1178,7 +1201,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         // Card A PAGAR
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            padding: EdgeInsets.symmetric(horizontal: hs(16), vertical: hs(14)),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.topLeft,
@@ -1188,12 +1211,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   Colors.red.shade800,
                                 ],
                               ),
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(hs(16)),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.red.shade400.withValues(alpha: 0.5),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
+                                  blurRadius: hs(12),
+                                  offset: Offset(0, hs(4)),
                                 ),
                               ],
                             ),
@@ -1203,53 +1226,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 Row(
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.all(7),
+                                      padding: EdgeInsets.all(hs(7)),
                                       decoration: BoxDecoration(
                                         color: Colors.white.withValues(alpha: 0.25),
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(hs(8)),
                                       ),
                                       child: const Icon(
                                         Icons.trending_down_rounded,
                                         color: Colors.white,
-                                        size: 18,
+                                        size: 18 * headerScale,
                                       ),
                                     ),
-                                    const SizedBox(width: 10),
-                                    const Expanded(
-                                      child: Text(
-                                        'A PAGAR',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 12,
-                                          color: Colors.white,
-                                          letterSpacing: 0.6,
+                                    SizedBox(width: hs(10)),
+                                    Expanded(
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: RichText(
+                                          text: TextSpan(
+                                            style: const TextStyle(color: Colors.white),
+                                            children: [
+                                              TextSpan(
+                                                text: UtilBrasilFields.obterReal(_totalLancadoPagar),
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: hs(32),
+                                                  letterSpacing: 0.6,
+                                                ),
+                                              ),
+                                              TextSpan(
+                                                text: ' / Previsto: ${UtilBrasilFields.obterReal(_totalPrevistoPagar)}',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: hs(32) * 0.65,
+                                                  color: Colors.white.withValues(alpha: 0.9),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 10),
-                                FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    UtilBrasilFields.obterReal(_totalLancadoPagar),
-                                    style: TextStyle(
-                                      fontSize: isCompactHeight ? 24.0 : 28.0,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Previsto: ${UtilBrasilFields.obterReal(_totalPrevistoPagar)}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.white.withValues(alpha: 0.85),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
+                                SizedBox(height: hs(8)),
                               ],
                             ),
                           ),
@@ -2165,15 +2185,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       SizedBox(width: sp(6)),
                                     ],
                                     Expanded(
-                                      child: Text(
-                                        middleLineText,
-                                        style: TextStyle(
-                                      fontSize: descriptionSize - 2,
-                                          fontWeight: FontWeight.w600,
-                                          color: subTextColor,
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          middleLineText,
+                                          style: TextStyle(
+                                            fontSize: descriptionSize - 2,
+                                            fontWeight: FontWeight.w600,
+                                            color: subTextColor,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   ],

@@ -88,7 +88,12 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
     final defaultMonthStyle = monthStyle ??
         TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: effectiveForegroundColor);
 
-    final Widget? filtersBadge = showFilters ? _buildFiltersBadge() : null;
+    final Color baseAppBarColor =
+        backgroundColor ?? Theme.of(context).appBarTheme.backgroundColor ?? Colors.blue;
+    final Color badgeFillColor =
+        Color.lerp(baseAppBarColor, Colors.white, 0.28) ?? baseAppBarColor;
+    final Widget? filtersBadge =
+        showFilters ? _buildFiltersBadge(badgeFillColor) : null;
 
     return AppBar(
       centerTitle: true,
@@ -100,67 +105,81 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
         bottom: BorderSide(color: Colors.black54, width: 1),
       ),
       leading: leading,
-      title: SizedBox(
-        width: double.infinity,
+      title: const SizedBox.shrink(),
+      flexibleSpace: SafeArea(
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (title != null)
-                  Text(
-                    title!,
-                    style: defaultTitleStyle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.black, width: 1),
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (title != null)
+                    Text(
+                      title!,
+                      style: defaultTitleStyle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.chevron_left, size: 20, color: Colors.black),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          onPressed: onPrevious,
-                          tooltip: 'Mês anterior',
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: badgeFillColor,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.black, width: 1),
+                                boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                                BoxShadow(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  blurRadius: 2,
+                                  offset: const Offset(-1, -1),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                    icon: const Icon(Icons.chevron_left, size: 20, color: Colors.white),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed: onPrevious,
+                                  tooltip: 'Mês anterior',
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  monthLabel,
+                                    style: defaultMonthStyle.copyWith(color: Colors.white),
+                                ),
+                                const SizedBox(width: 6),
+                                IconButton(
+                                    icon: const Icon(Icons.chevron_right, size: 20, color: Colors.white),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed: onNext,
+                                  tooltip: 'Próximo mês',
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          monthLabel,
-                          style: defaultMonthStyle.copyWith(color: Colors.black),
-                        ),
-                        const SizedBox(width: 6),
-                        IconButton(
-                          icon: const Icon(Icons.chevron_right, size: 20, color: Colors.black),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          onPressed: onNext,
-                          tooltip: 'Próximo mês',
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-              ],
             ),
             if (filtersBadge != null)
               Align(
@@ -174,15 +193,27 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
-  Widget _buildFiltersBadge() {
+  Widget _buildFiltersBadge(Color badgeFillColor) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4),
+      padding: const EdgeInsets.only(left: 16),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: badgeFillColor,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: Colors.black, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+            BoxShadow(
+              color: Colors.white.withValues(alpha: 0.9),
+              blurRadius: 2,
+              offset: const Offset(-1, -1),
+            ),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -190,7 +221,7 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
           children: [
             _buildSwitchRow('Pagar', filterContasPagar, onFilterContasPagarChanged, Colors.red),
             const SizedBox(height: 0),
-            _buildSwitchRow('Receber', filterContasReceber, onFilterContasReceberChanged, Colors.blue),
+            _buildSwitchRow('Receber', filterContasReceber, onFilterContasReceberChanged, Colors.green),
             const SizedBox(height: 0),
             _buildSwitchRow('Cartões', filterCartoes, onFilterCartoesChanged, Colors.black),
           ],
@@ -207,19 +238,26 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
+          Container(
             width: 30,
             height: 16,
-            child: Transform.scale(
-              scale: 0.6,
-              child: Switch(
-                value: value,
-                onChanged: onChanged,
-                activeThumbColor: switchColor,
-                activeTrackColor: switchColor.withValues(alpha: 0.5),
-                inactiveThumbColor: switchColor.withValues(alpha: 0.4),
-                inactiveTrackColor: switchColor.withValues(alpha: 0.2),
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.black, width: 1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: Transform.scale(
+                scale: 0.6,
+                child: Switch(
+                  value: value,
+                  onChanged: onChanged,
+                  activeThumbColor: switchColor,
+                  activeTrackColor: switchColor.withValues(alpha: 0.5),
+                  inactiveThumbColor: switchColor.withValues(alpha: 0.4),
+                  inactiveTrackColor: switchColor.withValues(alpha: 0.2),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
               ),
             ),
           ),
