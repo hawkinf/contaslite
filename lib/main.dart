@@ -628,11 +628,11 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     final firstDayOfWeek = firstDayOfMonth.weekday % 7;
     final daysInMonth = DateTime(_selectedYear, month + 1, 0).day;
     const baseDayColor = Color(0xFFE5E6EA);
-    const saturdayColor = Color(0xFFF7B3B3);
-    const sundayColor = Color(0xFFD75252);
-    const holidayColor = Color(0xFF3F9441);
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDarkMode ? Colors.white : Colors.black;
+    const weekendBgColor = Color(0xFFF3F4F6); // Fundo cinza claro para fins de semana
+    const saturdayTextColor = Color(0xFF6B7280); // Texto cinza para sábado
+    const sundayTextColor = Color(0xFFDC2626); // Texto vermelho para domingo
+    const holidayBgColor = Color(0xFFDBEAFE); // Azul claro para feriados (não verde)
+    const holidayTextColor = Color(0xFF1E40AF); // Azul escuro para texto de feriado
     final neutralTextColor = Theme.of(context).colorScheme.onSurface;
     final holidayEntryColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75);
     final moneyFormat = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
@@ -648,40 +648,15 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
         monthHolidayEntries.add(MapEntry(day, entryName));
       }
     }
-    final visibleHolidayEntries = monthHolidayEntries.take(4).toList();
-
-    Widget buildTotalBadge({required Color color, required String value}) {
-      return SizedBox(
-        width: double.infinity,
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 10, vertical: isSmallMobile ? 3 : 4),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: isSmallMobile ? 9.5 : 11.5,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
+    final visibleHolidayEntries = monthHolidayEntries.take(2).toList();
+    final remainingHolidaysCount = monthHolidayEntries.length - 2;
 
     return Card(
-      elevation: 1,
+      elevation: 2,
+      shadowColor: Colors.black.withValues(alpha: 0.1),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: borderColor, width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: const Color(0x1F000000), width: 1), // rgba(0,0,0,0.12)
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -692,10 +667,52 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           children: [
             Padding(
               padding: const EdgeInsets.only(top: 4, bottom: 2),
-              child: Text(
-                monthNames[monthIndex],
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: isSmallMobile ? 12 : 14, fontWeight: FontWeight.w900, color: neutralTextColor),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    monthNames[monthIndex],
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: isSmallMobile ? 12 : 14, fontWeight: FontWeight.w900, color: neutralTextColor),
+                  ),
+                  if (totalsReady && (totalPagar > 0 || totalReceber > 0)) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (totalPagar > 0) ...[
+                          Icon(Icons.arrow_downward, size: isSmallMobile ? 8 : 9, color: Colors.red.shade700),
+                          const SizedBox(width: 2),
+                          Text(
+                            moneyFormat.format(totalPagar),
+                            style: TextStyle(
+                              fontSize: isSmallMobile ? 7.5 : 8.5,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.red.shade700,
+                            ),
+                          ),
+                        ],
+                        if (totalPagar > 0 && totalReceber > 0) ...[
+                          const SizedBox(width: 4),
+                          Text('|', style: TextStyle(fontSize: isSmallMobile ? 7 : 8, color: neutralTextColor.withValues(alpha: 0.5))),
+                          const SizedBox(width: 4),
+                        ],
+                        if (totalReceber > 0) ...[
+                          Icon(Icons.arrow_upward, size: isSmallMobile ? 8 : 9, color: Colors.green.shade700),
+                          const SizedBox(width: 2),
+                          Text(
+                            moneyFormat.format(totalReceber),
+                            style: TextStyle(
+                              fontSize: isSmallMobile ? 7.5 : 8.5,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.green.shade700,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
             Row(
@@ -748,46 +765,37 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
 
                       Color bgColor = baseDayColor;
                       Color dayTextColor = neutralTextColor;
-                      Color? todayHighlightColor;
+                      bool showTodayBorder = false;
 
                       if (isToday) {
-                        todayHighlightColor = Colors.yellow[600] ?? Colors.yellow;
-                        dayTextColor = Colors.black;
+                        bgColor = Colors.blue.shade50.withValues(alpha: 0.4); // Fundo azul leve
+                        dayTextColor = Colors.blue.shade700; // Texto azul
+                        showTodayBorder = true;
                       } else if (isHoliday) {
-                        bgColor = holidayColor;
-                        dayTextColor = Colors.white;
-                      } else if (dayOfWeek == 0) {
-                        bgColor = sundayColor;
-                        dayTextColor = Colors.white;
-                      } else if (dayOfWeek == 6) {
-                        bgColor = saturdayColor;
-                        dayTextColor = Colors.white;
+                        bgColor = holidayBgColor; // Azul claro
+                        dayTextColor = holidayTextColor; // Azul escuro
+                      } else if (dayOfWeek == 0) { // Domingo
+                        bgColor = weekendBgColor; // Fundo cinza claro
+                        dayTextColor = sundayTextColor; // Texto vermelho
+                      } else if (dayOfWeek == 6) { // Sábado
+                        bgColor = weekendBgColor; // Fundo cinza claro
+                        dayTextColor = saturdayTextColor; // Texto cinza
                       }
 
                       return Container(
                         decoration: BoxDecoration(
                           color: bgColor,
-                          border: Border.all(color: borderColor, width: 0.3),
-                          borderRadius: BorderRadius.circular(2),
+                          border: Border.all(
+                            color: showTodayBorder ? Colors.blue.shade600 : const Color(0x1F000000),
+                            width: showTodayBorder ? 2 : 1,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            if (todayHighlightColor != null)
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: todayHighlightColor,
-                                  border: Border.all(color: borderColor, width: 2),
-                                ),
-                              ),
-                            Text(
-                              day.toString(),
-                              style: TextStyle(fontSize: isSmallMobile ? 10 : 13, fontWeight: FontWeight.w700, color: dayTextColor),
-                            ),
-                          ],
+                        child: Center(
+                          child: Text(
+                            day.toString(),
+                            style: TextStyle(fontSize: isSmallMobile ? 10 : 13, fontWeight: FontWeight.w700, color: dayTextColor),
+                          ),
                         ),
                       );
                     },
@@ -796,48 +804,44 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
               },
             ),
             if (visibleHolidayEntries.isNotEmpty) ...[
-              Flexible(
-                fit: FlexFit.loose,
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 4, right: 4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        for (final entry in visibleHolidayEntries)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 1),
-                              child: Text(
-                                '${entry.key} - ${entry.value}',
-                                style: TextStyle(fontSize: isSmallMobile ? 8 : 9, fontWeight: FontWeight.w700, color: holidayEntryColor),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+              Padding(
+                padding: const EdgeInsets.only(left: 4, right: 4, top: 2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final entry in visibleHolidayEntries)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 1),
+                        child: Text(
+                          '${entry.key} - ${entry.value}',
+                          style: TextStyle(
+                            fontSize: isSmallMobile ? 8 : 9,
+                            fontWeight: FontWeight.w600,
+                            color: holidayEntryColor,
                           ),
-                      ],
-                    ),
-                  ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    if (remainingHolidaysCount > 0)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 1),
+                        child: Text(
+                          '+$remainingHolidaysCount feriado${remainingHolidaysCount > 1 ? 's' : ''}',
+                          style: TextStyle(
+                            fontSize: isSmallMobile ? 8 : 9,
+                            fontWeight: FontWeight.w600,
+                            fontStyle: FontStyle.italic,
+                            color: holidayEntryColor.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ],
             const Spacer(),
-            Padding(
-              padding: const EdgeInsets.only(left: 4, right: 4, top: 4, bottom: 4),
-              child: Column(
-                children: [
-                  buildTotalBadge(
-                    color: Colors.red.shade600,
-                    value: totalsReady ? moneyFormat.format(totalPagar) : '...',
-                  ),
-                  SizedBox(height: isSmallMobile ? 3 : 4),
-                  buildTotalBadge(
-                    color: Colors.green.shade600,
-                    value: totalsReady ? moneyFormat.format(totalReceber) : '...',
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
@@ -3131,7 +3135,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallMobile = screenWidth < 600;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Calculate cell size based on available space (7 columns, ~6 rows)
     final cellWidth = (screenWidth - 120) / 7;
@@ -3733,6 +3736,22 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 final lancado = dailyTotals?.lancado ?? 0.0;
                                 final recebimentos = dailyTotals?.recebimentos ?? 0.0;
                                 final hasTotals = (previsto + lancado) > 0 || recebimentos > 0;
+                                
+                                // Calcula tamanho de fonte adaptativo baseado nos valores
+                                double adaptiveFontSize = moneyTextSize * 0.8;
+                                if (hasTotals) {
+                                  final pagarText = 'R\$ ${dayAmountFormat.format(previsto + lancado)}';
+                                  final receberText = 'R\$ ${dayAmountFormat.format(recebimentos)}';
+                                  final longestText = pagarText.length > receberText.length ? pagarText : receberText;
+                                  
+                                  // Ajusta fonte baseado no comprimento do maior valor
+                                  if (longestText.length > 12) {
+                                    adaptiveFontSize = moneyTextSize * 0.6;
+                                  } else if (longestText.length > 10) {
+                                    adaptiveFontSize = moneyTextSize * 0.7;
+                                  }
+                                }
+                                
                                 Color bgColor = adaptiveSurface(context);
                                 Color textColor = adaptiveOnSurface(context);
                                 final cellBorderColor = const Color(0x1F000000); // rgba(0,0,0,0.12)
@@ -3815,7 +3834,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                   children: [
                                                     Icon(
                                                       Icons.arrow_downward,
-                                                      size: moneyTextSize * 0.8,
+                                                      size: adaptiveFontSize,
                                                       color: Colors.red.shade700,
                                                     ),
                                                     const SizedBox(width: 1),
@@ -3823,7 +3842,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                       child: Text(
                                                         'R\$ ${dayAmountFormat.format(previsto + lancado)}',
                                                         style: TextStyle(
-                                                          fontSize: moneyTextSize * 0.8,
+                                                          fontSize: adaptiveFontSize,
                                                           fontWeight: FontWeight.w700,
                                                           color: Colors.red.shade800,
                                                         ),
@@ -3845,7 +3864,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                   children: [
                                                     Icon(
                                                       Icons.arrow_upward,
-                                                      size: moneyTextSize * 0.8,
+                                                      size: adaptiveFontSize,
                                                       color: Colors.green.shade700,
                                                     ),
                                                     const SizedBox(width: 1),
@@ -3853,7 +3872,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                       child: Text(
                                                         'R\$ ${dayAmountFormat.format(recebimentos)}',
                                                         style: TextStyle(
-                                                          fontSize: moneyTextSize * 0.8,
+                                                          fontSize: adaptiveFontSize,
                                                           fontWeight: FontWeight.w700,
                                                           color: Colors.green.shade800,
                                                         ),
