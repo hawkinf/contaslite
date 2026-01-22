@@ -9,7 +9,7 @@ import '../models/account_type.dart';
 import '../utils/app_colors.dart';
 import '../utils/color_contrast.dart';
 import '../widgets/app_input_decoration.dart';
-import '../screens/account_types_screen.dart';
+import '../widgets/icon_picker_dialog.dart';
 import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
 import '../services/default_account_categories_service.dart';
@@ -254,12 +254,27 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
   }
 
   Future<void> _openCategoriesManager() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const AccountTypesScreen()),
-    );
+    if (_selectedType?.id == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selecione a conta a pagar antes de gerenciar categorias'),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+      return;
+    }
+
+    await _reloadCategoriesForSelectedType();
     if (!mounted) return;
-    await _loadTypesAndCategories(editing: widget.expenseToEdit);
+    showDialog(
+      context: context,
+      builder: (ctx) => _CategoriasDialog(
+        typeId: _selectedType!.id!,
+        categorias: _categories,
+        onCategoriasUpdated: () => _reloadCategoriesForSelectedType(),
+      ),
+    );
   }
 
   DateTime _parseDateString(String dateStr) {
@@ -390,114 +405,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
       _installmentValue = installmentValue;
       _installmentTotal = installments;
     });
-  }
-
-  Widget _buildSummaryHeader() {
-    final cardColor = widget.card.cardColor != null
-        ? Color(widget.card.cardColor!)
-        : AppColors.primary;
-    final fgColor = foregroundColorFor(cardColor);
-    final dueText = widget.card.dueDay.toString().padLeft(2, '0')
-        .replaceAll('00', '--');
-    final brand = (widget.card.cardBrand ?? 'Cartao').trim();
-    final description = (widget.card.cardBank ?? widget.card.description).trim();
-    final label = [brand, description].where((s) => s.isNotEmpty).join(' ');
-    final brandLogo = _buildCardBrandLogo();
-
-    return Card(
-      color: cardColor,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Colors.black, width: 0.6),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  dueText,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 36,
-                    color: fgColor,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                SizedBox(width: 42, height: 25, child: brandLogo),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                      color: fgColor,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            // Recorrência simples
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(
-                'Marcar como despesa recorrente (assinatura)',
-                style: TextStyle(color: fgColor, fontWeight: FontWeight.w600),
-              ),
-              subtitle: Text(
-                _isEditing
-                    ? 'Não é possível alternar recorrência durante a edição'
-                    : 'Será considerada em faturas futuras a partir deste mês',
-                style: TextStyle(color: fgColor.withValues(alpha: 0.8)),
-              ),
-              value: _isRecurrent,
-              activeThumbColor: fgColor,
-              activeTrackColor: fgColor.withValues(alpha: 0.25),
-              inactiveThumbColor: fgColor.withValues(alpha: 0.7),
-              inactiveTrackColor: fgColor.withValues(alpha: 0.2),
-              onChanged: _isEditing
-                  ? null
-                  : (val) {
-                      setState(() => _isRecurrent = val);
-                    },
-            ),
-            const SizedBox(height: 4),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCardBrandLogo() {
-    final brand = (widget.card.cardBrand ?? '').trim().toUpperCase();
-    String? assetPath;
-    if (brand == 'VISA') {
-      assetPath = 'assets/icons/cc_visa.png';
-    } else if (brand == 'AMEX' || brand == 'AMERICAN EXPRESS' || brand == 'AMERICANEXPRESS') {
-      assetPath = 'assets/icons/cc_amex.png';
-    } else if (brand == 'MASTER' || brand == 'MASTERCARD' || brand == 'MASTER CARD') {
-      assetPath = 'assets/icons/cc_mc.png';
-    } else if (brand == 'ELO') {
-      assetPath = 'assets/icons/cc_elo.png';
-    }
-
-    if (assetPath != null) {
-      return Image.asset(
-        assetPath,
-        package: 'finance_app',
-        width: 28,
-        height: 18,
-        fit: BoxFit.contain,
-      );
-    }
-
-    return const Icon(Icons.credit_card, size: 18);
   }
 
   Widget _buildColorPalette() {
@@ -954,46 +861,88 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Cabecalho semelhante ao dialogo de contas
+              // Banner compacto do cartão
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: widget.card.cardColor != null
                       ? Color(widget.card.cardColor!)
-                      : Theme.of(context).colorScheme.surface,
+                      : AppColors.primary,
                   border: Border(
-                    bottom: BorderSide(color: Colors.grey.shade300),
+                    bottom: BorderSide(color: Colors.grey.shade200),
                   ),
                 ),
                 child: Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      color: widget.card.cardColor != null
-                          ? foregroundColorFor(Color(widget.card.cardColor!))
-                          : null,
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        'Nova Despesa - ${widget.card.cardBank ?? "Cartao"}',
+                        widget.card.cardBank ?? 'Cartão',
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                           fontSize: 16,
                           color: widget.card.cardColor != null
                               ? foregroundColorFor(Color(widget.card.cardColor!))
-                              : null,
+                              : Colors.white,
                         ),
                         overflow: TextOverflow.ellipsis,
-                        softWrap: false,
-                        textAlign: TextAlign.left,
                       ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: (widget.card.cardColor != null
+                                ? foregroundColorFor(Color(widget.card.cardColor!))
+                                : Colors.white)
+                            .withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Fech: ${(widget.card.bestBuyDay ?? 1).toString().padLeft(2, '0')}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: widget.card.cardColor != null
+                              ? foregroundColorFor(Color(widget.card.cardColor!))
+                              : Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: (widget.card.cardColor != null
+                                ? foregroundColorFor(Color(widget.card.cardColor!))
+                                : Colors.white)
+                            .withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Venc: ${widget.card.dueDay.toString().padLeft(2, '0')}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: widget.card.cardColor != null
+                              ? foregroundColorFor(Color(widget.card.cardColor!))
+                              : Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      iconSize: 20,
+                      color: widget.card.cardColor != null
+                          ? foregroundColorFor(Color(widget.card.cardColor!))
+                          : Colors.white,
+                      onPressed: () => Navigator.pop(context),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
               ),
-              // Formulario
+              // Formulário
               Flexible(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
@@ -1002,9 +951,108 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                                // Linha de resumo similar ao lançamento de conta
-                                _buildSummaryHeader(),
-                                const SizedBox(height: 16),
+                        // Switch recorrente compacto dentro do formulário
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.blue.shade200, width: 0.8),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.autorenew, size: 18, color: Colors.blue.shade700),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Despesa recorrente (mensal)',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.blue.shade900,
+                                  ),
+                                ),
+                              ),
+                              Switch(
+                                value: _isRecurrent,
+                                onChanged: (val) => setState(() => _isRecurrent = val),
+                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        // Descrição
+                        SizedBox(
+                          height: 48,
+                          child: TextFormField(
+                            controller: _descController,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: buildOutlinedInputDecoration(
+                              label: 'Descrição da Compra',
+                              icon: Icons.description_outlined,
+                            ),
+                            validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        // Valor
+                        SizedBox(
+                          height: 48,
+                          child: TextFormField(
+                            controller: _valueController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly, CentavosInputFormatter(moeda: true)],
+                            decoration: buildOutlinedInputDecoration(
+                              label: 'Valor Total (R\$)',
+                              icon: Icons.attach_money,
+                            ),
+                            onChanged: (_) => _updatePreview(),
+                            validator: (v) {
+                              if (v!.isEmpty) return 'Obrigatório';
+                              try {
+                                final val = UtilBrasilFields.converterMoedaParaDouble(v);
+                                if (val <= 0) return 'Valor deve ser maior que zero';
+                              } catch (_) {
+                                return 'Valor inválido';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        // Data da Compra
+                        SizedBox(
+                          height: 48,
+                          child: TextFormField(
+                            controller: _purchaseDateController,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly, DataInputFormatter()],
+                            decoration: buildOutlinedInputDecoration(
+                              label: 'Data da Compra',
+                              icon: Icons.calendar_today,
+                              suffixIcon: IconButton(
+                                icon: const Icon(Icons.date_range, color: AppColors.primary),
+                                tooltip: 'Selecionar Data',
+                                onPressed: _selectPurchaseDate,
+                              ),
+                            ),
+                            onChanged: (_) => _updatePreview(),
+                            validator: (v) {
+                              if (v!.isEmpty) return 'Obrigatório';
+                              try {
+                                _parseDateString(v);
+                              } catch (_) {
+                                return 'Data inválida';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 10),
 
                         if (_typesList.isEmpty)
                           InkWell(
@@ -1337,6 +1385,363 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoriasDialog extends StatefulWidget {
+  final int typeId;
+  final List<AccountCategory> categorias;
+  final VoidCallback onCategoriasUpdated;
+
+  const _CategoriasDialog({
+    required this.typeId,
+    required this.categorias,
+    required this.onCategoriasUpdated,
+  });
+
+  @override
+  State<_CategoriasDialog> createState() => _CategoriasDialogState();
+}
+
+class _CategoriasDialogState extends State<_CategoriasDialog> {
+  late List<AccountCategory> _categorias;
+  final _newCategoriaController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _categorias = List.from(widget.categorias);
+  }
+
+  @override
+  void dispose() {
+    _newCategoriaController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _addCategory() async {
+    final text = _newCategoriaController.text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Digite uma categoria'),
+            backgroundColor: AppColors.warning),
+      );
+      return;
+    }
+
+    final exists = await DatabaseHelper.instance
+        .checkAccountCategoryExists(widget.typeId, text);
+    if (exists) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Esta categoria já existe'),
+              backgroundColor: AppColors.error),
+        );
+      }
+      return;
+    }
+
+    final categoria =
+        AccountCategory(accountId: widget.typeId, categoria: text);
+    final id = await DatabaseHelper.instance.createAccountCategory(categoria);
+
+    setState(() {
+      _categorias.add(
+          AccountCategory(id: id, accountId: widget.typeId, categoria: text));
+      _newCategoriaController.clear();
+    });
+
+    widget.onCategoriasUpdated();
+  }
+
+  Future<void> _deleteCategory(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Deletar Categoria?'),
+        content: const Text('Deseja remover esta categoria?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar')),
+          FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Deletar')),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await DatabaseHelper.instance.deleteAccountCategory(id);
+      setState(() {
+        _categorias.removeWhere((d) => d.id! == id);
+      });
+      widget.onCategoriasUpdated();
+    }
+  }
+
+  Future<void> _editCategory(AccountCategory category) async {
+    final controller = TextEditingController(text: category.categoria);
+    final logoController = TextEditingController(text: category.logo ?? '');
+
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Editar Categoria'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: buildOutlinedInputDecoration(
+                label: 'Nome da categoria',
+                icon: Icons.label,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: logoController,
+                    decoration: buildOutlinedInputDecoration(
+                      label: 'Logo (emoji ou texto)',
+                      icon: Icons.image,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                FilledButton.icon(
+                  onPressed: () async {
+                    final selectedIcon = await showIconPickerDialog(
+                      ctx,
+                      initialIcon: logoController.text.isNotEmpty
+                          ? logoController.text
+                          : null,
+                    );
+                    if (selectedIcon != null) {
+                      logoController.text = selectedIcon;
+                    }
+                  },
+                  icon: const Icon(Icons.palette),
+                  label: const Text('Picker'),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final name = controller.text.trim();
+              final logo = logoController.text.trim();
+              Navigator.pop(ctx, {'name': name, 'logo': logo});
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result['name']!.isNotEmpty) {
+      final newName = result['name']!;
+      final newLogo = result['logo']!.isEmpty ? null : result['logo'];
+      final nameChanged = newName != category.categoria;
+      final logoChanged = newLogo != category.logo;
+
+      if (!nameChanged && !logoChanged) {
+        controller.dispose();
+        logoController.dispose();
+        return;
+      }
+
+      if (nameChanged) {
+        final exists = await DatabaseHelper.instance
+            .checkAccountCategoryExists(widget.typeId, newName);
+        if (exists) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Uma categoria com este nome ja existe'),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          }
+          controller.dispose();
+          logoController.dispose();
+          return;
+        }
+      }
+
+      final updated = category.copyWith(categoria: newName, logo: newLogo);
+      await DatabaseHelper.instance.updateAccountCategory(updated);
+
+      final refreshed =
+          await DatabaseHelper.instance.readAccountCategories(widget.typeId);
+      setState(() {
+        _categorias
+          ..clear()
+          ..addAll(refreshed);
+      });
+      widget.onCategoriasUpdated();
+    }
+
+    controller.dispose();
+    logoController.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: const Color(0xFFF5F5F5),
+      child: Container(
+        width: 400,
+        constraints: const BoxConstraints(maxHeight: 600),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Gerenciar Categorias',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87),
+            ),
+            const SizedBox(height: 16),
+
+            // Campo de entrada
+            TextField(
+              controller: _newCategoriaController,
+              decoration: buildOutlinedInputDecoration(
+                label: 'Nova Categoria',
+                icon: Icons.add_circle,
+                dense: true,
+                suffixIcon: _newCategoriaController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () =>
+                            setState(() => _newCategoriaController.clear()),
+                      ),
+              ),
+              onChanged: (val) => setState(() {}),
+              onSubmitted: (val) => _addCategory(),
+            ),
+            const SizedBox(height: 12),
+
+            ElevatedButton.icon(
+              icon: const Icon(Icons.add),
+              label: const Text('Adicionar'),
+              onPressed: _addCategory,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Lista de categorias
+            Flexible(
+              child: _categorias.isEmpty
+                  ? Center(
+                      child: Text(
+                        'Nenhuma categoria cadastrada',
+                        style: TextStyle(
+                            color: Colors.grey.shade600, fontSize: 14),
+                      ),
+                    )
+                  : ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: _categorias.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (ctx, idx) {
+                        final cat = _categorias[idx];
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    if (cat.logo != null &&
+                                        cat.logo!.isNotEmpty)
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(right: 8.0),
+                                        child: Text(
+                                          cat.logo!,
+                                          style:
+                                              const TextStyle(fontSize: 16),
+                                        ),
+                                      ),
+                                    Expanded(
+                                      child: Text(
+                                        cat.categoria,
+                                        style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.black87),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.edit,
+                                    color: Colors.blue, size: 20),
+                                onPressed: () => _editCategory(cat),
+                                tooltip: 'Editar',
+                                splashRadius: 20,
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline,
+                                    color: Colors.red, size: 20),
+                                onPressed: () => _deleteCategory(cat.id!),
+                                tooltip: 'Deletar',
+                                splashRadius: 20,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Botões de ação
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Fechar', style: TextStyle(fontSize: 14)),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

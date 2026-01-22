@@ -71,6 +71,100 @@ class AccountFormScreen extends StatefulWidget {
   State<AccountFormScreen> createState() => _AccountFormScreenState();
 }
 
+class AccountEditDialog extends StatelessWidget {
+  final Account accountToEdit;
+  final bool isRecebimento;
+
+  const AccountEditDialog({
+    super.key,
+    required this.accountToEdit,
+    required this.isRecebimento,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final maxWidth = (media.size.width * 0.92).clamp(920.0, 1040.0);
+    final availableHeight = media.size.height - media.viewInsets.bottom;
+    final maxHeight = (availableHeight * 0.9).clamp(520.0, 980.0);
+    final title = isRecebimento ? 'Editar Recebimento' : 'Editar Conta';
+
+    return Dialog(
+      insetPadding: const EdgeInsets.all(16),
+      backgroundColor: Colors.transparent,
+      child: Center(
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: maxWidth,
+            maxHeight: maxHeight,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 18,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              SizedBox(
+                height: 52,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontSize: 19,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.close,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Divider(height: 1, color: Colors.grey.shade300),
+              Expanded(
+                child: AccountFormScreen(
+                  accountToEdit: accountToEdit,
+                  isRecebimento: isRecebimento,
+                  showAppBar: false,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _LaunchInfo {
   final double total;
   final String? dateLabel;
@@ -1178,31 +1272,31 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   Widget _buildColorPaletteSection() {
     debugPrint('🎨 _buildColorPaletteSection');
     return Wrap(
-      spacing: 12,
-      runSpacing: 10,
+      spacing: 8,
+      runSpacing: 8,
       children: _colors
           .map(
             (color) => InkWell(
               onTap: () => setState(() => _selectedColor = color.value),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(14),
               child: Container(
-                width: 34,
-                height: 34,
+                width: 28,
+                height: 28,
                 decoration: BoxDecoration(
                   color: color,
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: _selectedColor == color.value
-                        ? foregroundColorFor(color)
-                        : Colors.grey.shade400,
-                    width: _selectedColor == color.value ? 3 : 1,
+                        ? AppColors.primary
+                        : Colors.grey.shade300,
+                    width: _selectedColor == color.value ? 2 : 1,
                   ),
                 ),
                 child: _selectedColor == color.value
                     ? Icon(
                         Icons.check,
                         color: foregroundColorFor(color),
-                        size: 18,
+                        size: 14,
                       )
                     : null,
               ),
@@ -1235,6 +1329,19 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           selected: {_entryMode},
           onSelectionChanged: (Set<int> newSelection) =>
               setState(() => _entryMode = newSelection.first),
+          style: ButtonStyle(
+            visualDensity: VisualDensity.compact,
+            padding: MaterialStateProperty.all(
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            minimumSize: MaterialStateProperty.all(const Size(0, 36)),
+            shape: MaterialStateProperty.all(
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            side: MaterialStateProperty.all(
+              BorderSide(color: Colors.grey.shade400),
+            ),
+          ),
         ),
       ],
     );
@@ -1426,7 +1533,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
           ],
         ),
 
@@ -1575,7 +1682,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
   Widget _buildRecurrentMode() {
     return Column(children: [
-      // Valor Médio e Valor Lançado
+      // Valores
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1625,29 +1732,14 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                   ).copyWith(
                     fillColor: Colors.grey.shade50,
                     filled: true,
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(
-                        color: widget.isRecebimento ? Colors.green : Colors.red,
-                        width: 2,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(
-                        color: widget.isRecebimento ? Colors.green : Colors.red,
-                        width: 2,
-                      ),
-                    ),
                   ),
                 ),
               ),
             ),
-
           ]),
         ],
       ),
-      const SizedBox(height: 20),
+      const SizedBox(height: 12),
       // Dia Vencimento, Mês Inicial e Ano Inicial
       Row(children: [
         Expanded(
@@ -1766,177 +1858,168 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Card com seleção de cor
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildColorPaletteSection(),
-                      const SizedBox(height: 20),
-                      _buildLaunchTypeSelector(),
-                    ],
-                  ),
+              // Seção: Tipo / Cor
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildColorPaletteSection(),
+                    const SizedBox(height: 12),
+                    _buildLaunchTypeSelector(),
+                  ],
                 ),
               ),
-
-              const SizedBox(height: 20),
-
-              // Card com tipo, categoria e descrição
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildTypeDropdown(),
-                      const SizedBox(height: 20),
-                      // Campo de Categoria (se houver categorias cadastradas)
-                      if (_categorias.isNotEmpty)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildFieldWithIcon(
-                              icon: Icons.label,
-                              label: 'Categoria',
-                              child: DropdownButtonFormField<AccountCategory>(
-                                value: _getValidatedSelectedCategory(),
-                                decoration: buildOutlinedInputDecoration(
-                                  label: 'Categoria',
-                                  icon: Icons.label,
-                                  prefixIcon: Padding(
-                                    padding: const EdgeInsets.all(12.0),
-                                    child: Text(
-                                      _selectedCategory?.logo ?? '📁',
-                                      style: const TextStyle(fontSize: 22),
-                                    ),
+              const SizedBox(height: 12),
+              // Seção: Classificação
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTypeDropdown(),
+                    const SizedBox(height: 12),
+                    if (_categorias.isNotEmpty)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildFieldWithIcon(
+                            icon: Icons.label,
+                            label: 'Categoria',
+                            child: DropdownButtonFormField<AccountCategory>(
+                              value: _getValidatedSelectedCategory(),
+                              decoration: buildOutlinedInputDecoration(
+                                label: 'Categoria',
+                                icon: Icons.label,
+                                prefixIcon: Padding(
+                                  padding: const EdgeInsets.all(12.0),
+                                  child: Text(
+                                    _selectedCategory?.logo ?? '📁',
+                                    style: const TextStyle(fontSize: 22),
                                   ),
                                 ),
-                                validator: (val) => val == null
-                                    ? 'Selecione uma categoria'
-                                    : null,
-                                items: _categorias
+                              ),
+                              validator: (val) => val == null
+                                  ? 'Selecione uma categoria'
+                                  : null,
+                              items: _categorias
+                                  .map((cat) {
+                                    final displayText = widget.isRecebimento
+                                        ? _childDisplayName(cat.categoria)
+                                        : cat.categoria;
+                                    final logoToShow = cat.logo ?? '📁';
+                                    return DropdownMenuItem(
+                                      value: cat,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            logoToShow,
+                                            style: const TextStyle(fontSize: 18),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(displayText),
+                                        ],
+                                      ),
+                                    );
+                                  })
+                                  .toList(),
+                              selectedItemBuilder: (BuildContext context) {
+                                return _categorias
                                     .map((cat) {
                                       final displayText = widget.isRecebimento
                                           ? _childDisplayName(cat.categoria)
                                           : cat.categoria;
-                                      // Usar logo próprio da categoria
-                                      final logoToShow = cat.logo ?? '📁';
-                                      return DropdownMenuItem(
-                                        value: cat,
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              logoToShow,
-                                              style: const TextStyle(fontSize: 18),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Text(displayText),
-                                          ],
-                                        ),
+                                      return Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(displayText),
                                       );
                                     })
-                                    .toList(),
-                                selectedItemBuilder: (BuildContext context) {
-                                  return _categorias
-                                      .map((cat) {
-                                        final displayText = widget.isRecebimento
-                                            ? _childDisplayName(cat.categoria)
-                                            : cat.categoria;
-                                        return Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Text(displayText),
-                                        );
-                                      })
-                                      .toList();
-                                },
-                                onChanged: (val) {
-                                  debugPrint('🎯 Categoria filha selecionada: ${val?.categoria}');
-                                  setState(() {
-                                    _selectedCategory = val;
-                                  });
-                                },
-                              ),
+                                    .toList();
+                              },
+                              onChanged: (val) {
+                                debugPrint('🎯 Categoria filha selecionada: ${val?.categoria}');
+                                setState(() {
+                                  _selectedCategory = val;
+                                });
+                              },
                             ),
-                            const SizedBox(height: 20),
-                          ],
-                        )
-                      else if (widget.isRecebimento && _selectedParentCategoria != null)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppColors.warningBackground,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.info_outline, color: AppColors.warning, size: 20),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Nenhuma categoria filha encontrada para "${_selectedParentCategoria!.categoria}". Cadastre categorias filhas primeiro.',
-                                      style: const TextStyle(fontSize: 13),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                          ],
-                        ),
-                      _buildFieldWithIcon(
-                        icon: Icons.description_outlined,
-                        label: _descriptionLabel,
-                        child: TextFormField(
-                          controller: _descController,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: buildOutlinedInputDecoration(
-                            label: _descriptionLabel,
-                            icon: Icons.description_outlined,
                           ),
-                          validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
+                          const SizedBox(height: 12),
+                        ],
+                      )
+                    else if (widget.isRecebimento && _selectedParentCategoria != null)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.warningBackground,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.info_outline, color: AppColors.warning, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Nenhuma categoria filha encontrada para "${_selectedParentCategoria!.categoria}". Cadastre categorias filhas primeiro.',
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                      ),
+                    _buildFieldWithIcon(
+                      icon: Icons.description_outlined,
+                      label: _descriptionLabel,
+                      child: TextFormField(
+                        controller: _descController,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: buildOutlinedInputDecoration(
+                          label: _descriptionLabel,
+                          icon: Icons.description_outlined,
+                        ),
+                        validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Card com dados específicos do modo
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              child: Padding(
+              const SizedBox(height: 12),
+              // Seção: Valores
+              Container(
                 padding: const EdgeInsets.all(16),
-                child: _entryMode == 0
-                    ? _buildAvulsaMode()
-                    : _buildRecurrentMode(),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: _entryMode == 0 ? _buildAvulsaMode() : _buildRecurrentMode(),
               ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Card com observações
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              child: Padding(
+              const SizedBox(height: 12),
+              // Seção: Observações
+              Container(
                 padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
                 child: _buildFieldWithIcon(
                   icon: Icons.note,
                   label: 'Observações (Opcional)',
@@ -1951,12 +2034,10 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                   ),
                 ),
               ),
-            ),
-
-            const SizedBox(height: 20),
-          ],
+              const SizedBox(height: 12),
+            ],
+          ),
         ),
-      ),
       );
     } catch (e, stackTrace) {
       debugPrint('❌ CRASH em _buildFormContent: $e');
@@ -1999,7 +2080,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                   label: const Text('Cancelar'),
                   onPressed: _isSaving ? null : _closeScreen,
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -2007,10 +2088,11 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(
+              ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 160, maxWidth: 220),
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                     backgroundColor: AppColors.success,
                     disabledBackgroundColor: AppColors.success.withOpacity(0.6),
                     shape: RoundedRectangleBorder(
@@ -2020,14 +2102,14 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                   onPressed: _isSaving ? null : _saveAccount,
                   icon: _isSaving
                       ? const SizedBox(
-                          width: 24,
-                          height: 24,
+                          width: 20,
+                          height: 20,
                           child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2.5))
-                      : const Icon(Icons.check_circle, size: 24),
+                              color: Colors.white, strokeWidth: 2))
+                      : const Icon(Icons.check_circle, size: 20),
                   label: Text(
                     _isSaving ? "Gravando..." : _saveButtonLabel(),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),

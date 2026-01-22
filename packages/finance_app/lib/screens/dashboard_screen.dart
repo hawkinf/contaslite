@@ -4330,17 +4330,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final isRecebimento = _isRecebimentoAccount(account);
 
     // Usar AccountFormScreen para todos os tipos de conta, passando isRecebimento corretamente
-    final screenToOpen = AccountFormScreen(
-      accountToEdit: account,
-      isRecebimento: isRecebimento,
-      onClose: _closeInlineEdit,
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (_) => AccountEditDialog(
+        accountToEdit: account,
+        isRecebimento: isRecebimento,
+      ),
     );
-
-    setState(() {
-      _isInlineEditing = true;
-      _inlineEditWidget = screenToOpen;
-      _inlinePreserveAppBar = false;
-    });
+    _isNavigating = false;
+    if (mounted) _refresh();
   }
 
   bool _isRecebimentoAccount(Account account) {

@@ -21,6 +21,7 @@ InputDecoration buildOutlinedInputDecoration({
 
   return InputDecoration(
     labelText: label,
+    labelStyle: const TextStyle(fontSize: 12),
     hintText: hintText,
     prefixIcon: prefixIcon ?? Icon(icon),
     prefixText: prefixText,
@@ -29,7 +30,7 @@ InputDecoration buildOutlinedInputDecoration({
     isDense: dense,
     alignLabelWithHint: alignLabelWithHint,
     contentPadding: contentPadding ??
-        EdgeInsets.symmetric(horizontal: 16, vertical: dense ? 12 : 16),
+      EdgeInsets.symmetric(horizontal: 14, vertical: dense ? 10 : 12),
     border: baseBorder,
     enabledBorder: baseBorder,
     focusedBorder: baseBorder.copyWith(

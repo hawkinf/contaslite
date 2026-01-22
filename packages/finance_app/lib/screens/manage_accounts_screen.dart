@@ -206,15 +206,17 @@ class _ManageAccountsScreenState extends State<ManageAccountsScreen> {
     }
 
     Future<void> _showEditDialog(Account account) async {
-      final result = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => AccountFormScreen(accountToEdit: account),
+      final isRecebimento = _typeNames[account.typeId]?.trim().toLowerCase() == 'recebimentos';
+      await showDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierColor: Colors.black.withValues(alpha: 0.45),
+        builder: (_) => AccountEditDialog(
+          accountToEdit: account,
+          isRecebimento: isRecebimento,
         ),
       );
-      if (result == true) {
-        _loadData();
-      }
+      _loadData();
     }
 
     Future<void> _confirmDelete(Account acc) async {
