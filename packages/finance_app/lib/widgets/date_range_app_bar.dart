@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:finance_app/services/prefs_service.dart';
+import 'package:finance_app/widgets/month_selector.dart';
 
 class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
   final DateTimeRange range;
@@ -84,10 +85,6 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
 
     final monthLabel =
         DateFormat('MMMM yyyy', 'pt_BR').format(range.start).toUpperCase();
-    final effectiveForegroundColor = foregroundColor ?? Theme.of(context).appBarTheme.foregroundColor ?? Colors.white;
-    final defaultMonthStyle = monthStyle ??
-        TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: effectiveForegroundColor);
-
     final Color baseAppBarColor =
         backgroundColor ?? Theme.of(context).appBarTheme.backgroundColor ?? Colors.blue;
     final Color badgeFillColor =
@@ -122,61 +119,13 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: badgeFillColor,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.black, width: 1),
-                                boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                                BoxShadow(
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                  blurRadius: 2,
-                                  offset: const Offset(-1, -1),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                    icon: const Icon(Icons.chevron_left, size: 20, color: Colors.white),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                  onPressed: onPrevious,
-                                  tooltip: 'Mês anterior',
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  monthLabel,
-                                    style: defaultMonthStyle.copyWith(color: Colors.white),
-                                ),
-                                const SizedBox(width: 6),
-                                IconButton(
-                                    icon: const Icon(Icons.chevron_right, size: 20, color: Colors.white),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                  onPressed: onNext,
-                                  tooltip: 'Próximo mês',
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: MonthSelector(
+                      monthLabel: monthLabel,
+                      onPrev: onPrevious,
+                      onNext: onNext,
+                    ),
                   ),
                 ],
               ),
@@ -199,9 +148,9 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: badgeFillColor,
+          color: const Color(0xFFD6C7BC),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.black, width: 1),
+          border: Border.all(color: const Color(0xFF3A2F2A), width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.2),
@@ -219,44 +168,95 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSwitchRow('Pagar', filterContasPagar, onFilterContasPagarChanged, Colors.red),
+            _buildSwitchRow(
+              'Pagar',
+              filterContasPagar,
+              onFilterContasPagarChanged,
+              const Color(0xFFDC2626),
+              borderColor: const Color(0xFF991B1B),
+              textColor: Colors.white,
+            ),
             const SizedBox(height: 0),
-            _buildSwitchRow('Receber', filterContasReceber, onFilterContasReceberChanged, Colors.green),
+            _buildSwitchRow(
+              'Receber',
+              filterContasReceber,
+              onFilterContasReceberChanged,
+              const Color(0xFF16A34A),
+              borderColor: const Color(0xFF14532D),
+              textColor: Colors.white,
+            ),
             const SizedBox(height: 0),
-            _buildSwitchRow('Cartões', filterCartoes, onFilterCartoesChanged, Colors.black),
+            _buildSwitchRow(
+              'Cartões',
+              filterCartoes,
+              onFilterCartoesChanged,
+              const Color(0xFF1F2937),
+              borderColor: const Color(0xFF111827),
+              textColor: Colors.white,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSwitchRow(String label, bool value, ValueChanged<bool>? onChanged, Color switchColor) {
-    final Color labelColor = value ? switchColor : switchColor.withValues(alpha: 0.6);
+  Widget _buildSwitchRow(
+    String label,
+    bool value,
+    ValueChanged<bool>? onChanged,
+    Color switchColor, {
+    Color? borderColor,
+    Color? textColor,
+  }) {
+    final Color resolvedTextColor = textColor ?? switchColor;
+    final Color labelColor =
+        value ? resolvedTextColor : resolvedTextColor.withValues(alpha: 0.7);
 
+    final Color trackColor =
+        value ? switchColor : const Color(0xFFCBD5E1);
     return SizedBox(
       height: 24,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 30,
-            height: 16,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.black, width: 1),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(3),
-              child: Transform.scale(
-                scale: 0.6,
-                child: Switch(
-                  value: value,
-                  onChanged: onChanged,
-                  activeThumbColor: switchColor,
-                  activeTrackColor: switchColor.withValues(alpha: 0.5),
-                  inactiveThumbColor: switchColor.withValues(alpha: 0.4),
-                  inactiveTrackColor: switchColor.withValues(alpha: 0.2),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          GestureDetector(
+            onTap: onChanged == null ? null : () => onChanged(!value),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              width: 30,
+              height: 16,
+              decoration: BoxDecoration(
+                color: trackColor,
+                border: Border.all(color: borderColor ?? switchColor, width: 1),
+                borderRadius: BorderRadius.circular(4),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 3,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(1),
+                child: AnimatedAlign(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                  alignment:
+                      value ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFF94A3B8),
+                        width: 0.7,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -275,3 +275,4 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 }
+

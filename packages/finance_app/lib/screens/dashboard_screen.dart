@@ -307,9 +307,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color? badgeFillColor,
   }) {
     if (!includeFilter) return <Widget>[];
-    final Color baseColor =
-        badgeFillColor ?? Theme.of(context).appBarTheme.backgroundColor ?? Colors.blue;
-    final Color fillColor = Color.lerp(baseColor, Colors.white, 0.28) ?? baseColor;
     // Botao de filtro com badge
     return <Widget>[
       Transform.translate(
@@ -317,14 +314,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: IntrinsicWidth(
           child: Container(
             margin: const EdgeInsets.only(left: 20, right: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
-            decoration: BoxDecoration(
-            color: fillColor,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFF6B4A3E),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.black, width: 1),
+            border: Border.all(color: const Color(0xFF2B1A14), width: 1),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
+                color: Colors.black.withValues(alpha: 0.2),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -368,28 +365,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(width: 6),
                   const Text(
                     'Ocultar Contas Pagas',
-                    style: TextStyle(fontSize: 13.2, fontWeight: FontWeight.w700, color: Colors.white),
+                    style: TextStyle(
+                      fontSize: 13.2,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(
+                          color: Color(0xFF1A0F0B),
+                          offset: Offset(0, 1),
+                          blurRadius: 2,
+                        ),
+                      ],
+                    ),
                   ),
                   ],
                 ),
                 const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.black, width: 2),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _periodFilter,
-                      isDense: true,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE7D7CE),
+                  border: Border.all(color: const Color(0xFF2B1A14), width: 2),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _periodFilter,
+                    isDense: true,
                       onChanged: (value) {
                         if (value == null) return;
                         setState(() => _periodFilter = value);
                         _applyPeriodFilter(value);
                       },
-                    icon: const Icon(Icons.arrow_drop_down, size: 16, color: Colors.white),
-                    style: const TextStyle(fontSize: 13.2, fontWeight: FontWeight.w700, color: Colors.white),
+                    icon: const Icon(Icons.arrow_drop_down, size: 16, color: Color(0xFF2B1A14)),
+                    style: const TextStyle(
+                      fontSize: 13.2,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF2B1A14),
+                    ),
                       alignment: Alignment.center,
                       items: const [
                         DropdownMenuItem(
@@ -1714,6 +1727,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final double childIconHeight = categorySize * 1.3;
     final double childIconWidth = categorySize * 1.8;
 
+    final List<BoxShadow> badgeShadow = [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.25),
+        blurRadius: sp(3),
+        offset: Offset(0, sp(2)),
+      ),
+      BoxShadow(
+        color: Colors.white.withValues(alpha: 0.7),
+        blurRadius: sp(2),
+        offset: Offset(0, -sp(1)),
+      ),
+    ];
+
     Widget? buildCardBrandBadge(String? brand) {
       final normalized = (brand ?? '').trim().toUpperCase();
       if (normalized.isEmpty) return null;
@@ -1746,6 +1772,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(sp(6)),
+          boxShadow: badgeShadow,
         ),
         child: Text(
           normalized,
@@ -1768,7 +1795,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         decoration: BoxDecoration(
             color: parceladoFillColor,
             borderRadius: BorderRadius.circular(sp(8)),
-            border: Border.all(color: parceladoBorderColor, width: sp(1.25))),
+            border: Border.all(color: parceladoBorderColor, width: sp(1.25)),
+            boxShadow: badgeShadow),
         child: Text(installmentDisplay.labelText,
             style: TextStyle(fontSize: badgeSize, fontWeight: FontWeight.w700, color: Colors.white)));
     // Badge para parcela única
@@ -1777,7 +1805,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         decoration: BoxDecoration(
             color: parceladoFillColor,
             borderRadius: BorderRadius.circular(sp(8)),
-            border: Border.all(color: parceladoBorderColor, width: sp(1.25))),
+            border: Border.all(color: parceladoBorderColor, width: sp(1.25)),
+            boxShadow: badgeShadow),
         child: Text('Parcela énica',
             style: TextStyle(fontSize: badgeSize, fontWeight: FontWeight.w700, color: Colors.white)));
     final String nextValueLabel = installmentSummary?.nextValue != null
@@ -1789,7 +1818,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         decoration: BoxDecoration(
             color: (cardIsDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(sp(8)),
-            border: Border.all(color: parceladoBorderColor, width: sp(1.0))),
+            border: Border.all(color: parceladoBorderColor, width: sp(1.0)),
+            boxShadow: badgeShadow),
         child: Text('Pr¢x: $nextValueLabel',
             style: TextStyle(
                 fontSize: smallDateSize, fontWeight: FontWeight.w700, color: nextDateColor)));
@@ -1953,22 +1983,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final Color calendarContentColor = calendarEmphasis;
 
     // Widget do calendário principal
-    final Widget calendarCore = SizedBox(
-      width: calendarWidth,
-      height: calendarHeight,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: calendarRadius,
-          color: calendarBadgeBg,
-          boxShadow: [
-            BoxShadow(
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-              color: Colors.black.withValues(alpha: cardIsDark ? 0.3 : 0.15),
-            ),
-          ],
-          border: Border.all(color: calendarBorder, width: sp(2)),
-        ),
+      final Widget calendarCore = SizedBox(
+        width: calendarWidth,
+        height: calendarHeight,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: calendarRadius,
+            color: calendarBadgeBg,
+            boxShadow: [
+              BoxShadow(
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: cardIsDark ? 0.3 : 0.15),
+              ),
+              BoxShadow(
+                blurRadius: 6,
+                offset: const Offset(-2, -2),
+                color: Colors.white.withValues(alpha: 0.6),
+              ),
+            ],
+            border: Border.all(color: calendarBorder, width: sp(2)),
+          ),
         child: ClipRRect(
           borderRadius: calendarRadius,
           child: Stack(
@@ -2150,6 +2185,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         : Colors.red.shade700,
                                     width: sp(1.2),
                                   ),
+                                  boxShadow: badgeShadow,
                                 ),
                                 child: Text(
                                   lancadoDisplay,
@@ -2234,6 +2270,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                               color: isRecebimento ? Colors.green.shade900 : Colors.red.shade900,
                                               width: sp(1.25),
                                             ),
+                                            boxShadow: badgeShadow,
                                           ),
                                           child: Text(
                                             'Recorrência',
@@ -2263,6 +2300,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                               color: isRecebimento ? Colors.green.shade900 : Colors.red.shade900,
                                               width: sp(1.25),
                                             ),
+                                            boxShadow: badgeShadow,
                                           ),
                                           child: Text(
                                             'Previsto: $previstoDisplay',
@@ -2285,6 +2323,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                               color: Colors.black,
                                               width: sp(1.25),
                                             ),
+                                            boxShadow: badgeShadow,
                                           ),
                                           child: Text(
                                             'Próx.: $cardNextDueLabel',
@@ -2306,6 +2345,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                               color: Colors.black,
                                               width: sp(1.25),
                                             ),
+                                            boxShadow: badgeShadow,
                                           ),
                                           child: Text(
                                             'Previsto: $previstoDisplay',
@@ -2335,6 +2375,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             color: Colors.orange.shade50,
                                             borderRadius: BorderRadius.circular(sp(4)),
                                             border: Border.all(color: Colors.orange.shade300, width: sp(1)),
+                                            boxShadow: badgeShadow,
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
@@ -2681,15 +2722,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final resolvedIconColor = iconColor ?? Colors.grey.shade600;
     final resolvedBorderColor = borderColor ??
       (brightness == Brightness.dark ? Colors.white : Colors.grey.shade600);
-    return Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        border: Border.all(color: resolvedBorderColor, width: borderWidth),
-        borderRadius: borderRadius ?? BorderRadius.circular(8),
-      ),
-      child: Icon(icon, size: size, color: resolvedIconColor),
-    );
-  }
+      return Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          border: Border.all(color: resolvedBorderColor, width: borderWidth),
+          borderRadius: borderRadius ?? BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+            BoxShadow(
+              color: Colors.white.withValues(alpha: 0.7),
+              blurRadius: 2,
+              offset: const Offset(-1, -1),
+            ),
+          ],
+        ),
+        child: Icon(icon, size: size, color: resolvedIconColor),
+      );
+    }
 
   Future<void> _openCardExpenses(Account account) async {
     if (_isNavigating) return;
