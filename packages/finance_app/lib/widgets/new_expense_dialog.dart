@@ -670,6 +670,10 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
         final purchaseUuid = '${DateTime.now().millisecondsSinceEpoch}_${description.hashCode}';
         final installmentValue = installments > 1 ? value / installments : value;
 
+        // Guardar informações da primeira fatura para exibir feedback ao usuário
+        final firstInvoiceMonth = baseInvoiceDate.month;
+        final firstInvoiceYear = baseInvoiceDate.year;
+
         for (int i = 0; i < installments; i++) {
           DateTime parcDate = DateTime(baseInvoiceDate.year, baseInvoiceDate.month + i, 1);
           final dueDate = _calculateDueDate(parcDate.month, parcDate.year);
@@ -701,6 +705,21 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
           );
 
           await DatabaseHelper.instance.createAccount(expense);
+        }
+
+        // Mostrar feedback informando em qual mês a despesa foi lançada
+        if (mounted) {
+          final monthName = DateFormat('MMMM/yyyy', 'pt_BR').format(DateTime(firstInvoiceYear, firstInvoiceMonth, 1));
+          final message = installments > 1 
+              ? 'Despesa parcelada em ${installments}x adicionada à fatura de $monthName'
+              : 'Despesa adicionada à fatura de $monthName';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
+              backgroundColor: AppColors.success,
+              duration: const Duration(seconds: 4),
+            ),
+          );
         }
       }
 
@@ -1010,7 +1029,7 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                           )
                         else ...[
                           DropdownButtonFormField<AccountType>(
-                            key: ValueKey(_selectedType?.id),
+                            key: const ValueKey('expense_type_dropdown'),
                             initialValue: _getValidatedSelectedType(),
                             decoration: buildOutlinedInputDecoration(
                               label: 'Conta a Pagar',
@@ -1072,7 +1091,7 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                           const SizedBox(height: 16),
                           if (_categories.isNotEmpty)
                             DropdownButtonFormField<AccountCategory>(
-                              key: ValueKey(_selectedCategory?.id),
+                              key: const ValueKey('expense_category_dropdown'),
                               initialValue: _getValidatedSelectedCategory(),
                               decoration: buildOutlinedInputDecoration(
                                 label: 'Categoria',

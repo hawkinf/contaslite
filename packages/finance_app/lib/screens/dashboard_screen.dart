@@ -266,6 +266,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _refresh() => _loadData();
 
+  String _getDayOfWeekAbbr(int weekday) {
+    const days = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
+    return days[(weekday - 1) % 7];
+  }
+
   Color _adaptiveGreyTextColor(BuildContext context, Color lightGrey, {Color? darkGrey}) {
     return Theme.of(context).brightness == Brightness.dark ? (darkGrey ?? Colors.grey.shade600) : lightGrey;
   }
@@ -850,8 +855,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
       
       processedList.sort((a, b) {
-        final dayCompare = a.dueDay.compareTo(b.dueDay);
-        if (dayCompare != 0) return dayCompare;
+        // Calcular effectiveDate para ambos considerando redirecionamentos
+        final aEffective = _resolveEffectiveDate(a, _startDate);
+        final bEffective = _resolveEffectiveDate(b, _startDate);
+        
+        // Ordenar por effectiveDate (ano, mês, dia)
+        final dateCompare = aEffective.compareTo(bEffective);
+        if (dateCompare != 0) return dateCompare;
+        
+        // Tie-breaker: tipo (cartões primeiro, depois a pagar, depois a receber)
         final aIsCard = a.cardBrand != null;
         final bIsCard = b.cardBrand != null;
         final aType = typeMap[a.typeId]?.toLowerCase() ?? '';
@@ -865,7 +877,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
         final aRank = rank(a, aIsCard, aIsReceb);
         final bRank = rank(b, bIsCard, bIsReceb);
-        return aRank.compareTo(bRank);
+        final rankCompare = aRank.compareTo(bRank);
+        if (rankCompare != 0) return rankCompare;
+        
+        // Tie-breaker final: ID
+        return (a.id ?? 0).compareTo(b.id ?? 0);
       });
       
       final double totalForecast = processedList.fold(0.0, (sum, item) {
@@ -1117,7 +1133,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 horizontal: isCompactHeight ? 6 : 8,
               );
               final totalFontSize = isCompactHeight ? 22.0 : 28.0;
-              final listBottomPadding = isCompactHeight ? 72.0 : 100.0;
               const headerScale = 0.8;
               double hs(double value) => value * headerScale;
 
@@ -1360,8 +1375,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   final bool isRecebimento = _isRecebimentosFilter || (_typeNames[selectedAccount.typeId]?.toLowerCase().contains('receb') ?? false);
                   
                   selectionBanner = Container(
-                    height: 44, // Altura compacta
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    height: 40, // Altura compacta reduzida
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     decoration: const BoxDecoration(
                       color: Color(0xFFEFF6FF), // Fundo suave azul clarinho
                       border: Border(
@@ -1529,49 +1544,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             : NotificationListener<ScrollNotification>(
                                 onNotification: _handleScrollNotification,
                                 child: ListView.builder(
-                                  padding: EdgeInsets.fromLTRB(
-                                      0, 0, 0, listBottomPadding),
+                                  padding: const EdgeInsets.fromLTRB(
+                                      0, 8, 0, 8),
                                   itemCount: _displayList.length,
                                   itemBuilder: (context, index) {
                                     try {
                                       final account = _displayList[index];
-                                      final currentDate = DateTime(
-                                        account.year ?? _startDate.year,
-                                        account.month ?? _startDate.month,
-                                        account.dueDay,
-                                      );
                                       
-                                      // Verificar se a data mudou em relação ao card anterior
+                                      // Usar effectiveDate (após redirecionamentos) para agrupamento
+                                      final currentEffectiveDate = _resolveEffectiveDate(account, _startDate);
+                                      
+                                      // Verificar se a data efetiva mudou em relação ao card anterior
                                       bool showDateSeparator = false;
                                       if (index > 0) {
                                         final prevAccount = _displayList[index - 1];
-                                        final prevDate = DateTime(
-                                          prevAccount.year ?? _startDate.year,
-                                          prevAccount.month ?? _startDate.month,
-                                          prevAccount.dueDay,
-                                        );
-                                        showDateSeparator = !DateUtils.isSameDay(currentDate, prevDate);
+                                        final prevEffectiveDate = _resolveEffectiveDate(prevAccount, _startDate);
+                                        showDateSeparator = !DateUtils.isSameDay(currentEffectiveDate, prevEffectiveDate);
                                       }
                                       
                                       return Column(
                                         children: [
                                           if (showDateSeparator) ...[
                                             Container(
-                                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                              height: 1,
-                                              decoration: BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  colors: [
-                                                    Colors.transparent,
-                                                    Colors.black.withValues(alpha: 0.08),
-                                                    Colors.transparent,
-                                                  ],
-                                                ),
+                                              margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Text(
+                                                        '${currentEffectiveDate.day.toString().padLeft(2, '0')} • ${_getDayOfWeekAbbr(currentEffectiveDate.weekday)}',
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          fontWeight: FontWeight.w600,
+                                                          color: Color(0xFF6B7280),
+                                                          letterSpacing: 0.5,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 12),
+                                                      Expanded(
+                                                        child: Container(
+                                                          height: 1,
+                                                          decoration: BoxDecoration(
+                                                            gradient: LinearGradient(
+                                                              colors: [
+                                                                const Color(0xFF6B7280).withValues(alpha: 0.3),
+                                                                Colors.transparent,
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  Container(
+                                                    height: 1,
+                                                    color: Colors.black.withValues(alpha: 0.08),
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                           ],
                                           Padding(
-                                            padding: const EdgeInsets.symmetric(vertical: 6),
+                                            padding: const EdgeInsets.symmetric(vertical: 4),
                                             child: _buildAccountCard(account),
                                           ),
                                         ],
@@ -1809,9 +1845,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       
       // Background adaptável: cor customizada ou neutro elegante
       if (domadaColor != null) {
-        // Se tem cor customizada, usar overlay sutil da cor
+        // Se tem cor customizada, usar overlay sutil da cor + overlay preto leve para domar
         containerBg = accent.withValues(alpha: 0.12);
-        cardColor = domadaColor.withValues(alpha: 0.97);
+        cardColor = Color.alphaBlend(
+          Colors.black.withValues(alpha: 0.08), // Overlay preto 8% para elegância
+          domadaColor.withValues(alpha: 0.97),
+        );
       } else {
         // Sem cor customizada: fundo off-white elegante
         final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -1834,7 +1873,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             // Hover: cinza muito claro
             cardColor = const Color(0xFFF3F4F6);
           } else {
-            // Normal: off-white elegante
+            // Normal: off-white elegante para não parecer desativado
             cardColor = const Color(0xFFFAFAFA);
           }
         }
@@ -2075,124 +2114,144 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 fontSize: smallDateSize, fontWeight: FontWeight.w600, color: Colors.grey.shade700)));
 
       final bool canLaunchPayment = !isPaid;
-      // Ordem dos botões: Editar → Lançamento → Pagamento → Despesa cartão → Lixeira
-      final actionButtons = Row(mainAxisSize: MainAxisSize.min, children: [
-        // 1. EDITAR (lápis) - sempre primeiro em todos os cards
+      
+      // Lista de ações disponíveis
+      final List<Widget> actionIconsList = [];
+      
+      // 1. EDITAR (lápis) - sempre disponível
+      actionIconsList.add(
         InkWell(
-            onTap: () => isCard ? _openCardEditor(account) : _showEditSpecificDialog(account),
-            child: _actionIcon(Icons.edit, actionIconBg, actionIconColor,
-                size: iconSize, scale: scale, surfaceColor: cardColor)),
-        SizedBox(width: sp(6)),
+          onTap: () => isCard ? _openCardEditor(account) : _showEditSpecificDialog(account),
+          child: _actionIcon(Icons.edit, actionIconBg, actionIconColor,
+              size: iconSize, scale: scale, surfaceColor: cardColor),
+        ),
+      );
 
-        // 2. LANÇAMENTO (rocket) - quando aplicável
-        if (isCard) ...[
-          if (!isCardInvoice) ...[
+      // 2. LANÇAMENTO (rocket) - quando aplicável
+      if (isCard) {
+        if (!isCardInvoice) {
+          actionIconsList.add(
             InkWell(
-                onTap: () => _showCartaoValueDialog(account),
-                child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
-                    size: iconSize, scale: scale, surfaceColor: cardColor)),
-            SizedBox(width: sp(6)),
-          ] else if (!isPaid && account.value > 0) ...[
+              onTap: () => _showCartaoValueDialog(account),
+              child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
+                  size: iconSize, scale: scale, surfaceColor: cardColor),
+            ),
+          );
+        } else if (!isPaid && account.value > 0) {
+          actionIconsList.add(
             InkWell(
               onTap: () => _undoLaunch(account),
               child: _actionIcon(Icons.undo, actionIconBg, actionIconColor,
                   size: iconSize, scale: scale, surfaceColor: cardColor),
             ),
-            SizedBox(width: sp(6)),
-          ],
-          // 3. PAGAMENTO DA FATURA (dinheiro) - para cartäes de cr‚dito
+          );
+        }
+        actionIconsList.add(
           InkWell(
-              onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
-              child: _actionIcon(Icons.attach_money, actionIconBg, actionIconColor,
-                  enabled: canLaunchPayment, size: iconSize, scale: scale, surfaceColor: cardColor)),
-          SizedBox(width: sp(6)),
-        ] else if (isRecebimento) ...[
-
+            onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
+            child: _actionIcon(Icons.attach_money, actionIconBg, actionIconColor,
+                enabled: canLaunchPayment, size: iconSize, scale: scale, surfaceColor: cardColor),
+          ),
+        );
+      } else if (isRecebimento) {
+        actionIconsList.add(
           InkWell(
-              onTap: () => _showRecebimentoValueDialog(account),
-              child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
-                  size: iconSize, scale: scale, surfaceColor: cardColor)),
-          SizedBox(width: sp(6)),
-        ] else if (isRecurrent && account.recurrenceId == null) ...[
+            onTap: () => _showRecebimentoValueDialog(account),
+            child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
+                size: iconSize, scale: scale, surfaceColor: cardColor),
+          ),
+        );
+      } else if (isRecurrent && account.recurrenceId == null) {
+        actionIconsList.add(
           InkWell(
-              onTap: () async {
-                Account parentRecurrence = account;
-                if (account.recurrenceId != null) {
-                  final parentId = account.recurrenceId!;
-                  try {
-                    final parentAccount = await DatabaseHelper.instance.readAccountById(parentId);
-                    if (parentAccount != null) {
-                      parentRecurrence = parentAccount;
-                    }
-                  } catch (e) {
-                    debugPrint('❌ Erro ao buscar recorrência PAI: $e');
+            onTap: () async {
+              Account parentRecurrence = account;
+              if (account.recurrenceId != null) {
+                final parentId = account.recurrenceId!;
+                try {
+                  final parentAccount = await DatabaseHelper.instance.readAccountById(parentId);
+                  if (parentAccount != null) {
+                    parentRecurrence = parentAccount;
                   }
+                } catch (e) {
+                  debugPrint('❌ Erro ao buscar recorrência PAI: $e');
                 }
-                if (mounted) _showLaunchDialog(parentRecurrence);
-              },
-              child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
-                  size: iconSize, scale: scale, surfaceColor: cardColor)),
-          SizedBox(width: sp(6)),
-        ] else if (isRecurrent && account.recurrenceId != null && account.value == 0) ...[
-          // Foguete só aparece se value == 0 (não foi lançada ainda)
+              }
+              if (mounted) _showLaunchDialog(parentRecurrence);
+            },
+            child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
+                size: iconSize, scale: scale, surfaceColor: cardColor),
+          ),
+        );
+      } else if (isRecurrent && account.recurrenceId != null && account.value == 0) {
+        actionIconsList.add(
           InkWell(
-              onTap: () => _showDespesaValueDialog(account),
-              child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
-                  size: iconSize, scale: scale, surfaceColor: cardColor)),
-          SizedBox(width: sp(6)),
-        ],
+            onTap: () => _showDespesaValueDialog(account),
+            child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
+                size: iconSize, scale: scale, surfaceColor: cardColor),
+          ),
+        );
+      }
 
-        // 3. PAGAMENTO (ícone de dinheiro) - para contas não-cartão
-        if (!isCard) ...[
+      // 3. PAGAMENTO (dinheiro) - para contas não-cartão
+      if (!isCard) {
+        actionIconsList.add(
           InkWell(
-              onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
-              child: _actionIcon(Icons.attach_money, actionIconBg, actionIconColor,
-                  enabled: canLaunchPayment, size: iconSize, scale: scale, surfaceColor: cardColor)),
-          SizedBox(width: sp(6)),
-        ],
+            onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
+            child: _actionIcon(Icons.attach_money, actionIconBg, actionIconColor,
+                enabled: canLaunchPayment, size: iconSize, scale: scale, surfaceColor: cardColor),
+          ),
+        );
+      }
 
-        // 4. DESPESA NO CARTÃO (carrinho) - apenas para cartões de crédito
-        if (isCard) ...[
+      // 4. DESPESA NO CARTÃO (carrinho)
+      if (isCard) {
+        actionIconsList.add(
           InkWell(
-              onTap: () => _showExpenseDialog(account),
-              child: _actionIcon(Icons.add_shopping_cart, actionIconBg, actionIconColor,
-                  size: iconSize, scale: scale, surfaceColor: cardColor)),
-          SizedBox(width: sp(6)),
-        ],
+            onTap: () => _showExpenseDialog(account),
+            child: _actionIcon(Icons.add_shopping_cart, actionIconBg, actionIconColor,
+                size: iconSize, scale: scale, surfaceColor: cardColor),
+          ),
+        );
+      }
 
-        // Botão UNDO - para desfazer lançamento de recorrência (só aparece se value > 0, ou seja, foi lançada)
-        if (!isCard && account.recurrenceId != null && account.id != null && !isPaid && account.value > 0) ...[
+      // UNDO - desfazer lançamento
+      if (!isCard && account.recurrenceId != null && account.id != null && !isPaid && account.value > 0) {
+        actionIconsList.add(
           InkWell(
             onTap: () => _undoLaunch(account),
             child: _actionIcon(Icons.undo, actionIconBg, actionIconColor,
                 size: iconSize, scale: scale, surfaceColor: cardColor),
           ),
-          SizedBox(width: sp(6)),
-        ],
+        );
+      }
 
-        // 5. LIXEIRA (delete) - sempre por último
-        if (account.id != null)
+      // 5. LIXEIRA (delete) - sempre por último
+      if (account.id != null) {
+        actionIconsList.add(
           InkWell(
-              onTap: () => _confirmDelete(account),
-              child: _actionIcon(Icons.delete, actionIconBg, actionIconColor,
-                  size: iconSize, scale: scale, surfaceColor: cardColor)),
-      ]);
+            onTap: () => _confirmDelete(account),
+            child: _actionIcon(Icons.delete, actionIconBg, actionIconColor,
+                size: iconSize, scale: scale, surfaceColor: cardColor),
+          ),
+        );
+      }
 
     Widget buildCardBody({required EdgeInsets padding, required List<Widget> children}) {
       final bool isSelected = account.id != null && _selectedAccountId == account.id;
       final bool isHovered = account.id != null && _hoveredAccountId == account.id;
       
-      // Borda: azul 2px quando selecionado, suave e fina caso contrário
-      final double borderWidth = isSelected ? sp(2.0) : 1.0; // Sempre 1px quando não selecionado
+      // Borda: azul suave 1px com opacity quando selecionado, fina padrão caso contrário
+      final double borderWidth = 1.0; // Sempre 1px
       final Color borderColor = isSelected 
-          ? const Color(0xFF2563EB) // Azul forte quando selecionado
+          ? const Color(0xFF2563EB).withValues(alpha: 0.6) // Azul suave com opacity quando selecionado
           : Colors.black.withValues(alpha: 0.12); // Borda suave rgba(0,0,0,0.12) padrão
       
-      // Fundo: overlay azul FIXO quando selecionado (independente da cor do usuário)
+      // Fundo: overlay azul LEVE quando selecionado (3% em vez de 7%)
       final Color effectiveCardColor = isSelected
           ? Color.alphaBlend(
-              // Overlay azul 7% - funciona em qualquer cor de fundo
-              const Color(0xFF2563EB).withValues(alpha: 0.07),
+              // Overlay azul 3% - mais suave
+              const Color(0xFF2563EB).withValues(alpha: 0.03),
               cardColor,
             )
           : cardColor;
@@ -2461,7 +2520,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         installmentDisplay.isInstallment || hasRecurrence || showPrevisto || isSinglePayment;
 
     return buildCardBody(
-      padding: EdgeInsets.symmetric(vertical: sp(8), horizontal: sp(10)),
+      padding: EdgeInsets.symmetric(vertical: sp(4), horizontal: sp(10)),
       children: [
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2514,8 +2573,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               Container(
                                 padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(4)),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.70),
+                                  color: Colors.white.withValues(alpha: 0.85),
                                   borderRadius: BorderRadius.circular(sp(8)),
+                                  border: Border.all(
+                                    color: (isRecebimento
+                                        ? const Color(0xFF059669)
+                                        : const Color(0xFFDC2626)).withValues(alpha: 0.08),
+                                    width: 1,
+                                  ),
                                   boxShadow: [
                                     BoxShadow(
                                       color: Colors.black.withValues(alpha: 0.04),
@@ -2592,7 +2657,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               style: TextStyle(
                                 fontSize: sp(14),  // 14px fixo para melhor legibilidade
                                 fontWeight: FontWeight.w500,
-                                color: const Color(0xFF374151),  // Cinza mais escuro (#374151)
+                                color: isCardDark 
+                                    ? textColor.withValues(alpha: 0.85)
+                                    : const Color(0xFF374151),  // Cinza mais escuro (#374151)
                                 height: 1.10,
                               ),
                               maxLines: 1,
@@ -2604,7 +2671,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                     
-                    SizedBox(height: sp(6)),
+                    SizedBox(height: sp(3)),
                     
                     // LINHA 3: Badges
                     Row(
@@ -2616,7 +2683,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             children: [
                               if (showBadgesRow)
                                 Padding(
-                                  padding: EdgeInsets.only(top: sp(4)),
+                                  padding: EdgeInsets.only(top: sp(2)),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -2625,26 +2692,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         Container(
                                           padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
                                           decoration: BoxDecoration(
-                                            color: Colors.grey.shade100,
+                                            color: Colors.grey.shade50,
                                             borderRadius: BorderRadius.circular(sp(8)),
-                                            border: Border.all(
-                                              color: Colors.grey.shade300,
-                                              width: 1,
-                                            ),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               Icon(
                                                 Icons.check_circle,
-                                                size: badgeSize * 1.2,
+                                                size: sp(12.0),
                                                 color: Colors.grey.shade600,
                                               ),
                                               SizedBox(width: sp(4)),
                                               Text(
                                                 'Pago',
                                                 style: TextStyle(
-                                                  fontSize: badgeSize,
+                                                  fontSize: sp(12.0),
                                                   fontWeight: FontWeight.w600,
                                                   color: Colors.grey.shade700,
                                                 ),
@@ -2661,17 +2724,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         Container(
                                           padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
                                           decoration: BoxDecoration(
-                                            color: Colors.grey.shade100,
+                                            color: Colors.grey.shade50,
                                             borderRadius: BorderRadius.circular(sp(8)),
-                                            border: Border.all(
-                                              color: Colors.grey.shade300,
-                                              width: 1,
-                                            ),
                                           ),
                                           child: Text(
                                             'Recorrência',
                                             style: TextStyle(
-                                              fontSize: badgeSize,
+                                              fontSize: sp(12.0),
                                               fontWeight: FontWeight.w600,
                                               color: Colors.grey.shade700,
                                             ),
@@ -2690,12 +2749,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         Container(
                                           padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
                                           decoration: BoxDecoration(
-                                            color: Colors.grey.shade100,
+                                            color: Colors.grey.shade50,
                                             borderRadius: BorderRadius.circular(sp(8)),
-                                            border: Border.all(
-                                              color: Colors.grey.shade300,
-                                              width: 1,
-                                            ),
                                           ),
                                           child: Text(
                                             'Previsto: $previstoDisplay',
@@ -2723,7 +2778,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                           child: Text(
                                             'Próx.: $cardNextDueLabel',
                                             style: TextStyle(
-                                              fontSize: badgeSize,
+                                              fontSize: sp(12.0),
                                               fontWeight: FontWeight.w700,
                                               color: _adaptiveGreyTextColor(
                                                   context, Colors.grey.shade800),
@@ -2812,23 +2867,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ],
                           ),
                         ),
+                        // Ações horizontais no canto inferior direito
                         SizedBox(width: sp(8)),
-                        // Action Rail com transparência
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: sp(6), vertical: sp(4)),
-                          decoration: BoxDecoration(
-                            // Fundo: onColor (cor do texto) com 8% de opacidade
-                            color: textColor.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(sp(6)),
-                            // Divisória à esquerda com 15% de opacidade
-                            border: Border(
-                              left: BorderSide(
-                                color: textColor.withValues(alpha: 0.15),
-                                width: 1,
-                              ),
-                            ),
+                        Align(
+                          alignment: Alignment.bottomRight,
+                          child: _buildActionButtons(
+                            account: account,
+                            actionIconsList: actionIconsList,
+                            isSelected: account.id != null && _selectedAccountId == account.id,
+                            cardColor: cardColor,
+                            textColor: textColor,
+                            iconSize: iconSize,
+                            scale: scale,
                           ),
-                          child: actionButtons,
                         ),
                       ],
                     ),
@@ -2839,6 +2890,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildActionButtons({
+    required Account account,
+    required List<Widget> actionIconsList,
+    required bool isSelected,
+    required Color cardColor,
+    required Color textColor,
+    required double iconSize,
+    required double scale,
+  }) {
+    double sp(double value) => value * scale;
+    
+    // Detectar se o fundo do card é claro ou escuro
+    final bool isCardDark = ThemeData.estimateBrightnessForColor(cardColor) == Brightness.dark;
+    
+    // Glass effect adaptativo: preto em fundos claros, branco em fundos escuros
+    final Color glassBg = isCardDark
+        ? Colors.white.withValues(alpha: isSelected ? 0.14 : 0.10)
+        : Colors.black.withValues(alpha: isSelected ? 0.12 : 0.08);
+    
+    // Mostrar todos os botões sempre
+    final List<Widget> rowChildren = [];
+    for (int i = 0; i < actionIconsList.length; i++) {
+      rowChildren.add(actionIconsList[i]);
+      if (i < actionIconsList.length - 1) {
+        rowChildren.add(SizedBox(width: sp(6)));
+      }
+    }
+    
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(6)),
+      decoration: BoxDecoration(
+        color: glassBg,
+        borderRadius: BorderRadius.circular(sp(10)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: rowChildren,
+      ),
     );
   }
 
