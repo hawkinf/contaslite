@@ -84,34 +84,36 @@ class AccountEditDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final maxWidth = (media.size.width * 0.92).clamp(920.0, 1040.0);
+    final dialogWidth = (media.size.width * 0.92).clamp(0.0, 760.0);
     final availableHeight = media.size.height - media.viewInsets.bottom;
-    final maxHeight = (availableHeight * 0.9).clamp(520.0, 980.0);
+    final maxHeight = availableHeight * 0.88;
     final title = isRecebimento ? 'Editar Recebimento' : 'Editar Conta';
 
     return Dialog(
-      insetPadding: const EdgeInsets.all(16),
+      insetPadding: const EdgeInsets.all(22),
       backgroundColor: Colors.transparent,
       child: Center(
-        child: Container(
+        child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxWidth: maxWidth,
+            minWidth: dialogWidth,
+            maxWidth: dialogWidth,
             maxHeight: maxHeight,
           ),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 18,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 18,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
               SizedBox(
                 height: 52,
                 child: Padding(
@@ -150,14 +152,15 @@ class AccountEditDialog extends StatelessWidget {
                 ),
               ),
               Divider(height: 1, color: Colors.grey.shade300),
-              Expanded(
-                child: AccountFormScreen(
-                  accountToEdit: accountToEdit,
-                  isRecebimento: isRecebimento,
-                  showAppBar: false,
+                Expanded(
+                  child: AccountFormScreen(
+                    accountToEdit: accountToEdit,
+                    isRecebimento: isRecebimento,
+                    showAppBar: false,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1167,30 +1170,6 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               validator: (val) => val == null ? _typeSelectErrorMessage : null,
             ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Gerenciar Categorias',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          FilledButton.icon(
-            icon: const Icon(Icons.category),
-            label: const Text('Acessar Categorias'),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-            ),
-            onPressed: _showCategoriesDialog,
-          ),
         ],
       );
     }
@@ -1241,27 +1220,130 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             validator: (val) => val == null ? _typeSelectErrorMessage : null,
           ),
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Gerenciar Categorias',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey.shade700,
+      ],
+    );
+  }
+
+  Widget _buildCategorySection() {
+    if (_categorias.isNotEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildFieldWithIcon(
+            icon: Icons.label,
+            label: 'Categoria',
+            child: DropdownButtonFormField<AccountCategory>(
+              value: _getValidatedSelectedCategory(),
+              decoration: buildOutlinedInputDecoration(
+                label: 'Categoria',
+                icon: Icons.label,
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Text(
+                    _selectedCategory?.logo ?? '📁',
+                    style: const TextStyle(fontSize: 22),
+                  ),
                 ),
               ),
+              validator: (val) => val == null ? 'Selecione uma categoria' : null,
+              items: _categorias.map((cat) {
+                final displayText = widget.isRecebimento
+                    ? _childDisplayName(cat.categoria)
+                    : cat.categoria;
+                final logoToShow = cat.logo ?? '📁';
+                return DropdownMenuItem(
+                  value: cat,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(logoToShow, style: const TextStyle(fontSize: 18)),
+                      const SizedBox(width: 8),
+                      Text(displayText),
+                    ],
+                  ),
+                );
+              }).toList(),
+              selectedItemBuilder: (BuildContext context) {
+                return _categorias
+                    .map((cat) {
+                      final displayText = widget.isRecebimento
+                          ? _childDisplayName(cat.categoria)
+                          : cat.categoria;
+                      return Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(displayText),
+                      );
+                    })
+                    .toList();
+              },
+              onChanged: (val) {
+                debugPrint('🎯 Categoria filha selecionada: ${val?.categoria}');
+                setState(() {
+                  _selectedCategory = val;
+                });
+              },
             ),
-          ],
+          ),
+        ],
+      );
+    }
+
+    if (widget.isRecebimento && _selectedParentCategoria != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.warningBackground,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, color: AppColors.warning, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Nenhuma categoria filha encontrada para "${_selectedParentCategoria!.categoria}". Cadastre categorias filhas primeiro.',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildManageCategoriesButton() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Gerenciar Categorias',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey.shade700,
+          ),
         ),
         const SizedBox(height: 8),
-        FilledButton.icon(
-          icon: const Icon(Icons.category),
-          label: const Text('Acessar Categorias'),
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.primary,
+        OutlinedButton.icon(
+          icon: Icon(Icons.category, size: 18, color: Colors.grey.shade700),
+          label: Text(
+            'Gerenciar Categorias',
+            style: TextStyle(color: Colors.grey.shade700),
+          ),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            minimumSize: const Size(0, 40),
+            side: BorderSide(color: Colors.grey.shade300),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
           onPressed: _showCategoriesDialog,
         ),
@@ -1269,19 +1351,35 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     );
   }
 
+  Widget _buildDescriptionField() {
+    return _buildFieldWithIcon(
+      icon: Icons.description_outlined,
+      label: _descriptionLabel,
+      child: TextFormField(
+        controller: _descController,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: buildOutlinedInputDecoration(
+          label: _descriptionLabel,
+          icon: Icons.description_outlined,
+        ),
+        validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
+      ),
+    );
+  }
+
   Widget _buildColorPaletteSection() {
     debugPrint('🎨 _buildColorPaletteSection');
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: 10,
+      runSpacing: 10,
       children: _colors
           .map(
             (color) => InkWell(
               onTap: () => setState(() => _selectedColor = color.value),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(13),
               child: Container(
-                width: 28,
-                height: 28,
+                width: 26,
+                height: 26,
                 decoration: BoxDecoration(
                   color: color,
                   shape: BoxShape.circle,
@@ -1296,7 +1394,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                     ? Icon(
                         Icons.check,
                         color: foregroundColorFor(color),
-                        size: 14,
+                        size: 12,
                       )
                     : null,
               ),
@@ -1311,20 +1409,25 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Tipo de Lançamento",
-            style: TextStyle(
-                fontWeight: FontWeight.w600, fontSize: 13, color: Colors.grey)),
-        const SizedBox(height: 10),
+        const Text(
+          "Tipo de Lançamento",
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 8),
         SegmentedButton<int>(
           segments: const [
             ButtonSegment(
                 value: 0,
-                label: Text("Avulsa / Parcelada"),
-                icon: Icon(Icons.receipt_long)),
+                label: Text("Avulsa / Parcelada", style: TextStyle(fontSize: 13)),
+                icon: Icon(Icons.receipt_long, size: 18)),
             ButtonSegment(
                 value: 1,
-                label: Text("Recorrente Fixa"),
-                icon: Icon(Icons.loop)),
+                label: Text("Recorrente Fixa", style: TextStyle(fontSize: 13)),
+                icon: Icon(Icons.loop, size: 18)),
           ],
           selected: {_entryMode},
           onSelectionChanged: (Set<int> newSelection) =>
@@ -1332,9 +1435,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           style: ButtonStyle(
             visualDensity: VisualDensity.compact,
             padding: MaterialStateProperty.all(
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             ),
-            minimumSize: MaterialStateProperty.all(const Size(0, 36)),
+            minimumSize: MaterialStateProperty.all(const Size(0, 40)),
             shape: MaterialStateProperty.all(
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
@@ -1374,30 +1477,73 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   }
 
   Widget _buildAvulsaMode() {
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      // 1. INPUT DE DATA COM SELETOR DE CALENDÁRIO
-      _buildFieldWithIcon(
-        icon: Icons.calendar_month,
-        label: _baseDateLabel,
-        child: TextFormField(
-          controller: _dateController,
-          keyboardType: TextInputType.number,
-          inputFormatters: [_dateMaskFormatter],
-          decoration: buildOutlinedInputDecoration(
-            label: _baseDateLabel,
-            icon: Icons.calendar_month,
-            hintText: "dd/mm/aa",
-            suffixIcon: IconButton(
-              icon: Icon(Icons.date_range, color: AppColors.primary),
-              tooltip: 'Selecionar Data',
-              onPressed: () => _selectDate(_dateController),
-            ),
+    final dateField = _buildFieldWithIcon(
+      icon: Icons.calendar_month,
+      label: _baseDateLabel,
+      child: TextFormField(
+        controller: _dateController,
+        keyboardType: TextInputType.number,
+        inputFormatters: [_dateMaskFormatter],
+        decoration: buildOutlinedInputDecoration(
+          label: _baseDateLabel,
+          icon: Icons.calendar_month,
+          hintText: "dd/mm/aa",
+          suffixIcon: IconButton(
+            icon: Icon(Icons.date_range, color: AppColors.primary),
+            tooltip: 'Selecionar Data',
+            onPressed: () => _selectDate(_dateController),
           ),
-          onChanged: _onMainDateChanged,
-          validator: (value) => value == null || value.length < 8
-              ? 'Data incompleta (dd/mm/aa)'
-              : null,
         ),
+        onChanged: _onMainDateChanged,
+        validator: (value) => value == null || value.length < 8
+            ? 'Data incompleta (dd/mm/aa)'
+            : null,
+      ),
+    );
+
+    final valueField = _buildFieldWithIcon(
+      icon: Icons.attach_money,
+      label: 'Valor Total (R\$)',
+      child: TextFormField(
+        controller: _totalValueController,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          CentavosInputFormatter(moeda: true),
+        ],
+        decoration: buildOutlinedInputDecoration(
+          label: 'Valor Total (R\$)',
+          icon: Icons.attach_money,
+        ),
+        onChanged: (val) => _updateInstallments(),
+      ),
+    );
+
+    final installmentsField = _buildFieldWithIcon(
+      icon: Icons.repeat,
+      label: widget.isRecebimento ? 'Forma de Recebimento' : 'Forma de Pagamento',
+      child: _buildInstallmentDropdown(),
+    );
+
+    final showInstallments = widget.useInstallmentDropdown || _entryMode == 0;
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 780;
+          final itemWidth = isWide
+              ? (constraints.maxWidth - 12) / 2
+              : constraints.maxWidth;
+          return Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              SizedBox(width: itemWidth, child: dateField),
+              SizedBox(width: itemWidth, child: valueField),
+              if (showInstallments) SizedBox(width: itemWidth, child: installmentsField),
+            ],
+          );
+        },
       ),
 
       if (_mainOriginalDueDate != null)
@@ -1419,119 +1565,94 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           ),
         ),
 
-      const SizedBox(height: 20),
-
-      // 2. VALOR TOTAL / TIPO (AVULSA OU RECORRENTE)
-      _buildFieldWithIcon(
-        icon: Icons.attach_money,
-        label: 'Valor Total (R\$)',
-        child: TextFormField(
-          controller: _totalValueController,
-          keyboardType: TextInputType.number,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            CentavosInputFormatter(moeda: true),
-          ],
-          decoration: buildOutlinedInputDecoration(
-            label: 'Valor Total (R\$)',
-            icon: Icons.attach_money,
-          ),
-          onChanged: (val) => _updateInstallments(),
-        ),
-      ),
-
-      const SizedBox(height: 20),
-
-      // 2b. FORMA DE PAGAMENTO/RECEBIMENTO
-      if (widget.useInstallmentDropdown || _entryMode == 0)
-        _buildFieldWithIcon(
-          icon: Icons.repeat,
-          label: widget.isRecebimento ? 'Forma de Recebimento' : 'Forma de Pagamento',
-          child: _buildInstallmentDropdown(),
-        ),
-
-      const SizedBox(height: 20),
+      const SizedBox(height: 12),
 
       // CAMPOS ADICIONAIS PARA RECORRÊNCIA
       if (_entryMode == 1)
         Column(
           children: [
             // Seletor de Mês/Ano de Início
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Mês
-                Expanded(
-                  flex: 1,
-                  child: _buildFieldWithIcon(
-                    icon: Icons.calendar_month,
-                    label: 'Mês Início',
-                    child: DropdownButtonFormField<int>(
-                      value: _recurrentStartMonth,
-                      decoration: buildOutlinedInputDecoration(
-                        label: 'Mês',
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth >= 780;
+                final itemWidth = isWide
+                    ? (constraints.maxWidth - 12) / 2
+                    : constraints.maxWidth;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    SizedBox(
+                      width: itemWidth,
+                      child: _buildFieldWithIcon(
                         icon: Icons.calendar_month,
+                        label: 'Mês Início',
+                        child: DropdownButtonFormField<int>(
+                          value: _recurrentStartMonth,
+                          decoration: buildOutlinedInputDecoration(
+                            label: 'Mês',
+                            icon: Icons.calendar_month,
+                          ),
+                          items: [
+                            ...List.generate(12, (i) {
+                              final months = [
+                                'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+                                'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+                              ];
+                              return DropdownMenuItem(
+                                value: i,
+                                child: Text(months[i]),
+                              );
+                            })
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() => _recurrentStartMonth = val);
+                            }
+                          },
+                        ),
                       ),
-                      items: [
-                        ...List.generate(12, (i) {
-                          final months = [
-                            'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
-                            'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
-                          ];
-                          return DropdownMenuItem(
-                            value: i,
-                            child: Text(months[i]),
-                          );
-                        })
-                      ],
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() => _recurrentStartMonth = val);
-                        }
-                      },
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Ano
-                Expanded(
-                  flex: 1,
-                  child: _buildFieldWithIcon(
-                    icon: Icons.today,
-                    label: 'Ano Início',
-                    child: TextFormField(
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(4),
-                      ],
-                      decoration: buildOutlinedInputDecoration(
-                        label: 'Ano (YYYY)',
+                    SizedBox(
+                      width: itemWidth,
+                      child: _buildFieldWithIcon(
                         icon: Icons.today,
+                        label: 'Ano Início',
+                        child: TextFormField(
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(4),
+                          ],
+                          decoration: buildOutlinedInputDecoration(
+                            label: 'Ano (YYYY)',
+                            icon: Icons.today,
+                          ),
+                          initialValue: _recurrentStartYear == 0
+                              ? DateTime.now().year.toString()
+                              : _recurrentStartYear.toString(),
+                          onChanged: (val) {
+                            setState(() {
+                              _recurrentStartYear =
+                                  int.tryParse(val) ?? DateTime.now().year;
+                              _recurrentStartYearController.text =
+                                  _recurrentStartYear.toString();
+                            });
+                          },
+                          validator: (val) {
+                            if (val == null || val.isEmpty) return 'Ano obrigatório';
+                            final year = int.tryParse(val);
+                            if (year == null || year < 2000 || year > 2100) {
+                              return 'Ano inválido';
+                            }
+                            return null;
+                          },
+                        ),
                       ),
-                      initialValue: _recurrentStartYear == 0
-                          ? DateTime.now().year.toString()
-                          : _recurrentStartYear.toString(),
-                      onChanged: (val) {
-                        setState(() {
-                          _recurrentStartYear =
-                              int.tryParse(val) ?? DateTime.now().year;
-                          _recurrentStartYearController.text =
-                              _recurrentStartYear.toString();
-                        });
-                      },
-                      validator: (val) {
-                        if (val == null || val.isEmpty) return 'Ano obrigatório';
-                        final year = int.tryParse(val);
-                        if (year == null || year < 2000 || year > 2100) {
-                          return 'Ano inválido';
-                        }
-                        return null;
-                      },
                     ),
-                  ),
-                ),
-              ],
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 12),
           ],
@@ -1540,142 +1661,94 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       // 3. TABELA DE PARCELAS EDITÁVEIS (SÓ APARECE PARA AVULSA/PARCELADA)
       if (_entryMode == 0 && _installments.isNotEmpty && _installmentsQtyController.text != "-1")
         Column(children: [
-          // Cabeçalho da Tabela
-          const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: Row(children: [
-                SizedBox(width: 32),
-                SizedBox(width: 8),
-                Expanded(
-                    flex: 3,
-                    child: Text("VENCIMENTO",
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 11))),
-                Expanded(
-                    flex: 2,
-                    child: Text("VALOR R\$",
-                        textAlign: TextAlign.end,
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 11))),
-              ])),
-          // Lista de Parcelas
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Parcelas',
+              style: TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: 8),
           Container(
-
-              decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8)),
-              child: ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _installments.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final item = _installments[index];
-                    return Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          // Parcela #
-                          Padding(
-                            padding: const EdgeInsets.only(top: 14),
-                            child: CircleAvatar(
-                                radius: 12,
-                                backgroundColor: const Color(0xFFBBDEFB),
-                                child: Text("${item.index}",
-                                    style: TextStyle(
-                                        color: AppColors.primaryDark,
-                                        fontSize: 11))),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade200),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _installments.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final item = _installments[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  child: Row(
+                    children: [
+                      Text(
+                        '#${item.index}',
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 3,
+                        child: TextFormField(
+                          controller: item.dateController,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          decoration: buildOutlinedInputDecoration(
+                            label: 'Venc: dd/mm/aaaa',
+                            icon: Icons.calendar_today,
+                            dense: true,
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.calendar_month, size: 18),
+                              onPressed: () => _selectInstallmentDate(index),
+                              tooltip: 'Selecionar data',
+                            ),
                           ),
-                          const SizedBox(width: 8),
-                          // Vencimento (Editável)
-                          Expanded(
-                              flex: 3,
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    TextFormField(
-                                      controller: item.dateController,
-                                      keyboardType: TextInputType.number,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14),
-                                      decoration: buildOutlinedInputDecoration(
-                                        label: 'Vencimento',
-                                        icon: Icons.calendar_today,
-                                        prefixIcon: IconButton(
-                                          icon: const Icon(Icons.calendar_month),
-                                          iconSize: 20,
-                                          padding: EdgeInsets.zero,
-                                          visualDensity: VisualDensity.compact,
-                                          constraints: BoxConstraints(minWidth: 40, minHeight: 40),
-                                          tooltip: 'Selecionar data',
-                                          onPressed: () => _selectInstallmentDate(index),
-                                        ),
-                                        dense: true,
-                                      ),
-                                      inputFormatters: [_dateMaskFormatter],
-                                      onChanged: (val) =>
-                                          _onTableDateChanged(index, val),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 3),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Data original: ${DateFormat('dd/MM/yyyy').format(item.originalDate)}',
-                                            style: const TextStyle(fontSize: 11, color: Colors.black54, fontWeight: FontWeight.w600),
-                                          ),
-                                          if (!DateUtils.isSameDay(item.originalDate, item.adjustedDate))
-                                            Text(
-                                              'Data ajustada: ${DateFormat('dd/MM/yyyy').format(item.adjustedDate)}',
-                                              style: const TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.bold),
-                                            ),
-                                          if (item.warning != null)
-                                            Text(
-                                              item.warning!,
-                                              style: const TextStyle(fontSize: 10, color: Colors.red, fontWeight: FontWeight.bold),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  ])),
-                          const SizedBox(width: 8),
-                          // Valor R$ (Editável)
-                          Expanded(
-                              flex: 2,
-                              child: TextFormField(
-                                  controller: item.valueController,
-                                  keyboardType: TextInputType.number,
-                                  textAlign: TextAlign.end,
-                                  style: TextStyle(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.bold),
-                                  decoration: buildOutlinedInputDecoration(
-                                    label: 'Valor',
-                                    icon: Icons.attach_money,
-                                    dense: true,
-                                    prefixText: "R\$ ",
-                                    prefixStyle: const TextStyle(fontSize: 12),
-                                  ),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                    CentavosInputFormatter(moeda: true),
-                                  ],
-                                  onChanged: (val) {
-                                    final trimmed = val.trim();
-                                    item.value = trimmed.isNotEmpty
-                                        ? UtilBrasilFields.converterMoedaParaDouble(trimmed)
-                                        : 0.0;
-                                    setState(() {});
-                                  }))
-                        ]));
-                  })),
+                          inputFormatters: [_dateMaskFormatter],
+                          onChanged: (val) => _onTableDateChanged(index, val),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: TextFormField(
+                          controller: item.valueController,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.end,
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                          decoration: buildOutlinedInputDecoration(
+                            label: 'Valor',
+                            icon: Icons.attach_money,
+                            dense: true,
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            CentavosInputFormatter(moeda: true),
+                          ],
+                          onChanged: (val) {
+                            final trimmed = val.trim();
+                            item.value = trimmed.isNotEmpty
+                                ? UtilBrasilFields.converterMoedaParaDouble(trimmed)
+                                : 0.0;
+                            setState(() {});
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
         ]),
 
-      const SizedBox(height: 20),
+      const SizedBox(height: 12),
       // REMOVIDO: Barra Total
     ]);
   }
@@ -1866,13 +1939,21 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.grey.shade200),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildColorPaletteSection(),
-                    const SizedBox(height: 12),
-                    _buildLaunchTypeSelector(),
-                  ],
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth >= 780;
+                    final itemWidth = isWide
+                        ? (constraints.maxWidth - 16) / 2
+                        : constraints.maxWidth;
+                    return Wrap(
+                      spacing: 16,
+                      runSpacing: 12,
+                      children: [
+                        SizedBox(width: itemWidth, child: _buildColorPaletteSection()),
+                        SizedBox(width: itemWidth, child: _buildLaunchTypeSelector()),
+                      ],
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 12),
@@ -1884,120 +1965,23 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.grey.shade200),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildTypeDropdown(),
-                    const SizedBox(height: 12),
-                    if (_categorias.isNotEmpty)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildFieldWithIcon(
-                            icon: Icons.label,
-                            label: 'Categoria',
-                            child: DropdownButtonFormField<AccountCategory>(
-                              value: _getValidatedSelectedCategory(),
-                              decoration: buildOutlinedInputDecoration(
-                                label: 'Categoria',
-                                icon: Icons.label,
-                                prefixIcon: Padding(
-                                  padding: const EdgeInsets.all(12.0),
-                                  child: Text(
-                                    _selectedCategory?.logo ?? '📁',
-                                    style: const TextStyle(fontSize: 22),
-                                  ),
-                                ),
-                              ),
-                              validator: (val) => val == null
-                                  ? 'Selecione uma categoria'
-                                  : null,
-                              items: _categorias
-                                  .map((cat) {
-                                    final displayText = widget.isRecebimento
-                                        ? _childDisplayName(cat.categoria)
-                                        : cat.categoria;
-                                    final logoToShow = cat.logo ?? '📁';
-                                    return DropdownMenuItem(
-                                      value: cat,
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            logoToShow,
-                                            style: const TextStyle(fontSize: 18),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(displayText),
-                                        ],
-                                      ),
-                                    );
-                                  })
-                                  .toList(),
-                              selectedItemBuilder: (BuildContext context) {
-                                return _categorias
-                                    .map((cat) {
-                                      final displayText = widget.isRecebimento
-                                          ? _childDisplayName(cat.categoria)
-                                          : cat.categoria;
-                                      return Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(displayText),
-                                      );
-                                    })
-                                    .toList();
-                              },
-                              onChanged: (val) {
-                                debugPrint('🎯 Categoria filha selecionada: ${val?.categoria}');
-                                setState(() {
-                                  _selectedCategory = val;
-                                });
-                              },
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-                      )
-                    else if (widget.isRecebimento && _selectedParentCategoria != null)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.warningBackground,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.info_outline, color: AppColors.warning, size: 20),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Nenhuma categoria filha encontrada para "${_selectedParentCategoria!.categoria}". Cadastre categorias filhas primeiro.',
-                                    style: const TextStyle(fontSize: 13),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-                      ),
-                    _buildFieldWithIcon(
-                      icon: Icons.description_outlined,
-                      label: _descriptionLabel,
-                      child: TextFormField(
-                        controller: _descController,
-                        textCapitalization: TextCapitalization.sentences,
-                        decoration: buildOutlinedInputDecoration(
-                          label: _descriptionLabel,
-                          icon: Icons.description_outlined,
-                        ),
-                        validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
-                      ),
-                    ),
-                  ],
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth >= 780;
+                    final itemWidth = isWide
+                        ? (constraints.maxWidth - 12) / 2
+                        : constraints.maxWidth;
+                    return Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        SizedBox(width: itemWidth, child: _buildTypeDropdown()),
+                        SizedBox(width: itemWidth, child: _buildCategorySection()),
+                        SizedBox(width: itemWidth, child: _buildDescriptionField()),
+                        SizedBox(width: itemWidth, child: _buildManageCategoriesButton()),
+                      ],
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 12),
@@ -2080,9 +2064,10 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                   label: const Text('Cancelar'),
                   onPressed: _isSaving ? null : _closeScreen,
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    minimumSize: const Size(0, 44),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                 ),
@@ -2092,11 +2077,12 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                 constraints: const BoxConstraints(minWidth: 160, maxWidth: 220),
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                    minimumSize: const Size(0, 44),
                     backgroundColor: AppColors.success,
                     disabledBackgroundColor: AppColors.success.withOpacity(0.6),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                   onPressed: _isSaving ? null : _saveAccount,
