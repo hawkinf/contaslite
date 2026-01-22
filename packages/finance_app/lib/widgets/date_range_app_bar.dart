@@ -146,21 +146,16 @@ class DateRangeAppBar extends StatelessWidget implements PreferredSizeWidget {
     return Padding(
       padding: const EdgeInsets.only(left: 16),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: const Color(0xFFD6C7BC),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: const Color(0xFF3A2F2A), width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
-              blurRadius: 4,
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 5,
               offset: const Offset(0, 2),
-            ),
-            BoxShadow(
-              color: Colors.white.withValues(alpha: 0.9),
-              blurRadius: 2,
-              offset: const Offset(-1, -1),
             ),
           ],
         ),

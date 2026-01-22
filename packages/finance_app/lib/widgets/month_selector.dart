@@ -42,12 +42,12 @@ class _MonthSelectorState extends State<MonthSelector> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: _pressed ? pressedColor : baseColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: borderColor, width: 2),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: borderColor, width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.28),
-              blurRadius: 6,
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 5,
               offset: const Offset(0, 2),
             ),
           ],

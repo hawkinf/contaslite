@@ -84,24 +84,30 @@ class ColorContrast {
   ///
   /// Analisa a luminância e características especiais da cor de fundo
   /// para determinar se deve usar texto claro ou escuro.
+  /// 
+  /// Usa #111827 (elegant dark) para fundos claros
+  /// Usa branco puro para fundos escuros
   static Color bestTextColor(Color background, {
-    Color dark = Colors.black,
+    Color? dark,
     Color light = Colors.white,
   }) {
-    // Amarelos sempre usam texto preto
-    if (isYellowish(background)) return dark;
+    // Usar #111827 (elegant dark) como padrão para fundos claros
+    final Color darkColor = dark ?? const Color(0xFF111827);
+    
+    // Amarelos sempre usam texto escuro elegante
+    if (isYellowish(background)) return darkColor;
 
-    // Laranjas preferem texto preto para melhor legibilidade
+    // Laranjas preferem texto escuro para melhor legibilidade
     if (isOrangish(background)) {
-      final ratioWithBlack = contrastRatio(dark, background);
+      final ratioWithDark = contrastRatio(darkColor, background);
       final ratioWithWhite = contrastRatio(light, background);
-      // Prefere preto se tiver contraste razoável
-      if (ratioWithBlack >= 3.0) return dark;
-      return ratioWithWhite > ratioWithBlack ? light : dark;
+      // Prefere escuro elegante se tiver contraste razoável
+      if (ratioWithDark >= 3.0) return darkColor;
+      return ratioWithWhite > ratioWithDark ? light : darkColor;
     }
 
     // Regra geral baseada em luminância
-    return background.computeLuminance() >= _luminanceThreshold ? dark : light;
+    return background.computeLuminance() >= _luminanceThreshold ? darkColor : light;
   }
 
   /// Encontra a melhor cor da paleta para usar sobre um fundo específico
@@ -265,15 +271,21 @@ class ColorContrast {
 ///
 /// Esta é a função principal de conveniência para uso em todo o app.
 /// Usa um limiar simples de luminância para contraste consistente.
+/// 
+/// Para fundos claros, usa #111827 (elegant dark)
+/// Para fundos escuros, usa branco puro
 Color foregroundColorFor(
   Color background, {
-  Color dark = Colors.black,
+  Color? dark,
   Color light = Colors.white,
   double minRatio = 4.5,
 }) {
-  final ratioDark = ColorContrast.contrastRatio(dark, background);
+  // Usar #111827 (elegant dark) como padrão para fundos claros
+  final Color darkColor = dark ?? const Color(0xFF111827);
+  
+  final ratioDark = ColorContrast.contrastRatio(darkColor, background);
   final ratioLight = ColorContrast.contrastRatio(light, background);
-  Color chosen = ratioDark >= ratioLight ? dark : light;
+  Color chosen = ratioDark >= ratioLight ? darkColor : light;
 
   if (ColorContrast.hasMinimumContrast(chosen, background, minRatio: minRatio)) {
     return chosen;

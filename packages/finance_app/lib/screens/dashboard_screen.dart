@@ -188,6 +188,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Controle do FAB durante scroll
   bool _isFabVisible = true;
   double _lastScrollOffset = 0;
+  
+  // Estado de seleção de card
+  int? _selectedAccountId;
+  int? _hoveredAccountId; // Rastrear card em hover
 
   bool _handleScrollNotification(ScrollNotification notification) {
     if (notification is ScrollUpdateNotification) {
@@ -307,28 +311,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color? badgeFillColor,
   }) {
     if (!includeFilter) return <Widget>[];
-    // Botao de filtro com badge
+    // Botão de filtro com badge - uniformizado com mesmo estilo
     return <Widget>[
       Transform.translate(
         offset: const Offset(-8, 0),
         child: IntrinsicWidth(
           child: Container(
             margin: const EdgeInsets.only(left: 20, right: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFF6B4A3E),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFF2B1A14), width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6B4A3E),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFF2B1A14), width: 1),
+              boxShadow: [
                 BoxShadow(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  blurRadius: 2,
-                  offset: const Offset(-1, -1),
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
@@ -339,70 +338,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                Container(
-                  width: 18,
-                  height: 18,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white, width: 1),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                  child: Checkbox(
-                    value: _hidePaidAccounts,
-                    onChanged: (value) {
-                      setState(() => _hidePaidAccounts = value ?? true);
-                      _loadData();
-                    },
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    side: const BorderSide(color: Colors.transparent, width: 0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    visualDensity: VisualDensity.compact,
-                    activeColor: Colors.transparent,
-                    checkColor: Colors.white,
-                  ),
-                ),
-                    const SizedBox(width: 6),
-                  const Text(
-                    'Ocultar Contas Pagas',
-                    style: TextStyle(
-                      fontSize: 13.2,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      shadows: [
-                        Shadow(
-                          color: Color(0xFF1A0F0B),
-                          offset: Offset(0, 1),
-                          blurRadius: 2,
+                    Container(
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.white, width: 1),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Checkbox(
+                        value: _hidePaidAccounts,
+                        onChanged: (value) {
+                          setState(() => _hidePaidAccounts = value ?? true);
+                          _loadData();
+                        },
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        side: const BorderSide(color: Colors.transparent, width: 0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(3),
                         ),
-                      ],
+                        visualDensity: VisualDensity.compact,
+                        activeColor: Colors.transparent,
+                        checkColor: Colors.white,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'Ocultar Contas Pagas',
+                      style: TextStyle(
+                        fontSize: 13.2,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            color: Color(0xFF1A0F0B),
+                            offset: Offset(0, 1),
+                            blurRadius: 2,
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE7D7CE),
-                  border: Border.all(color: const Color(0xFF2B1A14), width: 2),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _periodFilter,
-                    isDense: true,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE7D7CE),
+                    border: Border.all(color: const Color(0xFF2B1A14), width: 2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _periodFilter,
+                      isDense: true,
                       onChanged: (value) {
                         if (value == null) return;
                         setState(() => _periodFilter = value);
                         _applyPeriodFilter(value);
                       },
-                    icon: const Icon(Icons.arrow_drop_down, size: 16, color: Color(0xFF2B1A14)),
-                    style: const TextStyle(
-                      fontSize: 13.2,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF2B1A14),
-                    ),
+                      icon: const Icon(Icons.arrow_drop_down, size: 16, color: Color(0xFF2B1A14)),
+                      style: const TextStyle(
+                        fontSize: 13.2,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF2B1A14),
+                      ),
                       alignment: Alignment.center,
                       items: const [
                         DropdownMenuItem(
@@ -1055,8 +1054,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ? (isDark ? AppColors.primaryLight : AppColors.primary)
             : (isDark ? AppColors.warningLight : AppColors.warningDark));
         final totalLabel = widget.totalLabelOverride ?? (_isRecebimentosFilter ? 'TOTAL RECEBIDO' : 'TOTAL PAGO');
-        final totalForecastLabel = widget.totalForecastLabelOverride ??
-          (_isRecebimentosFilter ? 'TOTAL A RECEBER' : 'TOTAL A PAGAR');
         final emptyText = widget.emptyTextOverride ??
           (_isRecebimentosFilter
             ? 'Nenhuma conta a receber para este mês.'
@@ -1120,10 +1117,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 horizontal: isCompactHeight ? 6 : 8,
               );
               final totalFontSize = isCompactHeight ? 22.0 : 28.0;
-              final cardPadding = EdgeInsets.symmetric(
-                horizontal: isCompactHeight ? 16 : 24,
-                vertical: isCompactHeight ? 8 : 12,
-              );
               final listBottomPadding = isCompactHeight ? 72.0 : 100.0;
               const headerScale = 0.8;
               double hs(double value) => value * headerScale;
@@ -1175,32 +1168,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                     SizedBox(width: hs(10)),
                                     Expanded(
-                                      child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        alignment: Alignment.centerLeft,
-                                        child: RichText(
-                                          text: TextSpan(
-                                            style: const TextStyle(color: Colors.white),
-                                            children: [
-                                              TextSpan(
-                                                text: UtilBrasilFields.obterReal(_totalLancadoReceber),
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: hs(32),
-                                                  letterSpacing: 0.6,
-                                                ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          // Valor principal
+                                          FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(
+                                              UtilBrasilFields.obterReal(_totalLancadoReceber),
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: hs(32),  // 28-34px range
+                                                letterSpacing: 0.6,
+                                                height: 1.1,
                                               ),
-                                              TextSpan(
-                                                text: ' / Previsto: ${UtilBrasilFields.obterReal(_totalPrevistoReceber)}',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: hs(32) * 0.65,
-                                                  color: Colors.white.withValues(alpha: 0.9),
-                                                ),
-                                              ),
-                                            ],
+                                            ),
                                           ),
-                                        ),
+                                          SizedBox(height: hs(2)),
+                                          // Previsto (menor e discreto)
+                                          Text(
+                                            'Previsto: ${UtilBrasilFields.obterReal(_totalPrevistoReceber)}',
+                                            style: TextStyle(
+                                              color: Colors.white.withValues(alpha: 0.80),
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: hs(14),  // 13-15px range
+                                              height: 1.2,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
@@ -1252,32 +1249,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                     SizedBox(width: hs(10)),
                                     Expanded(
-                                      child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        alignment: Alignment.centerLeft,
-                                        child: RichText(
-                                          text: TextSpan(
-                                            style: const TextStyle(color: Colors.white),
-                                            children: [
-                                              TextSpan(
-                                                text: UtilBrasilFields.obterReal(_totalLancadoPagar),
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: hs(32),
-                                                  letterSpacing: 0.6,
-                                                ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          // Valor principal
+                                          FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(
+                                              UtilBrasilFields.obterReal(_totalLancadoPagar),
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: hs(32),  // 28-34px range
+                                                letterSpacing: 0.6,
+                                                height: 1.1,
                                               ),
-                                              TextSpan(
-                                                text: ' / Previsto: ${UtilBrasilFields.obterReal(_totalPrevistoPagar)}',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: hs(32) * 0.65,
-                                                  color: Colors.white.withValues(alpha: 0.9),
-                                                ),
-                                              ),
-                                            ],
+                                            ),
                                           ),
-                                        ),
+                                          SizedBox(height: hs(2)),
+                                          // Previsto (menor e discreto)
+                                          Text(
+                                            'Previsto: ${UtilBrasilFields.obterReal(_totalPrevistoPagar)}',
+                                            style: TextStyle(
+                                              color: Colors.white.withValues(alpha: 0.80),
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: hs(14),  // 13-15px range
+                                              height: 1.2,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
@@ -1296,7 +1297,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Row(children: [
                       Expanded(
                           child: Container(
-                              padding: cardPadding,
+                              padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                   color: Theme.of(context).cardColor,
                                   borderRadius: BorderRadius.circular(12),
@@ -1308,55 +1309,197 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         blurRadius: 4,
                                         offset: Offset(0, 2))
                                   ]),
-                              child: Column(children: [
-                                Text(totalLabel,
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                        color: _adaptiveGreyTextColor(context, Colors.grey))),
-                                FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(UtilBrasilFields.obterReal(_totalPeriod),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(totalLabel,
                                       style: TextStyle(
-                                          fontSize: totalFontSize,
-                                          fontWeight: FontWeight.bold,
-                                          color: totalColor)),
-                                )
-                              ]))),
-                      const SizedBox(width: 12),
-                      Expanded(
-                          child: Container(
-                              padding: cardPadding,
-                              decoration: BoxDecoration(
-                                  color: Theme.of(context).cardColor,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                      color: Colors.grey.withValues(alpha: 0.3)),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                        color: Colors.black12,
-                                        blurRadius: 4,
-                                        offset: Offset(0, 2))
-                                  ]),
-                              child: Column(children: [
-                                Text(totalForecastLabel,
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                        color: _adaptiveGreyTextColor(context, Colors.grey))),
-                                FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(UtilBrasilFields.obterReal(_totalForecast),
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 11,
+                                          letterSpacing: 0.5,
+                                          color: _adaptiveGreyTextColor(context, Colors.grey.shade600))),
+                                  const SizedBox(height: 8),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(UtilBrasilFields.obterReal(_totalPeriod),
+                                        style: TextStyle(
+                                            fontSize: totalFontSize + 4,
+                                            fontWeight: FontWeight.bold,
+                                            color: totalColor)),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text('Previsto',
                                       style: TextStyle(
-                                          fontSize: totalFontSize,
-                                          fontWeight: FontWeight.bold,
-                                          color: totalForecastColor)),
-                                )
-                              ]))),
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 10,
+                                          color: _adaptiveGreyTextColor(context, Colors.grey.shade500))),
+                                  const SizedBox(height: 2),
+                                  Text(UtilBrasilFields.obterReal(_totalForecast),
+                                      style: TextStyle(
+                                          fontSize: totalFontSize - 4,
+                                          fontWeight: FontWeight.w600,
+                                          color: totalForecastColor.withValues(alpha: 0.8))),
+                                ]
+                              ))),
                     ]));
+
+              // Widget de indicação de seleção
+              Widget? selectionBanner;
+              if (_selectedAccountId != null) {
+                // Buscar conta selecionada
+                final selectedAccount = _displayList.where((a) => a.id == _selectedAccountId).firstOrNull;
+                if (selectedAccount != null) {
+                  final valueStr = UtilBrasilFields.obterReal(selectedAccount.value);
+                  final categoryStr = _typeNames[selectedAccount.typeId] ?? 'Outro';
+                  final descStr = selectedAccount.description.isNotEmpty 
+                      ? selectedAccount.description 
+                      : 'Sem descrição';
+                  final bool isPaid = selectedAccount.id != null && _paymentInfo.containsKey(selectedAccount.id!);
+                  final bool isCard = selectedAccount.cardBrand != null;
+                  final bool isRecebimento = _isRecebimentosFilter || (_typeNames[selectedAccount.typeId]?.toLowerCase().contains('receb') ?? false);
+                  
+                  selectionBanner = Container(
+                    height: 44, // Altura compacta
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEFF6FF), // Fundo suave azul clarinho
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Color(0xFFDBEAFE), // Borda ainda mais suave
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        // Info compacta
+                        const Icon(
+                          Icons.check_circle_outline,
+                          color: Color(0xFF2563EB),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '$categoryStr – $descStr – $valueStr',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF1E40AF),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        
+                        // Ações inline
+                        // ✏ Editar
+                        InkWell(
+                          onTap: () async {
+                            if (isCard) {
+                              await _openCardEditor(selectedAccount);
+                            } else {
+                              await _showEditSpecificDialog(selectedAccount);
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.edit, size: 14, color: Color(0xFF2563EB)),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Editar',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF2563EB),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        
+                        // ✓ Pagar/Receber (se não pago)
+                        if (!isPaid) ...[
+                          InkWell(
+                            onTap: () => _handlePayAction(selectedAccount),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    isRecebimento ? Icons.trending_up : Icons.attach_money,
+                                    size: 14,
+                                    color: const Color(0xFF059669),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    isRecebimento ? 'Receber' : 'Pagar',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF059669),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        
+                        // 🗑 Excluir
+                        InkWell(
+                          onTap: () => _confirmDelete(selectedAccount),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.delete_outline, size: 14, color: Color(0xFFDC2626)),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Excluir',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFFDC2626),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        
+                        // X Limpar seleção
+                        InkWell(
+                          onTap: () => setState(() => _selectedAccountId = null),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            child: const Icon(
+                              Icons.close,
+                              color: Color(0xFF6B7280),
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              }
 
               return Column(children: [
                 headerWidget,
+                if (selectionBanner != null) selectionBanner,
                 Expanded(
                     child: _isLoading
                         ? Center(
@@ -1391,7 +1534,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   itemCount: _displayList.length,
                                   itemBuilder: (context, index) {
                                     try {
-                                      return _buildAccountCard(_displayList[index]);
+                                      final account = _displayList[index];
+                                      final currentDate = DateTime(
+                                        account.year ?? _startDate.year,
+                                        account.month ?? _startDate.month,
+                                        account.dueDay,
+                                      );
+                                      
+                                      // Verificar se a data mudou em relação ao card anterior
+                                      bool showDateSeparator = false;
+                                      if (index > 0) {
+                                        final prevAccount = _displayList[index - 1];
+                                        final prevDate = DateTime(
+                                          prevAccount.year ?? _startDate.year,
+                                          prevAccount.month ?? _startDate.month,
+                                          prevAccount.dueDay,
+                                        );
+                                        showDateSeparator = !DateUtils.isSameDay(currentDate, prevDate);
+                                      }
+                                      
+                                      return Column(
+                                        children: [
+                                          if (showDateSeparator) ...[
+                                            Container(
+                                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                              height: 1,
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    Colors.transparent,
+                                                    Colors.black.withValues(alpha: 0.08),
+                                                    Colors.transparent,
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(vertical: 6),
+                                            child: _buildAccountCard(account),
+                                          ),
+                                        ],
+                                      );
                                     } catch (e) {
                                       debugPrint(
                                           '? Erro ao renderizar card $index: $e');
@@ -1499,8 +1683,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final smallDateSize = baseFontSize * 0.6;
         final weekdaySize = baseFontSize * 0.75;
         final statusSize = baseFontSize * 0.55;
-        final categorySize = baseFontSize * 0.8;
-        final descriptionSize = baseFontSize * 0.95;
+        final categorySize = baseFontSize * 1.1;  // ~16-18px: Categoria mais legível
+        final descriptionSize = baseFontSize * 0.95;  // ~14px: Subtítulo legível e premium
         final badgeSize = baseFontSize * 0.65;
         final valuePreviewSize = baseFontSize * 0.75;
         final valueMainSize = baseFontSize * 1.05;
@@ -1578,7 +1762,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color containerBg;
     Color cardColor;
     Color textColor;
-    Color subTextColor;
     late Color typeColor;
 
     final String? typeName = _typeNames[account.typeId]?.toLowerCase();
@@ -1590,29 +1773,79 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Color userColor = (account.cardColor != null)
           ? Color(account.cardColor!)
           : AppColors.cardPurpleDark;
-        cardColor = userColor;
+        
+        // Aplicar overlay sutil para "domar" a cor escolhida pelo usuário (8%)
+        final bool isUserColorDark = ThemeData.estimateBrightnessForColor(userColor) == Brightness.dark;
+        cardColor = Color.alphaBlend(
+          isUserColorDark
+              ? Colors.white.withValues(alpha: 0.08)  // Overlay branco 8% em cores escuras
+              : Colors.black.withValues(alpha: 0.08), // Overlay preto 8% em cores claras (domar saturação)
+          userColor,
+        );
+        
         containerBg = Colors.transparent;
-        textColor = foregroundColorFor(userColor);
-        subTextColor = textColor;
+        textColor = foregroundColorFor(cardColor);
         // ...existing code...
         typeColor = userColor;
     } else {
       final int? accountColorValue = account.cardColor;
       final bool usesCustomColor = accountColorValue != null;
       final Color? customColor = usesCustomColor ? Color(accountColorValue) : null;
-      final Color accent = customColor ?? (isRecebimento ? receberColor : pagarColor);
-      containerBg = accent.withValues(alpha: 0.12);
-      cardColor = (customColor ?? Theme.of(context).cardColor).withValues(alpha: 0.97);
+      
+      // Se houver cor customizada, aplicar overlay sutil
+      final Color? domadaColor = customColor != null
+          ? () {
+              final bool isCustomDark = ThemeData.estimateBrightnessForColor(customColor) == Brightness.dark;
+              return Color.alphaBlend(
+                isCustomDark
+                    ? Colors.white.withValues(alpha: 0.08)  // Overlay branco 8% em cores escuras
+                    : Colors.black.withValues(alpha: 0.12), // Overlay preto 12% em cores claras
+                customColor,
+              );
+            }()
+          : null;
+      
+      final Color accent = domadaColor ?? (isRecebimento ? receberColor : pagarColor);
+      
+      // Background adaptável: cor customizada ou neutro elegante
+      if (domadaColor != null) {
+        // Se tem cor customizada, usar overlay sutil da cor
+        containerBg = accent.withValues(alpha: 0.12);
+        cardColor = domadaColor.withValues(alpha: 0.97);
+      } else {
+        // Sem cor customizada: fundo off-white elegante
+        final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        if (isDarkMode) {
+          // Modo escuro: manter comportamento atual
+          containerBg = accent.withValues(alpha: 0.12);
+          cardColor = Theme.of(context).cardColor.withValues(alpha: 0.97);
+        } else {
+          // Modo claro: fundo neutro elegante ao invés de cinza
+          containerBg = Colors.transparent;
+          
+          // Estados visuais mais agradáveis
+          final bool isSelected = _selectedAccountId == account.id;
+          final bool isHovered = _hoveredAccountId == account.id;
+          
+          if (isSelected) {
+            // Selecionado: azul bem clarinho para combinar com borda + barra lateral
+            cardColor = const Color(0xFFF0F7FF);
+          } else if (isHovered) {
+            // Hover: cinza muito claro
+            cardColor = const Color(0xFFF3F4F6);
+          } else {
+            // Normal: off-white elegante
+            cardColor = const Color(0xFFFAFAFA);
+          }
+        }
+      }
       // ...existing code...
       if (customColor != null) {
         textColor = foregroundColorFor(customColor);
-        subTextColor = textColor;
       } else {
         textColor = foregroundColorFor(cardColor);
-        subTextColor = textColor;
         if (isAlertDay) {
           textColor = Colors.white;
-          subTextColor = Colors.white70;
         } else if (isRecurrent) {
         } else {
         }
@@ -1720,10 +1953,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
     final String cardNextDueLabel = DateFormat('dd/MM').format(cardNextDueDate);
     final bool hasRecurrence = account.isRecurrent || account.recurrenceId != null;
+    
     // Cores padronizadas para action buttons - adaptativas ao fundo do card
+    // Usar foregroundColorFor() para garantir contraste em qualquer cor escolhida
     final bool isCardDark = ThemeData.estimateBrightnessForColor(cardColor) == Brightness.dark;
-    final Color actionIconBg = isCardDark ? Colors.white : Colors.grey.shade100;
-    final Color actionIconColor = isCardDark ? Colors.grey.shade800 : Colors.grey.shade700;
+    final Color actionIconColor = foregroundColorFor(cardColor);
+    final Color actionIconBg = actionIconColor.withValues(alpha: 0.08);
+    
     final double childIconHeight = categorySize * 1.3;
     final double childIconWidth = categorySize * 1.8;
 
@@ -1787,42 +2023,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
         isRecebimento ? Colors.green.shade600 : Colors.red.shade600;
     final bool cardIsDark =
         ThemeData.estimateBrightnessForColor(cardColor) == Brightness.dark;
-    final Color parceladoBorderColor = cardIsDark ? Colors.white : Colors.black;
     // Identificar se é parcela única (não recorrente, não parcelada, total == 1)
     final bool isSinglePayment = !hasRecurrence && !installmentDisplay.isInstallment && !isCard;
+    // Badge de parcelamento - único chip colorido (status)
     final Widget installmentBadge = Container(
         padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
         decoration: BoxDecoration(
             color: parceladoFillColor,
             borderRadius: BorderRadius.circular(sp(8)),
-            border: Border.all(color: parceladoBorderColor, width: sp(1.25)),
-            boxShadow: badgeShadow),
+            border: Border.all(
+              color: cardIsDark ? Colors.white.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.15),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: parceladoFillColor.withValues(alpha: 0.3),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ]),
         child: Text(installmentDisplay.labelText,
             style: TextStyle(fontSize: badgeSize, fontWeight: FontWeight.w700, color: Colors.white)));
-    // Badge para parcela única
+    // Badge para parcela única (chip informativo neutro)
     final Widget singlePaymentBadge = Container(
         padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
         decoration: BoxDecoration(
-            color: parceladoFillColor,
+            color: Colors.grey.shade100,
             borderRadius: BorderRadius.circular(sp(8)),
-            border: Border.all(color: parceladoBorderColor, width: sp(1.25)),
-            boxShadow: badgeShadow),
-        child: Text('Parcela énica',
-            style: TextStyle(fontSize: badgeSize, fontWeight: FontWeight.w700, color: Colors.white)));
+            border: Border.all(
+              color: Colors.grey.shade300,
+              width: 1,
+            ),
+        ),
+        child: Text('Parcela única',
+            style: TextStyle(fontSize: badgeSize, fontWeight: FontWeight.w600, color: Colors.grey.shade700)));
     final String nextValueLabel = installmentSummary?.nextValue != null
         ? UtilBrasilFields.obterReal(installmentSummary!.nextValue!)
         : '-';
-    final Color nextDateColor = cardIsDark ? Colors.white : Colors.black87;
     final Widget nextDueBadge = Container(
         padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
         decoration: BoxDecoration(
-            color: (cardIsDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
+            color: Colors.grey.shade100,
             borderRadius: BorderRadius.circular(sp(8)),
-            border: Border.all(color: parceladoBorderColor, width: sp(1.0)),
-            boxShadow: badgeShadow),
-        child: Text('Pr¢x: $nextValueLabel',
+            border: Border.all(
+              color: Colors.grey.shade300,
+              width: 1,
+            ),
+        ),
+        child: Text('Próx: $nextValueLabel',
             style: TextStyle(
-                fontSize: smallDateSize, fontWeight: FontWeight.w700, color: nextDateColor)));
+                fontSize: smallDateSize, fontWeight: FontWeight.w600, color: Colors.grey.shade700)));
 
       final bool canLaunchPayment = !isPaid;
       // Ordem dos botões: Editar → Lançamento → Pagamento → Despesa cartão → Lixeira
@@ -1929,32 +2179,114 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ]);
 
     Widget buildCardBody({required EdgeInsets padding, required List<Widget> children}) {
-      final double borderWidth = sp(3.5);
-          final Color borderColor = ThemeData.estimateBrightnessForColor(cardColor) == Brightness.dark
-              ? Colors.white
-              : Colors.black;
-      return Container(
-        color: isCard ? null : containerBg,
-        padding: EdgeInsets.symmetric(vertical: sp(4), horizontal: sp(8)),
-        child: Card(
-          color: cardColor,
-          elevation: 2,
-          margin: EdgeInsets.zero,
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(sp(8)),
-            side: BorderSide(color: borderColor, width: borderWidth),
-          ),
-          child: InkWell(
-            onTap: () async {
-              if (isCard) {
-                await _openCardExpenses(account);
+      final bool isSelected = account.id != null && _selectedAccountId == account.id;
+      final bool isHovered = account.id != null && _hoveredAccountId == account.id;
+      
+      // Borda: azul 2px quando selecionado, suave e fina caso contrário
+      final double borderWidth = isSelected ? sp(2.0) : 1.0; // Sempre 1px quando não selecionado
+      final Color borderColor = isSelected 
+          ? const Color(0xFF2563EB) // Azul forte quando selecionado
+          : Colors.black.withValues(alpha: 0.12); // Borda suave rgba(0,0,0,0.12) padrão
+      
+      // Fundo: overlay azul FIXO quando selecionado (independente da cor do usuário)
+      final Color effectiveCardColor = isSelected
+          ? Color.alphaBlend(
+              // Overlay azul 7% - funciona em qualquer cor de fundo
+              const Color(0xFF2563EB).withValues(alpha: 0.07),
+              cardColor,
+            )
+          : cardColor;
+      
+      // Sombra: glow azul quando selecionado, suave caso contrário
+      final List<BoxShadow> boxShadows = isSelected
+          ? [
+              // Glow azul quando selecionado
+              BoxShadow(
+                color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+              BoxShadow(
+                color: const Color(0xFF2563EB).withValues(alpha: 0.15),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+            ]
+          : [
+              // Sombra suave e leve no estado normal
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isHovered ? 0.08 : 0.05),
+                blurRadius: isHovered ? 8 : 4,
+                offset: Offset(0, isHovered ? 3 : 2),
+              ),
+            ];
+      
+      return MouseRegion(
+        onEnter: (_) {
+          if (account.id != null) {
+            setState(() => _hoveredAccountId = account.id);
+          }
+        },
+        onExit: (_) {
+          setState(() => _hoveredAccountId = null);
+        },
+        cursor: SystemMouseCursors.click,
+        child: Opacity(
+          opacity: isPaid ? 0.6 : 1.0,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOut,
+            color: isCard ? null : containerBg,
+            padding: EdgeInsets.symmetric(vertical: sp(4), horizontal: sp(8)),
+            child: Card(
+            color: effectiveCardColor,
+            elevation: 0, // Sem elevation padrão, usamos boxShadow customizado
+            shadowColor: Colors.transparent,
+            margin: EdgeInsets.zero,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(sp(8)),
+              side: BorderSide(color: borderColor, width: borderWidth),
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(sp(8)),
+                boxShadow: boxShadows,
+              ),
+              child: InkWell(
+              onTap: () async {
+                // Single tap: seleciona
+                // Double tap: abre detalhes/edição
+                if (_selectedAccountId == account.id) {
+                  // Segundo clique no mesmo card: abre detalhes
+                  if (isCard) {
+                    await _openCardExpenses(account);
+                  } else {
+                    await _showEditSpecificDialog(account);
+                  }
+                } else {
+                  // Primeiro clique: seleciona
+                  setState(() {
+                    _selectedAccountId = account.id;
+                  });
+                }
+              },
+              onLongPress: () async {
+                // Long press também abre edição/detalhes
+                if (isCard) {
+                  await _openCardExpenses(account);
               } else {
                 await _showEditSpecificDialog(account);
               }
             },
+            // Efeito pressed: overlay azul translúcido
+            splashColor: const Color(0xFF2563EB).withValues(alpha: 0.1),
+            highlightColor: const Color(0xFF2563EB).withValues(alpha: 0.05),
             child: Padding(padding: padding, child: Column(children: children)),
           ),
+            ),
+          ),
+        ),
         ),
       );
     }
@@ -2138,7 +2470,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               width: sp(6),
               height: sp(82),
               decoration: BoxDecoration(
-                color: accentColor,
+                color: (account.id != null && _selectedAccountId == account.id) 
+                    ? const Color(0xFF2563EB) // Azul quando selecionado
+                    : accentColor, // Cor original (verde/vermelho/laranja)
                 borderRadius: BorderRadius.circular(sp(6)),
               ),
             ),
@@ -2146,11 +2480,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             calendarBadge,
             SizedBox(width: sp(12)),
             Expanded(
-              child: SizedBox(
-                height: calendarHeight,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: sp(52)),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // LINHA 1: Título + Badge de valor
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -2165,9 +2501,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 child: Text(
                                   categoryParent ?? _typeNames[account.typeId] ?? 'Outro',
                                   style: TextStyle(
-                                    fontSize: categorySize,
-                                    fontWeight: FontWeight.bold,
-                                    color: textColor,
+                                    fontSize: categorySize * 0.95,  // 16-17px
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF111827),
+                                    height: 1.15,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -2175,65 +2512,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               SizedBox(width: sp(8)),
                               Container(
-                                padding: EdgeInsets.symmetric(horizontal: sp(6), vertical: sp(3)),
+                                padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(4)),
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(sp(6)),
-                                  border: Border.all(
-                                    color: isRecebimento
-                                        ? Colors.green.shade700
-                                        : Colors.red.shade700,
-                                    width: sp(1.2),
-                                  ),
-                                  boxShadow: badgeShadow,
+                                  color: Colors.white.withValues(alpha: 0.70),
+                                  borderRadius: BorderRadius.circular(sp(8)),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.04),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
                                 ),
-                                child: Text(
-                                  lancadoDisplay,
-                                  style: TextStyle(
-                                    fontSize: valueMainSize,
-                                    fontWeight: FontWeight.w800,
-                                    color: isRecebimento
-                                        ? Colors.green.shade700
-                                        : Colors.red.shade700,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Transform.translate(
-                          offset: Offset(0, -sp(8)),
-                          child: Row(
-                            children: [
-                              Expanded(
                                 child: Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    if (isCard && brandBadge != null) ...[
-                                      brandBadge,
-                                      SizedBox(width: sp(8)),
-                                    ] else if (headerChildIcon != null) ...[
-                                      headerChildIcon,
-                                      SizedBox(width: sp(6)),
+                                    if (isPaid) ...[
+                                      Icon(
+                                        Icons.check_circle,
+                                        size: valueMainSize * 0.9,
+                                        color: isRecebimento
+                                            ? const Color(0xFF059669)
+                                            : const Color(0xFFDC2626),
+                                      ),
+                                      SizedBox(width: sp(4)),
                                     ],
-                                    Expanded(
-                                      child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          middleLineText,
-                                          style: TextStyle(
-                                            fontSize: descriptionSize - 2,
-                                            fontWeight: FontWeight.w600,
-                                            color: subTextColor,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
+                                    Text(
+                                      lancadoDisplay,
+                                      style: TextStyle(
+                                        fontSize: valueMainSize,
+                                        fontWeight: FontWeight.w700,
+                                        color: isRecebimento
+                                            ? const Color(0xFF059669)
+                                            : const Color(0xFFDC2626),
+                                        decoration: isPaid ? TextDecoration.lineThrough : null,
+                                        decorationColor: isRecebimento
+                                            ? const Color(0xFF059669)
+                                            : const Color(0xFFDC2626),
+                                        decorationThickness: 2,
                                       ),
                                     ),
                                   ],
@@ -2242,8 +2558,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ],
                           ),
                         ),
-                      ),
+                      ],
                     ),
+                    
+                    // ESPAÇAMENTO entre linhas
+                    SizedBox(height: sp(4)),
+                    
+                    // LINHA 2: Subtítulo (pill discreto opcional)
+                    Row(
+                      children: [
+                        if (isCard && brandBadge != null) ...[
+                          brandBadge,
+                          SizedBox(width: sp(8)),
+                        ] else if (headerChildIcon != null) ...[
+                          headerChildIcon,
+                          SizedBox(width: sp(6)),
+                        ],
+                        Flexible(
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: sp(8),
+                              vertical: sp(2.5),
+                            ),
+                            decoration: BoxDecoration(
+                              // Pill discreto opcional (muito sutil)
+                              color: isCardDark
+                                  ? Colors.white.withValues(alpha: 0.12)
+                                  : Colors.black.withValues(alpha: 0.06),
+                              borderRadius: BorderRadius.circular(sp(8)),
+                            ),
+                            child: Text(
+                              middleLineText,
+                              style: TextStyle(
+                                fontSize: sp(14),  // 14px fixo para melhor legibilidade
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF374151),  // Cinza mais escuro (#374151)
+                                height: 1.10,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: false,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    SizedBox(height: sp(6)),
+                    
+                    // LINHA 3: Badges
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
@@ -2257,6 +2620,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
+                                      // Chip "Pago" em cinza (sempre primeiro)
+                                      if (isPaid) ...[
+                                        Container(
+                                          padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.shade100,
+                                            borderRadius: BorderRadius.circular(sp(8)),
+                                            border: Border.all(
+                                              color: Colors.grey.shade300,
+                                              width: 1,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.check_circle,
+                                                size: badgeSize * 1.2,
+                                                color: Colors.grey.shade600,
+                                              ),
+                                              SizedBox(width: sp(4)),
+                                              Text(
+                                                'Pago',
+                                                style: TextStyle(
+                                                  fontSize: badgeSize,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.grey.shade700,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        SizedBox(width: sp(8)),
+                                      ],
                                       if (isSinglePayment) ...[
                                         singlePaymentBadge,
                                       ],
@@ -2264,20 +2661,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         Container(
                                           padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
                                           decoration: BoxDecoration(
-                                            color: isRecebimento ? Colors.green.shade700 : Colors.red.shade700,
+                                            color: Colors.grey.shade100,
                                             borderRadius: BorderRadius.circular(sp(8)),
                                             border: Border.all(
-                                              color: isRecebimento ? Colors.green.shade900 : Colors.red.shade900,
-                                              width: sp(1.25),
+                                              color: Colors.grey.shade300,
+                                              width: 1,
                                             ),
-                                            boxShadow: badgeShadow,
                                           ),
                                           child: Text(
                                             'Recorrência',
                                             style: TextStyle(
                                               fontSize: badgeSize,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey.shade700,
                                             ),
                                           ),
                                         ),
@@ -2294,20 +2690,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         Container(
                                           padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
                                           decoration: BoxDecoration(
-                                            color: isRecebimento ? Colors.green.shade700 : Colors.red.shade700,
+                                            color: Colors.grey.shade100,
                                             borderRadius: BorderRadius.circular(sp(8)),
                                             border: Border.all(
-                                              color: isRecebimento ? Colors.green.shade900 : Colors.red.shade900,
-                                              width: sp(1.25),
+                                              color: Colors.grey.shade300,
+                                              width: 1,
                                             ),
-                                            boxShadow: badgeShadow,
                                           ),
                                           child: Text(
                                             'Previsto: $previstoDisplay',
                                             style: TextStyle(
                                               fontSize: badgeSize,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.grey.shade700,
                                             ),
                                           ),
                                         ),
@@ -2418,7 +2813,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
                         SizedBox(width: sp(8)),
-                        actionButtons,
+                        // Action Rail com transparência
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: sp(6), vertical: sp(4)),
+                          decoration: BoxDecoration(
+                            // Fundo: onColor (cor do texto) com 8% de opacidade
+                            color: textColor.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(sp(6)),
+                            // Divisória à esquerda com 15% de opacidade
+                            border: Border(
+                              left: BorderSide(
+                                color: textColor.withValues(alpha: 0.15),
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                          child: actionButtons,
+                        ),
                       ],
                     ),
                   ],
