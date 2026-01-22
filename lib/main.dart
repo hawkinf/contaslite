@@ -349,7 +349,7 @@ class HolidayScreen extends StatefulWidget {
 }
 
 class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateMixin {
-  static const double _calendarAppBarHeight = 48;
+  static const double _calendarAppBarHeight = 43;
   static const TextStyle _calendarBadgeTextStyle =
       TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue);
   
@@ -3146,7 +3146,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     final double holidayTextSize = baseFontSize * 1.10; // Larger holiday name
     final double minHolidayWidth = cellSize * 0.80;     // Min 80% of cell width
     final double maxHolidayWidth = cellSize * 0.95;     // Max 95% of cell width
-    const Color todayColor = Colors.blue;               // Blue for today
 
     final moneyFormat = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     final dayAmountFormat =
@@ -3524,87 +3523,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                               padding: const EdgeInsets.only(bottom: 12),
                               child: Row(
                                 children: [
-                                  // Card A RECEBER
-                                  Expanded(
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: [
-                                            Colors.green.shade600,
-                                            Colors.green.shade800,
-                                          ],
-                                        ),
-                                        borderRadius: BorderRadius.circular(12),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.green.shade400.withValues(alpha: 0.4),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 3),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Container(
-                                                padding: const EdgeInsets.all(4),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.white.withValues(alpha: 0.2),
-                                                  borderRadius: BorderRadius.circular(6),
-                                                ),
-                                                child: const Icon(
-                                                  Icons.trending_up_rounded,
-                                                  color: Colors.white,
-                                                  size: 14,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              const Text(
-                                                'A RECEBER',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 10,
-                                                  color: Colors.white,
-                                                  letterSpacing: 0.4,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 6),
-                                          FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              moneyFormat.format(monthReceiveTotal),
-                                              style: const TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w900,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 3),
-                                          Text(
-                                            'Previsto: ${moneyFormat.format(monthReceivePrevistoTotal)}',
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              color: Colors.white.withValues(alpha: 0.85),
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  // Card A PAGAR
+                                  // Card A PAGAR (primeiro - esquerda)
                                   Expanded(
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -3683,6 +3602,86 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                       ),
                                     ),
                                   ),
+                                  const SizedBox(width: 12),
+                                  // Card A RECEBER (segundo - direita)
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Colors.green.shade600,
+                                            Colors.green.shade800,
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.green.shade400.withValues(alpha: 0.4),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 3),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(4),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white.withValues(alpha: 0.2),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.trending_up_rounded,
+                                                  color: Colors.white,
+                                                  size: 14,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              const Text(
+                                                'A RECEBER',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 10,
+                                                  color: Colors.white,
+                                                  letterSpacing: 0.4,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 6),
+                                          FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(
+                                              moneyFormat.format(monthReceiveTotal),
+                                              style: const TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.w900,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            'Previsto: ${moneyFormat.format(monthReceivePrevistoTotal)}',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              color: Colors.white.withValues(alpha: 0.85),
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -3695,14 +3694,11 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                     style: TextStyle(
                                       fontSize: dayNumberSize,
                                       fontWeight: FontWeight.bold,
-                                      color: day == 'DOM' || day == 'SAB'
-                                          ? Colors.white
-                                          : Theme.of(context).colorScheme.onSurface,
-                                      backgroundColor: day == 'DOM'
-                                          ? Colors.red
+                                      color: day == 'DOM'
+                                          ? const Color(0xFFDC2626) // Vermelho para domingo
                                           : (day == 'SAB'
-                                              ? const Color(0xFFEF9A9A)
-                                              : Colors.transparent),
+                                              ? const Color(0xFFEA580C) // Laranja suave para sábado
+                                              : const Color(0xFF111827)), // Preto elegante para dias úteis
                                     ),
                                   ),
                                 ),
@@ -3739,25 +3735,25 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 final hasTotals = (previsto + lancado) > 0 || recebimentos > 0;
                                 Color bgColor = adaptiveSurface(context);
                                 Color textColor = adaptiveOnSurface(context);
-                                final cellBorderColor = isDark ? Colors.white : Colors.black;
+                                final cellBorderColor = const Color(0x1F000000); // rgba(0,0,0,0.12)
                                 double opacity = 1.0;
 
                                 if (isToday) {
                                   textColor = Colors.black;
                                 } else if (isHoliday) {
-                                  bgColor = isCurrentMonth ? Colors.green : (Colors.lightGreen[300] ?? Colors.lightGreen);
-                                  textColor = isCurrentMonth ? Colors.white : adaptiveOnSurface(context);
+                                  bgColor = const Color(0xFFDBEAFE); // Azul claro para feriados
+                                  textColor = const Color(0xFF1E40AF); // Azul escuro para texto
                                   opacity = 1.0;
                                 } else if (dayOfWeek == 0) { // Domingo
-                                  bgColor = Colors.red;
-                                  textColor = Colors.white;
+                                  bgColor = const Color(0xFFF3F4F6); // Fundo cinza suave
+                                  textColor = const Color(0xFFDC2626); // Texto vermelho
                                 } else if (dayOfWeek == 6) { // Sábado
-                                  bgColor = Color(0xFFEF9A9A);
-                                  textColor = Colors.white;
+                                  bgColor = const Color(0xFFF3F4F6); // Fundo cinza suave
+                                  textColor = const Color(0xFF6B7280); // Texto cinza
                                 } else if (!isCurrentMonth) {
-                                  bgColor = isDark ? adaptiveSurfaceVariant(context) : (Colors.grey[200] ?? Colors.grey);
-                                  opacity = isDark ? 0.45 : 0.6;
-                                  textColor = adaptiveOnSurface(context).withValues(alpha: 0.7);
+                                  bgColor = const Color(0xFFF3F4F6); // Fundo bem apagado
+                                  opacity = 1.0;
+                                  textColor = const Color(0xFF9CA3AF); // Texto cinza claro
                                 }
                                 
                                 return Tooltip(
@@ -3766,14 +3762,16 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                     onTap: () => _openAccountsForDay(day, month, year),
                                     child: Container(
                                           decoration: BoxDecoration(
-                                            color: bgColor.withValues(alpha: opacity),
+                                            color: isToday 
+                                                ? Colors.blue.shade50.withValues(alpha: 0.4)
+                                                : bgColor.withValues(alpha: opacity),
                                             border: Border.all(
-                                              color: cellBorderColor,
-                                              width: 2.0,
+                                              color: isToday ? Colors.blue.shade600 : cellBorderColor,
+                                              width: isToday ? 2.0 : 1.0,
                                             ),
-                                            borderRadius: BorderRadius.circular(8.0),
+                                            borderRadius: BorderRadius.circular(10.0),
                                           ),
-                                      padding: EdgeInsets.all(1.0),
+                                      padding: const EdgeInsets.all(6.0),
                                       child: Column(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         mainAxisSize: MainAxisSize.min,
@@ -3782,18 +3780,18 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                             Padding(
                                               padding: const EdgeInsets.only(bottom: 2),
                                               child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.blue,
-                                                  borderRadius: BorderRadius.circular(8),
-                                                  border: Border.all(color: Colors.black, width: 1),
+                                                  color: Colors.blue.shade50,
+                                                  borderRadius: BorderRadius.circular(4),
+                                                  border: Border.all(color: Colors.blue.shade600, width: 1),
                                                 ),
                                                 child: Text(
-                                                  'HOJE',
+                                                  'Hoje',
                                                   style: TextStyle(
-                                                    fontSize: hojeTextSize,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Colors.white,
+                                                    fontSize: hojeTextSize * 0.7,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.blue.shade700,
                                                   ),
                                                 ),
                                               ),
@@ -3803,45 +3801,67 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                             style: TextStyle(
                                               fontSize: dayNumberSize,
                                               fontWeight: FontWeight.w900,
-                                              color: isToday ? todayColor : textColor,
+                                              color: isToday ? Colors.blue.shade700 : textColor,
                                             ),
                                           ),
-                                          // Badges de contas a pagar (vermelho) e a receber (verde)
+                                          // Valores com setas (limpo e simples)
                                           if ((previsto + lancado) > 0)
-                                            Padding(
-                                              padding: const EdgeInsets.only(top: 2),
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.red.shade700,
-                                                  borderRadius: BorderRadius.circular(8),
-                                                ),
-                                                child: Text(
-                                                  'R\$ ${dayAmountFormat.format(previsto + lancado)}',
-                                                  style: TextStyle(
-                                                    fontSize: moneyTextSize * 0.85,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.white,
-                                                  ),
+                                            Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(top: 3),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.arrow_downward,
+                                                      size: moneyTextSize * 0.8,
+                                                      color: Colors.red.shade700,
+                                                    ),
+                                                    const SizedBox(width: 1),
+                                                    Flexible(
+                                                      child: Text(
+                                                        'R\$ ${dayAmountFormat.format(previsto + lancado)}',
+                                                        style: TextStyle(
+                                                          fontSize: moneyTextSize * 0.8,
+                                                          fontWeight: FontWeight.w700,
+                                                          color: Colors.red.shade800,
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
+                                                        maxLines: 1,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                             ),
                                           if (recebimentos > 0)
-                                            Padding(
-                                              padding: const EdgeInsets.only(top: 2),
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.green.shade700,
-                                                  borderRadius: BorderRadius.circular(8),
-                                                ),
-                                                child: Text(
-                                                  'R\$ ${dayAmountFormat.format(recebimentos)}',
-                                                  style: TextStyle(
-                                                    fontSize: moneyTextSize * 0.85,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.white,
-                                                  ),
+                                            Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(top: 3),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.arrow_upward,
+                                                      size: moneyTextSize * 0.8,
+                                                      color: Colors.green.shade700,
+                                                    ),
+                                                    const SizedBox(width: 1),
+                                                    Flexible(
+                                                      child: Text(
+                                                        'R\$ ${dayAmountFormat.format(recebimentos)}',
+                                                        style: TextStyle(
+                                                          fontSize: moneyTextSize * 0.8,
+                                                          fontWeight: FontWeight.w700,
+                                                          color: Colors.green.shade800,
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
+                                                        maxLines: 1,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                             ),
@@ -3849,18 +3869,18 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                             Padding(
                                               padding: const EdgeInsets.only(top: 2),
                                               child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.blue,
-                                                  borderRadius: BorderRadius.circular(8),
-                                                  border: Border.all(color: Colors.black, width: 1),
+                                                  color: Colors.blue.shade50,
+                                                  borderRadius: BorderRadius.circular(4),
+                                                  border: Border.all(color: Colors.blue.shade600, width: 1),
                                                 ),
                                                 child: Text(
-                                                  'HOJE',
+                                                  'Hoje',
                                                   style: TextStyle(
-                                                    fontSize: hojeTextSize,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Colors.white,
+                                                    fontSize: hojeTextSize * 0.7,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.blue.shade700,
                                                   ),
                                                 ),
                                               ),
@@ -3888,6 +3908,42 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                   ),
                                 );
                               },
+                            ),
+                            const SizedBox(height: 12),
+                            // Legenda discreta
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.arrow_downward,
+                                  size: 12,
+                                  color: Colors.red.shade700,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Pagamentos',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Icon(
+                                  Icons.arrow_upward,
+                                  size: 12,
+                                  color: Colors.green.shade700,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Recebimentos',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -4039,8 +4095,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [
-                                Colors.blue.shade500,
-                                Colors.blue.shade700,
+                                Colors.blue.shade400,
+                                Colors.blue.shade600,
                               ],
                             ),
                             borderRadius: BorderRadius.circular(12),
@@ -4077,7 +4133,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                               Text(
                                                 '${monthNamesComplete[startOfWeek.month - 1].toUpperCase()} ${startOfWeek.year}',
                                                 style: const TextStyle(
-                                                  fontSize: 17,
+                                                  fontSize: 18,
                                                   fontWeight: FontWeight.bold,
                                                   color: Colors.blue,
                                                   height: 1.1,
@@ -4086,13 +4142,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                 overflow: TextOverflow.ellipsis,
                                                 textAlign: TextAlign.center,
                                               ),
-                                              const SizedBox(height: 2),
+                                              const SizedBox(height: 1),
                                               Text(
                                                 'Semana #$weekNumber',
                                                 style: TextStyle(
-                                                  fontSize: 12,
+                                                  fontSize: 11,
                                                   fontWeight: FontWeight.w500,
-                                                  color: Colors.blue.shade700,
+                                                  color: Colors.blue.shade700.withValues(alpha: 0.85),
                                                   height: 1.0,
                                                 ),
                                                 maxLines: 1,
@@ -4206,7 +4262,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                             // Card A PAGAR
                             Expanded(
                               child: Container(
-                                padding: const EdgeInsets.all(10),
+                                padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     begin: Alignment.topLeft,
@@ -4225,53 +4281,69 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                     ),
                                   ],
                                 ),
-                                child: Row(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Container(
-                                      width: 36,
-                                      height: 36,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.25),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.trending_down_rounded,
-                                        color: Colors.white,
-                                        size: 18,
+                                    Text(
+                                      'A PAGAR',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white.withValues(alpha: 0.75),
+                                        letterSpacing: 0.5,
                                       ),
                                     ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              moneyFormat.format(displayWeekPayTotal),
-                                              style: const TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w900,
-                                                color: Colors.white,
-                                                height: 1.1,
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 36,
+                                          height: 36,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.25),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.trending_down_rounded,
+                                            color: Colors.white,
+                                            size: 18,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                alignment: Alignment.centerLeft,
+                                                child: Text(
+                                                  moneyFormat.format(displayWeekPayTotal),
+                                                  style: const TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Colors.white,
+                                                    height: 1.1,
+                                                  ),
+                                                ),
                                               ),
-                                            ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                'Previsto ${moneyFormat.format(weekPayPrevistoTotal)}',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  color: Colors.white.withValues(alpha: 0.8),
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
                                           ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            'Previsto ${moneyFormat.format(weekPayPrevistoTotal)}',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              color: Colors.white.withValues(alpha: 0.8),
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -4281,7 +4353,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                             // Card A RECEBER
                             Expanded(
                               child: Container(
-                                padding: const EdgeInsets.all(10),
+                                padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     begin: Alignment.topLeft,
@@ -4300,53 +4372,69 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                     ),
                                   ],
                                 ),
-                                child: Row(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Container(
-                                      width: 36,
-                                      height: 36,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.25),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.trending_up_rounded,
-                                        color: Colors.white,
-                                        size: 18,
+                                    Text(
+                                      'A RECEBER',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white.withValues(alpha: 0.75),
+                                        letterSpacing: 0.5,
                                       ),
                                     ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              moneyFormat.format(displayWeekReceiveTotal),
-                                              style: const TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w900,
-                                                color: Colors.white,
-                                                height: 1.1,
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 36,
+                                          height: 36,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.25),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.trending_up_rounded,
+                                            color: Colors.white,
+                                            size: 18,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                alignment: Alignment.centerLeft,
+                                                child: Text(
+                                                  moneyFormat.format(displayWeekReceiveTotal),
+                                                  style: const TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Colors.white,
+                                                    height: 1.1,
+                                                  ),
+                                                ),
                                               ),
-                                            ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                'Previsto ${moneyFormat.format(weekReceivePrevistoTotal)}',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  color: Colors.white.withValues(alpha: 0.8),
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
                                           ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            'Previsto ${moneyFormat.format(weekReceivePrevistoTotal)}',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              color: Colors.white.withValues(alpha: 0.8),
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -4377,17 +4465,17 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                               Color textColor = Theme.of(context).colorScheme.onSurface;
 
                               if (isHoliday) {
-                                bgColor = Colors.green.shade50.withValues(alpha: 0.3);
-                                borderLeftColor = Colors.green.shade600;
-                                textColor = Colors.green.shade900;
+                                bgColor = const Color(0xFFEEF2FF); // Azul claro neutro para feriados
+                                borderLeftColor = const Color(0xFF6366F1); // Indigo suave
+                                textColor = const Color(0xFF374151); // Cinza escuro discreto
                               } else if (day.label == 'DOM') {
-                                bgColor = Colors.red.shade50.withValues(alpha: 0.3);
+                                bgColor = Colors.grey.shade50.withValues(alpha: 0.2);
                                 borderLeftColor = Colors.red.shade600;
-                                textColor = Colors.red.shade900;
+                                textColor = Theme.of(context).colorScheme.onSurface;
                               } else if (day.label == 'SAB') {
-                                bgColor = Colors.red.shade50.withValues(alpha: 0.2);
-                                borderLeftColor = Colors.red.shade400;
-                                textColor = Colors.red.shade800;
+                                bgColor = Colors.grey.shade50.withValues(alpha: 0.15);
+                                borderLeftColor = Colors.red.shade500;
+                                textColor = Theme.of(context).colorScheme.onSurface;
                               }
 
                               return GestureDetector(
@@ -4516,12 +4604,12 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                 isParentEntry && !hasLaunch && value > 0 && !isInstallment;
 
                                             return Container(
-                                              constraints: const BoxConstraints(minHeight: 22),
+                                              constraints: const BoxConstraints(minHeight: 24),
                                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                               decoration: BoxDecoration(
                                                 color: chipBgColor,
                                                 borderRadius: BorderRadius.circular(12),
-                                                border: Border.all(color: chipBorderColor, width: 1),
+                                                border: Border.all(color: chipBorderColor.withValues(alpha: 0.5), width: 0.5),
                                               ),
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
@@ -4588,9 +4676,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                       Text(
                                                         day.label,
                                                         style: TextStyle(
-                                                          fontSize: 12,
+                                                          fontSize: 11,
                                                           fontWeight: FontWeight.w600,
-                                                          color: textColor.withValues(alpha: 0.7),
+                                                          color: Colors.grey.shade600,
                                                           letterSpacing: 0.5,
                                                         ),
                                                       ),
@@ -4598,8 +4686,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                       Text(
                                                         '${day.date.day}',
                                                         style: TextStyle(
-                                                          fontSize: 20,
-                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: 22,
+                                                          fontWeight: FontWeight.w800,
                                                           color: textColor,
                                                         ),
                                                       ),
@@ -4626,38 +4714,82 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                       children: [
                                                         if (showPayTotal)
                                                           Container(
-                                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                            height: 24,
+                                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
                                                             decoration: BoxDecoration(
                                                               color: Colors.red.shade700,
-                                                              borderRadius: BorderRadius.circular(3),
+                                                              borderRadius: BorderRadius.circular(5),
                                                             ),
-                                                            child: Text(
-                                                              moneyFormat.format(payTotal),
-                                                              style: const TextStyle(
-                                                                fontSize: 11,
-                                                                fontWeight: FontWeight.w700,
-                                                                color: Colors.white,
+                                                            child: Center(
+                                                              child: Text(
+                                                                moneyFormat.format(payTotal),
+                                                                style: const TextStyle(
+                                                                  fontSize: 10,
+                                                                  fontWeight: FontWeight.w700,
+                                                                  color: Colors.white,
+                                                                ),
                                                               ),
                                                             ),
                                                           ),
                                                         if (showPayTotal && showReceiveTotal)
-                                                          const SizedBox(width: 6),
+                                                          const SizedBox(width: 4),
                                                         if (showReceiveTotal)
                                                           Container(
-                                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                            height: 24,
+                                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
                                                             decoration: BoxDecoration(
                                                               color: Colors.green.shade700,
-                                                              borderRadius: BorderRadius.circular(3),
+                                                              borderRadius: BorderRadius.circular(5),
                                                             ),
-                                                            child: Text(
-                                                              moneyFormat.format(receiveTotal),
-                                                              style: const TextStyle(
-                                                                fontSize: 11,
-                                                                fontWeight: FontWeight.w700,
-                                                                color: Colors.white,
+                                                            child: Center(
+                                                              child: Text(
+                                                                moneyFormat.format(receiveTotal),
+                                                                style: const TextStyle(
+                                                                  fontSize: 10,
+                                                                  fontWeight: FontWeight.w700,
+                                                                  color: Colors.white,
+                                                                ),
                                                               ),
                                                             ),
                                                           ),
+                                                        if (showPayTotal && showReceiveTotal) ...[
+                                                          const SizedBox(width: 6),
+                                                          Builder(
+                                                            builder: (context) {
+                                                              final balance = receiveTotal - payTotal;
+                                                              final absBalance = balance.abs();
+                                                              final balanceText = balance < 0 
+                                                                  ? '-R\$ ${absBalance.toStringAsFixed(2).replaceAll('.', ',')}'
+                                                                  : 'R\$ ${absBalance.toStringAsFixed(2).replaceAll('.', ',')}';
+                                                              final bgColor = balance > 0 
+                                                                  ? Colors.green.shade600 
+                                                                  : (balance < 0 ? Colors.red.shade600 : Colors.grey.shade600);
+                                                              
+                                                              return Container(
+                                                                height: 24,
+                                                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+                                                                decoration: BoxDecoration(
+                                                                  color: bgColor,
+                                                                  borderRadius: BorderRadius.circular(5),
+                                                                  border: Border.all(
+                                                                    color: Colors.white.withValues(alpha: 0.3),
+                                                                    width: 0.5,
+                                                                  ),
+                                                                ),
+                                                                child: Center(
+                                                                  child: Text(
+                                                                    'Saldo do dia: $balanceText',
+                                                                    style: const TextStyle(
+                                                                      fontSize: 8.5,
+                                                                      fontWeight: FontWeight.w600,
+                                                                      color: Colors.white,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              );
+                                                            },
+                                                          ),
+                                                        ],
                                                       ],
                                                     ),
                                                   ],
@@ -4665,7 +4797,19 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                               ),
                                               const SizedBox(height: 8),
                                               if (payAccounts.isEmpty && receiveAccounts.isEmpty)
-                                                const SizedBox.shrink()
+                                                Padding(
+                                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                                  child: Center(
+                                                    child: Text(
+                                                      'Sem lançamentos',
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        color: Color(0xFF9CA3AF),
+                                                        fontStyle: FontStyle.italic,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                )
                                               else
                                                 Row(
                                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -4674,9 +4818,32 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                       child: Column(
                                                         crossAxisAlignment: CrossAxisAlignment.start,
                                                         children: [
+                                                          if (payAccounts.isNotEmpty) ...[
+                                                            Row(
+                                                              mainAxisSize: MainAxisSize.min,
+                                                              children: [
+                                                                Icon(
+                                                                  Icons.arrow_downward_rounded,
+                                                                  size: 10,
+                                                                  color: Colors.red.shade700,
+                                                                ),
+                                                                const SizedBox(width: 3),
+                                                                Text(
+                                                                  'Pagamentos',
+                                                                  style: TextStyle(
+                                                                    fontSize: 9,
+                                                                    fontWeight: FontWeight.w600,
+                                                                    color: Colors.grey.shade600,
+                                                                    letterSpacing: 0.3,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            const SizedBox(height: 4),
+                                                          ],
                                                           for (final accData in payAccounts) ...[
                                                             buildAccountBadge(accData, false),
-                                                            const SizedBox(height: 2),
+                                                            const SizedBox(height: 3),
                                                           ],
                                                         ],
                                                       ),
@@ -4686,12 +4853,35 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                       child: Column(
                                                         crossAxisAlignment: CrossAxisAlignment.end,
                                                         children: [
+                                                          if (receiveAccounts.isNotEmpty) ...[
+                                                            Row(
+                                                              mainAxisSize: MainAxisSize.min,
+                                                              children: [
+                                                                Text(
+                                                                  'Recebimentos',
+                                                                  style: TextStyle(
+                                                                    fontSize: 9,
+                                                                    fontWeight: FontWeight.w600,
+                                                                    color: Colors.grey.shade600,
+                                                                    letterSpacing: 0.3,
+                                                                  ),
+                                                                ),
+                                                                const SizedBox(width: 3),
+                                                                Icon(
+                                                                  Icons.arrow_upward_rounded,
+                                                                  size: 10,
+                                                                  color: Colors.green.shade700,
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            const SizedBox(height: 4),
+                                                          ],
                                                           for (final accData in receiveAccounts) ...[
                                                             Align(
                                                               alignment: Alignment.centerRight,
                                                               child: buildAccountBadge(accData, true),
                                                             ),
-                                                            const SizedBox(height: 2),
+                                                            const SizedBox(height: 3),
                                                           ],
                                                         ],
                                                       ),
