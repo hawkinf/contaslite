@@ -1607,16 +1607,16 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
         // Calcular progresso de animação para esta aba
         final value = _tabController.animation!.value;
         final animProgress = (value - index).abs().clamp(0.0, 1.0);
-        final currentIconSize = 24.0 + (2.0 * (1 - animProgress));
+        final currentIconSize = 20.0 + (2.0 * (1 - animProgress));
         
         return Tab(
-          height: 66,
+          height: 52,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, size: currentIconSize),
-              const SizedBox(height: 5),
+              const SizedBox(height: 3),
               Text(label),
             ],
           ),
@@ -5418,44 +5418,44 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       body: CustomScrollView(
         slivers: [
           SliverAppBar.large(
-            expandedHeight: isSmallMobile ? 150 : (isMobile ? 55 : 53),
+            expandedHeight: isSmallMobile ? 110 : (isMobile ? 72 : 68),
             pinned: true,
             centerTitle: true,
             actions: isSmallMobile
                 ? []
                 : [
                     Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
+                      padding: const EdgeInsets.only(right: 6.0),
                       child: IconButton(
                         icon: const Icon(Icons.print),
-                        iconSize: isMobile ? 28 : 24,
+                        iconSize: isMobile ? 22 : 20,
                         tooltip: 'Imprimir Relatório',
                         onPressed: () => _printReport(),
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
+                      padding: const EdgeInsets.only(right: 6.0),
                       child: IconButton(
                         icon: const Icon(Icons.calculate),
-                        iconSize: isMobile ? 28 : 24,
+                        iconSize: isMobile ? 22 : 20,
                         tooltip: 'Calcular Datas',
                         onPressed: () => _showDateCalculator(context),
                       ),
                     ),
 
                     Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
+                      padding: const EdgeInsets.only(right: 6.0),
                       child: _buildThemeToggleButton(
                         iconColor: Theme.of(context).colorScheme.onSurface,
-                        iconSize: isMobile ? 28 : 24,
+                        iconSize: isMobile ? 22 : 20,
                       ),
                     ),
 
                     Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
+                      padding: const EdgeInsets.only(right: 6.0),
                       child: IconButton(
                         icon: const Icon(Icons.settings),
-                        iconSize: isMobile ? 28 : 24,
+                        iconSize: isMobile ? 22 : 20,
                         tooltip: 'Preferências',
                         onPressed: () => showDialog(
                           context: context,
@@ -5470,7 +5470,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
               title: ValueListenableBuilder<DateTimeRange>(
               valueListenable: contas_prefs.PrefsService.dateRangeNotifier,
               builder: (context, range, _) {
-                final titleFontSize = isSmallMobile ? 18.0 : 22.0;
+                final titleFontSize = isSmallMobile ? 17.0 : 20.0;
                 return SizedBox(
                   width: double.infinity,
                   child: Row(
@@ -5499,7 +5499,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
-                                fontSize: isSmallMobile ? 10 : 12,
+                                fontSize: isSmallMobile ? 10 : 11,
                                 color: Colors.white.withValues(alpha: 0.9),
                               ),
                             ),
@@ -5508,23 +5508,24 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                       ),
                       if (_nextHolidayData?.holiday != null)
                         Padding(
-                          padding: const EdgeInsets.only(left: 12, right: 0),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.shade400,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.black, width: 2),
-                            ),
-                            child: Text(
-                              '${_nextHolidayData!.holiday!.name} - Faltam ${_nextHolidayData!.daysUntil} dia${_nextHolidayData!.daysUntil == 1 ? '' : 's'}',
+                          padding: const EdgeInsets.only(left: 10, right: 0),
+                          child: Chip(
+                            label: Text(
+                              '${_nextHolidayData!.holiday!.name} • Faltam ${_nextHolidayData!.daysUntil} dia${_nextHolidayData!.daysUntil == 1 ? '' : 's'}',
                               style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: isSmallMobile ? 10 : 12,
+                                fontWeight: FontWeight.w700,
+                                fontSize: isSmallMobile ? 10 : 11,
                                 color: Colors.black,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
+                            ),
+                            backgroundColor: Colors.amber.shade400,
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            visualDensity: VisualDensity.compact,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(color: Colors.black.withValues(alpha: 0.4), width: 1),
                             ),
                           ),
                         ),
@@ -5615,9 +5616,10 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     indicatorSize: TabBarIndicatorSize.tab,
                     indicator: BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                      border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25)),
                     ),
-                    indicatorPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    indicatorPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
                     tabs: [
                       _buildPremiumTab('Contas', Icons.dashboard_outlined, 0),
                       _buildPremiumTab('Calendário', Icons.calendar_month, 1),

@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
@@ -17,12 +18,13 @@ import '../utils/installment_utils.dart';
 import '../widgets/app_input_decoration.dart';
 import '../widgets/new_expense_dialog.dart';
 import '../widgets/payment_dialog.dart';
-import '../widgets/date_range_app_bar.dart';
 import '../widgets/single_day_app_bar.dart';
 import '../utils/card_utils.dart';
 import 'account_form_screen.dart';
 import 'recebimento_form_screen.dart';
 import 'credit_card_form.dart';
+
+enum DashboardFilter { all, pagar, receber, cartoes }
 
 class _InstallmentSummary {
   final double totalAmount;
@@ -36,6 +38,14 @@ class _InstallmentSummary {
     this.nextDueDate,
     this.nextValue,
   });
+}
+
+class _MenuAction {
+  final String label;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _MenuAction({required this.label, required this.icon, this.onTap});
 }
 
 class _CalendarHole extends StatelessWidget {
@@ -178,35 +188,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<int, _InstallmentSummary> _installmentSummaries = {};
   Map<int, Map<String, dynamic>> _paymentInfo = {};
   final Map<int, double> _recurrenceParentValues = {}; // Mapeia recurrence ID -> valor previsto
-  bool _showContasPagar = true;
-  bool _showContasReceber = true;
-  bool _showCartoesCredito = true;
+  DashboardFilter _categoryFilter = DashboardFilter.all;
   
   // Novos filtros
   bool _hidePaidAccounts = true; // Ocultar contas pagas/recebidas (true = oculta)
   String _periodFilter = 'month'; // 'month', 'currentWeek', 'nextWeek'
   // Controle do FAB durante scroll
   bool _isFabVisible = true;
-  double _lastScrollOffset = 0;
   
   // Estado de seleção de card
   int? _selectedAccountId;
   int? _hoveredAccountId; // Rastrear card em hover
 
-  bool _handleScrollNotification(ScrollNotification notification) {
-    if (notification is ScrollUpdateNotification) {
-      final currentOffset = notification.metrics.pixels;
-      final delta = currentOffset - _lastScrollOffset;
-
-      // Scroll para baixo (delta > 0) -> esconde FAB
-      // Scroll para cima (delta < 0) -> mostra FAB
-      if (delta > 2 && _isFabVisible) {
-        setState(() => _isFabVisible = false);
-      } else if (delta < -2 && !_isFabVisible) {
-        setState(() => _isFabVisible = true);
-      }
-
-      _lastScrollOffset = currentOffset;
+  bool _handleScrollNotification(UserScrollNotification notification) {
+    final direction = notification.direction;
+    if (direction == ScrollDirection.reverse && _isFabVisible) {
+      setState(() => _isFabVisible = false);
+    } else if (direction == ScrollDirection.forward && !_isFabVisible) {
+      setState(() => _isFabVisible = true);
     }
     return false;
   }
@@ -311,126 +310,193 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   bool get _isCombinedView => widget.typeNameFilter == null && widget.excludeTypeNameFilter == null;
 
-  List<Widget> _buildAppBarActions({
-    required bool includeFilter,
-    Color? badgeFillColor,
-  }) {
-    if (!includeFilter) return <Widget>[];
-    // Botão de filtro com badge - uniformizado com mesmo estilo
-    return <Widget>[
-      Transform.translate(
-        offset: const Offset(-8, 0),
-        child: IntrinsicWidth(
-          child: Container(
-            margin: const EdgeInsets.only(left: 20, right: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF6B4A3E),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFF2B1A14), width: 1),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.25),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+  Widget _buildTopControlsBar() {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      color: const Color(0xFFF6F5F3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildFilterChip('Todos', DashboardFilter.all),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Pagar', DashboardFilter.pagar),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Receber', DashboardFilter.receber),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Cartões', DashboardFilter.cartoes),
+                ],
+              ),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
+          ),
+          const SizedBox(width: 12),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 300),
+            child: Row(
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 18,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.white, width: 1),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                      child: Checkbox(
-                        value: _hidePaidAccounts,
-                        onChanged: (value) {
-                          setState(() => _hidePaidAccounts = value ?? true);
-                          _loadData();
-                        },
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        side: const BorderSide(color: Colors.transparent, width: 0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                        visualDensity: VisualDensity.compact,
-                        activeColor: Colors.transparent,
-                        checkColor: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'Ocultar Contas Pagas',
-                      style: TextStyle(
-                        fontSize: 13.2,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        shadows: [
-                          Shadow(
-                            color: Color(0xFF1A0F0B),
-                            offset: Offset(0, 1),
-                            blurRadius: 2,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE7D7CE),
-                    border: Border.all(color: const Color(0xFF2B1A14), width: 2),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _periodFilter,
-                      isDense: true,
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _periodFilter = value);
-                        _applyPeriodFilter(value);
-                      },
-                      icon: const Icon(Icons.arrow_drop_down, size: 16, color: Color(0xFF2B1A14)),
-                      style: const TextStyle(
-                        fontSize: 13.2,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF2B1A14),
-                      ),
-                      alignment: Alignment.center,
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'month',
-                          child: Center(child: Text('Mês inteiro')),
-                        ),
-                        DropdownMenuItem(
-                          value: 'currentWeek',
-                          child: Center(child: Text('Semana atual')),
-                        ),
-                        DropdownMenuItem(
-                          value: 'nextWeek',
-                          child: Center(child: Text('Próxima semana')),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                Expanded(child: _buildHidePaidControl()),
+                const SizedBox(width: 8),
+                SizedBox(width: 160, child: _buildPeriodControl()),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, DashboardFilter filter) {
+    final bool selected = _categoryFilter == filter;
+    final Color primary = Theme.of(context).colorScheme.primary;
+    final Color textColor = selected ? Colors.white : Colors.grey.shade800;
+    return SizedBox(
+      height: 34,
+      child: ChoiceChip(
+        labelPadding: const EdgeInsets.symmetric(horizontal: 10),
+        label: Text(
+          label,
+          style: TextStyle(
+            color: textColor,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        selected: selected,
+        showCheckmark: false,
+        backgroundColor: Colors.white,
+        selectedColor: primary,
+        side: BorderSide(color: Colors.grey.shade300),
+        shape: const StadiumBorder(),
+        visualDensity: VisualDensity.compact,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        onSelected: (_) {
+          setState(() => _categoryFilter = filter);
+          _loadData();
+        },
+      ),
+    );
+  }
+
+  Widget _buildHidePaidControl() {
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.visibility_off_outlined, size: 18, color: Colors.grey.shade700),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Ocultar pagas',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Transform.scale(
+            scale: 0.9,
+            alignment: Alignment.centerRight,
+            child: Switch.adaptive(
+              value: _hidePaidAccounts,
+              onChanged: (value) {
+                setState(() => _hidePaidAccounts = value);
+                _loadData();
+              },
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPeriodControl() {
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _periodFilter,
+          isDense: true,
+          isExpanded: true,
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _periodFilter = value);
+            _applyPeriodFilter(value);
+          },
+          icon: Icon(Icons.arrow_drop_down, size: 18, color: Colors.grey.shade700),
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade800,
+          ),
+          items: const [
+            DropdownMenuItem(
+              value: 'month',
+              child: Text('Mês Atual', overflow: TextOverflow.ellipsis),
+            ),
+            DropdownMenuItem(
+              value: 'currentWeek',
+              child: Text('Semana Atual', overflow: TextOverflow.ellipsis),
+            ),
+            DropdownMenuItem(
+              value: 'nextWeek',
+              child: Text('Próx. Semana', overflow: TextOverflow.ellipsis),
+            ),
+          ],
         ),
       ),
-    ];
+    );
+  }
+
+  Widget _buildMonthSelectorTitle({
+    required String label,
+    required Color color,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: Icon(Icons.chevron_left, color: color, size: 18),
+          splashRadius: 16,
+          onPressed: () => _changeMonth(-1),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        IconButton(
+          icon: Icon(Icons.chevron_right, color: color, size: 18),
+          splashRadius: 16,
+          onPressed: () => _changeMonth(1),
+        ),
+      ],
+    );
   }
 
   bool _hasRecurrenceStarted(Account rec, DateTime current) {
@@ -821,18 +887,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
         debugPrint('✓ Filtro de exclusão: $beforeFilter → ${processedList.length} contas');
       }
 
-      if (_isCombinedView && (!(_showContasPagar && _showContasReceber && _showCartoesCredito))) {
+      if (_isCombinedView && _categoryFilter != DashboardFilter.all) {
         final beforeFilter = processedList.length;
         processedList = processedList.where((account) {
           final isCard = account.cardBrand != null;
           final typeName = typeMap[account.typeId]?.toLowerCase() ?? '';
           final isRecebimento = typeName.contains('receb');
           final isPagar = !isCard && !isRecebimento;
-
-          if (isCard && !_showCartoesCredito) return false;
-          if (isRecebimento && !_showContasReceber) return false;
-          if (isPagar && !_showContasPagar) return false;
-          return true;
+          switch (_categoryFilter) {
+            case DashboardFilter.pagar:
+              return isPagar;
+            case DashboardFilter.receber:
+              return isRecebimento;
+            case DashboardFilter.cartoes:
+              return isCard;
+            case DashboardFilter.all:
+              return true;
+          }
         }).toList();
         debugPrint('✓ Filtro de categorias: $beforeFilter → ${processedList.length} contas');
       }
@@ -1078,6 +1149,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           (_isRecebimentosFilter ? AppColors.success : AppColors.error);
       const appBarFg = Colors.white;
       final isSingleDayFilter = DateUtils.isSameDay(_startDate, _endDate);
+      final monthLabel = DateFormat('MMMM yyyy', 'pt_BR').format(_startDate).toUpperCase();
       final PreferredSizeWidget appBarWidget = isSingleDayFilter
           ? (SingleDayAppBar(
               date: _startDate,
@@ -1096,35 +1168,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   PrefsService.requestTabChange(targetTab);
                 },
               ),
-              actions: _buildAppBarActions(includeFilter: false),
             ) as PreferredSizeWidget)
-           : (DateRangeAppBar(
-               range: DateTimeRange(start: _startDate, end: _endDate),
-               onPrevious: () => _changeMonth(-1),
-               onNext: () => _changeMonth(1),
+           : AppBar(
                backgroundColor: appBarBg,
                foregroundColor: appBarFg,
-               actions: _buildAppBarActions(
-                 includeFilter: !_inlinePreserveAppBar,
-                 badgeFillColor: appBarBg,
+               elevation: 0,
+               toolbarHeight: 56,
+               centerTitle: true,
+               leading: IconButton(
+                 icon: const Icon(Icons.arrow_back),
+                 tooltip: 'Voltar',
+                 onPressed: () => Navigator.of(context).maybePop(),
                ),
-               showFilters: _isCombinedView && !_inlinePreserveAppBar,
-               filterContasPagar: _showContasPagar,
-               filterContasReceber: _showContasReceber,
-               filterCartoes: _showCartoesCredito,
-               onFilterContasPagarChanged: (value) {
-                 setState(() => _showContasPagar = value);
-                 _loadData();
-               },
-               onFilterContasReceberChanged: (value) {
-                 setState(() => _showContasReceber = value);
-                 _loadData();
-               },
-               onFilterCartoesChanged: (value) {
-                 setState(() => _showCartoesCredito = value);
-                 _loadData();
-               },
-             ) as PreferredSizeWidget);
+               title: _buildMonthSelectorTitle(label: monthLabel, color: appBarFg),
+             );
       final dashboardBody = SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -1133,7 +1190,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 horizontal: isCompactHeight ? 6 : 8,
               );
               final totalFontSize = isCompactHeight ? 22.0 : 28.0;
-              const headerScale = 0.8;
+              const headerScale = 0.7;
               double hs(double value) => value * headerScale;
 
               final headerWidget = isCombined
@@ -1145,7 +1202,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         // Card A RECEBER
                         Expanded(
                           child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: hs(16), vertical: hs(14)),
+                            height: hs(88),
+                            padding: EdgeInsets.symmetric(horizontal: hs(12), vertical: hs(10)),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.topLeft,
@@ -1156,13 +1214,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ],
                               ),
                               borderRadius: BorderRadius.circular(hs(16)),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.green.shade400.withValues(alpha: 0.5),
-                                  blurRadius: hs(12),
-                                  offset: Offset(0, hs(4)),
-                                ),
-                              ],
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1178,7 +1229,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       child: const Icon(
                                         Icons.trending_up_rounded,
                                         color: Colors.white,
-                                        size: 18 * headerScale,
+                                        size: 16 * headerScale,
                                       ),
                                     ),
                                     SizedBox(width: hs(10)),
@@ -1195,7 +1246,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                               style: TextStyle(
                                                 color: Colors.white,
                                                 fontWeight: FontWeight.w700,
-                                                fontSize: hs(32),  // 28-34px range
+                                                fontSize: hs(26),
                                                 letterSpacing: 0.6,
                                                 height: 1.1,
                                               ),
@@ -1208,7 +1259,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             style: TextStyle(
                                               color: Colors.white.withValues(alpha: 0.80),
                                               fontWeight: FontWeight.w600,
-                                              fontSize: hs(14),  // 13-15px range
+                                              fontSize: hs(12),
                                               height: 1.2,
                                             ),
                                           ),
@@ -1226,7 +1277,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         // Card A PAGAR
                         Expanded(
                           child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: hs(16), vertical: hs(14)),
+                            height: hs(88),
+                            padding: EdgeInsets.symmetric(horizontal: hs(12), vertical: hs(10)),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.topLeft,
@@ -1237,13 +1289,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ],
                               ),
                               borderRadius: BorderRadius.circular(hs(16)),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.red.shade400.withValues(alpha: 0.5),
-                                  blurRadius: hs(12),
-                                  offset: Offset(0, hs(4)),
-                                ),
-                              ],
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1259,7 +1304,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       child: const Icon(
                                         Icons.trending_down_rounded,
                                         color: Colors.white,
-                                        size: 18 * headerScale,
+                                        size: 16 * headerScale,
                                       ),
                                     ),
                                     SizedBox(width: hs(10)),
@@ -1276,7 +1321,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                               style: TextStyle(
                                                 color: Colors.white,
                                                 fontWeight: FontWeight.w700,
-                                                fontSize: hs(32),  // 28-34px range
+                                                fontSize: hs(26),
                                                 letterSpacing: 0.6,
                                                 height: 1.1,
                                               ),
@@ -1289,7 +1334,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             style: TextStyle(
                                               color: Colors.white.withValues(alpha: 0.80),
                                               fontWeight: FontWeight.w600,
-                                              fontSize: hs(14),  // 13-15px range
+                                              fontSize: hs(12),
                                               height: 1.2,
                                             ),
                                           ),
@@ -1513,6 +1558,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               }
 
               return Column(children: [
+                if (!_inlinePreserveAppBar) _buildTopControlsBar(),
                 headerWidget,
                 if (selectionBanner != null) selectionBanner,
                 Expanded(
@@ -1541,11 +1587,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           )
                         : _displayList.isEmpty
                             ? Center(child: Text(emptyText))
-                            : NotificationListener<ScrollNotification>(
+                            : NotificationListener<UserScrollNotification>(
                                 onNotification: _handleScrollNotification,
                                 child: ListView.builder(
-                                  padding: const EdgeInsets.fromLTRB(
-                                      0, 8, 0, 8),
+                                  padding: const EdgeInsets.fromLTRB(0, 8, 0, 96),
                                   itemCount: _displayList.length,
                                   itemBuilder: (context, index) {
                                     try {
@@ -1642,8 +1687,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             : SafeArea(
                 child: Padding(
                   padding: EdgeInsets.only(right: fabRight, bottom: fabBottom),
-                  child: AnimatedScale(
-                    scale: _isFabVisible ? 1.0 : 0.0,
+                  child: AnimatedSlide(
+                    offset: _isFabVisible ? Offset.zero : const Offset(0, 0.2),
                     duration: const Duration(milliseconds: 200),
                     child: AnimatedOpacity(
                       opacity: _isFabVisible ? 1.0 : 0.0,
@@ -1678,12 +1723,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       debugPrint('❌ Erro ao renderizar DashboardScreen: $e');
       debugPrintStack(stackTrace: stackTrace);
       return Scaffold(
-        appBar: DateRangeAppBar(
-          range: DateTimeRange(start: _startDate, end: _endDate),
-          onPrevious: () => _changeMonth(-1),
-          onNext: () => _changeMonth(1),
+        appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Theme.of(context).colorScheme.onPrimary,
+          centerTitle: true,
+          title: Text(
+            DateFormat('MMMM yyyy', 'pt_BR').format(_startDate).toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
         body: Center(
           child: Column(
@@ -1798,7 +1846,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Color containerBg;
     Color cardColor;
     Color textColor;
-    late Color typeColor;
 
     final String? typeName = _typeNames[account.typeId]?.toLowerCase();
     final bool isRecebimento = _isRecebimentosFilter || (typeName != null && typeName.contains('receb'));
@@ -1822,7 +1869,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         containerBg = Colors.transparent;
         textColor = foregroundColorFor(cardColor);
         // ...existing code...
-        typeColor = userColor;
     } else {
       final int? accountColorValue = account.cardColor;
       final bool usesCustomColor = accountColorValue != null;
@@ -1894,10 +1940,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
 
-      typeColor = accent;
     }
 
-    final Color accentColor = typeColor;
     final bool isPagamento = !isRecebimento && (typeName?.contains('pag') ?? true);
     final breakdown = isCard ? CardBreakdown.parse(account.observation) : const CardBreakdown(total: 0, installments: 0, oneOff: 0, subscriptions: 0);
     // Valor previsto para exibir no badge (estimatedValue para recorrências)
@@ -1993,11 +2037,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final String cardNextDueLabel = DateFormat('dd/MM').format(cardNextDueDate);
     final bool hasRecurrence = account.isRecurrent || account.recurrenceId != null;
     
-    // Cores padronizadas para action buttons - adaptativas ao fundo do card
-    // Usar foregroundColorFor() para garantir contraste em qualquer cor escolhida
     final bool isCardDark = ThemeData.estimateBrightnessForColor(cardColor) == Brightness.dark;
-    final Color actionIconColor = foregroundColorFor(cardColor);
-    final Color actionIconBg = actionIconColor.withValues(alpha: 0.08);
     
     final double childIconHeight = categorySize * 1.3;
     final double childIconWidth = categorySize * 1.8;
@@ -2114,127 +2154,89 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 fontSize: smallDateSize, fontWeight: FontWeight.w600, color: Colors.grey.shade700)));
 
       final bool canLaunchPayment = !isPaid;
-      
-      // Lista de ações disponíveis
-      final List<Widget> actionIconsList = [];
-      
-      // 1. EDITAR (lápis) - sempre disponível
-      actionIconsList.add(
-        InkWell(
+      final List<_MenuAction> menuActions = [
+        _MenuAction(
+          label: 'Editar',
+          icon: Icons.edit,
           onTap: () => isCard ? _openCardEditor(account) : _showEditSpecificDialog(account),
-          child: _actionIcon(Icons.edit, actionIconBg, actionIconColor,
-              size: iconSize, scale: scale, surfaceColor: cardColor),
         ),
-      );
+      ];
 
-      // 2. LANÇAMENTO (rocket) - quando aplicável
       if (isCard) {
         if (!isCardInvoice) {
-          actionIconsList.add(
-            InkWell(
-              onTap: () => _showCartaoValueDialog(account),
-              child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
-                  size: iconSize, scale: scale, surfaceColor: cardColor),
-            ),
-          );
-        } else if (!isPaid && account.value > 0) {
-          actionIconsList.add(
-            InkWell(
-              onTap: () => _undoLaunch(account),
-              child: _actionIcon(Icons.undo, actionIconBg, actionIconColor,
-                  size: iconSize, scale: scale, surfaceColor: cardColor),
-            ),
-          );
+          menuActions.add(_MenuAction(
+            label: 'Lançar fatura',
+            icon: Icons.rocket_launch,
+            onTap: () => _showCartaoValueDialog(account),
+          ));
         }
-        actionIconsList.add(
-          InkWell(
-            onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
-            child: _actionIcon(Icons.attach_money, actionIconBg, actionIconColor,
-                enabled: canLaunchPayment, size: iconSize, scale: scale, surfaceColor: cardColor),
-          ),
-        );
+        menuActions.add(_MenuAction(
+          label: 'Pagar fatura',
+          icon: Icons.attach_money,
+          onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
+        ));
+        menuActions.add(_MenuAction(
+          label: 'Nova despesa',
+          icon: Icons.add_shopping_cart,
+          onTap: () => _showExpenseDialog(account),
+        ));
       } else if (isRecebimento) {
-        actionIconsList.add(
-          InkWell(
-            onTap: () => _showRecebimentoValueDialog(account),
-            child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
-                size: iconSize, scale: scale, surfaceColor: cardColor),
-          ),
-        );
+        menuActions.add(_MenuAction(
+          label: 'Lançar recebimento',
+          icon: Icons.rocket_launch,
+          onTap: () => _showRecebimentoValueDialog(account),
+        ));
       } else if (isRecurrent && account.recurrenceId == null) {
-        actionIconsList.add(
-          InkWell(
-            onTap: () async {
-              Account parentRecurrence = account;
-              if (account.recurrenceId != null) {
-                final parentId = account.recurrenceId!;
-                try {
-                  final parentAccount = await DatabaseHelper.instance.readAccountById(parentId);
-                  if (parentAccount != null) {
-                    parentRecurrence = parentAccount;
-                  }
-                } catch (e) {
-                  debugPrint('❌ Erro ao buscar recorrência PAI: $e');
+        menuActions.add(_MenuAction(
+          label: 'Lançar recorrência',
+          icon: Icons.rocket_launch,
+          onTap: () async {
+            Account parentRecurrence = account;
+            if (account.recurrenceId != null) {
+              final parentId = account.recurrenceId!;
+              try {
+                final parentAccount = await DatabaseHelper.instance.readAccountById(parentId);
+                if (parentAccount != null) {
+                  parentRecurrence = parentAccount;
                 }
+              } catch (e) {
+                debugPrint('❌ Erro ao buscar recorrência PAI: $e');
               }
-              if (mounted) _showLaunchDialog(parentRecurrence);
-            },
-            child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
-                size: iconSize, scale: scale, surfaceColor: cardColor),
-          ),
-        );
+            }
+            if (mounted) _showLaunchDialog(parentRecurrence);
+          },
+        ));
       } else if (isRecurrent && account.recurrenceId != null && account.value == 0) {
-        actionIconsList.add(
-          InkWell(
-            onTap: () => _showDespesaValueDialog(account),
-            child: _actionIcon(Icons.rocket_launch, actionIconBg, actionIconColor,
-                size: iconSize, scale: scale, surfaceColor: cardColor),
-          ),
-        );
+        menuActions.add(_MenuAction(
+          label: 'Lançar despesa',
+          icon: Icons.rocket_launch,
+          onTap: () => _showDespesaValueDialog(account),
+        ));
       }
 
-      // 3. PAGAMENTO (dinheiro) - para contas não-cartão
       if (!isCard) {
-        actionIconsList.add(
-          InkWell(
-            onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
-            child: _actionIcon(Icons.attach_money, actionIconBg, actionIconColor,
-                enabled: canLaunchPayment, size: iconSize, scale: scale, surfaceColor: cardColor),
-          ),
-        );
+        menuActions.add(_MenuAction(
+          label: isRecebimento ? 'Receber' : 'Pagar',
+          icon: Icons.attach_money,
+          onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
+        ));
       }
 
-      // 4. DESPESA NO CARTÃO (carrinho)
-      if (isCard) {
-        actionIconsList.add(
-          InkWell(
-            onTap: () => _showExpenseDialog(account),
-            child: _actionIcon(Icons.add_shopping_cart, actionIconBg, actionIconColor,
-                size: iconSize, scale: scale, surfaceColor: cardColor),
-          ),
-        );
+
+      if (isPaid) {
+        menuActions.add(_MenuAction(
+          label: 'Desfazer pagamento',
+          icon: Icons.undo,
+          onTap: () => _undoPayment(account),
+        ));
       }
 
-      // UNDO - desfazer lançamento
-      if (!isCard && account.recurrenceId != null && account.id != null && !isPaid && account.value > 0) {
-        actionIconsList.add(
-          InkWell(
-            onTap: () => _undoLaunch(account),
-            child: _actionIcon(Icons.undo, actionIconBg, actionIconColor,
-                size: iconSize, scale: scale, surfaceColor: cardColor),
-          ),
-        );
-      }
-
-      // 5. LIXEIRA (delete) - sempre por último
       if (account.id != null) {
-        actionIconsList.add(
-          InkWell(
-            onTap: () => _confirmDelete(account),
-            child: _actionIcon(Icons.delete, actionIconBg, actionIconColor,
-                size: iconSize, scale: scale, surfaceColor: cardColor),
-          ),
-        );
+        menuActions.add(_MenuAction(
+          label: 'Excluir',
+          icon: Icons.delete_outline,
+          onTap: () => _confirmDelete(account),
+        ));
       }
 
     Widget buildCardBody({required EdgeInsets padding, required List<Widget> children}) {
@@ -2256,29 +2258,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             )
           : cardColor;
       
-      // Sombra: glow azul quando selecionado, suave caso contrário
-      final List<BoxShadow> boxShadows = isSelected
-          ? [
-              // Glow azul quando selecionado
-              BoxShadow(
-                color: const Color(0xFF2563EB).withValues(alpha: 0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-              BoxShadow(
-                color: const Color(0xFF2563EB).withValues(alpha: 0.15),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ]
-          : [
-              // Sombra suave e leve no estado normal
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isHovered ? 0.08 : 0.05),
-                blurRadius: isHovered ? 8 : 4,
-                offset: Offset(0, isHovered ? 3 : 2),
-              ),
-            ];
+      final List<BoxShadow> boxShadows = [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isHovered ? 0.08 : 0.04),
+          blurRadius: 6,
+          offset: const Offset(0, 2),
+        ),
+      ];
       
       return MouseRegion(
         onEnter: (_) {
@@ -2356,8 +2342,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .format(effectiveDate)
         .replaceAll('.', '')
         .toUpperCase();
-    final double calendarWidth = sp(70);
-    final double calendarHeight = sp(88);
+    final double calendarWidth = sp(68);
+    final double calendarHeight = sp(78);
     // Calendário sempre branco, borda adapta ao fundo do card
     const Color calendarBadgeBg = Colors.white;
     final Color calendarBorder = cardIsDark ? Colors.white : Colors.black;
@@ -2526,12 +2512,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: sp(6),
-              height: sp(82),
+              width: sp(4),
+              height: sp(72),
               decoration: BoxDecoration(
-                color: (account.id != null && _selectedAccountId == account.id) 
-                    ? const Color(0xFF2563EB) // Azul quando selecionado
-                    : accentColor, // Cor original (verde/vermelho/laranja)
+                color: Colors.orange.shade600,
                 borderRadius: BorderRadius.circular(sp(6)),
               ),
             ),
@@ -2557,17 +2541,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 SizedBox(width: sp(6)),
                               ],
                               Expanded(
-                                child: Text(
-                                  categoryParent ?? _typeNames[account.typeId] ?? 'Outro',
-                                  style: TextStyle(
-                                    fontSize: categorySize * 0.95,  // 16-17px
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF111827),
-                                    height: 1.15,
+                                  child: Text(
+                                    categoryParent ?? _typeNames[account.typeId] ?? 'Outro',
+                                    style: TextStyle(
+                                      fontSize: sp(15.5),
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF111827),
+                                      height: 1.15,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
                               ),
                               SizedBox(width: sp(8)),
                               Container(
@@ -2655,11 +2639,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             child: Text(
                               middleLineText,
                               style: TextStyle(
-                                fontSize: sp(14),  // 14px fixo para melhor legibilidade
+                                fontSize: sp(12.5),
                                 fontWeight: FontWeight.w500,
-                                color: isCardDark 
+                                color: isCardDark
                                     ? textColor.withValues(alpha: 0.85)
-                                    : const Color(0xFF374151),  // Cinza mais escuro (#374151)
+                                    : const Color(0xFF374151),
                                 height: 1.10,
                               ),
                               maxLines: 1,
@@ -2684,8 +2668,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               if (showBadgesRow)
                                 Padding(
                                   padding: EdgeInsets.only(top: sp(2)),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
+                                  child: Wrap(
+                                    spacing: sp(6),
+                                    runSpacing: sp(6),
                                     children: [
                                       // Chip "Pago" em cinza (sempre primeiro)
                                       if (isPaid) ...[
@@ -2715,7 +2700,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             ],
                                           ),
                                         ),
-                                        SizedBox(width: sp(8)),
                                       ],
                                       if (isSinglePayment) ...[
                                         singlePaymentBadge,
@@ -2736,16 +2720,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             ),
                                           ),
                                         ),
-                                        if (installmentDisplay.isInstallment) SizedBox(width: sp(8)),
                                       ],
                                       if (installmentDisplay.isInstallment) ...[
                                         installmentBadge,
-                                        SizedBox(width: sp(8)),
                                         nextDueBadge,
                                       ],
                                       if (showPrevisto) ...[
-                                        if (installmentDisplay.isInstallment || (hasRecurrence && !isCard) || isSinglePayment)
-                                          SizedBox(width: sp(8)),
                                         Container(
                                           padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
                                           decoration: BoxDecoration(
@@ -2763,7 +2743,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         ),
                                       ],
                                       if (isCard) ...[
-                                        SizedBox(width: sp(8)),
                                         Container(
                                           padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
                                           decoration: BoxDecoration(
@@ -2785,7 +2764,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             ),
                                           ),
                                         ),
-                                        SizedBox(width: sp(8)),
                                         Container(
                                           padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(3)),
                                           decoration: BoxDecoration(
@@ -2872,12 +2850,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Align(
                           alignment: Alignment.bottomRight,
                           child: _buildActionButtons(
-                            account: account,
-                            actionIconsList: actionIconsList,
-                            isSelected: account.id != null && _selectedAccountId == account.id,
-                            cardColor: cardColor,
-                            textColor: textColor,
-                            iconSize: iconSize,
+                            menuActions: menuActions,
                             scale: scale,
                           ),
                         ),
@@ -2894,43 +2867,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildActionButtons({
-    required Account account,
-    required List<Widget> actionIconsList,
-    required bool isSelected,
-    required Color cardColor,
-    required Color textColor,
-    required double iconSize,
+    required List<_MenuAction> menuActions,
     required double scale,
   }) {
     double sp(double value) => value * scale;
-    
-    // Detectar se o fundo do card é claro ou escuro
-    final bool isCardDark = ThemeData.estimateBrightnessForColor(cardColor) == Brightness.dark;
-    
-    // Glass effect adaptativo: preto em fundos claros, branco em fundos escuros
-    final Color glassBg = isCardDark
-        ? Colors.white.withValues(alpha: isSelected ? 0.14 : 0.10)
-        : Colors.black.withValues(alpha: isSelected ? 0.12 : 0.08);
-    
-    // Mostrar todos os botões sempre
-    final List<Widget> rowChildren = [];
-    for (int i = 0; i < actionIconsList.length; i++) {
-      rowChildren.add(actionIconsList[i]);
-      if (i < actionIconsList.length - 1) {
-        rowChildren.add(SizedBox(width: sp(6)));
-      }
+
+    if (menuActions.isEmpty) {
+      return const SizedBox.shrink();
     }
-    
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(6)),
-      decoration: BoxDecoration(
-        color: glassBg,
-        borderRadius: BorderRadius.circular(sp(10)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: rowChildren,
-      ),
+
+    final editAction = menuActions.firstWhere(
+      (action) => action.label == 'Editar',
+      orElse: () => const _MenuAction(label: '', icon: Icons.more_vert),
+    );
+    final otherActions = menuActions
+        .where((action) => action.label != 'Editar' && action.onTap != null)
+        .toList();
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (editAction.onTap != null)
+          InkWell(
+            onTap: editAction.onTap,
+            child: Container(
+              width: sp(28),
+              height: sp(28),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(sp(8)),
+              ),
+              child: Icon(editAction.icon, size: sp(16), color: Colors.grey.shade700),
+            ),
+          ),
+        if (otherActions.isNotEmpty) ...[
+          SizedBox(width: sp(6)),
+          PopupMenuButton<int>(
+            padding: EdgeInsets.zero,
+            icon: Icon(Icons.more_vert, size: sp(18), color: Colors.grey.shade700),
+            onSelected: (index) => otherActions[index].onTap?.call(),
+            itemBuilder: (context) => [
+              for (int i = 0; i < otherActions.length; i++)
+                PopupMenuItem<int>(
+                  value: i,
+                  child: Row(
+                    children: [
+                      Icon(otherActions[i].icon, size: 18, color: Colors.grey.shade700),
+                      const SizedBox(width: 8),
+                      Text(otherActions[i].label),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 
@@ -2991,53 +2982,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           );
         }
-      }
-    }
-  }
-
-  Future<void> _undoLaunch(Account account) async {
-    // Só aplica para instâncias lançadas (filhas) de recorrência
-    if (account.id == null || account.recurrenceId == null) return;
-    try {
-      // Antes de remover a instância, garanta que o PAI tenha um valor previsto
-      final parentId = account.recurrenceId!;
-      final parent = await DatabaseHelper.instance.readAccountById(parentId);
-      if (parent != null) {
-        final double fallbackPrevisto =
-            (account.estimatedValue ?? account.value).abs() > 0.009
-                ? (account.estimatedValue ?? account.value)
-                : (parent.estimatedValue ?? parent.value);
-
-        if (fallbackPrevisto.abs() > 0.009 &&
-            (parent.estimatedValue ?? 0) != fallbackPrevisto) {
-          await DatabaseHelper.instance.updateAccount(
-            parent.copyWith(
-              estimatedValue: fallbackPrevisto,
-              value: parent.value == 0 ? fallbackPrevisto : parent.value,
-            ),
-          );
-        }
-      }
-
-      await DatabaseHelper.instance.deleteAccount(account.id!);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Lançamento desfeito — conta voltou para previsão'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 2),
-          ),
-        );
-        _refresh();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao desfazer lançamento: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
     }
   }
@@ -3177,38 +3121,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           fontWeight: FontWeight.w700,
         ),
       ),
-    );
-  }
-
-  Widget _actionIcon(IconData icon, Color bg, Color iconColor,
-      {bool enabled = true,
-      double size = 16,
-      Color? borderColor,
-      double borderWidth = 1,
-      double scale = 1,
-      Color? surfaceColor}) {
-    Color resolvedBg = bg;
-    if (surfaceColor != null) {
-      resolvedBg = ColorContrast.adjustForContrast(bg, surfaceColor, targetRatio: 3.0);
-    }
-    Color resolvedIcon = iconColor;
-    if (surfaceColor != null) {
-      resolvedIcon = foregroundColorFor(resolvedBg);
-    }
-
-    final displayColor = enabled ? resolvedIcon : resolvedIcon.withValues(alpha: 0.6);
-    final displayBg = enabled ? resolvedBg : resolvedBg.withValues(alpha: 0.5);
-    return Opacity(
-      opacity: enabled ? 1 : 0.6,
-      child: Container(
-          padding: EdgeInsets.all(5 * scale),
-          decoration: BoxDecoration(
-              color: displayBg,
-              borderRadius: BorderRadius.circular(4 * scale),
-              border: borderColor != null
-                  ? Border.all(color: borderColor, width: borderWidth * scale)
-                  : null),
-          child: Icon(icon, size: size, color: displayColor)),
     );
   }
 
