@@ -27,7 +27,7 @@ class AppTextStyles {
   );
 
   static const TextStyle chip = TextStyle(
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: FontWeight.w600,
   );
 }

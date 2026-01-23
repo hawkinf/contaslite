@@ -19,7 +19,7 @@ class StatusIndicator extends StatelessWidget {
   const StatusIndicator.bar({
     super.key,
     required this.color,
-    this.thickness = 3,
+    this.thickness = 2,
   })  : variant = StatusIndicatorVariant.bar,
         size = 0;
 

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_text_styles.dart';
@@ -26,21 +25,23 @@ class MiniChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final Color resolvedBackground =
-        backgroundColor ?? colorScheme.surfaceContainerHighest;
-    final Color resolvedBorder = borderColor ?? colorScheme.outlineVariant;
-    final Color resolvedText = textColor ?? AppColors.textSecondary;
+      backgroundColor ?? colorScheme.surfaceContainerHighest;
+    final Color? resolvedBorder = borderColor;
+    final Color resolvedText = textColor ?? colorScheme.onSurfaceVariant;
     final Color resolvedIcon = iconColor ?? resolvedText;
 
     return Container(
-      height: 28,
+      height: 26,
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: 4,
+        horizontal: 12,
+        vertical: 3,
       ),
       decoration: BoxDecoration(
         color: resolvedBackground,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: resolvedBorder),
+        border: resolvedBorder == null
+            ? null
+            : Border.all(color: resolvedBorder),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

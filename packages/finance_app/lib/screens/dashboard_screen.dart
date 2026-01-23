@@ -161,7 +161,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   
   // Estado de seleção de card
   int? _selectedAccountId;
-  int? _hoveredAccountId; // Rastrear card em hover
 
   bool _handleScrollNotification(UserScrollNotification notification) {
     final direction = notification.direction;
@@ -1172,7 +1171,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             : NotificationListener<UserScrollNotification>(
                                 onNotification: _handleScrollNotification,
                                 child: ListView.builder(
-                                  padding: const EdgeInsets.fromLTRB(0, 8, 0, 96),
+                                  padding: const EdgeInsets.fromLTRB(0, 8, 0, 110),
                                   itemCount: _displayList.length,
                                   itemBuilder: (context, index) {
                                     try {
@@ -1224,7 +1223,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                                       ),
                                                     ],
                                                   ),
-                                                  const SizedBox(height: 6),
+                                                  const SizedBox(height: 8),
                                                   Container(
                                                     height: 1,
                                                     color: Colors.black.withValues(alpha: 0.08),
@@ -1425,61 +1424,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     bool isCard = account.cardBrand != null;
     bool isRecurrent = account.isRecurrent || account.recurrenceId != null;
 
-    Color cardColor;
-
     final String? typeName = _typeNames[account.typeId]?.toLowerCase();
     final bool isRecebimento = _isRecebimentosFilter || (typeName != null && typeName.contains('receb'));
-    if (isCard) {
-      final colorScheme = Theme.of(context).colorScheme;
-      cardColor = colorScheme.surfaceContainerLow;
-    } else {
-      final int? accountColorValue = account.cardColor;
-      final bool usesCustomColor = accountColorValue != null;
-      final Color? customColor = usesCustomColor ? Color(accountColorValue) : null;
-      
-      // Se houver cor customizada, aplicar overlay sutil
-      final Color? domadaColor = customColor != null
-          ? () {
-              final bool isCustomDark = ThemeData.estimateBrightnessForColor(customColor) == Brightness.dark;
-              return Color.alphaBlend(
-                isCustomDark
-                    ? Colors.white.withValues(alpha: 0.08)  // Overlay branco 8% em cores escuras
-                    : Colors.black.withValues(alpha: 0.12), // Overlay preto 12% em cores claras
-                customColor,
-              );
-            }()
-          : null;
-      
-      // Background adaptável: cor customizada ou neutro elegante
-      if (domadaColor != null) {
-        // Se tem cor customizada, usar overlay sutil da cor + overlay preto leve para domar
-        cardColor = Color.alphaBlend(
-          Colors.black.withValues(alpha: 0.08), // Overlay preto 8% para elegância
-          domadaColor.withValues(alpha: 0.97),
-        );
-      } else {
-        // Sem cor customizada: fundo off-white elegante
-        final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
-        if (isDarkMode) {
-          // Modo escuro: manter comportamento atual
-          cardColor = Theme.of(context).cardColor.withValues(alpha: 0.97);
-        } else {
-          // Modo claro: fundo neutro elegante ao invés de cinza
-          
-          // Estados visuais mais agradáveis
-          final bool isSelected = _selectedAccountId == account.id;
-          final bool isHovered = _hoveredAccountId == account.id;
-          
-          if (isSelected) {
-            cardColor = const Color(0xFFF0F7FF);
-          } else if (isHovered) {
-            cardColor = const Color(0xFFF6F7F9);
-          } else {
-            cardColor = const Color(0xFFFFFFFF);
-          }
-        }
-      }
-    }
+    final colorScheme = Theme.of(context).colorScheme;
     final breakdown = isCard ? CardBreakdown.parse(account.observation) : const CardBreakdown(total: 0, installments: 0, oneOff: 0, subscriptions: 0);
     // Valor previsto para exibir no badge (estimatedValue para recorrências)
     final double previstoValue = isCard
@@ -1674,26 +1621,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ));
       }
 
-    final bool isSelected = account.id != null && _selectedAccountId == account.id;
-    final bool isHovered = account.id != null && _hoveredAccountId == account.id;
-
-    final Color borderColor = isSelected
-        ? app_tokens.AppColors.primary.withValues(alpha: 0.6)
-        : app_tokens.AppColors.border;
-    final Color effectiveCardColor = isSelected
-        ? Color.alphaBlend(
-            app_tokens.AppColors.primary.withValues(alpha: 0.04),
-            cardColor,
-          )
-        : cardColor;
-    final List<BoxShadow> boxShadows = [
-      BoxShadow(
-        color: Colors.black.withValues(alpha: isHovered ? 0.08 : 0.04),
-        blurRadius: 8,
-        offset: const Offset(0, 2),
-      ),
-    ];
-
     final String dayLabel = effectiveDate.day.toString().padLeft(2, '0');
     final String weekdayLabel = DateFormat('EEE', 'pt_BR')
         .format(effectiveDate)
@@ -1703,6 +1630,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ? app_tokens.AppColors.success
         : (isCard ? app_tokens.AppColors.primary : app_tokens.AppColors.error);
     final Color valueColor = accentColor;
+
+    final bool isSelected = account.id != null && _selectedAccountId == account.id;
+
+    final Color borderColor = isSelected
+        ? colorScheme.primary.withValues(alpha: 0.5)
+        : colorScheme.outlineVariant.withValues(alpha: 0.6);
+    final Color baseTint = Color.alphaBlend(
+      accentColor.withValues(alpha: 0.04),
+      colorScheme.surface,
+    );
+    final Color effectiveCardColor = isSelected
+        ? Color.alphaBlend(
+            colorScheme.primary.withValues(alpha: 0.04),
+            baseTint,
+          )
+        : baseTint;
+    final List<BoxShadow> boxShadows = [
+      const BoxShadow(
+        color: Colors.transparent,
+        blurRadius: 0,
+        offset: Offset(0, 0),
+      ),
+    ];
 
     final List<Widget> chips = [];
     if (isPaid) {
@@ -1735,14 +1685,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     return MouseRegion(
-      onEnter: (_) {
-        if (account.id != null) {
-          setState(() => _hoveredAccountId = account.id);
-        }
-      },
-      onExit: (_) {
-        setState(() => _hoveredAccountId = null);
-      },
       cursor: SystemMouseCursors.click,
       child: Opacity(
         opacity: isPaid ? 0.6 : 1.0,
@@ -1790,7 +1732,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               backgroundColor: effectiveCardColor,
               borderColor: borderColor,
               boxShadow: boxShadows,
-              padding: const EdgeInsets.all(AppSpacing.md),
+              padding: const EdgeInsets.all(AppSpacing.lg),
             ),
           ),
         ),
@@ -1805,6 +1747,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     double sp(double value) => value * scale;
     final double buttonSize = sp(48);
     final double iconSize = sp(20);
+    Offset? tapPosition;
+    final Color iconColor = Theme.of(context).colorScheme.onSurfaceVariant;
 
     if (menuActions.isEmpty) {
       return const SizedBox.shrink();
@@ -1825,12 +1769,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           SizedBox(
             width: buttonSize,
             height: buttonSize,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(sp(12)),
-              onTap: editAction.onTap,
-              child: Center(
-                child: Icon(editAction.icon, size: iconSize, color: Colors.grey.shade700),
-              ),
+            child: IconButton(
+              onPressed: editAction.onTap,
+              iconSize: iconSize,
+              padding: EdgeInsets.zero,
+              icon: Icon(editAction.icon, color: iconColor),
             ),
           ),
         if (otherActions.isNotEmpty) ...[
@@ -1838,23 +1781,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
           SizedBox(
             width: buttonSize,
             height: buttonSize,
-            child: PopupMenuButton<int>(
-              padding: EdgeInsets.zero,
-              icon: Icon(Icons.more_vert, size: iconSize, color: Colors.grey.shade700),
-              onSelected: (index) => otherActions[index].onTap?.call(),
-              itemBuilder: (context) => [
-                for (int i = 0; i < otherActions.length; i++)
-                  PopupMenuItem<int>(
-                    value: i,
-                    child: Row(
-                      children: [
-                        Icon(otherActions[i].icon, size: 18, color: Colors.grey.shade700),
-                        const SizedBox(width: 8),
-                        Text(otherActions[i].label),
+            child: Builder(
+              builder: (context) => GestureDetector(
+                onTapDown: (details) => tapPosition = details.globalPosition,
+                child: IconButton(
+                  onPressed: () async {
+                    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+                    final position = tapPosition ?? const Offset(0, 0);
+                    final selected = await showMenu<int>(
+                      context: context,
+                      position: RelativeRect.fromRect(
+                        Rect.fromPoints(position, position),
+                        Offset.zero & overlay.size,
+                      ),
+                      items: [
+                        for (int i = 0; i < otherActions.length; i++)
+                          PopupMenuItem<int>(
+                            value: i,
+                            child: Row(
+                              children: [
+                                Icon(otherActions[i].icon, size: 18, color: iconColor),
+                                const SizedBox(width: 8),
+                                Text(otherActions[i].label),
+                              ],
+                            ),
+                          ),
                       ],
-                    ),
-                  ),
-              ],
+                    );
+                    if (selected != null) {
+                      otherActions[selected].onTap?.call();
+                    }
+                  },
+                  iconSize: iconSize,
+                  padding: EdgeInsets.zero,
+                  icon: Icon(Icons.more_vert, color: iconColor),
+                ),
+              ),
             ),
           ),
         ],
