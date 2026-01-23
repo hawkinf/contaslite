@@ -11,12 +11,10 @@ import '../models/account_type.dart';
 import '../models/account_category.dart';
 import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
-import '../utils/color_contrast.dart';
 import '../utils/app_colors.dart';
 import '../utils/formatters.dart';
 import 'account_types_screen.dart';
 import 'recebimentos_table_screen.dart';
-import '../widgets/app_input_decoration.dart';
 import '../utils/installment_utils.dart';
 import '../widgets/icon_picker_dialog.dart';
 
@@ -88,32 +86,26 @@ class AccountEditDialog extends StatelessWidget {
     final availableHeight = media.size.height - media.viewInsets.bottom;
     final maxHeight = availableHeight * 0.88;
     final title = isRecebimento ? 'Editar Recebimento' : 'Editar Conta';
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Dialog(
       insetPadding: const EdgeInsets.all(22),
-      backgroundColor: Colors.transparent,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minWidth: dialogWidth,
-            maxWidth: dialogWidth,
-            maxHeight: maxHeight,
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 18,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
+      backgroundColor: colorScheme.surface,
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minWidth: dialogWidth,
+          maxWidth: dialogWidth,
+          maxHeight: maxHeight,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Column(
+            children: [
               SizedBox(
                 height: 52,
                 child: Padding(
@@ -124,43 +116,29 @@ class AccountEditDialog extends StatelessWidget {
                         child: Text(
                           title,
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontSize: 19,
+                                fontSize: 18,
                                 fontWeight: FontWeight.w600,
                               ),
                         ),
                       ),
-                      SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () => Navigator.pop(context),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.close,
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                        ),
+                      IconButton(
+                        tooltip: 'Fechar',
+                        onPressed: () => Navigator.pop(context),
+                        icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
                       ),
                     ],
                   ),
                 ),
               ),
-              Divider(height: 1, color: Colors.grey.shade300),
-                Expanded(
-                  child: AccountFormScreen(
-                    accountToEdit: accountToEdit,
-                    isRecebimento: isRecebimento,
-                    showAppBar: false,
-                  ),
+              Divider(height: 1, color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+              Expanded(
+                child: AccountFormScreen(
+                  accountToEdit: accountToEdit,
+                  isRecebimento: isRecebimento,
+                  showAppBar: false,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1091,6 +1069,46 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     return child;
   }
 
+  InputDecoration buildOutlinedInputDecoration({
+    required String label,
+    required IconData icon,
+    Widget? prefixIcon,
+    String? hintText,
+    String? prefixText,
+    TextStyle? prefixStyle,
+    Widget? suffixIcon,
+    bool dense = false,
+    EdgeInsetsGeometry? contentPadding,
+    bool alignLabelWithHint = false,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final baseBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.8)),
+    );
+
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+      hintText: hintText,
+      prefixIcon: prefixIcon ?? Icon(icon, color: colorScheme.onSurfaceVariant),
+      prefixText: prefixText,
+      prefixStyle: prefixStyle,
+      suffixIcon: suffixIcon,
+      isDense: dense,
+      alignLabelWithHint: alignLabelWithHint,
+      filled: true,
+      fillColor: colorScheme.surfaceContainerLow,
+      contentPadding: contentPadding ??
+          EdgeInsets.symmetric(horizontal: 14, vertical: dense ? 10 : 12),
+      border: baseBorder,
+      enabledBorder: baseBorder,
+      focusedBorder: baseBorder.copyWith(
+        borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
+      ),
+    );
+  }
+
   Widget _buildTypeDropdown() {
     debugPrint('📦 _buildTypeDropdown (types: ${_typesList.length}, selected: ${_selectedType?.name})');
     if (_typesList.isEmpty) {
@@ -1319,6 +1337,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   }
 
   Widget _buildManageCategoriesButton() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1327,22 +1346,22 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            color: Colors.grey.shade700,
+            color: colorScheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
-          icon: Icon(Icons.category, size: 18, color: Colors.grey.shade700),
+          icon: Icon(Icons.category, size: 18, color: colorScheme.onSurfaceVariant),
           label: Text(
             'Gerenciar Categorias',
-            style: TextStyle(color: Colors.grey.shade700),
+            style: TextStyle(color: colorScheme.onSurfaceVariant),
           ),
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 10),
             minimumSize: const Size(0, 40),
-            side: BorderSide(color: Colors.grey.shade300),
+            side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(14),
             ),
           ),
           onPressed: _showCategoriesDialog,
@@ -1369,36 +1388,56 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
   Widget _buildColorPaletteSection() {
     debugPrint('🎨 _buildColorPaletteSection');
+    final colorScheme = Theme.of(context).colorScheme;
     return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+      spacing: 8,
+      runSpacing: 8,
       children: _colors
           .map(
-            (color) => InkWell(
-              onTap: () => setState(() => _selectedColor = color.value),
-              borderRadius: BorderRadius.circular(13),
-              child: Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: _selectedColor == color.value
-                        ? AppColors.primary
-                        : Colors.grey.shade300,
-                    width: _selectedColor == color.value ? 2 : 1,
-                  ),
+            (color) {
+              final isSelected = _selectedColor == color.value;
+              return ChoiceChip(
+                selected: isSelected,
+                onSelected: (_) => setState(() => _selectedColor = color.value),
+                label: const SizedBox(width: 0, height: 0),
+                labelPadding: EdgeInsets.zero,
+                padding: const EdgeInsets.all(6),
+                showCheckmark: false,
+                backgroundColor: colorScheme.surfaceContainerLow,
+                selectedColor: colorScheme.surfaceContainerHighest,
+                side: BorderSide(
+                  color: isSelected
+                      ? colorScheme.primary
+                      : colorScheme.outlineVariant.withValues(alpha: 0.6),
                 ),
-                child: _selectedColor == color.value
-                    ? Icon(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                avatar: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    if (isSelected)
+                      Icon(
                         Icons.check,
-                        color: foregroundColorFor(color),
                         size: 12,
-                      )
-                    : null,
-              ),
-            ),
+                        color: colorScheme.primary,
+                      ),
+                  ],
+                ),
+              );
+            },
           )
           .toList(),
     );
@@ -1406,15 +1445,16 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
   Widget _buildLaunchTypeSelector() {
     debugPrint('📝 _buildLaunchTypeSelector (_entryMode=$_entryMode)');
+    final colorScheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           "Tipo de Lançamento",
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 13,
-            color: Colors.grey,
+            color: colorScheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: 8),
@@ -1435,14 +1475,14 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           style: ButtonStyle(
             visualDensity: VisualDensity.compact,
             padding: MaterialStateProperty.all(
-              const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
             minimumSize: MaterialStateProperty.all(const Size(0, 40)),
             shape: MaterialStateProperty.all(
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
             side: MaterialStateProperty.all(
-              BorderSide(color: Colors.grey.shade400),
+              BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
             ),
           ),
         ),
@@ -1489,7 +1529,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           icon: Icons.calendar_month,
           hintText: "dd/mm/aa",
           suffixIcon: IconButton(
-            icon: Icon(Icons.date_range, color: AppColors.primary),
+            icon: Icon(Icons.date_range, color: Theme.of(context).colorScheme.onSurfaceVariant),
             tooltip: 'Selecionar Data',
             onPressed: () => _selectDate(_dateController),
           ),
@@ -1554,12 +1594,20 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             children: [
               Text(
                 'Data original: ${DateFormat('dd/MM/yyyy').format(_mainOriginalDueDate!)}',
-                style: const TextStyle(fontSize: 11, color: Colors.black54, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               if (_mainDueDateWasAdjusted && _mainAdjustedDueDate != null)
                 Text(
                   'Data ajustada: ${DateFormat('dd/MM/yyyy').format(_mainAdjustedDueDate!)}',
-                  style: const TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.error,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
             ],
           ),
@@ -1658,102 +1706,13 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           ],
         ),
 
-      // 3. TABELA DE PARCELAS EDITÁVEIS (SÓ APARECE PARA AVULSA/PARCELADA)
-      if (_entryMode == 0 && _installments.isNotEmpty && _installmentsQtyController.text != "-1")
-        Column(children: [
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Parcelas',
-              style: TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w600),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade200),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _installments.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final item = _installments[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  child: Row(
-                    children: [
-                      Text(
-                        '#${item.index}',
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 3,
-                        child: TextFormField(
-                          controller: item.dateController,
-                          keyboardType: TextInputType.number,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                          decoration: buildOutlinedInputDecoration(
-                            label: 'Venc: dd/mm/aaaa',
-                            icon: Icons.calendar_today,
-                            dense: true,
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.calendar_month, size: 18),
-                              onPressed: () => _selectInstallmentDate(index),
-                              tooltip: 'Selecionar data',
-                            ),
-                          ),
-                          inputFormatters: [_dateMaskFormatter],
-                          onChanged: (val) => _onTableDateChanged(index, val),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: TextFormField(
-                          controller: item.valueController,
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.end,
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                          decoration: buildOutlinedInputDecoration(
-                            label: 'Valor',
-                            icon: Icons.attach_money,
-                            dense: true,
-                          ),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            CentavosInputFormatter(moeda: true),
-                          ],
-                          onChanged: (val) {
-                            final trimmed = val.trim();
-                            item.value = trimmed.isNotEmpty
-                                ? UtilBrasilFields.converterMoedaParaDouble(trimmed)
-                                : 0.0;
-                            setState(() {});
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ]),
-
       const SizedBox(height: 12),
       // REMOVIDO: Barra Total
     ]);
   }
 
   Widget _buildRecurrentMode() {
+    final colorScheme = Theme.of(context).colorScheme;
     return Column(children: [
       // Valores
       Column(
@@ -1803,7 +1762,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                     label: 'Valor Lançado',
                     icon: Icons.attach_money,
                   ).copyWith(
-                    fillColor: Colors.grey.shade50,
+                    fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                     filled: true,
                   ),
                 ),
@@ -1915,6 +1874,19 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         selected: {_payInAdvance},
         onSelectionChanged: (Set<bool> sel) =>
             setState(() => _payInAdvance = sel.first),
+        style: ButtonStyle(
+          visualDensity: VisualDensity.compact,
+          padding: MaterialStateProperty.all(
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          minimumSize: MaterialStateProperty.all(const Size(0, 40)),
+          shape: MaterialStateProperty.all(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          side: MaterialStateProperty.all(
+            BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+          ),
+        ),
       )
     ]);
   }
@@ -1923,6 +1895,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   Widget _buildFormContent() {
     try {
       debugPrint('🏗️ _buildFormContent INÍCIO');
+      final colorScheme = Theme.of(context).colorScheme;
       return SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -1932,13 +1905,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Seção: Tipo / Cor
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF9FAFB),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
+              _buildSectionCard(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final isWide = constraints.maxWidth >= 780;
@@ -1949,6 +1916,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                       spacing: 16,
                       runSpacing: 12,
                       children: [
+                        SizedBox(width: itemWidth, child: _buildTypeDropdown()),
                         SizedBox(width: itemWidth, child: _buildColorPaletteSection()),
                         SizedBox(width: itemWidth, child: _buildLaunchTypeSelector()),
                       ],
@@ -1958,13 +1926,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               ),
               const SizedBox(height: 12),
               // Seção: Classificação
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF9FAFB),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
+              _buildSectionCard(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final isWide = constraints.maxWidth >= 780;
@@ -1975,7 +1937,6 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                       spacing: 12,
                       runSpacing: 12,
                       children: [
-                        SizedBox(width: itemWidth, child: _buildTypeDropdown()),
                         SizedBox(width: itemWidth, child: _buildCategorySection()),
                         SizedBox(width: itemWidth, child: _buildDescriptionField()),
                         SizedBox(width: itemWidth, child: _buildManageCategoriesButton()),
@@ -1986,24 +1947,17 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               ),
               const SizedBox(height: 12),
               // Seção: Valores
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF9FAFB),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
+              _buildSectionCard(
                 child: _entryMode == 0 ? _buildAvulsaMode() : _buildRecurrentMode(),
               ),
-              const SizedBox(height: 12),
-              // Seção: Observações
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF9FAFB),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade200),
+              if (_entryMode == 0 && _installments.isNotEmpty && _installmentsQtyController.text != "-1") ...[
+                const SizedBox(height: 12),
+                _buildSectionCard(
+                  child: _buildInstallmentsList(colorScheme),
                 ),
+              ],
+              const SizedBox(height: 12),
+              _buildSectionCard(
                 child: _buildFieldWithIcon(
                   icon: Icons.note,
                   label: 'Observações (Opcional)',
@@ -2039,18 +1993,148 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     }
   }
 
+  Widget _buildSectionCard({required Widget child}) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Card(
+      elevation: 0,
+      color: colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: child,
+      ),
+    );
+  }
+
+  Widget _buildInstallmentsList(ColorScheme colorScheme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Parcelas',
+          style: TextStyle(
+            fontSize: 12,
+            color: colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Column(
+          children: _installments.map((item) {
+            final index = item.index - 1;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: colorScheme.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Column(
+                    children: [
+                      Container(
+                        height: 2,
+                        color: colorScheme.primary.withValues(alpha: 0.6),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceContainerLow,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+                                ),
+                              ),
+                              child: Text(
+                                '#${item.index}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 3,
+                              child: TextFormField(
+                                controller: item.dateController,
+                                keyboardType: TextInputType.number,
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                decoration: buildOutlinedInputDecoration(
+                                  label: 'Venc: dd/mm/aaaa',
+                                  icon: Icons.calendar_today,
+                                  dense: true,
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      Icons.calendar_month,
+                                      size: 18,
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                    onPressed: () => _selectInstallmentDate(index),
+                                    tooltip: 'Selecionar data',
+                                  ),
+                                ),
+                                inputFormatters: [_dateMaskFormatter],
+                                onChanged: (val) => _onTableDateChanged(index, val),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 2,
+                              child: TextFormField(
+                                controller: item.valueController,
+                                keyboardType: TextInputType.number,
+                                textAlign: TextAlign.end,
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                                decoration: buildOutlinedInputDecoration(
+                                  label: 'Valor',
+                                  icon: Icons.attach_money,
+                                  dense: true,
+                                ),
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                  CentavosInputFormatter(moeda: true),
+                                ],
+                                onChanged: (val) {
+                                  final trimmed = val.trim();
+                                  item.value = trimmed.isNotEmpty
+                                      ? UtilBrasilFields.converterMoedaParaDouble(trimmed)
+                                      : 0.0;
+                                  setState(() {});
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
   // Widget com os botões de ação
   Widget _buildActionButtons() {
+    final colorScheme = Theme.of(context).colorScheme;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        color: colorScheme.surface,
+        border: Border(top: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6))),
       ),
       child: SafeArea(
         top: false,
@@ -2058,46 +2142,35 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.close),
-                  label: const Text('Cancelar'),
-                  onPressed: _isSaving ? null : _closeScreen,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    minimumSize: const Size(0, 44),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+              const Spacer(),
+              OutlinedButton(
+                onPressed: _isSaving ? null : _closeScreen,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                  minimumSize: const Size(0, 44),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
+                child: const Text('Cancelar'),
               ),
               const SizedBox(width: 12),
-              ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 160, maxWidth: 220),
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                    minimumSize: const Size(0, 44),
-                    backgroundColor: AppColors.success,
-                    disabledBackgroundColor: AppColors.success.withOpacity(0.6),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: _isSaving ? null : _saveAccount,
-                  icon: _isSaving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2))
-                      : const Icon(Icons.check_circle, size: 20),
-                  label: Text(
-                    _isSaving ? "Gravando..." : _saveButtonLabel(),
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                  minimumSize: const Size(0, 44),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
+                onPressed: _isSaving ? null : _saveAccount,
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(_saveButtonLabel()),
               ),
             ],
           ),
@@ -2934,6 +3007,32 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
   late List<AccountCategory> _categorias;
   final _newCategoriaController = TextEditingController();
 
+  InputDecoration _buildFilledDecoration({
+    required String label,
+    required IconData icon,
+    Widget? suffixIcon,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final baseBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+    );
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+      prefixIcon: Icon(icon, color: colorScheme.onSurfaceVariant),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: colorScheme.surfaceContainerLow,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      border: baseBorder,
+      enabledBorder: baseBorder,
+      focusedBorder: baseBorder.copyWith(
+        borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -2985,19 +3084,23 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
   }
 
   Future<void> _deleteCategory(int id) async {
+    final colorScheme = Theme.of(context).colorScheme;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Deletar Categoria?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Excluir categoria?'),
         content: const Text('Deseja remover esta categoria?'),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar')),
+          OutlinedButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Deletar')),
+            style: FilledButton.styleFrom(backgroundColor: colorScheme.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Excluir'),
+          ),
         ],
       ),
     );
@@ -3017,65 +3120,173 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
 
     final result = await showDialog<Map<String, String>>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Editar Categoria'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: controller,
-              autofocus: true,
-              decoration: buildOutlinedInputDecoration(
-                label: 'Nome da categoria',
-                icon: Icons.label,
-              ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          final media = MediaQuery.of(context);
+          final colorScheme = Theme.of(context).colorScheme;
+          final maxW = media.size.width < 600 ? media.size.width * 0.92 : 480.0;
+          final minW = media.size.width < 360 ? media.size.width * 0.92 : 360.0;
+          final baseBorder = OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.0)),
+          );
+
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: logoController,
-                    decoration: buildOutlinedInputDecoration(
-                      label: 'Logo (emoji ou texto)',
-                      icon: Icons.image,
+            backgroundColor: colorScheme.surface,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: minW,
+                maxWidth: maxW,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Editar Categoria',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Fechar',
+                        onPressed: () => Navigator.pop(context),
+                        icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Nome da categoria',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: () async {
-                    final selectedIcon = await showIconPickerDialog(
-                      ctx,
-                      initialIcon: logoController.text.isNotEmpty
-                          ? logoController.text
-                          : null,
-                    );
-                    if (selectedIcon != null) {
-                      logoController.text = selectedIcon;
-                    }
-                  },
-                  icon: const Icon(Icons.palette),
-                  label: const Text('Picker'),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: controller,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: 'Ex: Alimentação',
+                      prefixIcon: Icon(Icons.label, color: colorScheme.onSurfaceVariant),
+                      filled: true,
+                      fillColor: colorScheme.surfaceContainerLow,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      border: baseBorder,
+                      enabledBorder: baseBorder,
+                      focusedBorder: baseBorder.copyWith(
+                        borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Ícone (emoji)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(
+                          logoController.text.isNotEmpty
+                              ? logoController.text
+                              : '🙂',
+                          style: const TextStyle(fontSize: 20),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          logoController.text.isNotEmpty
+                              ? 'Selecionado'
+                              : 'Nenhum selecionado',
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      FilledButton.tonalIcon(
+                        style: FilledButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        onPressed: () async {
+                          final selectedIcon = await showIconPickerDialog(
+                            ctx,
+                            initialIcon: logoController.text.isNotEmpty
+                                ? logoController.text
+                                : null,
+                          );
+                          if (selectedIcon != null) {
+                            logoController.text = selectedIcon;
+                            setStateDialog(() {});
+                          }
+                        },
+                        icon: const Icon(Icons.emoji_emotions_outlined),
+                        label: const Text('Escolher'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      SizedBox(
+                        width: 120,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            minimumSize: const Size(0, 44),
+                          ),
+                          child: const Text('Cancelar'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 120,
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            minimumSize: const Size(0, 44),
+                          ),
+                          onPressed: () {
+                            final name = controller.text.trim();
+                            final logo = logoController.text.trim();
+                            Navigator.pop(ctx, {'name': name, 'logo': logo});
+                          },
+                          child: const Text('Salvar'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
           ),
-          FilledButton(
-            onPressed: () {
-              final name = controller.text.trim();
-              final logo = logoController.text.trim();
-              Navigator.pop(ctx, {'name': name, 'logo': logo});
-            },
-            child: const Text('Salvar'),
-          ),
-        ],
+        );
+        },
       ),
     );
 
@@ -3128,145 +3339,130 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      backgroundColor: const Color(0xFFF5F5F5),
-      child: Container(
-        width: 400,
-        constraints: const BoxConstraints(maxHeight: 600),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Gerenciar Categorias',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87),
-            ),
-            const SizedBox(height: 16),
-
-            // Campo de entrada
-            TextField(
-              controller: _newCategoriaController,
-              decoration: buildOutlinedInputDecoration(
-                label: 'Nova Categoria',
-                icon: Icons.add_circle,
-                dense: true,
-                suffixIcon: _newCategoriaController.text.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.clear, size: 20),
-                        onPressed: () =>
-                            setState(() => _newCategoriaController.clear()),
-                      ),
-              ),
-              onChanged: (val) => setState(() {}),
-              onSubmitted: (val) => _addCategory(),
-            ),
-            const SizedBox(height: 12),
-
-            ElevatedButton.icon(
-              icon: const Icon(Icons.add),
-              label: const Text('Adicionar'),
-              onPressed: _addCategory,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Lista de categorias
-            Flexible(
-              child: _categorias.isEmpty
-                  ? Center(
-                      child: Text(
-                        'Nenhuma categoria cadastrada',
-                        style: TextStyle(
-                            color: Colors.grey.shade600, fontSize: 14),
-                      ),
-                    )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: _categorias.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (ctx, idx) {
-                        final cat = _categorias[idx];
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    if (cat.logo != null &&
-                                        cat.logo!.isNotEmpty)
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets.only(right: 8.0),
-                                        child: Text(
-                                          cat.logo!,
-                                          style:
-                                              const TextStyle(fontSize: 16),
-                                        ),
-                                      ),
-                                    Expanded(
-                                      child: Text(
-                                        cat.categoria,
-                                        style: const TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.black87),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.edit,
-                                    color: Colors.blue, size: 20),
-                                onPressed: () => _editCategory(cat),
-                                tooltip: 'Editar',
-                                splashRadius: 20,
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline,
-                                    color: Colors.red, size: 20),
-                                onPressed: () => _deleteCategory(cat.id!),
-                                tooltip: 'Deletar',
-                                splashRadius: 20,
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      backgroundColor: colorScheme.surface,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 600, maxWidth: 520),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Gerenciar Categorias',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                     ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Botões de ação
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Fechar', style: TextStyle(fontSize: 14)),
-                ),
-              ],
-            ),
-          ],
+                  ),
+                  IconButton(
+                    tooltip: 'Fechar',
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _newCategoriaController,
+                      decoration: _buildFilledDecoration(
+                        label: 'Nova categoria',
+                        icon: Icons.add,
+                        suffixIcon: _newCategoriaController.text.isEmpty
+                            ? null
+                            : IconButton(
+                                icon: Icon(Icons.clear, size: 20, color: colorScheme.onSurfaceVariant),
+                                onPressed: () =>
+                                    setState(() => _newCategoriaController.clear()),
+                              ),
+                      ),
+                      onChanged: (val) => setState(() {}),
+                      onSubmitted: (val) => _addCategory(),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  FilledButton.icon(
+                    onPressed: _addCategory,
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Adicionar'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Flexible(
+                child: _categorias.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Nenhuma categoria cadastrada',
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 14,
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: _categorias.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (ctx, idx) {
+                          final cat = _categorias[idx];
+                          return Card(
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                              leading: Text(
+                                cat.logo != null && cat.logo!.isNotEmpty ? cat.logo! : '📁',
+                                style: const TextStyle(fontSize: 20),
+                              ),
+                              title: Text(
+                                cat.categoria,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.edit, color: colorScheme.onSurfaceVariant, size: 20),
+                                    onPressed: () => _editCategory(cat),
+                                    tooltip: 'Editar',
+                                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                                    padding: const EdgeInsets.all(12),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.delete_outline, color: colorScheme.error.withValues(alpha: 0.85), size: 20),
+                                    onPressed: () => _deleteCategory(cat.id!),
+                                    tooltip: 'Excluir',
+                                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                                    padding: const EdgeInsets.all(12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
