@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -11,6 +10,7 @@ import 'services/auth_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/database_migration_screen.dart';
 import 'screens/login_screen.dart';
+import 'ui/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -173,69 +173,10 @@ class _FinanceAppState extends State<FinanceApp> with WidgetsBindingObserver {
   }
 
   ThemeData _buildLightTheme() {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,
-      colorSchemeSeed: Colors.blue,
-      textTheme: GoogleFonts.robotoTextTheme(),
-      scaffoldBackgroundColor: const Color(0xFFF5F5F5),
-      dialogTheme: DialogThemeData(
-        backgroundColor: Colors.white,
-        titleTextStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      ),
-      cardTheme: CardThemeData(
-        color: Colors.white,
-        elevation: 2,
-        shadowColor: Colors.black.withValues(alpha: 0.25),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-      appBarTheme: AppBarTheme(
-        backgroundColor: Colors.blue.shade700,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: Colors.blue.shade700,
-        foregroundColor: Colors.white,
-      ),
-    );
+    return AppTheme.light();
   }
 
   ThemeData _buildDarkTheme() {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      colorSchemeSeed: Colors.blue,
-      scaffoldBackgroundColor: const Color(0xFF121212),
-      dialogTheme: DialogThemeData(
-        backgroundColor: const Color(0xFF1E1E1E),
-        titleTextStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      ),
-      cardTheme: CardThemeData(
-        color: const Color(0xFF1E1E1E),
-        elevation: 4,
-        shadowColor: Colors.white.withValues(alpha: 0.15),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      ),
-      textTheme: GoogleFonts.robotoTextTheme(ThemeData.dark().textTheme).apply(
-        bodyColor: Colors.white,
-        displayColor: Colors.white,
-      ),
-      appBarTheme: AppBarTheme(
-        backgroundColor: Colors.blue.shade900,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: Colors.blue.shade700,
-        foregroundColor: Colors.white,
-      ),
-    );
+    return AppTheme.dark();
   }
 }
