@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_text_styles.dart';
+import 'status_indicator.dart';
 
 class EntryCard extends StatelessWidget {
   final Widget datePill;
@@ -13,8 +14,8 @@ class EntryCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final Widget? trailing;
   final Color accentColor;
-  final Color backgroundColor;
-  final Color borderColor;
+  final Color? backgroundColor;
+  final Color? borderColor;
   final List<BoxShadow> boxShadow;
   final EdgeInsetsGeometry padding;
 
@@ -29,90 +30,91 @@ class EntryCard extends StatelessWidget {
     required this.accentColor,
     this.onEdit,
     this.trailing,
-    this.backgroundColor = Colors.white,
-    this.borderColor = AppColors.border,
+    this.backgroundColor,
+    this.borderColor,
     this.boxShadow = const [],
     this.padding = const EdgeInsets.all(AppSpacing.md),
   });
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final Color resolvedBackground =
+        backgroundColor ?? colorScheme.surfaceContainerLow;
+    final Color resolvedBorder = borderColor ?? colorScheme.outlineVariant;
+
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: resolvedBackground,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: borderColor),
+        border: Border.all(color: resolvedBorder),
         boxShadow: boxShadow,
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 4,
-            height: 72,
-            decoration: BoxDecoration(
-              color: accentColor,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          datePill,
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          StatusIndicator.bar(color: accentColor),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              datePill,
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
                     Text(
-                      value,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: valueColor,
-                      ),
+                      title,
+                      style: AppTextStyles.title.copyWith(fontSize: 16),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      subtitle,
+                      style: AppTextStyles.subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (chips.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.sm),
+                      Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.xs,
+                        children: chips,
+                      ),
+                    ],
                   ],
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      StatusIndicator.dot(color: valueColor, size: 6),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        value,
+                        style: AppTextStyles.value.copyWith(
+                          fontSize: 16,
+                          color: valueColor,
+                        ),
+                      ),
+                    ],
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: chips,
-                ),
-              ],
-            ),
+                  if (trailing != null) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    trailing!,
+                  ],
+                ],
+              ),
+            ],
           ),
-          if (trailing != null) ...[
-            const SizedBox(width: AppSpacing.sm),
-            trailing!,
-          ],
         ],
       ),
     );

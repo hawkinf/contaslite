@@ -29,6 +29,7 @@ import '../ui/widgets/account_filters.dart';
 import '../ui/widgets/compact_banner.dart';
 import '../ui/widgets/date_pill.dart';
 import '../ui/widgets/entry_card.dart';
+import '../ui/widgets/mini_chip.dart';
 import '../ui/widgets/summary_card.dart';
 
 enum DashboardFilter { all, pagar, receber, cartoes }
@@ -1429,20 +1430,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final String? typeName = _typeNames[account.typeId]?.toLowerCase();
     final bool isRecebimento = _isRecebimentosFilter || (typeName != null && typeName.contains('receb'));
     if (isCard) {
-        Color userColor = (account.cardColor != null)
-          ? Color(account.cardColor!)
-          : AppColors.cardPurpleDark;
-        
-        // Aplicar overlay sutil para "domar" a cor escolhida pelo usuário (20%)
-        final bool isUserColorDark = ThemeData.estimateBrightnessForColor(userColor) == Brightness.dark;
-        cardColor = Color.alphaBlend(
-          isUserColorDark
-              ? Colors.white.withValues(alpha: 0.18)
-              : Colors.black.withValues(alpha: 0.12),
-          userColor,
-        );
-        
-        // ...existing code...
+      final colorScheme = Theme.of(context).colorScheme;
+      cardColor = colorScheme.surfaceContainerLow;
     } else {
       final int? accountColorValue = account.cardColor;
       final bool usesCustomColor = accountColorValue != null;
@@ -1585,54 +1574,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final installmentDisplay = resolveInstallmentDisplay(account);
     final Color parceladoFillColor =
         isRecebimento ? Colors.green.shade600 : Colors.red.shade600;
-    final bool cardIsDark =
-        ThemeData.estimateBrightnessForColor(cardColor) == Brightness.dark;
     // Identificar se é parcela única (não recorrente, não parcelada, total == 1)
     final bool isSinglePayment = !hasRecurrence && !installmentDisplay.isInstallment && !isCard;
     // Badge de parcelamento - único chip colorido (status)
-    final double badgeHeight = sp(24);
-    final double badgeFont = sp(11.5);
-    final Widget installmentBadge = Container(
-        constraints: BoxConstraints(minHeight: badgeHeight),
-        padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(2)),
-        decoration: BoxDecoration(
-            color: parceladoFillColor,
-            borderRadius: BorderRadius.circular(sp(8)),
-            border: Border.all(
-              color: cardIsDark ? Colors.white.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.12),
-              width: 1,
-            )),
-        child: Text(installmentDisplay.labelText,
-            style: TextStyle(fontSize: badgeFont, fontWeight: FontWeight.w700, color: Colors.white)));
+    final Widget installmentBadge = MiniChip(
+      label: installmentDisplay.labelText,
+      textColor: parceladoFillColor,
+    );
     // Badge para parcela única (chip informativo neutro)
-    final Widget singlePaymentBadge = Container(
-      constraints: BoxConstraints(minHeight: badgeHeight),
-      padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(2)),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(sp(8)),
-        border: Border.all(
-          color: Colors.grey.shade300,
-          width: 1,
-        )),
-      child: Text('Parcela única',
-        style: TextStyle(fontSize: badgeFont, fontWeight: FontWeight.w600, color: Colors.grey.shade700)));
+    final Widget singlePaymentBadge = const MiniChip(label: 'Parcela única');
     final String nextValueLabel = installmentSummary?.nextValue != null
         ? UtilBrasilFields.obterReal(installmentSummary!.nextValue!)
         : '-';
-    final Widget nextDueBadge = Container(
-      constraints: BoxConstraints(minHeight: badgeHeight),
-      padding: EdgeInsets.symmetric(horizontal: sp(8), vertical: sp(2)),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(sp(8)),
-        border: Border.all(
-          color: Colors.grey.shade300,
-          width: 1,
-        )),
-      child: Text('Próx: $nextValueLabel',
-        style: TextStyle(
-          fontSize: badgeFont, fontWeight: FontWeight.w600, color: Colors.grey.shade700)));
+    final Widget nextDueBadge = MiniChip(label: 'Próx: $nextValueLabel');
 
       final bool canLaunchPayment = !isPaid;
       final List<_MenuAction> menuActions = [
@@ -1752,125 +1706,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final List<Widget> chips = [];
     if (isPaid) {
-      chips.add(Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: app_tokens.AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: app_tokens.AppColors.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.check_circle, size: 12, color: app_tokens.AppColors.textSecondary),
-            const SizedBox(width: 4),
-            Text(
-              _isRecebimentosFilter ? 'Recebido' : 'Pago',
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: app_tokens.AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
+      chips.add(MiniChip(
+        label: _isRecebimentosFilter ? 'Recebido' : 'Pago',
+        icon: Icons.check_circle,
+        iconColor: app_tokens.AppColors.textSecondary,
       ));
       final method = _paymentInfo[account.id!]?['method_name'] ?? '';
       if (method.toString().trim().isNotEmpty) {
-        chips.add(Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: app_tokens.AppColors.surfaceAlt,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: app_tokens.AppColors.border),
-          ),
-          child: Text(
-            'via $method',
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: app_tokens.AppColors.textSecondary,
-            ),
-          ),
-        ));
+        chips.add(MiniChip(label: 'via $method'));
       }
     }
     if (isSinglePayment) {
       chips.add(singlePaymentBadge);
     }
     if (hasRecurrence && !isCard) {
-      chips.add(Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: app_tokens.AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: app_tokens.AppColors.border),
-        ),
-        child: const Text(
-          'Recorrência',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: app_tokens.AppColors.textSecondary,
-          ),
-        ),
-      ));
+      chips.add(const MiniChip(label: 'Recorrência'));
     }
     if (installmentDisplay.isInstallment) {
       chips.add(installmentBadge);
       chips.add(nextDueBadge);
     }
     if (showPrevisto) {
-      chips.add(Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: app_tokens.AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: app_tokens.AppColors.border),
-        ),
-        child: Text(
-          'Previsto: $previstoDisplay',
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: app_tokens.AppColors.textSecondary,
-          ),
-        ),
-      ));
+      chips.add(MiniChip(label: 'Previsto: $previstoDisplay'));
     }
     if (isCard) {
-      chips.add(Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: app_tokens.AppColors.border),
-        ),
-        child: Text(
-          'Próx.: $cardNextDueLabel',
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: app_tokens.AppColors.textSecondary,
-          ),
-        ),
-      ));
-      chips.add(Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: app_tokens.AppColors.border),
-        ),
-        child: Text(
-          'Previsto: $previstoDisplay',
-          style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: app_tokens.AppColors.textSecondary,
-          ),
-        ),
-      ));
+      chips.add(MiniChip(label: 'Próx.: $cardNextDueLabel'));
+      chips.add(MiniChip(label: 'Previsto: $previstoDisplay'));
     }
 
     return MouseRegion(
@@ -1942,6 +1803,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required double scale,
   }) {
     double sp(double value) => value * scale;
+    final double buttonSize = sp(48);
+    final double iconSize = sp(20);
 
     if (menuActions.isEmpty) {
       return const SizedBox.shrink();
@@ -1959,37 +1822,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (editAction.onTap != null)
-          InkWell(
-            onTap: editAction.onTap,
-            child: Container(
-              width: sp(28),
-              height: sp(28),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(sp(8)),
+          SizedBox(
+            width: buttonSize,
+            height: buttonSize,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(sp(12)),
+              onTap: editAction.onTap,
+              child: Center(
+                child: Icon(editAction.icon, size: iconSize, color: Colors.grey.shade700),
               ),
-              child: Icon(editAction.icon, size: sp(16), color: Colors.grey.shade700),
             ),
           ),
         if (otherActions.isNotEmpty) ...[
           SizedBox(width: sp(6)),
-          PopupMenuButton<int>(
-            padding: EdgeInsets.zero,
-            icon: Icon(Icons.more_vert, size: sp(18), color: Colors.grey.shade700),
-            onSelected: (index) => otherActions[index].onTap?.call(),
-            itemBuilder: (context) => [
-              for (int i = 0; i < otherActions.length; i++)
-                PopupMenuItem<int>(
-                  value: i,
-                  child: Row(
-                    children: [
-                      Icon(otherActions[i].icon, size: 18, color: Colors.grey.shade700),
-                      const SizedBox(width: 8),
-                      Text(otherActions[i].label),
-                    ],
+          SizedBox(
+            width: buttonSize,
+            height: buttonSize,
+            child: PopupMenuButton<int>(
+              padding: EdgeInsets.zero,
+              icon: Icon(Icons.more_vert, size: iconSize, color: Colors.grey.shade700),
+              onSelected: (index) => otherActions[index].onTap?.call(),
+              itemBuilder: (context) => [
+                for (int i = 0; i < otherActions.length; i++)
+                  PopupMenuItem<int>(
+                    value: i,
+                    child: Row(
+                      children: [
+                        Icon(otherActions[i].icon, size: 18, color: Colors.grey.shade700),
+                        const SizedBox(width: 8),
+                        Text(otherActions[i].label),
+                      ],
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ],
       ],

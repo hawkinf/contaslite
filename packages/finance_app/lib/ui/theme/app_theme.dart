@@ -14,7 +14,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: AppColors.surface,
+      scaffoldBackgroundColor: colorScheme.surface,
       textTheme: GoogleFonts.robotoTextTheme().apply(
         bodyColor: AppColors.textPrimary,
         displayColor: AppColors.textPrimary,
@@ -23,20 +23,20 @@ class AppTheme {
         elevation: 0,
         centerTitle: true,
       ),
-      cardTheme: const CardThemeData(
-        color: Colors.white,
+      cardTheme: CardThemeData(
+        color: colorScheme.surface,
         elevation: 0,
         shadowColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(AppRadius.lg)),
         ),
       ),
-      chipTheme: const ChipThemeData(
-        backgroundColor: Colors.white,
-        selectedColor: AppColors.primary,
-        side: BorderSide(color: AppColors.border),
-        labelStyle: TextStyle(color: AppColors.textSecondary),
-        shape: StadiumBorder(),
+      chipTheme: ChipThemeData(
+        backgroundColor: colorScheme.surfaceContainerHighest,
+        selectedColor: colorScheme.primaryContainer,
+        side: BorderSide(color: colorScheme.outlineVariant),
+        labelStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+        shape: const StadiumBorder(),
       ),
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: ButtonStyle(
