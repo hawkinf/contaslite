@@ -224,8 +224,7 @@ flutter run -d <sua_plataforma>
 2. Valor: R$ 1.200,00
 3. Parcelas: 12x
 4. Categoria: "Lazer"
-5. Local: "Loja X"
-6. Lançar
+5. Lançar
 
 **Verificar:**
 - [ ] 12 parcelas são criadas

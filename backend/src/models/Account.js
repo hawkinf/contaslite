@@ -153,10 +153,6 @@ const Account = sequelize.define('Account', {
     type: DataTypes.TEXT,
     comment: 'Observações/notas'
   },
-  establishment: {
-    type: DataTypes.STRING(255),
-    comment: 'Nome do estabelecimento'
-  },
   purchase_date: {
     type: DataTypes.STRING(50),
     comment: 'Data da compra (formato ISO)'
@@ -234,7 +230,6 @@ Account.fromFlutterData = function(data, userId) {
     card_id: data.cardId,
     logo: data.logo,
     observation: data.observation,
-    establishment: data.establishment,
     purchase_date: data.purchaseDate,
     creation_date: data.creationDate
   };
@@ -268,7 +263,6 @@ Account.prototype.toFlutterData = function() {
     cardId: this.card_id,
     logo: this.logo,
     observation: this.observation,
-    establishment: this.establishment,
     purchaseDate: this.purchase_date,
     creationDate: this.creation_date,
     updatedAt: this.updated_at ? this.updated_at.toISOString() : null,

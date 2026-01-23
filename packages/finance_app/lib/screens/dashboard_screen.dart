@@ -25,12 +25,12 @@ import 'recebimento_form_screen.dart';
 import 'credit_card_form.dart';
 import '../ui/theme/app_colors.dart' as app_tokens;
 import '../ui/theme/app_spacing.dart';
-import '../ui/widgets/account_filters.dart';
-import '../ui/widgets/compact_banner.dart';
+import '../ui/components/filter_bar.dart';
 import '../ui/widgets/date_pill.dart';
-import '../ui/widgets/entry_card.dart';
+import '../ui/components/entry_card.dart';
 import '../ui/widgets/mini_chip.dart';
-import '../ui/widgets/summary_card.dart';
+import '../ui/components/summary_card.dart';
+import '../ui/components/action_banner.dart';
 
 enum DashboardFilter { all, pagar, receber, cartoes }
 
@@ -45,6 +45,20 @@ class _InstallmentSummary {
     required this.remainingAmount,
     this.nextDueDate,
     this.nextValue,
+  });
+}
+
+class _QuickActionItem {
+  final IconData icon;
+  final String label;
+  final Color accent;
+  final VoidCallback onTap;
+
+  const _QuickActionItem({
+    required this.icon,
+    required this.label,
+    required this.accent,
+    required this.onTap,
   });
 }
 
@@ -121,10 +135,10 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  bool _isInlineEditing = false;
+  final bool _isInlineEditing = false;
   bool _isNavigating = false;
   Widget? _inlineEditWidget; // Widget de edição inline
-  bool _inlinePreserveAppBar = false;
+  final bool _inlinePreserveAppBar = false;
 
   Future<void>? _activeLoad;
   bool _pendingReload = false;
@@ -160,7 +174,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isFabVisible = true;
   
   // Estado de seleção de card
-  int? _selectedAccountId;
+  final ValueNotifier<Account?> _selectedConta = ValueNotifier<Account?>(null);
 
   bool _handleScrollNotification(UserScrollNotification notification) {
     final direction = notification.direction;
@@ -176,7 +190,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void dispose() {
     PrefsService.dateRangeNotifier.removeListener(_dateRangeListener);
+    _selectedConta.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant DashboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.typeNameFilter != widget.typeNameFilter ||
+        oldWidget.excludeTypeNameFilter != widget.excludeTypeNameFilter) {
+      _clearSelection();
+    }
   }
 
   @override
@@ -222,7 +246,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _changeMonth(int offset) {
     DateTime newStart = DateTime(_startDate.year, _startDate.month + offset, 1);
     DateTime newEnd = DateTime(newStart.year, newStart.month + 1, 0);
+    _clearSelection();
     PrefsService.saveDateRange(newStart, newEnd);
+  }
+
+  Future<void> _pickMonthYear() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      initialDatePickerMode: DatePickerMode.year,
+      helpText: 'Selecionar mês',
+    );
+    if (picked == null) return;
+    final newStart = DateTime(picked.year, picked.month, 1);
+    final newEnd = DateTime(newStart.year, newStart.month + 1, 0);
+    _clearSelection();
+    PrefsService.saveDateRange(newStart, newEnd);
+  }
+
+  void _clearSelection() {
+    if (_selectedConta.value == null) return;
+    setState(() => _selectedConta.value = null);
+  }
+
+  String _formatMonthYear(DateTime date) {
+    final label = DateFormat('MMMM yyyy', 'pt_BR').format(date);
+    if (label.isEmpty) return label;
+    return label[0].toUpperCase() + label.substring(1);
   }
 
   void _refresh() => _loadData();
@@ -273,20 +325,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool get _isCombinedView => widget.typeNameFilter == null && widget.excludeTypeNameFilter == null;
 
   Widget _buildTopControlsBar() {
-    return AccountFilters(
+    return FilterBar(
       selected: _mapDashboardFilter(_categoryFilter),
       onSelected: (value) {
         setState(() => _categoryFilter = _mapAccountFilter(value));
+        _clearSelection();
         _loadData();
       },
       showPaid: _hidePaidAccounts,
       onShowPaidChanged: (value) {
         setState(() => _hidePaidAccounts = value);
+        _clearSelection();
         _loadData();
       },
       periodValue: _periodFilter,
       onPeriodChanged: (value) {
         setState(() => _periodFilter = value);
+        _clearSelection();
         _applyPeriodFilter(value);
       },
     );
@@ -318,32 +373,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Widget _buildMonthSelectorTitle({
+  Widget _buildMonthHeaderPill({
     required String label,
-    required Color color,
   }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          icon: Icon(Icons.chevron_left, color: color, size: 18),
-          splashRadius: 16,
-          onPressed: () => _changeMonth(-1),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: Icon(Icons.chevron_left, color: colorScheme.onSurfaceVariant, size: 18),
+            splashRadius: 18,
+            onPressed: () => _changeMonth(-1),
           ),
+          InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: _pickMonthYear,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant, size: 18),
+            splashRadius: 18,
+            onPressed: () => _changeMonth(1),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMonthNavBar(String label) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        border: Border(
+          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
         ),
-        IconButton(
-          icon: Icon(Icons.chevron_right, color: color, size: 18),
-          splashRadius: 16,
-          onPressed: () => _changeMonth(1),
-        ),
-      ],
+      ),
+      child: Center(
+        child: _buildMonthHeaderPill(label: label),
+      ),
     );
   }
 
@@ -981,46 +1069,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
             : 'Nenhuma conta a pagar para este mês.');
         final appBarBg = widget.appBarColorOverride ??
           (_isRecebimentosFilter ? AppColors.success : AppColors.error);
-      const appBarFg = Colors.white;
+        const appBarFg = Colors.white;
       final isSingleDayFilter = DateUtils.isSameDay(_startDate, _endDate);
-      final monthLabel = DateFormat('MMMM yyyy', 'pt_BR').format(_startDate).toUpperCase();
-      final PreferredSizeWidget appBarWidget = isSingleDayFilter
+      final monthLabel = _formatMonthYear(_startDate);
+      final PreferredSizeWidget? appBarWidget = isSingleDayFilter
           ? (SingleDayAppBar(
               date: _startDate,
               city: PrefsService.cityNotifier.value,
               backgroundColor: appBarBg,
               foregroundColor: appBarFg,
-              leading: IconButton(
-                icon: _borderedIcon(Icons.arrow_back, size: 20, iconColor: Colors.white),
-                tooltip: 'Voltar',
-                onPressed: () {
-                  final monthStart = DateTime(_startDate.year, _startDate.month, 1);
-                  final monthEnd = DateTime(_startDate.year, _startDate.month + 1, 0);
-                  PrefsService.saveDateRange(monthStart, monthEnd);
-                  final targetTab = PrefsService.tabReturnNotifier.value ?? 2;
-                  PrefsService.tabReturnNotifier.value = null;
-                  PrefsService.requestTabChange(targetTab);
-                },
-              ),
             ) as PreferredSizeWidget)
-           : AppBar(
-               backgroundColor: appBarBg,
-               foregroundColor: appBarFg,
-               elevation: 0,
-               toolbarHeight: 56,
-               centerTitle: true,
-               leading: IconButton(
-                 icon: const Icon(Icons.arrow_back),
-                 tooltip: 'Voltar',
-                 onPressed: () => Navigator.of(context).maybePop(),
-               ),
-               title: _buildMonthSelectorTitle(label: monthLabel, color: appBarFg),
-             );
+          : null;
       final dashboardBody = SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
               const headerPadding = EdgeInsets.symmetric(
-                vertical: AppSpacing.sm,
+                vertical: AppSpacing.xs,
                 horizontal: AppSpacing.md,
               );
 
@@ -1061,9 +1125,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
               // Widget de indicação de seleção
               Widget? selectionBanner;
-              if (_selectedAccountId != null) {
-                // Buscar conta selecionada
-                final selectedAccount = _displayList.where((a) => a.id == _selectedAccountId).firstOrNull;
+              if (_selectedConta.value != null) {
+                final selectedAccount = _selectedConta.value;
                 if (selectedAccount != null) {
                   final valueStr = UtilBrasilFields.obterReal(selectedAccount.value);
                   final categoryStr = _typeNames[selectedAccount.typeId] ?? 'Outro';
@@ -1072,65 +1135,135 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       : 'Sem descrição';
                   final bool isPaid = selectedAccount.id != null && _paymentInfo.containsKey(selectedAccount.id!);
                   final bool isCard = selectedAccount.cardBrand != null;
+                  final bool isCardInvoice = isCard && selectedAccount.recurrenceId != null;
                   final bool isRecebimento = _isRecebimentosFilter || (_typeNames[selectedAccount.typeId]?.toLowerCase().contains('receb') ?? false);
+                  final colorScheme = Theme.of(context).colorScheme;
+                  final bool isNarrow = media.size.width < 600;
+                  final bool canPay = !isPaid;
+                  String? launchLabel;
+                  VoidCallback? onLaunch;
+
+                  if (isCard) {
+                    if (!isCardInvoice) {
+                      launchLabel = 'Lançar fatura';
+                      onLaunch = () => _showCartaoValueDialog(selectedAccount);
+                    }
+                  } else if (isRecebimento) {
+                    launchLabel = 'Lançar recebimento';
+                    onLaunch = () => _showRecebimentoValueDialog(selectedAccount);
+                  } else if (selectedAccount.isRecurrent && selectedAccount.recurrenceId == null) {
+                    launchLabel = 'Lançar despesa';
+                    onLaunch = () async {
+                      Account parentRecurrence = selectedAccount;
+                      if (selectedAccount.recurrenceId != null) {
+                        final parentId = selectedAccount.recurrenceId!;
+                        try {
+                          final parentAccount = await DatabaseHelper.instance.readAccountById(parentId);
+                          if (parentAccount != null) {
+                            parentRecurrence = parentAccount;
+                          }
+                        } catch (e) {
+                          debugPrint('❌ Erro ao buscar recorrência PAI: $e');
+                        }
+                      }
+                      if (mounted) _showLaunchDialog(parentRecurrence);
+                    };
+                  } else if (selectedAccount.isRecurrent &&
+                      selectedAccount.recurrenceId != null &&
+                      selectedAccount.value == 0) {
+                    launchLabel = 'Lançar despesa';
+                    onLaunch = () => _showDespesaValueDialog(selectedAccount);
+                  }
+
+                  final String payLabel = isCard
+                      ? 'Pagar fatura'
+                      : (isRecebimento ? 'Receber' : 'Pagar');
                   
                   selectionBanner = Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.md,
-                      vertical: AppSpacing.sm,
+                      vertical: AppSpacing.xs,
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: CompactBanner(
-                            icon: Icons.check_circle_outline,
-                            text: '$categoryStr – $descStr – $valueStr',
+                    child: ActionBanner(
+                      leadingIcon: isCard ? Icons.credit_card : Icons.info_outline,
+                      text: '$categoryStr – $descStr – $valueStr',
+                      actions: [
+                        if (onLaunch != null)
+                          Tooltip(
+                            message: launchLabel ?? 'Lançar',
+                            child: IconButton(
+                              onPressed: onLaunch,
+                              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                              icon: Icon(Icons.rocket_launch, color: colorScheme.primary),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: AppSpacing.sm),
-                        InkWell(
-                          onTap: () async {
-                            if (isCard) {
-                              await _openCardEditor(selectedAccount);
-                            } else {
-                              await _showEditSpecificDialog(selectedAccount);
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                            child: const Icon(Icons.edit, size: 16, color: Color(0xFF2563EB)),
-                          ),
-                        ),
-                        if (!isPaid) ...[
-                          InkWell(
-                            onTap: () => _handlePayAction(selectedAccount),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                              child: Icon(
+                        if (canPay)
+                          Tooltip(
+                            message: payLabel,
+                            child: IconButton(
+                              onPressed: () => _handlePayAction(selectedAccount),
+                              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                              icon: Icon(
                                 isRecebimento ? Icons.trending_up : Icons.attach_money,
-                                size: 16,
-                                color: const Color(0xFF059669),
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        if (isNarrow)
+                          PopupMenuButton<String>(
+                            tooltip: 'Mais ações',
+                            icon: Icon(Icons.more_vert, color: colorScheme.onSurfaceVariant),
+                            onSelected: (value) async {
+                              switch (value) {
+                                case 'edit':
+                                  if (isCard) {
+                                    await _openCardEditor(selectedAccount);
+                                  } else {
+                                    await _showEditSpecificDialog(selectedAccount);
+                                  }
+                                  break;
+                                case 'delete':
+                                  _confirmDelete(selectedAccount);
+                                  break;
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(value: 'edit', child: Text('Editar')),
+                              const PopupMenuItem(value: 'delete', child: Text('Excluir')),
+                            ],
+                          )
+                        else ...[
+                          Tooltip(
+                            message: 'Editar',
+                            child: IconButton(
+                              onPressed: () async {
+                                if (isCard) {
+                                  await _openCardEditor(selectedAccount);
+                                } else {
+                                  await _showEditSpecificDialog(selectedAccount);
+                                }
+                              },
+                              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                              icon: Icon(Icons.edit, color: colorScheme.onSurfaceVariant),
+                            ),
+                          ),
+                          Tooltip(
+                            message: 'Excluir',
+                            child: IconButton(
+                              onPressed: () => _confirmDelete(selectedAccount),
+                              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                              icon: Icon(
+                                Icons.delete_outline,
+                                color: colorScheme.error.withValues(alpha: 0.85),
                               ),
                             ),
                           ),
                         ],
-                        InkWell(
-                          onTap: () => _confirmDelete(selectedAccount),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                            child: const Icon(Icons.delete_outline, size: 16, color: Color(0xFFDC2626)),
-                          ),
-                        ),
-                        InkWell(
-                          onTap: () => setState(() => _selectedAccountId = null),
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            child: const Icon(
-                              Icons.close,
-                              color: Color(0xFF6B7280),
-                              size: 18,
-                            ),
-                          ),
+                        IconButton(
+                          tooltip: 'Fechar',
+                          onPressed: () => setState(() => _selectedConta.value = null),
+                          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                          icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
                         ),
                       ],
                     ),
@@ -1139,6 +1272,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               }
 
               return Column(children: [
+                if (!_inlinePreserveAppBar && !isSingleDayFilter)
+                  _buildMonthNavBar(monthLabel),
                 if (!_inlinePreserveAppBar) _buildTopControlsBar(),
                 headerWidget,
                 if (selectionBanner != null) selectionBanner,
@@ -1535,34 +1670,83 @@ class _DashboardScreenState extends State<DashboardScreen> {
         : '-';
     final Widget nextDueBadge = MiniChip(label: 'Próx: $nextValueLabel');
 
-      final bool canLaunchPayment = !isPaid;
-      final List<_MenuAction> menuActions = [
-        _MenuAction(
-          label: 'Editar',
-          icon: Icons.edit,
-          onTap: () => isCard ? _openCardEditor(account) : _showEditSpecificDialog(account),
-        ),
-      ];
+    final List<Widget> chips = [];
+    if (isPaid) {
+      chips.add(MiniChip(
+        label: _isRecebimentosFilter ? 'Recebido' : 'Pago',
+        icon: Icons.check_circle,
+        iconColor: app_tokens.AppColors.textSecondary,
+      ));
+      final method = _paymentInfo[account.id!]?['method_name'] ?? '';
+      if (method.toString().trim().isNotEmpty) {
+        chips.add(MiniChip(label: 'via $method'));
+      }
+    }
+    if (isSinglePayment) {
+      chips.add(singlePaymentBadge);
+    }
+    if (hasRecurrence && !isCard) {
+      chips.add(const MiniChip(label: 'Recorrência'));
+    }
+    if (installmentDisplay.isInstallment) {
+      chips.add(installmentBadge);
+      chips.add(nextDueBadge);
+    }
+    if (showPrevisto) {
+      chips.add(MiniChip(label: 'Previsto: $previstoDisplay'));
+    }
+    if (isCard) {
+      chips.add(MiniChip(label: 'Próx.: $cardNextDueLabel'));
+      chips.add(MiniChip(label: 'Previsto: $previstoDisplay'));
+    }
 
-      if (isCard) {
-        if (!isCardInvoice) {
-          menuActions.add(_MenuAction(
-            label: 'Lançar fatura',
-            icon: Icons.rocket_launch,
-            onTap: () => _showCartaoValueDialog(account),
-          ));
-        }
+    final bool canLaunchPayment = !isPaid;
+    final bool allowLaunchInMenu = _selectedConta.value == null;
+    final List<_MenuAction> menuActions = [
+      _MenuAction(
+        label: 'Editar',
+        icon: Icons.edit,
+        onTap: () => isCard ? _openCardEditor(account) : _showEditSpecificDialog(account),
+      ),
+    ];
+
+    if (isCard) {
+      menuActions.add(_MenuAction(
+        label: 'Pagar fatura',
+        icon: Icons.attach_money,
+        onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
+      ));
+    } else {
+      menuActions.add(_MenuAction(
+        label: isRecebimento ? 'Receber' : 'Pagar',
+        icon: Icons.attach_money,
+        onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
+      ));
+    }
+
+    if (account.id != null) {
+      menuActions.add(_MenuAction(
+        label: 'Excluir',
+        icon: Icons.delete_outline,
+        onTap: () => _confirmDelete(account),
+      ));
+    }
+
+    if (isCard) {
+      menuActions.add(_MenuAction(
+        label: 'Nova despesa',
+        icon: Icons.add_shopping_cart,
+        onTap: () => _showExpenseDialog(account),
+      ));
+      if (!isCardInvoice && allowLaunchInMenu) {
         menuActions.add(_MenuAction(
-          label: 'Pagar fatura',
-          icon: Icons.attach_money,
-          onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
+          label: 'Lançar fatura',
+          icon: Icons.rocket_launch,
+          onTap: () => _showCartaoValueDialog(account),
         ));
-        menuActions.add(_MenuAction(
-          label: 'Nova despesa',
-          icon: Icons.add_shopping_cart,
-          onTap: () => _showExpenseDialog(account),
-        ));
-      } else if (isRecebimento) {
+      }
+    } else if (allowLaunchInMenu) {
+      if (isRecebimento) {
         menuActions.add(_MenuAction(
           label: 'Lançar recebimento',
           icon: Icons.rocket_launch,
@@ -1595,43 +1779,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
           onTap: () => _showDespesaValueDialog(account),
         ));
       }
+    }
 
-      if (!isCard) {
-        menuActions.add(_MenuAction(
-          label: isRecebimento ? 'Receber' : 'Pagar',
-          icon: Icons.attach_money,
-          onTap: canLaunchPayment ? () => _handlePayAction(account) : null,
-        ));
-      }
+    if (isPaid) {
+      menuActions.add(_MenuAction(
+        label: 'Desfazer pagamento',
+        icon: Icons.undo,
+        onTap: () => _undoPayment(account),
+      ));
+    }
 
-
-      if (isPaid) {
-        menuActions.add(_MenuAction(
-          label: 'Desfazer pagamento',
-          icon: Icons.undo,
-          onTap: () => _undoPayment(account),
-        ));
-      }
-
-      if (account.id != null) {
-        menuActions.add(_MenuAction(
-          label: 'Excluir',
-          icon: Icons.delete_outline,
-          onTap: () => _confirmDelete(account),
-        ));
-      }
-
-    final String dayLabel = effectiveDate.day.toString().padLeft(2, '0');
-    final String weekdayLabel = DateFormat('EEE', 'pt_BR')
-        .format(effectiveDate)
-        .replaceAll('.', '')
-        .toUpperCase();
     final Color accentColor = isRecebimento
         ? app_tokens.AppColors.success
         : (isCard ? app_tokens.AppColors.primary : app_tokens.AppColors.error);
     final Color valueColor = accentColor;
 
-    final bool isSelected = account.id != null && _selectedAccountId == account.id;
+    final selectedId = _selectedConta.value?.id;
+    final bool isSelected = account.id != null && selectedId == account.id;
 
     final Color borderColor = isSelected
         ? colorScheme.primary.withValues(alpha: 0.5)
@@ -1654,35 +1818,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     ];
 
-    final List<Widget> chips = [];
-    if (isPaid) {
-      chips.add(MiniChip(
-        label: _isRecebimentosFilter ? 'Recebido' : 'Pago',
-        icon: Icons.check_circle,
-        iconColor: app_tokens.AppColors.textSecondary,
-      ));
-      final method = _paymentInfo[account.id!]?['method_name'] ?? '';
-      if (method.toString().trim().isNotEmpty) {
-        chips.add(MiniChip(label: 'via $method'));
-      }
-    }
-    if (isSinglePayment) {
-      chips.add(singlePaymentBadge);
-    }
-    if (hasRecurrence && !isCard) {
-      chips.add(const MiniChip(label: 'Recorrência'));
-    }
-    if (installmentDisplay.isInstallment) {
-      chips.add(installmentBadge);
-      chips.add(nextDueBadge);
-    }
-    if (showPrevisto) {
-      chips.add(MiniChip(label: 'Previsto: $previstoDisplay'));
-    }
-    if (isCard) {
-      chips.add(MiniChip(label: 'Próx.: $cardNextDueLabel'));
-      chips.add(MiniChip(label: 'Previsto: $previstoDisplay'));
-    }
+    final String dayLabel = effectiveDate.day.toString().padLeft(2, '0');
+    final String weekdayLabel = DateFormat('EEE', 'pt_BR')
+        .format(effectiveDate)
+        .replaceAll('.', '')
+        .toUpperCase();
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -1690,49 +1830,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
         opacity: isPaid ? 0.6 : 1.0,
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: sp(4), horizontal: sp(8)),
-          child: InkWell(
-            onTap: () async {
-              if (_selectedAccountId == account.id) {
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () async {
                 if (isCard) {
-                  await _openCardExpenses(account);
+                  await _openCardExpenses(account, selectedDate: effectiveDate);
                 } else {
                   await _showEditSpecificDialog(account);
                 }
-              } else {
-                setState(() {
-                  _selectedAccountId = account.id;
-                });
-              }
-            },
-            onLongPress: () async {
-              if (isCard) {
-                await _openCardExpenses(account);
-              } else {
-                await _showEditSpecificDialog(account);
-              }
-            },
-            splashColor: app_tokens.AppColors.primary.withValues(alpha: 0.08),
-            highlightColor: app_tokens.AppColors.primary.withValues(alpha: 0.04),
-            child: EntryCard(
-              datePill: DatePill(
-                day: dayLabel,
-                weekday: weekdayLabel,
+              },
+              onLongPress: () {
+                if (isSelected) {
+                  setState(() => _selectedConta.value = null);
+                } else {
+                  setState(() => _selectedConta.value = account);
+                }
+              },
+              splashColor: app_tokens.AppColors.primary.withValues(alpha: 0.08),
+              highlightColor: app_tokens.AppColors.primary.withValues(alpha: 0.04),
+              child: EntryCard(
+                datePill: DatePill(
+                  day: dayLabel,
+                  weekday: weekdayLabel,
+                  accentColor: accentColor,
+                ),
+                title: categoryParent ?? _typeNames[account.typeId] ?? 'Outro',
+                subtitle: middleLineText,
+                value: lancadoDisplay,
+                valueColor: valueColor,
+                chips: chips,
                 accentColor: accentColor,
+                trailing: _buildActionButtons(
+                  menuActions: menuActions,
+                  scale: scale,
+                ),
+                backgroundColor: effectiveCardColor,
+                borderColor: borderColor,
+                boxShadow: boxShadows,
+                padding: const EdgeInsets.all(AppSpacing.lg),
               ),
-              title: categoryParent ?? _typeNames[account.typeId] ?? 'Outro',
-              subtitle: middleLineText,
-              value: lancadoDisplay,
-              valueColor: valueColor,
-              chips: chips,
-              accentColor: accentColor,
-              trailing: _buildActionButtons(
-                menuActions: menuActions,
-                scale: scale,
-              ),
-              backgroundColor: effectiveCardColor,
-              borderColor: borderColor,
-              boxShadow: boxShadows,
-              padding: const EdgeInsets.all(AppSpacing.lg),
             ),
           ),
         ),
@@ -2058,21 +2196,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-  Future<void> _openCardExpenses(Account account) async {
+  Future<void> _openCardExpenses(Account account, {DateTime? selectedDate}) async {
     if (_isNavigating) return;
     _isNavigating = true;
 
-    setState(() {
-      _isInlineEditing = true;
-      _inlinePreserveAppBar = true;
-      _inlineEditWidget = CardExpensesScreen(
-        card: account,
-        month: _startDate.month,
-        year: _startDate.year,
-        inline: true,
-        onClose: _closeInlineEdit,
+    final int targetMonth = account.month ?? _startDate.month;
+    final int targetYear = account.year ?? _startDate.year;
+    try {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CardExpensesScreen(
+            card: account,
+            month: targetMonth,
+            year: targetYear,
+            selectedDate: selectedDate,
+          ),
+        ),
       );
-    });
+      if (mounted) _refresh();
+    } finally {
+      _isNavigating = false;
+    }
   }
 
   Future<void> _openCardEditor(Account account) async {
@@ -3122,17 +3267,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _closeInlineEdit() {
-    if (!mounted) return;
-    setState(() {
-      _isInlineEditing = false;
-      _inlineEditWidget = null;
-      _isNavigating = false;
-      _inlinePreserveAppBar = false;
-    });
-    _refresh();
-  }
-
   Future<void> _showEditSpecificDialog(Account account) async {
     if (_isNavigating) return;
     _isNavigating = true;
@@ -3649,168 +3783,163 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _showQuickActions() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
       isScrollControlled: false,
+      showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (ctx) => SafeArea(
         top: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
+            final colorScheme = Theme.of(context).colorScheme;
             final maxWidth = constraints.maxWidth;
-            final maxHeight = constraints.maxHeight;
-            const spacing = 10.0;
-            const horizontalPadding = 16.0;
-            final verticalPadding = maxHeight < 240 ? 12.0 : 20.0;
-            final bottomOffset = math.max(24.0, maxHeight * 0.08);
-            final availableHeight = math.max(0.0, maxHeight - bottomOffset);
-            final maxTileWidth = math.max(
-              0.0,
-              (maxWidth - (horizontalPadding * 2) - (spacing * 3)) / 4,
-            );
-            final maxTileHeight =
-                math.max(0.0, availableHeight - (verticalPadding * 2));
-            final tileSize =
-                math.min(104.0, math.min(maxTileWidth, maxTileHeight));
-            final iconSize = math.min(28.0, tileSize * 0.35);
-            final fontSize = math.min(12.0, math.max(8.0, tileSize * 0.12));
-            final sheetHeight =
-                math.min(availableHeight, tileSize + (verticalPadding * 2));
+            final crossAxisCount = maxWidth < 600 ? 2 : 4;
+            const spacing = 12.0;
 
-            return Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: EdgeInsets.only(bottom: bottomOffset),
-                child: Container(
-                  height: sheetHeight,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(24)),
-                  ),
-                  padding: EdgeInsets.symmetric(
-                    vertical: verticalPadding,
-                    horizontal: horizontalPadding,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildQuickAction(
-                        icon: Icons.receipt_long,
-                        label: 'Conta a Pagar',
-                        color: AppColors.error,
-                        size: tileSize,
-                        iconSize: iconSize,
-                        fontSize: fontSize,
-                        textColor: Colors.white,
-                        iconColor: Colors.white,
-                        iconBorderColor: Colors.white,
-                        onTap: () async {
-                          Navigator.pop(ctx);
-                          await showDialog(
-                            context: context,
-                            builder: (dialogContext) => Dialog(
-                              insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                              backgroundColor: Colors.transparent,
-                              child: Center(
-                                child: Container(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: 700,
-                                    maxHeight: 850,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).scaffoldBackgroundColor,
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.3),
-                                        blurRadius: 16,
-                                        offset: const Offset(0, 8),
-                                      ),
-                                    ],
-                                  ),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: Column(
-                                    children: [
-                                      // Header com botão de fechar
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            const Text(
-                                              'Nova Conta a Pagar',
-                                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                            ),
-                                            IconButton(
-                                              icon: _borderedIcon(Icons.close,
-                                                  size: 20, padding: const EdgeInsets.all(4)),
-                                              onPressed: () => Navigator.pop(dialogContext),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const Divider(height: 1),
-                                      // Formulário expandido
-                                      const Expanded(
-                                        child: AccountFormScreen(showAppBar: false),
-                                      ),
-                                    ],
-                                  ),
+            final items = <_QuickActionItem>[
+              _QuickActionItem(
+                icon: Icons.receipt_long,
+                label: 'Pagar',
+                accent: colorScheme.error,
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await showDialog(
+                    context: context,
+                    builder: (dialogContext) => Dialog(
+                      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                      backgroundColor: Colors.transparent,
+                      child: Center(
+                        child: Container(
+                          constraints: const BoxConstraints(
+                            maxWidth: 700,
+                            maxHeight: 850,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).scaffoldBackgroundColor,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                blurRadius: 16,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Column(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Nova Conta a Pagar',
+                                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                    ),
+                                    IconButton(
+                                      icon: _borderedIcon(Icons.close,
+                                          size: 20, padding: const EdgeInsets.all(4)),
+                                      onPressed: () => Navigator.pop(dialogContext),
+                                    ),
+                                  ],
                                 ),
                               ),
+                              const Divider(height: 1),
+                              const Expanded(
+                                child: AccountFormScreen(showAppBar: false),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                  _refresh();
+                },
+              ),
+              _QuickActionItem(
+                icon: Icons.account_balance_wallet,
+                label: 'Receber',
+                accent: Colors.green.shade700,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _openRecebimentoForm();
+                },
+              ),
+              _QuickActionItem(
+                icon: Icons.credit_card,
+                label: 'Desp. Cartão',
+                accent: colorScheme.primary,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _startCardExpenseFlow();
+                },
+              ),
+              _QuickActionItem(
+                icon: Icons.add_card,
+                label: 'Novo Cartão',
+                accent: colorScheme.secondary,
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await showDialog(
+                    context: context,
+                    builder: (_) => const CreditCardFormScreen(),
+                  );
+                  _refresh();
+                },
+              ),
+            ];
+
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Novo lançamento',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
                             ),
-                          );
-                          _refresh();
-                        },
-                      ),
-                      const SizedBox(width: spacing),
-                      _buildQuickAction(
-                        icon: Icons.account_balance_wallet,
-                        label: 'Conta a Receber',
-                        color: AppColors.success,
-                        size: tileSize,
-                        iconSize: iconSize,
-                        fontSize: fontSize,
-                        textColor: Colors.white,
-                        iconColor: Colors.white,
-                        iconBorderColor: Colors.white,
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          _openRecebimentoForm();
-                        },
-                      ),
-                      const SizedBox(width: spacing),
-                      _buildQuickAction(
-                        icon: Icons.credit_card,
-                        label: 'Despesa Cartão',
-                        color: AppColors.cardPurple,
-                        size: tileSize,
-                        iconSize: iconSize,
-                        fontSize: fontSize,
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          _startCardExpenseFlow();
-                        },
-                      ),
-                      const SizedBox(width: spacing),
-                      _buildQuickAction(
-                        icon: Icons.add_card,
-                        label: 'Novo Cartão',
-                        color: AppColors.cardPurple.withValues(alpha: 0.85),
-                        size: tileSize,
-                        iconSize: iconSize,
-                        fontSize: fontSize,
-                        onTap: () async {
-                          Navigator.pop(ctx);
-                          await showDialog(
-                            context: context,
-                            builder: (_) => const CreditCardFormScreen(),
-                          );
-                          _refresh();
-                        },
+                            const SizedBox(height: 2),
+                            Text(
+                              'Escolha o tipo',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      mainAxisSpacing: spacing,
+                      crossAxisSpacing: spacing,
+                      childAspectRatio: maxWidth < 600 ? 1.05 : 1.1,
+                    ),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      return _buildQuickActionTile(item);
+                    },
+                  ),
+                ],
               ),
             );
           },
@@ -3819,65 +3948,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildQuickAction({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-    double size = 110,
-    double iconSize = 30,
-    double fontSize = 13,
-    Color? textColor,
-    Color? iconColor,
-    Color? iconBorderColor,
-  }) {
-    final fg = textColor ?? foregroundColorFor(color);
-    final padding = math.max(8.0, size * 0.12);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
+  Widget _buildQuickActionTile(_QuickActionItem item) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Material(
+      color: colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: item.onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
             ),
-          ],
-        ),
-        padding: EdgeInsets.all(padding),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _borderedIcon(
-              icon,
-              iconColor: iconColor ?? fg,
-              size: iconSize,
-              padding: const EdgeInsets.all(4),
-              borderWidth: 1,
-              borderColor: iconBorderColor ?? fg,
-            ),
-            const SizedBox(height: 6),
-            Flexible(
-              child: Text(
-                label,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: fg,
-                  fontWeight: FontWeight.w600,
-                  fontSize: fontSize,
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                right: 4,
+                top: 4,
+                child: Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: item.accent.withValues(alpha: 0.7),
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ),
-            ),
-          ],
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerLow,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(item.icon, size: 22, color: item.accent),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    item.label,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface,
+                        ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

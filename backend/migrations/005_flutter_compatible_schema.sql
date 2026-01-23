@@ -175,7 +175,6 @@ CREATE TABLE IF NOT EXISTS accounts (
     -- Campos adicionais
     logo VARCHAR(255),
     observation TEXT,
-    establishment VARCHAR(255),
     purchase_date VARCHAR(50),
     creation_date VARCHAR(50),
 

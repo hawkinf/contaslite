@@ -73,22 +73,17 @@
 - Dropdown inline para parcelas
 - Assinatura em destaque roxo
 
-### 7. Estabelecimento
-- Campo opcional
-- Placeholder útil: "Ex: Magazine Luiza"
-- Ícone de loja
-
-### 8. Categoria
+### 7. Categoria
 - Dropdown limpo
 - Opção "Sem categoria"
 - Lista de todas as categorias
 
-### 9. Detalhes (Observação)
+### 8. Detalhes (Observação)
 - Campo de texto multi-linha
 - 3 linhas visíveis
 - Placeholder descritivo
 
-### 10. Botões
+### 9. Botões
 ```
 [  Cancelar  ] [      Lançar      ]
 ```
@@ -232,9 +227,6 @@ DateTime _calculateDueDate() {
 │ │ ○ Parcelado [12x]   │ │ Tipo
 │ │ ○ Assinatura        │ │
 │ │                     │ │
-│ │ 🏪 Estabelecimento  │ │
-│ │ [_____________]     │ │ Opcional
-│ │                     │ │
 │ │ 🏷️ Categoria        │ │
 │ │ [Dropdown]          │ │ Opcional
 │ │                     │ │
@@ -305,7 +297,6 @@ DateTime _calculateDueDate() {
 - Assinatura: Mensalidade recorrente
 
 **Campos Opcionais:**
-- Estabelecimento: Onde comprou
 - Categoria: Tipo de gasto
 - Detalhes: Observações
 

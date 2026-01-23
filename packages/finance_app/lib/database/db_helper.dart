@@ -8,6 +8,7 @@ import '../models/account_category.dart';
 import '../models/bank_account.dart';
 import '../models/payment_method.dart';
 import '../models/payment.dart';
+import '../services/database_protection_service.dart';
 import 'sync_helpers.dart';
 
 class DatabaseHelper {
@@ -68,7 +69,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 16,
+      version: 17,
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
         debugPrint('🔄 Iniciando migração de banco de dados v$oldVersion→v$newVersion...');
@@ -144,7 +145,6 @@ class DatabaseHelper {
         cardId INTEGER,
         logo TEXT,
         observation TEXT,
-        establishment TEXT,
         purchaseUuid TEXT,
         purchaseDate TEXT,
         creationDate TEXT,
@@ -400,6 +400,119 @@ class DatabaseHelper {
       }
     }
 
+    // Migração v17: Remover campo establishment das contas
+    if (oldVersion < 17) {
+      debugPrint('🔄 Executando migração v17: Removendo campo establishment...');
+      try {
+        try {
+          await DatabaseProtectionService.instance.createBackup(
+            'pre_migration_v17_remove_establishment',
+            databaseOverride: db,
+          );
+        } catch (e) {
+          debugPrint('⚠️ Falha ao criar backup antes da migração v17: $e');
+        }
+
+        await db.execute('PRAGMA foreign_keys=OFF');
+        await db.execute('''
+          CREATE TABLE accounts_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            typeId INTEGER NOT NULL,
+            categoryId INTEGER,
+            description TEXT NOT NULL,
+            value REAL NOT NULL,
+            estimatedValue REAL,
+            dueDay INTEGER NOT NULL,
+            isRecurrent INTEGER NOT NULL DEFAULT 0,
+            payInAdvance INTEGER NOT NULL DEFAULT 0,
+            month INTEGER,
+            year INTEGER,
+            recurrenceId INTEGER,
+            installmentIndex INTEGER,
+            installmentTotal INTEGER,
+            bestBuyDay INTEGER,
+            cardBrand TEXT,
+            cardBank TEXT,
+            cardLimit REAL,
+            cardColor INTEGER,
+            cardId INTEGER,
+            logo TEXT,
+            observation TEXT,
+            purchaseUuid TEXT,
+            purchaseDate TEXT,
+            creationDate TEXT,
+            server_id TEXT,
+            sync_status INTEGER DEFAULT 0,
+            updated_at TEXT,
+            last_synced_at TEXT,
+            FOREIGN KEY (typeId) REFERENCES account_types (id) ON DELETE CASCADE,
+            FOREIGN KEY (categoryId) REFERENCES account_descriptions (id) ON DELETE SET NULL,
+            FOREIGN KEY (cardId) REFERENCES accounts (id) ON DELETE CASCADE
+          )
+        ''');
+
+        final existingColumns = await db.rawQuery("PRAGMA table_info('accounts')");
+        final existingNames = existingColumns
+            .map((row) => row['name'] as String)
+            .toSet();
+        final targetColumns = [
+          'id',
+          'typeId',
+          'categoryId',
+          'description',
+          'value',
+          'estimatedValue',
+          'dueDay',
+          'isRecurrent',
+          'payInAdvance',
+          'month',
+          'year',
+          'recurrenceId',
+          'installmentIndex',
+          'installmentTotal',
+          'bestBuyDay',
+          'cardBrand',
+          'cardBank',
+          'cardLimit',
+          'cardColor',
+          'cardId',
+          'logo',
+          'observation',
+          'purchaseUuid',
+          'purchaseDate',
+          'creationDate',
+          'server_id',
+          'sync_status',
+          'updated_at',
+          'last_synced_at',
+        ];
+        final copyColumns =
+            targetColumns.where(existingNames.contains).toList();
+        final columnList = copyColumns.join(', ');
+        await db.execute('''
+          INSERT INTO accounts_new ($columnList)
+          SELECT $columnList
+          FROM accounts
+        ''');
+
+        await db.execute('DROP TABLE accounts');
+        await db.execute('ALTER TABLE accounts_new RENAME TO accounts');
+
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_typeId ON accounts(typeId)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_categoryId ON accounts(categoryId)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_month_year ON accounts(month, year)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_cardId ON accounts(cardId)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_purchaseUuid ON accounts(purchaseUuid)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_recurrent ON accounts(isRecurrent)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_cardId_recurrent ON accounts(cardId, isRecurrent)');
+        await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_recurrenceId_date ON accounts(recurrenceId, year, month)');
+      } catch (e) {
+        debugPrint('❌ Erro na migração v17: $e');
+      } finally {
+        await db.execute('PRAGMA foreign_keys=ON');
+      }
+    }
+
     if (oldVersion < 12) {
       debugPrint('🔄 Executando migração v12: adicionando categoryId em accounts...');
       try {
@@ -472,7 +585,6 @@ class DatabaseHelper {
             cardColor INTEGER,
             cardId INTEGER,
             observation TEXT,
-            establishment TEXT,
             purchaseUuid TEXT,
             purchaseDate TEXT,
             creationDate TEXT,
@@ -486,7 +598,7 @@ class DatabaseHelper {
           INSERT INTO accounts_new
           SELECT id, typeId, description, value, dueDay, isRecurrent, payInAdvance,
                  month, year, recurrenceId, bestBuyDay, cardBrand, cardBank, cardLimit,
-                 cardColor, cardId, observation, establishment, purchaseUuid,
+               cardColor, cardId, observation, purchaseUuid,
                  purchaseDate, creationDate
           FROM accounts
         ''');
@@ -568,7 +680,6 @@ class DatabaseHelper {
           cardColor INTEGER,
           cardId INTEGER,
           observation TEXT,
-          establishment TEXT,
           purchaseUuid TEXT,
           purchaseDate TEXT,
           creationDate TEXT,
@@ -581,10 +692,10 @@ class DatabaseHelper {
         await db.execute('''
           INSERT INTO accounts_new
           (id, typeId, description, value, dueDay, isRecurrent, payInAdvance, month, year, recurrenceId,
-           bestBuyDay, cardBrand, cardBank, cardLimit, cardColor, cardId, observation, establishment,
+              bestBuyDay, cardBrand, cardBank, cardLimit, cardColor, cardId, observation,
            purchaseUuid, purchaseDate, creationDate)
           SELECT id, typeId, description, value, dueDay, isRecurrent, payInAdvance, month, year, recurrenceId,
-                 bestBuyDay, cardBrand, cardBank, cardLimit, cardColor, cardId, observation, establishment,
+               bestBuyDay, cardBrand, cardBank, cardLimit, cardColor, cardId, observation,
                  purchaseUuid, purchaseDate, creationDate
           FROM accounts
         ''');

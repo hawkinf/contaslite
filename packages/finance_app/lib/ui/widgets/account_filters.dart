@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 
@@ -25,12 +24,13 @@ class AccountFilters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
       decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
+        color: colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: Row(
         children: [
@@ -67,21 +67,23 @@ class AccountFilters extends StatelessWidget {
   }
 
   Widget _buildChip(BuildContext context, String label, AccountFilterType type) {
+    final colorScheme = Theme.of(context).colorScheme;
     final bool isSelected = selected == type;
-    final Color textColor = isSelected ? Colors.white : AppColors.textSecondary;
+    final Color textColor =
+        isSelected ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant;
     return SizedBox(
-      height: 34,
+      height: 30,
       child: ChoiceChip(
-        labelPadding: const EdgeInsets.symmetric(horizontal: 10),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
         label: Text(
           label,
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textColor),
         ),
         selected: isSelected,
         showCheckmark: false,
-        backgroundColor: Colors.white,
-        selectedColor: AppColors.primary,
-        side: const BorderSide(color: AppColors.border),
+        backgroundColor: colorScheme.surface,
+        selectedColor: colorScheme.primaryContainer,
+        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
         shape: const StadiumBorder(),
         onSelected: (_) => onSelected(type),
       ),
@@ -89,11 +91,13 @@ class AccountFilters extends StatelessWidget {
   }
 
   Widget _buildPaidChip(BuildContext context) {
-    final Color textColor = showPaid ? Colors.white : AppColors.textSecondary;
+    final colorScheme = Theme.of(context).colorScheme;
+    final Color textColor =
+        showPaid ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant;
     return SizedBox(
-      height: 34,
+      height: 30,
       child: ChoiceChip(
-        labelPadding: const EdgeInsets.symmetric(horizontal: 10),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
         label: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -107,9 +111,9 @@ class AccountFilters extends StatelessWidget {
         ),
         selected: showPaid,
         showCheckmark: false,
-        backgroundColor: Colors.white,
-        selectedColor: AppColors.primary,
-        side: const BorderSide(color: AppColors.border),
+        backgroundColor: colorScheme.surface,
+        selectedColor: colorScheme.primaryContainer,
+        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
         shape: const StadiumBorder(),
         onSelected: (value) => onShowPaidChanged(value),
       ),
@@ -117,14 +121,15 @@ class AccountFilters extends StatelessWidget {
   }
 
   Widget _buildPeriodDropdown(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
-      height: 36,
+      height: 32,
       width: 160,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -134,11 +139,11 @@ class AccountFilters extends StatelessWidget {
           onChanged: (value) {
             if (value != null) onPeriodChanged(value);
           },
-          icon: const Icon(Icons.arrow_drop_down, size: 18, color: AppColors.textSecondary),
-          style: const TextStyle(
+          icon: Icon(Icons.arrow_drop_down, size: 18, color: colorScheme.onSurfaceVariant),
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary,
+            color: colorScheme.onSurfaceVariant,
           ),
           items: const [
             DropdownMenuItem(value: 'month', child: Text('Mês Atual')),

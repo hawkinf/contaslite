@@ -1077,14 +1077,14 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     String? prefixText,
     TextStyle? prefixStyle,
     Widget? suffixIcon,
-    bool dense = false,
+    bool dense = true,
     EdgeInsetsGeometry? contentPadding,
     bool alignLabelWithHint = false,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
     final baseBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.8)),
+      borderRadius: BorderRadius.circular(16),
+      borderSide: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
     );
 
     return InputDecoration(
@@ -1092,6 +1092,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       labelStyle: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
       hintText: hintText,
       prefixIcon: prefixIcon ?? Icon(icon, color: colorScheme.onSurfaceVariant),
+        prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
       prefixText: prefixText,
       prefixStyle: prefixStyle,
       suffixIcon: suffixIcon,
@@ -1099,8 +1100,8 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       alignLabelWithHint: alignLabelWithHint,
       filled: true,
       fillColor: colorScheme.surfaceContainerLow,
-      contentPadding: contentPadding ??
-          EdgeInsets.symmetric(horizontal: 14, vertical: dense ? 10 : 12),
+          contentPadding: contentPadding ??
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: baseBorder,
       enabledBorder: baseBorder,
       focusedBorder: baseBorder.copyWith(
@@ -1395,10 +1396,11 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       children: _colors
           .map(
             (color) {
-              final isSelected = _selectedColor == color.value;
+              final colorInt = color.toARGB32();
+              final isSelected = _selectedColor == colorInt;
               return ChoiceChip(
                 selected: isSelected,
-                onSelected: (_) => setState(() => _selectedColor = color.value),
+                onSelected: (_) => setState(() => _selectedColor = colorInt),
                 label: const SizedBox(width: 0, height: 0),
                 labelPadding: EdgeInsets.zero,
                 padding: const EdgeInsets.all(6),
@@ -1443,21 +1445,23 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     );
   }
 
-  Widget _buildLaunchTypeSelector() {
+  Widget _buildLaunchTypeSelector({bool compact = false}) {
     debugPrint('📝 _buildLaunchTypeSelector (_entryMode=$_entryMode)');
     final colorScheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          "Tipo de Lançamento",
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-            color: colorScheme.onSurfaceVariant,
+        if (!compact) ...[
+          Text(
+            "Tipo de Lançamento",
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: colorScheme.onSurfaceVariant,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
+          const SizedBox(height: 8),
+        ],
         SegmentedButton<int>(
           segments: const [
             ButtonSegment(
@@ -1473,11 +1477,11 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           onSelectionChanged: (Set<int> newSelection) =>
               setState(() => _entryMode = newSelection.first),
           style: ButtonStyle(
-            visualDensity: VisualDensity.compact,
+            visualDensity: compact ? VisualDensity.compact : VisualDensity.standard,
             padding: MaterialStateProperty.all(
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              EdgeInsets.symmetric(horizontal: 12, vertical: compact ? 6 : 8),
             ),
-            minimumSize: MaterialStateProperty.all(const Size(0, 40)),
+            minimumSize: MaterialStateProperty.all(Size(0, compact ? 36 : 40)),
             shape: MaterialStateProperty.all(
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
@@ -1896,6 +1900,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     try {
       debugPrint('🏗️ _buildFormContent INÍCIO');
       final colorScheme = Theme.of(context).colorScheme;
+      if (widget.isRecebimento) {
+        return _buildRecebimentoFormContent(colorScheme);
+      }
       return SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -1991,6 +1998,192 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         ),
       );
     }
+  }
+
+  Widget _buildRecebimentoFormContent(ColorScheme colorScheme) {
+    final installmentsQty = int.tryParse(_installmentsQtyController.text) ?? 1;
+    final showInstallmentsList =
+        _entryMode == 0 && installmentsQty > 1 && _installments.isNotEmpty;
+
+    final sectionTitleStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: colorScheme.onSurface,
+        );
+
+    final dateField = _buildFieldWithIcon(
+      icon: Icons.calendar_month,
+      label: _baseDateLabel,
+      child: TextFormField(
+        controller: _dateController,
+        keyboardType: TextInputType.number,
+        inputFormatters: [_dateMaskFormatter],
+        decoration: buildOutlinedInputDecoration(
+          label: _baseDateLabel,
+          icon: Icons.calendar_month,
+          hintText: "dd/mm/aa",
+          suffixIcon: IconButton(
+            icon: Icon(Icons.date_range, color: colorScheme.onSurfaceVariant),
+            tooltip: 'Selecionar Data',
+            onPressed: () => _selectDate(_dateController),
+          ),
+        ),
+        onChanged: _onMainDateChanged,
+        validator: (value) => value == null || value.length < 8
+            ? 'Data incompleta (dd/mm/aa)'
+            : null,
+      ),
+    );
+
+    final valueField = _buildFieldWithIcon(
+      icon: Icons.attach_money,
+      label: 'Valor Total (R\$)',
+      child: TextFormField(
+        controller: _totalValueController,
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          CentavosInputFormatter(moeda: true),
+        ],
+        decoration: buildOutlinedInputDecoration(
+          label: 'Valor Total (R\$)',
+          icon: Icons.attach_money,
+        ),
+        onChanged: (val) => _updateInstallments(),
+      ),
+    );
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildSectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Tipo', style: sectionTitleStyle),
+                  const SizedBox(height: 8),
+                  _buildTypeDropdown(),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildSectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Tipo de lançamento', style: sectionTitleStyle),
+                  const SizedBox(height: 8),
+                  _buildLaunchTypeSelector(),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildSectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Classificação / Categorias', style: sectionTitleStyle),
+                  const SizedBox(height: 8),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth >= 780;
+                      final itemWidth = isWide
+                          ? (constraints.maxWidth - 12) / 2
+                          : constraints.maxWidth;
+                      return Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          SizedBox(width: itemWidth, child: _buildCategorySection()),
+                          SizedBox(width: itemWidth, child: _buildDescriptionField()),
+                          SizedBox(width: itemWidth, child: _buildManageCategoriesButton()),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildSectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Datas / Valores', style: sectionTitleStyle),
+                  const SizedBox(height: 8),
+                  if (_entryMode == 1)
+                    _buildRecurrentMode()
+                  else
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth >= 780;
+                        final itemWidth = isWide
+                            ? (constraints.maxWidth - 12) / 2
+                            : constraints.maxWidth;
+                        return Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            SizedBox(width: itemWidth, child: dateField),
+                            SizedBox(width: itemWidth, child: valueField),
+                          ],
+                        );
+                      },
+                    ),
+                ],
+              ),
+            ),
+            if (_entryMode == 0) ...[
+              const SizedBox(height: 12),
+              _buildSectionCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Parcelas', style: sectionTitleStyle),
+                    const SizedBox(height: 8),
+                    _buildInstallmentDropdown(),
+                    if (showInstallmentsList) ...[
+                      const SizedBox(height: 12),
+                      _buildInstallmentsList(colorScheme),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            _buildSectionCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Opções', style: sectionTitleStyle),
+                  const SizedBox(height: 8),
+                  _buildColorPaletteSection(),
+                  const SizedBox(height: 12),
+                  _buildFieldWithIcon(
+                    icon: Icons.note,
+                    label: 'Observações (Opcional)',
+                    child: TextFormField(
+                      controller: _observationController,
+                      decoration: buildOutlinedInputDecoration(
+                        label: 'Observações (Opcional)',
+                        icon: Icons.note,
+                        alignLabelWithHint: true,
+                      ),
+                      maxLines: 3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildSectionCard({required Widget child}) {
@@ -2140,44 +2333,83 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         top: false,
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              const Spacer(),
-              OutlinedButton(
-                onPressed: _isSaving ? null : _closeScreen,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                  minimumSize: const Size(0, 44),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+          child: widget.isRecebimento
+              ? Align(
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      OutlinedButton(
+                        onPressed: _isSaving ? null : _closeScreen,
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                          minimumSize: const Size(0, 48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text('Cancelar'),
+                      ),
+                      const SizedBox(width: 12),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                          minimumSize: const Size(0, 48),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        onPressed: _isSaving ? null : _saveAccount,
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Text(_saveButtonLabel()),
+                      ),
+                    ],
                   ),
+                )
+              : Row(
+                  children: [
+                    const Spacer(),
+                    OutlinedButton(
+                      onPressed: _isSaving ? null : _closeScreen,
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                        minimumSize: const Size(0, 44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text('Cancelar'),
+                    ),
+                    const SizedBox(width: 12),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                        minimumSize: const Size(0, 44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: _isSaving ? null : _saveAccount,
+                      child: _isSaving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(_saveButtonLabel()),
+                    ),
+                  ],
                 ),
-                child: const Text('Cancelar'),
-              ),
-              const SizedBox(width: 12),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                  minimumSize: const Size(0, 44),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                onPressed: _isSaving ? null : _saveAccount,
-                child: _isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(_saveButtonLabel()),
-              ),
-            ],
-          ),
         ),
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {

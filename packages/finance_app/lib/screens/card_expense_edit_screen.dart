@@ -163,7 +163,6 @@ class _CardExpenseEditScreenState extends State<CardExpenseEditScreen> {
         observation: _observationController.text.trim().isEmpty
           ? null
           : _observationController.text.trim(),
-        establishment: widget.expense.establishment,
         purchaseDate: widget.expense.purchaseDate,
         purchaseUuid: widget.expense.purchaseUuid,
         creationDate: widget.expense.creationDate,

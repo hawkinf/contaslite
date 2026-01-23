@@ -58,10 +58,9 @@ class DatabaseProtectionService {
     }
   }
 
-  Future<DatabaseBackup?> createBackup(String reason) async {
+  Future<DatabaseBackup?> createBackup(String reason, {Database? databaseOverride}) async {
     try {
-      final dbHelper = DatabaseHelper.instance;
-      final db = await dbHelper.database;
+      final db = databaseOverride ?? await DatabaseHelper.instance.database;
 
       // Obter versão do banco
       final version = await db.getVersion();

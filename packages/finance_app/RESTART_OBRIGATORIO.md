@@ -65,9 +65,6 @@ Cairá em: 02/01/2026 (23d)
 💎  Parcelas / Tipo
     À Vista      ▼  ← LINHA EMBAIXO!
 
-🏪  Estabelecimento
-    _____________
-
 🏷️  Categoria
     Nenhuma      ▼
 

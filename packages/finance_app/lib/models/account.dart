@@ -25,7 +25,6 @@ class Account {
   final int? cardId;
   final String? logo;
   final String? observation;
-  final String? establishment;
   final String? purchaseUuid;
   final String? purchaseDate;
   final String? creationDate;
@@ -53,7 +52,6 @@ class Account {
     this.cardId,
     this.logo,
     this.observation,
-    this.establishment,
     this.purchaseUuid,
     this.purchaseDate,
     this.creationDate,
@@ -116,7 +114,6 @@ class Account {
     int? cardId,
     String? logo,
     String? observation,
-    String? establishment,
     String? purchaseUuid,
     String? purchaseDate,
     String? creationDate,
@@ -144,7 +141,6 @@ class Account {
       cardId: cardId ?? this.cardId,
       logo: logo ?? this.logo,
       observation: observation ?? this.observation,
-      establishment: establishment ?? this.establishment,
       purchaseUuid: purchaseUuid ?? this.purchaseUuid,
       purchaseDate: purchaseDate ?? this.purchaseDate,
       creationDate: creationDate ?? this.creationDate,
@@ -175,7 +171,6 @@ class Account {
       'cardId': cardId,
       'logo': logo,
       'observation': observation,
-      'establishment': establishment,
       'purchaseUuid': purchaseUuid,
       'purchaseDate': purchaseDate,
       'creationDate': creationDate,
@@ -206,7 +201,6 @@ class Account {
       cardId: map['cardId'] as int?,
       logo: map['logo'] as String?,
       observation: map['observation'] as String?,
-      establishment: map['establishment'] as String?,
       purchaseUuid: map['purchaseUuid'] as String?,
       purchaseDate: map['purchaseDate'] as String?,
       creationDate: map['creationDate'] as String?,

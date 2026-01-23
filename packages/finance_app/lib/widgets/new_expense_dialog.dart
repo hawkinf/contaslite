@@ -54,7 +54,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
   final _valueController = TextEditingController();
   final _purchaseDateController = TextEditingController();
   final _installmentsQtyController = TextEditingController(text: '1');
-  final _establishmentController = TextEditingController();
   final _observationController = TextEditingController();
   final List<Color> _colors = AppColors.essentialPalette;
 
@@ -67,6 +66,9 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
   bool _isLoading = true;
   bool _payInAdvance = false;
   bool _isRecurrent = false;
+  bool _submitted = false;
+  bool _descTouched = false;
+  bool _valueTouched = false;
   int _selectedColor = 0xFFFFFFFF; // default paleta branca
   List<_InstallmentPreviewItem> _installmentPreviews = const [];
   double? _installmentValue;
@@ -94,7 +96,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
     _valueController.dispose();
     _purchaseDateController.dispose();
     _installmentsQtyController.dispose();
-    _establishmentController.dispose();
     _observationController.dispose();
     super.dispose();
   }
@@ -131,7 +132,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
         _isRecurrent = editing.isRecurrent;
         _selectedColor = editing.cardColor ?? _selectedColor;
         _observationController.text = editing.observation ?? '';
-        _establishmentController.text = editing.establishment ?? '';
         _invoiceOffset = offset;
         _isLoading = false;
       });
@@ -407,46 +407,110 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
     });
   }
 
-  Widget _buildColorPalette() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Escolha a cor', style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: _colors.map((color) {
-            final colorInt = color.toARGB32();
-            final isSelected = _selectedColor == colorInt;
-            return InkWell(
-              onTap: () => setState(() => _selectedColor = colorInt),
-              child: Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isSelected ? foregroundColorFor(color) : Colors.grey.shade400,
-                    width: isSelected ? 3 : 1,
-                  ),
-                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
-                ),
-                child: isSelected
-                    ? Center(
-                        child: Icon(
-                          Icons.check,
-                          size: 18,
-                          color: foregroundColorFor(color), // usa a mesma cor do check para o texto interno
-                        ),
-                      )
-                    : null,
+  InputDecoration _inputDecoration(
+    BuildContext context, {
+    required String label,
+    IconData? icon,
+    String? hintText,
+    String? helperText,
+    Widget? suffixIcon,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return InputDecoration(
+      labelText: label,
+      hintText: hintText,
+      helperText: helperText,
+      prefixIcon: icon != null ? Icon(icon) : null,
+      prefixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+      prefixIconColor: colorScheme.onSurfaceVariant,
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: colorScheme.surfaceContainerLow,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: colorScheme.primary.withValues(alpha: 0.6)),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+    );
+  }
+
+  String _selectedColorLabel() {
+    final index = _colors.indexWhere((c) => c.toARGB32() == _selectedColor);
+    if (index == -1) return 'Personalizada';
+    return 'Opção ${index + 1}';
+  }
+
+  Future<void> _showColorPicker() async {
+    final colorScheme = Theme.of(context).colorScheme;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Escolher cor',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
               ),
-            );
-          }).toList(),
-        ),
-      ],
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: _colors.map((color) {
+                  final colorInt = color.toARGB32();
+                  final isSelected = _selectedColor == colorInt;
+                  return InkWell(
+                    onTap: () {
+                      setState(() => _selectedColor = colorInt);
+                      Navigator.pop(ctx);
+                    },
+                    borderRadius: BorderRadius.circular(99),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected
+                              ? colorScheme.onSurface
+                              : colorScheme.outlineVariant.withValues(alpha: 0.6),
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      child: isSelected
+                          ? Icon(
+                              Icons.check,
+                              size: 14,
+                              color: foregroundColorFor(color),
+                            )
+                          : null,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -499,6 +563,9 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
   }
 
   Future<void> _saveExpense() async {
+    if (!_submitted) {
+      setState(() => _submitted = true);
+    }
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Preencha todos os campos obrigatorios.'), backgroundColor: AppColors.error),
@@ -522,7 +589,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
       final installments = _isRecurrent ? 1 : (int.tryParse(_installmentsQtyController.text) ?? 1);
       final (invoiceMonthBase, invoiceYearBase) = _calculateInvoiceMonth(purchaseDate);
       final observation = _observationController.text.trim().isEmpty ? null : _observationController.text.trim();
-      final establishment = _establishmentController.text.trim().isEmpty ? null : _establishmentController.text.trim();
 
       if (_isEditing && widget.expenseToEdit != null) {
         final original = widget.expenseToEdit!;
@@ -539,7 +605,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
             value: value,
             purchaseDate: purchaseDate,
             observation: observation,
-            establishment: establishment,
             typeId: _selectedType!.id!,
             categoryId: _selectedCategory!.id!,
           );
@@ -556,7 +621,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
             invoiceYearBase: invoiceYearBase,
             invoiceMonthBase: invoiceMonthBase,
             observation: observation,
-            establishment: establishment,
             typeId: _selectedType!.id!,
             categoryId: _selectedCategory!.id!,
           );
@@ -567,7 +631,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
             value: value,
             purchaseDate: purchaseDate,
             observation: observation,
-            establishment: establishment,
             typeId: _selectedType!.id!,
             categoryId: _selectedCategory!.id!,
           );
@@ -607,7 +670,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
             installmentIndex: installments > 1 ? i + 1 : null,
             installmentTotal: installments > 1 ? installments : null,
             observation: observation,
-            establishment: establishment,
             cardColor: _selectedColor,
           );
 
@@ -668,7 +730,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
     required double value,
     required DateTime purchaseDate,
     String? observation,
-    String? establishment,
     required int typeId,
     required int categoryId,
   }) async {
@@ -689,7 +750,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
       payInAdvance: _payInAdvance,
       cardColor: _selectedColor,
       observation: observation,
-      establishment: establishment,
       purchaseDate: DateFormat('yyyy-MM-dd').format(purchaseDate),
       installmentIndex: null,
       installmentTotal: null,
@@ -708,7 +768,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
     required int invoiceYearBase,
     required int invoiceMonthBase,
     String? observation,
-    String? establishment,
     required int typeId,
     required int categoryId,
   }) async {
@@ -758,7 +817,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
         payInAdvance: _payInAdvance,
         cardColor: _selectedColor,
         observation: observation,
-        establishment: establishment,
         purchaseDate: DateFormat('yyyy-MM-dd').format(purchaseDate),
         installmentIndex: installments > 1 ? idx : null,
         installmentTotal: installments > 1 ? installments : null,
@@ -774,7 +832,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
     required double value,
     required DateTime purchaseDate,
     String? observation,
-    String? establishment,
     required int typeId,
     required int categoryId,
   }) async {
@@ -809,7 +866,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
         payInAdvance: _payInAdvance,
         cardColor: _selectedColor,
         observation: observation,
-        establishment: establishment,
         purchaseDate: DateFormat('yyyy-MM-dd').format(purchaseDate),
         installmentIndex: null,
         installmentTotal: null,
@@ -822,10 +878,13 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final viewInsets = MediaQuery.of(context).viewInsets;
+    final colorScheme = Theme.of(context).colorScheme;
 
-    final maxWidth = (screenSize.width * 0.95).clamp(320.0, 700.0);
+    final maxWidth = (screenSize.width * 0.95).clamp(320.0, 860.0);
     final availableHeight = screenSize.height - viewInsets.bottom;
     final maxHeight = (availableHeight * 0.9).clamp(420.0, 850.0);
+    final installmentsQty = int.tryParse(_installmentsQtyController.text) ?? 1;
+    final hasInstallments = !_isRecurrent && installmentsQty > 1;
 
     if (_isLoading) {
       return const Dialog(
@@ -836,6 +895,11 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
         ),
       );
     }
+
+    final cardTitle = [
+      widget.card.cardBank?.trim() ?? '',
+      widget.card.cardBrand?.trim() ?? '',
+    ].where((t) => t.isNotEmpty).join(' • ');
 
     return Dialog(
       insetPadding: EdgeInsets.zero,
@@ -861,80 +925,46 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Banner compacto do cartão
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: widget.card.cardColor != null
-                      ? Color(widget.card.cardColor!)
-                      : AppColors.primary,
+                  color: colorScheme.surface,
                   border: Border(
-                    bottom: BorderSide(color: Colors.grey.shade200),
+                    bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
                   ),
                 ),
                 child: Row(
                   children: [
                     Expanded(
                       child: Text(
-                        widget.card.cardBank ?? 'Cartão',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                          color: widget.card.cardColor != null
-                              ? foregroundColorFor(Color(widget.card.cardColor!))
-                              : Colors.white,
-                        ),
+                        cardTitle.isEmpty ? 'Cartão' : cardTitle,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onSurface,
+                            ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: (widget.card.cardColor != null
-                                ? foregroundColorFor(Color(widget.card.cardColor!))
-                                : Colors.white)
-                            .withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'Fech: ${(widget.card.bestBuyDay ?? 1).toString().padLeft(2, '0')}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: widget.card.cardColor != null
-                              ? foregroundColorFor(Color(widget.card.cardColor!))
-                              : Colors.white,
-                        ),
-                      ),
+                    Chip(
+                      label: Text('Fech: ${(widget.card.bestBuyDay ?? 1).toString().padLeft(2, '0')}'),
+                      visualDensity: VisualDensity.compact,
+                      backgroundColor: colorScheme.surfaceContainerHighest,
+                      side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+                      labelStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 11),
                     ),
                     const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: (widget.card.cardColor != null
-                                ? foregroundColorFor(Color(widget.card.cardColor!))
-                                : Colors.white)
-                            .withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'Venc: ${widget.card.dueDay.toString().padLeft(2, '0')}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: widget.card.cardColor != null
-                              ? foregroundColorFor(Color(widget.card.cardColor!))
-                              : Colors.white,
-                        ),
-                      ),
+                    Chip(
+                      label: Text('Venc: ${widget.card.dueDay.toString().padLeft(2, '0')}'),
+                      visualDensity: VisualDensity.compact,
+                      backgroundColor: colorScheme.surfaceContainerHighest,
+                      side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+                      labelStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 11),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     IconButton(
                       icon: const Icon(Icons.close),
                       iconSize: 20,
-                      color: widget.card.cardColor != null
-                          ? foregroundColorFor(Color(widget.card.cardColor!))
-                          : Colors.white,
+                      color: colorScheme.onSurfaceVariant,
                       onPressed: () => Navigator.pop(context),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -951,37 +981,29 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Switch recorrente compacto dentro do formulário
+                        Text(
+                          'Tipo e identificação',
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                        const SizedBox(height: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.blue.shade200, width: 0.8),
+                            color: colorScheme.surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
                           ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.autorenew, size: 18, color: Colors.blue.shade700),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Despesa recorrente (mensal)',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.blue.shade900,
-                                  ),
-                                ),
-                              ),
-                              Switch(
-                                value: _isRecurrent,
-                                onChanged: (val) => setState(() => _isRecurrent = val),
-                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                            ],
+                          child: SwitchListTile(
+                            value: _isRecurrent,
+                            onChanged: (val) => setState(() => _isRecurrent = val),
+                            title: const Text('Despesa recorrente (mensal)'),
+                            secondary: Icon(Icons.autorenew, color: colorScheme.onSurfaceVariant),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
 
                         // Descrição
                         SizedBox(
@@ -989,14 +1011,26 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                           child: TextFormField(
                             controller: _descController,
                             textCapitalization: TextCapitalization.sentences,
-                            decoration: buildOutlinedInputDecoration(
+                            decoration: _inputDecoration(
+                              context,
                               label: 'Descrição da Compra',
                               icon: Icons.description_outlined,
                             ),
-                            validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
+                            onTap: () {
+                              if (_descTouched) return;
+                              setState(() => _descTouched = true);
+                            },
+                            onChanged: (_) {
+                              if (_descTouched) return;
+                              setState(() => _descTouched = true);
+                            },
+                            validator: (v) {
+                              if (!_submitted && !_descTouched) return null;
+                              return (v == null || v.isEmpty) ? 'Obrigatório' : null;
+                            },
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
 
                         // Valor
                         SizedBox(
@@ -1005,13 +1039,24 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                             controller: _valueController,
                             keyboardType: TextInputType.number,
                             inputFormatters: [FilteringTextInputFormatter.digitsOnly, CentavosInputFormatter(moeda: true)],
-                            decoration: buildOutlinedInputDecoration(
+                            decoration: _inputDecoration(
+                              context,
                               label: 'Valor Total (R\$)',
                               icon: Icons.attach_money,
                             ),
-                            onChanged: (_) => _updatePreview(),
+                            onTap: () {
+                              if (_valueTouched) return;
+                              setState(() => _valueTouched = true);
+                            },
+                            onChanged: (_) {
+                              if (!_valueTouched) {
+                                setState(() => _valueTouched = true);
+                              }
+                              _updatePreview();
+                            },
                             validator: (v) {
-                              if (v!.isEmpty) return 'Obrigatório';
+                              if (!_submitted && !_valueTouched) return null;
+                              if (v == null || v.isEmpty) return 'Obrigatório';
                               try {
                                 final val = UtilBrasilFields.converterMoedaParaDouble(v);
                                 if (val <= 0) return 'Valor deve ser maior que zero';
@@ -1022,7 +1067,16 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                             },
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
+
+                        Text(
+                          'Datas e fatura',
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                        const SizedBox(height: 6),
 
                         // Data da Compra
                         SizedBox(
@@ -1031,11 +1085,12 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                             controller: _purchaseDateController,
                             keyboardType: TextInputType.number,
                             inputFormatters: [FilteringTextInputFormatter.digitsOnly, DataInputFormatter()],
-                            decoration: buildOutlinedInputDecoration(
+                            decoration: _inputDecoration(
+                              context,
                               label: 'Data da Compra',
                               icon: Icons.calendar_today,
                               suffixIcon: IconButton(
-                                icon: const Icon(Icons.date_range, color: AppColors.primary),
+                                icon: Icon(Icons.date_range, color: colorScheme.onSurfaceVariant),
                                 tooltip: 'Selecionar Data',
                                 onPressed: _selectPurchaseDate,
                               ),
@@ -1052,7 +1107,52 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                             },
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<int>(
+                          initialValue: _invoiceOffset,
+                          decoration: _inputDecoration(
+                            context,
+                            label: 'Fatura',
+                            icon: Icons.event_note,
+                          ),
+                          onChanged: (val) {
+                            if (val == null) return;
+                            setState(() => _invoiceOffset = val);
+                            _updatePreview();
+                          },
+                          items: List.generate(9, (i) => i - 2).map((offset) {
+                            final (baseMonth, baseYear) =
+                                _calculateInvoiceMonth(_parseDateString(_purchaseDateController.text));
+                            final target = DateTime(baseYear, baseMonth + offset, 1);
+                            final label = '${DateFormat('MMMM', 'pt_BR').format(target)}/${target.year}';
+                            final desc = offset == 0
+                                ? ' (sugerido)'
+                                : offset > 0
+                                    ? ' (+$offset)'
+                                    : ' ($offset)';
+                            return DropdownMenuItem<int>(
+                              value: offset,
+                              child: Text('$label$desc'),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Melhor dia: ${(widget.card.bestBuyDay ?? 1).toString().padLeft(2, '0')}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        Text(
+                          'Classificação',
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                        const SizedBox(height: 6),
 
                         if (_typesList.isEmpty)
                           InkWell(
@@ -1079,7 +1179,8 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                           DropdownButtonFormField<AccountType>(
                             key: const ValueKey('expense_type_dropdown'),
                             initialValue: _getValidatedSelectedType(),
-                            decoration: buildOutlinedInputDecoration(
+                            decoration: _inputDecoration(
+                              context,
                               label: 'Conta a Pagar',
                               icon: Icons.account_balance_wallet,
                             ),
@@ -1119,29 +1220,27 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  'Gerenciar Categorias',
+                                  'Categorias',
                                   style: TextStyle(
                                     fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.grey.shade700,
+                                    fontWeight: FontWeight.w600,
+                                    color: colorScheme.onSurfaceVariant,
                                   ),
                                 ),
+                              ),
+                              TextButton(
+                                onPressed: _openCategoriesManager,
+                                child: const Text('Gerenciar'),
                               ),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          FilledButton.icon(
-                            icon: const Icon(Icons.category),
-                            label: const Text('Acessar Categorias'),
-                            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-                            onPressed: _openCategoriesManager,
-                          ),
-                          const SizedBox(height: 16),
                           if (_categories.isNotEmpty)
                             DropdownButtonFormField<AccountCategory>(
                               key: const ValueKey('expense_category_dropdown'),
                               initialValue: _getValidatedSelectedCategory(),
-                              decoration: buildOutlinedInputDecoration(
+                              decoration: _inputDecoration(
+                                context,
                                 label: 'Categoria',
                                 icon: Icons.label,
                               ),
@@ -1173,160 +1272,149 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.amber.shade50,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.amber.shade300),
+                                color: colorScheme.surfaceContainerLow,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
                               ),
                               child: const Text('Nenhuma categoria encontrada para o tipo selecionado.'),
                             ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                         ],
+                        const SizedBox(height: 12),
 
-                          // Paleta de cores
-                          _buildColorPalette(),
-                          const SizedBox(height: 20),
-
-                        // Descricao
-                        TextFormField(
-                          controller: _descController,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: buildOutlinedInputDecoration(
-                            label: 'Descricao da Compra',
-                            icon: Icons.description_outlined,
-                          ),
-                          validator: (v) => v!.isEmpty ? 'Obrigatorio' : null,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Estabelecimento (opcional)
-                        TextFormField(
-                          controller: _establishmentController,
-                          textCapitalization: TextCapitalization.words,
-                          decoration: buildOutlinedInputDecoration(
-                            label: 'Estabelecimento (Opcional)',
-                            icon: Icons.store_mall_directory,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Valor
-                        TextFormField(
-                          controller: _valueController,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly, CentavosInputFormatter(moeda: true)],
-                          decoration: buildOutlinedInputDecoration(
-                            label: 'Valor Total (R\$)',
-                            icon: Icons.attach_money,
-                          ),
-                          onChanged: (_) => _updatePreview(),
-                          validator: (v) {
-                            if (v!.isEmpty) return 'Obrigatorio';
-                            try {
-                              final val = UtilBrasilFields.converterMoedaParaDouble(v);
-                              if (val <= 0) return 'Valor deve ser maior que zero';
-                            } catch (_) {
-                              return 'Valor invalido';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Data da Compra
-                        TextFormField(
-                          controller: _purchaseDateController,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly, DataInputFormatter()],
-                          decoration: buildOutlinedInputDecoration(
-                            label: 'Data da Compra',
-                            icon: Icons.calendar_today,
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.date_range, color: AppColors.primary),
-                              tooltip: 'Selecionar Data',
-                              onPressed: _selectPurchaseDate,
-                            ),
-                          ),
-                          onChanged: (_) => _updatePreview(),
-                          validator: (v) {
-                            if (v!.isEmpty) return 'Obrigatorio';
-                            try {
-                              _parseDateString(v);
-                            } catch (_) {
-                              return 'Data invalida';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Fatura Débito (Melhor Dia: ${(widget.card.bestBuyDay ?? 1).toString().padLeft(2, '0')})',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                        Text(
+                          'Opções',
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurfaceVariant,
                               ),
-                            ),
-                            DropdownButton<int>(
-                              value: _invoiceOffset,
-                              onChanged: (val) {
-                                if (val == null) return;
-                                setState(() => _invoiceOffset = val);
-                                _updatePreview();
-                              },
-                              items: List.generate(9, (i) => i - 2).map((offset) {
-                                final (baseMonth, baseYear) = _calculateInvoiceMonth(_parseDateString(_purchaseDateController.text));
-                                final target = DateTime(baseYear, baseMonth + offset, 1);
-                                final label = '${DateFormat('MMMM', 'pt_BR').format(target)}/${target.year}';
-                                final desc = offset == 0
-                                    ? ' (sugerido)'
-                                    : offset > 0
-                                        ? ' (+$offset)'
-                                        : ' ($offset)';
-                                return DropdownMenuItem<int>(
-                                  value: offset,
-                                  child: Text('$label$desc'),
-                                );
-                              }).toList(),
-                            ),
-                          ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: Color(_selectedColor),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Cor do lançamento',
+                                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                    Text(
+                                      _selectedColorLabel(),
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                            color: colorScheme.onSurfaceVariant,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              OutlinedButton(
+                                onPressed: _showColorPicker,
+                                child: const Text('Escolher'),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
 
-                        if (!_isRecurrent) ...[
-                          // Quantidade de Parcelas
+                        if (!_isRecurrent && installmentsQty == 1)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: colorScheme.surfaceContainerLow,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Parcelamento',
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: _isEditing
+                                      ? null
+                                      : () {
+                                          _installmentsQtyController.text = '2';
+                                          _updatePreview();
+                                          setState(() {});
+                                        },
+                                  child: const Text('Adicionar'),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        if (hasInstallments) ...[
+                          const SizedBox(height: 12),
                           TextFormField(
                             controller: _installmentsQtyController,
                             keyboardType: TextInputType.number,
                             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                            decoration: buildOutlinedInputDecoration(
+                            decoration: _inputDecoration(
+                              context,
                               label: 'Quantidade de Parcelas',
                               icon: Icons.format_list_numbered,
                             ),
                             readOnly: _isEditing,
                             validator: (v) {
-                              if (v!.isEmpty) return 'Obrigatorio';
+                              if (v!.isEmpty) return 'Obrigatório';
                               final qty = int.tryParse(v);
                               if (qty == null || qty < 1 || qty > 48) return 'Entre 1 e 48 parcelas';
                               return null;
                             },
                             onChanged: (_) => _updatePreview(),
                           ),
-                          const SizedBox(height: 12),
-                          _buildInstallmentScheduleCard(),
-                          const SizedBox(height: 16),
                         ],
 
-                        // Observacao
+                        const SizedBox(height: 12),
+
                         TextFormField(
                           controller: _observationController,
                           maxLines: 2,
-                          decoration: buildOutlinedInputDecoration(
-                            label: 'Observacao (Opcional)',
+                          decoration: _inputDecoration(
+                            context,
+                            label: 'Observação (opcional)',
                             icon: Icons.notes,
                           ),
                         ),
+
+                        if (hasInstallments) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            'Calendário das parcelas',
+                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildInstallmentScheduleCard(),
+                        ],
                       ],
                     ),
                   ),
@@ -1342,42 +1430,39 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                 ),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.close),
-                        label: const Text('Cancelar'),
-                        onPressed: _isSaving ? null : () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                    const Spacer(),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.close),
+                      label: const Text('Cancelar'),
+                      onPressed: _isSaving ? null : () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          backgroundColor: AppColors.success,
-                          disabledBackgroundColor: AppColors.success.withValues(alpha: 0.6),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                        backgroundColor: AppColors.success,
+                        disabledBackgroundColor: AppColors.success.withValues(alpha: 0.6),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        onPressed: _isSaving ? null : _saveExpense,
-                        icon: _isSaving
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                              )
-                            : const Icon(Icons.check_circle, size: 20),
-                        label: Text(
-                          _isSaving ? 'Gravando...' : 'Gravar',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                      ),
+                      onPressed: _isSaving ? null : _saveExpense,
+                      icon: _isSaving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
+                          : const Icon(Icons.check_circle, size: 20),
+                      label: Text(
+                        _isSaving ? 'Gravando...' : 'Gravar',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],

@@ -9,7 +9,7 @@ class DatabaseMigrationService {
   DatabaseMigrationService._();
 
   // Versão atual esperada do schema
-  static const int currentSchemaVersion = 11;
+  static const int currentSchemaVersion = 17;
 
   ValueNotifier<MigrationStatus> migrationStatus =
       ValueNotifier(MigrationStatus.idle());

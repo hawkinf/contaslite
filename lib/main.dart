@@ -5469,40 +5469,51 @@ class _TablesScreenState extends State<TablesScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     return AppScaffold(
       title: 'Tabelas',
-      child: ListView.separated(
+      contentPadding: EdgeInsets.zero,
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.lg),
-        itemCount: items.length,
-        separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.md),
-        itemBuilder: (context, index) {
-          final item = items[index];
-          return Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-              ),
-            ),
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(
-                backgroundColor: colorScheme.primaryContainer,
-                child: Icon(item.icon, color: colorScheme.onPrimaryContainer),
-              ),
-              title: Text(item.title, style: Theme.of(context).textTheme.titleMedium),
-              subtitle: Text(
-                item.subtitle,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: colorScheme.onSurfaceVariant),
-              ),
-              trailing: Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
-              onTap: () => setState(() => _currentScreen = item.builder()),
-            ),
-          );
-        },
+        child: Column(
+          children: [
+            for (var i = 0; i < items.length; i++) ...[
+              _buildTableShortcutTile(context, items[i], colorScheme),
+              if (i < items.length - 1) const SizedBox(height: AppSpacing.md),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTableShortcutTile(
+    BuildContext context,
+    _TableShortcut item,
+    ColorScheme colorScheme,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+        ),
+      ),
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: CircleAvatar(
+          backgroundColor: colorScheme.primaryContainer,
+          child: Icon(item.icon, color: colorScheme.onPrimaryContainer),
+        ),
+        title: Text(item.title, style: Theme.of(context).textTheme.titleMedium),
+        subtitle: Text(
+          item.subtitle,
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: colorScheme.onSurfaceVariant),
+        ),
+        trailing: Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
+        onTap: () => setState(() => _currentScreen = item.builder()),
       ),
     );
   }

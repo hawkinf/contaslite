@@ -43,6 +43,7 @@ class SingleDayAppBar extends StatelessWidget implements PreferredSizeWidget {
     final weekdayLabel = weekday.substring(0, 1).toUpperCase() + weekday.substring(1);
 
     return AppBar(
+      automaticallyImplyLeading: false,
       centerTitle: centerTitle ?? true,
       toolbarHeight: preferredSize.height,
       backgroundColor: backgroundColor,

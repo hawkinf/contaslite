@@ -447,7 +447,6 @@ class _PaymentDialogState extends State<PaymentDialog> {
       cardId: card.id,
       cardBrand: card.cardBrand,
       cardBank: card.cardBank,
-      establishment: _selectedAccount!.description,
       observation: _effectiveRecebimento
           ? 'Recebimento via cartão de crédito'
           : 'Pagamento via cartão de crédito',

@@ -9,11 +9,11 @@ class RecebimentoFormScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final viewInsets = MediaQuery.of(context).viewInsets;
-
-    // Calcular dimensões responsivas - tamanho reduzido
-    final maxWidth = (screenSize.width * 0.85).clamp(280.0, 500.0);
+    // Calcular dimensões responsivas - padrão novo
+    final maxWidth = (screenSize.width * 0.92).clamp(320.0, 860.0);
     final availableHeight = screenSize.height - viewInsets.bottom;
-    final maxHeight = (availableHeight * 0.75).clamp(350.0, 700.0);
+    final maxHeight = (availableHeight * 0.9).clamp(420.0, 900.0);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Dialog(
       insetPadding: EdgeInsets.zero,
@@ -25,7 +25,7 @@ class RecebimentoFormScreen extends StatelessWidget {
             maxHeight: maxHeight,
           ),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: colorScheme.surface,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
