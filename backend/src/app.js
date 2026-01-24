@@ -12,6 +12,10 @@ const { sequelize } = require('./models');
 // Routes
 const authRoutes = require('./routes/auth');
 const syncRoutes = require('./routes/sync');
+const emailRoutes = require('./routes/email');
+
+// Services
+const schedulerService = require('./services/schedulerService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -59,6 +63,7 @@ app.get('/health/db', async (req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/sync', syncRoutes);
+app.use('/api/email', emailRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -91,11 +96,15 @@ const startServer = async () => {
       logger.info('Database models synchronized');
     }
 
+    // Inicializar serviço de agendamento de emails
+    schedulerService.initialize();
+
     // Iniciar servidor
     app.listen(PORT, () => {
       logger.info(`🚀 Server running on port ${PORT}`);
       logger.info(`📝 Environment: ${process.env.NODE_ENV}`);
       logger.info(`🔗 Health check: http://localhost:${PORT}/health`);
+      logger.info(`📧 Email scheduler: ${schedulerService.initialized ? 'running' : 'not configured'}`);
     });
 
   } catch (error) {

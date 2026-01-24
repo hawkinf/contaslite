@@ -400,13 +400,13 @@ class DatabaseHelper {
       }
     }
 
-    // Migração v17: Remover campo establishment das contas
+    // Migração v17: Limpeza de coluna antiga em accounts
     if (oldVersion < 17) {
-      debugPrint('🔄 Executando migração v17: Removendo campo establishment...');
+      debugPrint('🔄 Executando migração v17: Limpando coluna antiga...');
       try {
         try {
           await DatabaseProtectionService.instance.createBackup(
-            'pre_migration_v17_remove_establishment',
+            'pre_migration_v17_cleanup_accounts',
             databaseOverride: db,
           );
         } catch (e) {

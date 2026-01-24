@@ -25,10 +25,11 @@ class AppScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final hasBoundedHeight = constraints.maxHeight.isFinite;
+
+        final header = Container(
           padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
             color: colorScheme.surface,
@@ -63,16 +64,25 @@ class AppScaffold extends StatelessWidget {
               if (actions != null) ...actions!,
             ],
           ),
-        ),
-        if (banner != null) ...[
-          const SizedBox(height: AppSpacing.md),
-          banner!,
-        ],
-        Padding(
+        );
+
+        final body = Padding(
           padding: contentPadding,
           child: child,
-        ),
-      ],
+        );
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            header,
+            if (banner != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              banner!,
+            ],
+            if (hasBoundedHeight) Expanded(child: body) else body,
+          ],
+        );
+      },
     );
   }
 }

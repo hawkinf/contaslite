@@ -34,4 +34,28 @@ router.post('/logout', authenticate, authController.logout);
  */
 router.post('/google', authController.googleAuth);
 
+/**
+ * POST /api/auth/verify-email
+ * Verifica email do usuário com token
+ */
+router.post('/verify-email', authController.verifyEmail);
+
+/**
+ * POST /api/auth/resend-verification
+ * Reenvia email de verificação
+ */
+router.post('/resend-verification', authController.resendVerification);
+
+/**
+ * POST /api/auth/forgot-password
+ * Envia email de redefinição de senha
+ */
+router.post('/forgot-password', authController.forgotPassword);
+
+/**
+ * POST /api/auth/reset-password
+ * Redefine senha com token
+ */
+router.post('/reset-password', authController.resetPassword);
+
 module.exports = router;

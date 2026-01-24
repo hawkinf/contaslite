@@ -10,6 +10,7 @@ import '../database/sync_helpers.dart';
 import '../widgets/backup_dialog.dart';
 import 'database_screen.dart';
 import 'database_settings_screen.dart';
+import 'email_settings_screen.dart';
 import 'login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -640,6 +641,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const DatabaseSettingsScreen()),
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+          ListTile(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: _preferenceCardBorderColor(context), width: 1.2),
+            ),
+            tileColor: _preferenceCardColor(context, Colors.amber.shade50),
+            leading: Icon(Icons.email_outlined, color: Theme.of(context).colorScheme.primary, size: 30),
+            title: Text(
+              'Notificações por Email',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              'Configurar envio automático de relatórios',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+            ),
+            trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const EmailSettingsScreen()),
               );
             },
           ),

@@ -221,6 +221,19 @@ class AuthService {
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+        // Verificar se requer verificação de email
+        final requiresVerification = data['requiresVerification'] as bool? ?? false;
+
+        if (requiresVerification) {
+          // Não fazer login automático, apenas retornar sucesso com mensagem
+          final message = data['message'] as String? ??
+              'Cadastro realizado! Verifique seu email para ativar sua conta.';
+          authStateNotifier.value = AuthState.unauthenticated;
+          return AuthResult.successful(message: message);
+        }
+
+        // Se não requer verificação, fazer login automático
         await _handleAuthSuccess(data);
         await SecureCredentialStorage.saveCredentials(email, password);
         return AuthResult.successful();
@@ -305,6 +318,28 @@ class AuthService {
         authStateNotifier.value = AuthState.error;
         errorNotifier.value = 'Email ou senha incorretos';
         return AuthResult.failed('Email ou senha incorretos', errorCode: 'INVALID_CREDENTIALS');
+      } else if (response.statusCode == 403) {
+        // Verificar se é erro de email não verificado
+        try {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          final errorCode = data['error'] as String?;
+          final message = data['message'] as String? ?? 'Acesso negado';
+
+          if (errorCode == 'EmailNotVerified') {
+            debugPrint('❌ Email não verificado');
+            authStateNotifier.value = AuthState.error;
+            errorNotifier.value = message;
+            return AuthResult.failed(message, errorCode: 'EmailNotVerified');
+          }
+
+          authStateNotifier.value = AuthState.error;
+          errorNotifier.value = message;
+          return AuthResult.failed(message, errorCode: errorCode ?? 'FORBIDDEN');
+        } catch (e) {
+          authStateNotifier.value = AuthState.error;
+          errorNotifier.value = 'Acesso negado';
+          return AuthResult.failed('Acesso negado', errorCode: 'FORBIDDEN');
+        }
       } else if (response.statusCode == 404) {
         debugPrint('❌ Usuário não encontrado');
         authStateNotifier.value = AuthState.error;
@@ -568,6 +603,88 @@ class AuthService {
     } catch (e) {
       debugPrint('❌ Erro ao excluir dados do servidor: $e');
       rethrow;
+    }
+  }
+
+  /// Solicita redefinição de senha
+  Future<AuthResult> forgotPassword(String email) async {
+    if (_apiBaseUrl == null || _apiBaseUrl!.isEmpty) {
+      return AuthResult.failed(
+        'Servidor não configurado',
+        errorCode: 'NO_SERVER',
+      );
+    }
+
+    try {
+      _httpClient ??= http.Client();
+
+      final response = await _httpClient!
+          .post(
+            Uri.parse('$_apiBaseUrl/api/auth/forgot-password'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email.trim().toLowerCase()}),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final message = data['message'] as String? ??
+            'Se o email estiver cadastrado, você receberá instruções para redefinir sua senha.';
+        return AuthResult.successful(message: message);
+      } else {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final error = data['message'] as String? ?? 'Erro ao solicitar redefinição de senha';
+        return AuthResult.failed(error, errorCode: data['error'] as String?);
+      }
+    } on TimeoutException {
+      return AuthResult.failed(
+        'Servidor não respondeu. Verifique sua conexão.',
+        errorCode: 'TIMEOUT',
+      );
+    } catch (e) {
+      debugPrint('❌ Erro ao solicitar redefinição de senha: $e');
+      return AuthResult.failed('Erro de conexão: $e', errorCode: 'CONNECTION_ERROR');
+    }
+  }
+
+  /// Reenvia email de verificação
+  Future<AuthResult> resendVerification(String email) async {
+    if (_apiBaseUrl == null || _apiBaseUrl!.isEmpty) {
+      return AuthResult.failed(
+        'Servidor não configurado',
+        errorCode: 'NO_SERVER',
+      );
+    }
+
+    try {
+      _httpClient ??= http.Client();
+
+      final response = await _httpClient!
+          .post(
+            Uri.parse('$_apiBaseUrl/api/auth/resend-verification'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'email': email.trim().toLowerCase()}),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final message = data['message'] as String? ??
+            'Se o email estiver cadastrado, você receberá um email de verificação.';
+        return AuthResult.successful(message: message);
+      } else {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final error = data['message'] as String? ?? 'Erro ao reenviar email de verificação';
+        return AuthResult.failed(error, errorCode: data['error'] as String?);
+      }
+    } on TimeoutException {
+      return AuthResult.failed(
+        'Servidor não respondeu. Verifique sua conexão.',
+        errorCode: 'TIMEOUT',
+      );
+    } catch (e) {
+      debugPrint('❌ Erro ao reenviar email de verificação: $e');
+      return AuthResult.failed('Erro de conexão: $e', errorCode: 'CONNECTION_ERROR');
     }
   }
 

@@ -102,6 +102,26 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     super.dispose();
   }
 
+  void _changeMonth(int offset) {
+    PrefsService.shiftDateRange(offset);
+  }
+
+  Future<void> _pickMonthYear() async {
+    final initialDate = DateTime(_currentYear, _currentMonth, 1);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      initialDatePickerMode: DatePickerMode.year,
+      helpText: 'Selecionar mês',
+    );
+    if (picked == null) return;
+    final newStart = DateTime(picked.year, picked.month, 1);
+    final newEnd = DateTime(newStart.year, newStart.month + 1, 0);
+    PrefsService.saveDateRange(newStart, newEnd);
+  }
+
   Future<void> _openNewExpense() async {
     final result = await showDialog<bool>(
       context: context,
@@ -430,42 +450,62 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
         : monthLabel[0].toUpperCase() + monthLabel.substring(1);
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLow,
         border: Border(
           bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
         ),
       ),
+      child: Center(
+        child: _buildMonthHeaderPill(label: formattedMonth),
+      ),
+    );
+  }
+
+  Widget _buildMonthHeaderPill({
+    required String label,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(width: 48),
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: Icon(Icons.chevron_left, color: colorScheme.onSurfaceVariant),
-                  onPressed: () => PrefsService.shiftDateRange(-1),
-                  tooltip: 'Mês anterior',
-                ),
-                Text(
-                  formattedMonth,
-                  style: TextStyle(
-                    color: colorScheme.onSurface,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
-                  onPressed: () => PrefsService.shiftDateRange(1),
-                  tooltip: 'Próximo mês',
-                ),
-              ],
+          IconButton(
+            icon: Icon(Icons.chevron_left, color: colorScheme.onSurfaceVariant, size: 18),
+            splashRadius: 18,
+            onPressed: () => _changeMonth(-1),
+            tooltip: 'Mês anterior',
+          ),
+          InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: _pickMonthYear,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+              ),
             ),
           ),
-          const SizedBox(width: 48),
+          IconButton(
+            icon: Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant, size: 18),
+            splashRadius: 18,
+            onPressed: () => _changeMonth(1),
+            tooltip: 'Próximo mês',
+          ),
         ],
       ),
     );

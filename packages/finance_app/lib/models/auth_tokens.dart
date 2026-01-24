@@ -114,14 +114,16 @@ class AuthResult {
   final bool success;
   final String? error;
   final String? errorCode;
+  final String? message;
 
   AuthResult({
     required this.success,
     this.error,
     this.errorCode,
+    this.message,
   });
 
-  factory AuthResult.successful() => AuthResult(success: true);
+  factory AuthResult.successful({String? message}) => AuthResult(success: true, message: message);
 
   factory AuthResult.failed(String error, {String? errorCode}) => AuthResult(
         success: false,
@@ -130,5 +132,5 @@ class AuthResult {
       );
 
   @override
-  String toString() => 'AuthResult(success: $success, error: $error)';
+  String toString() => 'AuthResult(success: $success, error: $error, message: $message)';
 }

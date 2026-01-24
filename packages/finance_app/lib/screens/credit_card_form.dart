@@ -256,6 +256,7 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
       maxWidth: maxWidth,
       maxHeight: maxHeight,
       bodyPadding: EdgeInsets.zero,
+      scrollBody: false,
       body: Form(
         key: _formKey,
         child: TransactionFormBase(

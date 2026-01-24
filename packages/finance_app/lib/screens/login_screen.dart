@@ -22,6 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   String? _errorMessage;
   bool _rememberCredentials = false;
+  bool _showResendVerification = false;
 
   @override
   void initState() {
@@ -102,8 +103,147 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _isLoading = false;
         _errorMessage = result.error;
+        // Se o erro for email não verificado, mostrar opção de reenviar
+        _showResendVerification = result.errorCode == 'EmailNotVerified';
       });
     }
+  }
+
+  Future<void> _showForgotPasswordDialog() async {
+    final forgotEmailController = TextEditingController(text: _emailController.text);
+    bool isSending = false;
+    String? dialogError;
+    String? dialogSuccess;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Esqueceu a senha?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Informe seu email cadastrado. Enviaremos instruções para redefinir sua senha.',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: forgotEmailController,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  hintText: 'seu@email.com',
+                  prefixIcon: const Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                keyboardType: TextInputType.emailAddress,
+                enabled: !isSending,
+              ),
+              if (dialogError != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  dialogError!,
+                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                ),
+              ],
+              if (dialogSuccess != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  dialogSuccess!,
+                  style: const TextStyle(color: Colors.green, fontSize: 12),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSending ? null : () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: isSending
+                  ? null
+                  : () async {
+                      final email = forgotEmailController.text.trim();
+                      if (email.isEmpty || !email.contains('@')) {
+                        setDialogState(() {
+                          dialogError = 'Por favor, informe um email válido';
+                          dialogSuccess = null;
+                        });
+                        return;
+                      }
+
+                      setDialogState(() {
+                        isSending = true;
+                        dialogError = null;
+                        dialogSuccess = null;
+                      });
+
+                      final result = await AuthService.instance.forgotPassword(email);
+
+                      setDialogState(() {
+                        isSending = false;
+                        if (result.success) {
+                          dialogSuccess = result.message ?? 'Email enviado com sucesso!';
+                          dialogError = null;
+                        } else {
+                          dialogError = result.error ?? 'Erro ao enviar email';
+                          dialogSuccess = null;
+                        }
+                      });
+                    },
+              child: isSending
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Enviar'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    forgotEmailController.dispose();
+  }
+
+  Future<void> _resendVerificationEmail() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      setState(() {
+        _errorMessage = 'Por favor, informe seu email';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final result = await AuthService.instance.resendVerification(email);
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+      if (result.success) {
+        _errorMessage = null;
+        _showResendVerification = false;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message ?? 'Email de verificação enviado!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        _errorMessage = result.error;
+      }
+    });
   }
 
   void _goToRegister() {
@@ -209,16 +349,34 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: Colors.red),
                         ),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.error_outline, color: Colors.red),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _errorMessage!,
-                                style: const TextStyle(color: Colors.red),
-                              ),
+                            Row(
+                              children: [
+                                const Icon(Icons.error_outline, color: Colors.red),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: const TextStyle(color: Colors.red),
+                                  ),
+                                ),
+                              ],
                             ),
+                            // Botão para reenviar verificação de email
+                            if (_showResendVerification) ...[
+                              const SizedBox(height: 8),
+                              TextButton.icon(
+                                onPressed: _isLoading ? null : _resendVerificationEmail,
+                                icon: const Icon(Icons.email, size: 18),
+                                label: const Text('Reenviar email de verificação'),
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  foregroundColor: Colors.blue,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -286,7 +444,23 @@ class _LoginScreenState extends State<LoginScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 8),
+
+                    // Link "Esqueci minha senha"
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _isLoading ? null : _showForgotPasswordDialog,
+                        child: Text(
+                          'Esqueci minha senha',
+                          style: TextStyle(
+                            color: theme.colorScheme.primary,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
 
                     // Salvar credenciais
                     CheckboxListTile(

@@ -69,15 +69,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
 
     if (result.success) {
-      // Não precisa fazer navigator, o ValueListenableBuilder do FinanceApp vai detectar
-      // a mudança no authStateNotifier e renderizar HomeScreen automaticamente
-      debugPrint('✅ Registro bem-sucedido, aguardando redirecionamento...');
+      // Verificar se há mensagem de verificação de email
+      if (result.message != null) {
+        // Mostrar dialog de sucesso e redirecionar para login
+        setState(() => _isLoading = false);
+        await _showVerificationRequiredDialog(result.message!);
+        if (mounted) {
+          Navigator.pop(context); // Voltar para tela de login
+        }
+      } else {
+        // Login automático foi feito - o ValueListenableBuilder vai detectar
+        debugPrint('✅ Registro bem-sucedido, aguardando redirecionamento...');
+      }
     } else {
       setState(() {
         _isLoading = false;
         _errorMessage = result.error;
       });
     }
+  }
+
+  Future<void> _showVerificationRequiredDialog(String message) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.mark_email_read, size: 48, color: Colors.green),
+        title: const Text('Verifique seu email'),
+        content: Text(
+          message,
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK, entendi'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _registerWithGoogle() async {
@@ -229,7 +259,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       controller: _passwordController,
                       decoration: InputDecoration(
                         labelText: 'Senha',
-                        hintText: 'Mínimo 6 caracteres',
+                        hintText: 'Min. 8 caracteres, 1 maiúscula, 1 número',
                         prefixIcon: const Icon(Icons.lock_outlined),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -252,8 +282,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         if (value == null || value.isEmpty) {
                           return 'Por favor, informe sua senha';
                         }
-                        if (value.length < 6) {
-                          return 'A senha deve ter pelo menos 6 caracteres';
+                        if (value.length < 8) {
+                          return 'A senha deve ter pelo menos 8 caracteres';
+                        }
+                        if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                          return 'A senha deve conter pelo menos 1 letra maiúscula';
+                        }
+                        if (!RegExp(r'[0-9]').hasMatch(value)) {
+                          return 'A senha deve conter pelo menos 1 número';
                         }
                         return null;
                       },

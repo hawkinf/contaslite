@@ -1285,23 +1285,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
       maxWidth: maxWidth,
       maxHeight: maxHeight,
       bodyPadding: EdgeInsets.zero,
-      actions: [
-        Chip(
-          label: Text('Fech: ${(widget.card.bestBuyDay ?? 1).toString().padLeft(2, '0')}'),
-          visualDensity: VisualDensity.compact,
-          backgroundColor: colorScheme.surfaceContainerHighest,
-          side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-          labelStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 11),
-        ),
-        const SizedBox(width: 6),
-        Chip(
-          label: Text('Venc: ${widget.card.dueDay.toString().padLeft(2, '0')}'),
-          visualDensity: VisualDensity.compact,
-          backgroundColor: colorScheme.surfaceContainerHighest,
-          side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-          labelStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 11),
-        ),
-      ],
       body: _buildFormContent(colorScheme, cardTitle),
       footer: Container(
         padding: const EdgeInsets.all(16),

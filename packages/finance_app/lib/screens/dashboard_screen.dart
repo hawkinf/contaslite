@@ -1136,10 +1136,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       : 'Sem descrição';
                   final bool isPaid = selectedAccount.id != null && _paymentInfo.containsKey(selectedAccount.id!);
                   final bool isCard = selectedAccount.cardBrand != null;
+                  final bool isCardInvoice = isCard && selectedAccount.recurrenceId != null;
                   final bool isRecebimento = _isRecebimentosFilter || (_typeNames[selectedAccount.typeId]?.toLowerCase().contains('receb') ?? false);
                   final colorScheme = Theme.of(context).colorScheme;
                   final bool isNarrow = media.size.width < 600;
                   final bool canPay = !isPaid;
+                  String? launchLabel;
+                  VoidCallback? onLaunch;
+
+                  if (isCard) {
+                    if (!isCardInvoice) {
+                      launchLabel = 'Lançar fatura';
+                      onLaunch = () => _showCartaoValueDialog(selectedAccount);
+                    }
+                  } else if (isRecebimento) {
+                    launchLabel = 'Lançar recebimento';
+                    onLaunch = () => _showRecebimentoValueDialog(selectedAccount);
+                  } else if (selectedAccount.isRecurrent && selectedAccount.recurrenceId == null) {
+                    launchLabel = 'Lançar despesa';
+                    onLaunch = () async {
+                      Account parentRecurrence = selectedAccount;
+                      if (selectedAccount.recurrenceId != null) {
+                        final parentId = selectedAccount.recurrenceId!;
+                        try {
+                          final parentAccount = await DatabaseHelper.instance.readAccountById(parentId);
+                          if (parentAccount != null) {
+                            parentRecurrence = parentAccount;
+                          }
+                        } catch (e) {
+                          debugPrint('❌ Erro ao buscar recorrência PAI: $e');
+                        }
+                      }
+                      if (mounted) _showLaunchDialog(parentRecurrence);
+                    };
+                  } else if (selectedAccount.isRecurrent &&
+                      selectedAccount.recurrenceId != null &&
+                      selectedAccount.value == 0) {
+                    launchLabel = 'Lançar despesa';
+                    onLaunch = () => _showDespesaValueDialog(selectedAccount);
+                  }
 
                   final String payLabel = isCard
                       ? 'Pagar fatura'
@@ -1154,6 +1189,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       leadingIcon: isCard ? Icons.credit_card : Icons.info_outline,
                       text: '$categoryStr – $descStr – $valueStr',
                       actions: [
+                        if (onLaunch != null)
+                          Tooltip(
+                            message: launchLabel ?? 'Lançar',
+                            child: IconButton(
+                              onPressed: onLaunch,
+                              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                              icon: Icon(Icons.rocket_launch, color: colorScheme.primary),
+                            ),
+                          ),
                         if (canPay)
                           Tooltip(
                             message: payLabel,
@@ -1589,7 +1633,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         account.id != null ? _installmentSummaries[account.id!] : null;
     final bool isPaid =
         account.id != null && _paymentInfo.containsKey(account.id!);
-    final bool isCardInvoice = isCard && account.recurrenceId != null;
 
     // Próxima fatura do cartão (mês seguinte ao vencimento atual exibido)
     DateTime cardNextDueDate = DateTime.now();
@@ -1694,47 +1737,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         icon: Icons.add_shopping_cart,
         onTap: () => _showExpenseDialog(account),
       ));
-      if (!isCardInvoice) {
-        menuActions.add(_MenuAction(
-          label: 'Lançar fatura',
-          icon: Icons.rocket_launch,
-          onTap: () => _showCartaoValueDialog(account),
-        ));
-      }
-    } else {
-      if (isRecebimento) {
-        menuActions.add(_MenuAction(
-          label: 'Lançar recebimento',
-          icon: Icons.rocket_launch,
-          onTap: () => _showRecebimentoValueDialog(account),
-        ));
-      } else if (isRecurrent && account.recurrenceId == null) {
-        menuActions.add(_MenuAction(
-          label: 'Lançar recorrência',
-          icon: Icons.rocket_launch,
-          onTap: () async {
-            Account parentRecurrence = account;
-            if (account.recurrenceId != null) {
-              final parentId = account.recurrenceId!;
-              try {
-                final parentAccount = await DatabaseHelper.instance.readAccountById(parentId);
-                if (parentAccount != null) {
-                  parentRecurrence = parentAccount;
-                }
-              } catch (e) {
-                debugPrint('❌ Erro ao buscar recorrência PAI: $e');
-              }
-            }
-            if (mounted) _showLaunchDialog(parentRecurrence);
-          },
-        ));
-      } else if (isRecurrent && account.recurrenceId != null && account.value == 0) {
-        menuActions.add(_MenuAction(
-          label: 'Lançar despesa',
-          icon: Icons.rocket_launch,
-          onTap: () => _showDespesaValueDialog(account),
-        ));
-      }
     }
 
     if (isPaid) {
@@ -2158,12 +2160,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final int targetMonth = account.month ?? _startDate.month;
     final int targetYear = account.year ?? _startDate.year;
+    Account resolvedCard = account;
+    final int? resolvedCardId = account.recurrenceId ?? account.cardId;
+    if (resolvedCardId != null && resolvedCardId != account.id) {
+      try {
+        final cards = await DatabaseHelper.instance.readAllCards();
+        resolvedCard = cards.firstWhere(
+          (card) => card.id == resolvedCardId,
+          orElse: () => account,
+        );
+      } catch (_) {
+        resolvedCard = account;
+      }
+    }
     try {
       await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => CardExpensesScreen(
-            card: account,
+            card: resolvedCard,
             month: targetMonth,
             year: targetYear,
             selectedDate: selectedDate,

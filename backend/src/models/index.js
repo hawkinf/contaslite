@@ -12,6 +12,7 @@ const AccountDescription = require('./AccountDescription');
 const Bank = require('./Bank');
 const PaymentMethod = require('./PaymentMethod');
 const Payment = require('./Payment');
+const EmailSchedule = require('./EmailSchedule');
 
 // Configurar associações
 
@@ -165,6 +166,16 @@ Account.belongsTo(Account, {
   as: 'recurrenceParent'
 });
 
+// User -> EmailSchedule (1:1)
+User.hasOne(EmailSchedule, {
+  foreignKey: 'user_id',
+  as: 'emailSchedule'
+});
+EmailSchedule.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user'
+});
+
 /**
  * Mapeamento de nomes de tabelas para modelos
  * Usado pelo syncController para processar diferentes tabelas
@@ -211,6 +222,7 @@ module.exports = {
   Bank,
   PaymentMethod,
   Payment,
+  EmailSchedule,
   modelsByTableName,
   syncOrderPush,
   syncOrderPull
