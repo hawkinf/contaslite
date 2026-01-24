@@ -1938,7 +1938,11 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.close),
+                        icon: Icon(
+                          Icons.close,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          size: 20,
+                        ),
                         onPressed: () {
                           searchController.dispose();
                           Navigator.pop(context);

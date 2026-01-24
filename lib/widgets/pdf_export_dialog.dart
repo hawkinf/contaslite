@@ -58,7 +58,11 @@ class _PdfExportDialogState extends State<PdfExportDialog> {
                         ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close),
+                    icon: Icon(
+                      Icons.close,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      size: 20,
+                    ),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],

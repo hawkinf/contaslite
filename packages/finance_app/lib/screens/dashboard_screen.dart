@@ -31,6 +31,7 @@ import '../ui/components/entry_card.dart';
 import '../ui/widgets/mini_chip.dart';
 import '../ui/components/summary_card.dart';
 import '../ui/components/action_banner.dart';
+import '../ui/components/standard_modal_shell.dart';
 
 enum DashboardFilter { all, pagar, receber, cartoes }
 
@@ -1135,45 +1136,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       : 'Sem descrição';
                   final bool isPaid = selectedAccount.id != null && _paymentInfo.containsKey(selectedAccount.id!);
                   final bool isCard = selectedAccount.cardBrand != null;
-                  final bool isCardInvoice = isCard && selectedAccount.recurrenceId != null;
                   final bool isRecebimento = _isRecebimentosFilter || (_typeNames[selectedAccount.typeId]?.toLowerCase().contains('receb') ?? false);
                   final colorScheme = Theme.of(context).colorScheme;
                   final bool isNarrow = media.size.width < 600;
                   final bool canPay = !isPaid;
-                  String? launchLabel;
-                  VoidCallback? onLaunch;
-
-                  if (isCard) {
-                    if (!isCardInvoice) {
-                      launchLabel = 'Lançar fatura';
-                      onLaunch = () => _showCartaoValueDialog(selectedAccount);
-                    }
-                  } else if (isRecebimento) {
-                    launchLabel = 'Lançar recebimento';
-                    onLaunch = () => _showRecebimentoValueDialog(selectedAccount);
-                  } else if (selectedAccount.isRecurrent && selectedAccount.recurrenceId == null) {
-                    launchLabel = 'Lançar despesa';
-                    onLaunch = () async {
-                      Account parentRecurrence = selectedAccount;
-                      if (selectedAccount.recurrenceId != null) {
-                        final parentId = selectedAccount.recurrenceId!;
-                        try {
-                          final parentAccount = await DatabaseHelper.instance.readAccountById(parentId);
-                          if (parentAccount != null) {
-                            parentRecurrence = parentAccount;
-                          }
-                        } catch (e) {
-                          debugPrint('❌ Erro ao buscar recorrência PAI: $e');
-                        }
-                      }
-                      if (mounted) _showLaunchDialog(parentRecurrence);
-                    };
-                  } else if (selectedAccount.isRecurrent &&
-                      selectedAccount.recurrenceId != null &&
-                      selectedAccount.value == 0) {
-                    launchLabel = 'Lançar despesa';
-                    onLaunch = () => _showDespesaValueDialog(selectedAccount);
-                  }
 
                   final String payLabel = isCard
                       ? 'Pagar fatura'
@@ -1188,15 +1154,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       leadingIcon: isCard ? Icons.credit_card : Icons.info_outline,
                       text: '$categoryStr – $descStr – $valueStr',
                       actions: [
-                        if (onLaunch != null)
-                          Tooltip(
-                            message: launchLabel ?? 'Lançar',
-                            child: IconButton(
-                              onPressed: onLaunch,
-                              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                              icon: Icon(Icons.rocket_launch, color: colorScheme.primary),
-                            ),
-                          ),
                         if (canPay)
                           Tooltip(
                             message: payLabel,
@@ -1701,7 +1658,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     final bool canLaunchPayment = !isPaid;
-    final bool allowLaunchInMenu = _selectedConta.value == null;
     final List<_MenuAction> menuActions = [
       _MenuAction(
         label: 'Editar',
@@ -1738,14 +1694,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         icon: Icons.add_shopping_cart,
         onTap: () => _showExpenseDialog(account),
       ));
-      if (!isCardInvoice && allowLaunchInMenu) {
+      if (!isCardInvoice) {
         menuActions.add(_MenuAction(
           label: 'Lançar fatura',
           icon: Icons.rocket_launch,
           onTap: () => _showCartaoValueDialog(account),
         ));
       }
-    } else if (allowLaunchInMenu) {
+    } else {
       if (isRecebimento) {
         menuActions.add(_MenuAction(
           label: 'Lançar recebimento',
@@ -3807,54 +3763,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Navigator.pop(ctx);
                   await showDialog(
                     context: context,
-                    builder: (dialogContext) => Dialog(
-                      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                      backgroundColor: Colors.transparent,
-                      child: Center(
-                        child: Container(
-                          constraints: const BoxConstraints(
-                            maxWidth: 700,
-                            maxHeight: 850,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).scaffoldBackgroundColor,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.3),
-                                blurRadius: 16,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Column(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text(
-                                      'Nova Conta a Pagar',
-                                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                    ),
-                                    IconButton(
-                                      icon: _borderedIcon(Icons.close,
-                                          size: 20, padding: const EdgeInsets.all(4)),
-                                      onPressed: () => Navigator.pop(dialogContext),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const Divider(height: 1),
-                              const Expanded(
-                                child: AccountFormScreen(showAppBar: false),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                    builder: (dialogContext) => StandardModalShell(
+                      title: 'Nova Conta a Pagar',
+                      onClose: () => Navigator.pop(dialogContext),
+                      maxWidth: 700,
+                      maxHeight: 850,
+                      scrollBody: false,
+                      bodyPadding: EdgeInsets.zero,
+                      body: const AccountFormScreen(showAppBar: false),
                     ),
                   );
                   _refresh();

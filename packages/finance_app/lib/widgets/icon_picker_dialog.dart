@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/icon_library_service.dart';
+import '../ui/components/app_modal_header.dart';
 
 /// Widget para seleção visual de ícones em um grid
 class IconPickerDialog extends StatefulWidget {
@@ -56,22 +57,11 @@ class _IconPickerDialogState extends State<IconPickerDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Título
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Escolha um ícone',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
+            AppModalHeader(
+              title: 'Escolha um ícone',
+              onClose: () => Navigator.of(context).pop(),
+              showDivider: false,
+              padding: EdgeInsets.zero,
             ),
             const SizedBox(height: 16),
 

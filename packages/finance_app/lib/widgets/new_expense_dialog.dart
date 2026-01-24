@@ -14,6 +14,10 @@ import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
 import '../services/default_account_categories_service.dart';
 import '../utils/installment_utils.dart';
+import '../ui/components/color_picker_field.dart';
+import '../ui/components/launch_type_segmented.dart';
+import '../ui/components/standard_modal_shell.dart';
+import '../ui/components/lancamento_form_padrao.dart';
 
 enum _EditScope { single, forward, all }
 
@@ -345,8 +349,8 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
 
   (int month, int year) _calculateInvoiceMonth(DateTime purchaseDate) {
     final closingDay = widget.card.bestBuyDay ?? 1;
-    // Compras ate o dia de fechamento entram na fatura do proximo mes.
-    // Compras depois do fechamento vao para a fatura do mes seguinte (mes + 2).
+    // Compras até o dia de fechamento entram na fatura do próximo mês.
+    // Compras depois do fechamento vão para a fatura do mês seguinte (mês + 2).
     final base = purchaseDate.day <= closingDay
         ? DateTime(purchaseDate.year, purchaseDate.month + 1, 1)
         : DateTime(purchaseDate.year, purchaseDate.month + 2, 1);
@@ -367,7 +371,7 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
 
     final invoiceMonth = offsetInvoice.month;
     final invoiceYear = offsetInvoice.year;
-    // Mantido para consistencia futura; não utilizado diretamente
+    // Mantido para consistência futura; não utilizado diretamente
     // final originalDue = DateTime(invoiceYear, invoiceMonth, _validDayForMonth(widget.card.dueDay, invoiceMonth, invoiceYear));
     // final adjustedDue = _calculateDueDate(invoiceMonth, invoiceYear);
 
@@ -874,6 +878,380 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
     }
   }
 
+  Widget _buildFormContent(ColorScheme colorScheme, String cardTitle) {
+    final installmentsQty = int.tryParse(_installmentsQtyController.text) ?? 1;
+    final hasInstallments = !_isRecurrent && installmentsQty > 1;
+    final displayTitle = cardTitle.isEmpty ? 'Cartão' : cardTitle;
+
+    return Form(
+      key: _formKey,
+      child: LancamentoFormPadrao(
+        useScroll: false,
+        typeContent: Row(
+          children: [
+            Icon(Icons.credit_card, color: colorScheme.onSurfaceVariant),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Cartão: $displayTitle',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ),
+          ],
+        ),
+        categoryTrailing: TextButton(
+          onPressed: _openCategoriesManager,
+          child: const Text('Gerenciar categorias'),
+        ),
+        categoryContent: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_typesList.isEmpty)
+              InkWell(
+                onTap: _openCategoriesManager,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.warningBackground,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.warning),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.warning, color: AppColors.warning),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text('Cadastre a tabela pai e categorias para classificar a despesa.'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else ...[
+              DropdownButtonFormField<AccountType>(
+                key: const ValueKey('expense_type_dropdown'),
+                initialValue: _getValidatedSelectedType(),
+                decoration: _inputDecoration(
+                  context,
+                  label: 'Conta a Pagar',
+                  icon: Icons.account_balance_wallet,
+                ),
+                items: _typesList
+                    .map((type) => DropdownMenuItem(
+                          value: type,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(type.logo ?? '📁', style: const TextStyle(fontSize: 18)),
+                              const SizedBox(width: 8),
+                              Text(type.name),
+                            ],
+                          ),
+                        ))
+                    .toList(),
+                selectedItemBuilder: (context) {
+                  return _typesList
+                      .map((type) => Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text('${type.logo ?? '📁'} ${type.name}'),
+                          ))
+                      .toList();
+                },
+                onChanged: (val) {
+                  setState(() {
+                    _selectedType = val;
+                    _selectedCategory = null;
+                    _categories = [];
+                  });
+                  _reloadCategoriesForSelectedType();
+                },
+                validator: (val) => val == null ? 'Selecione a conta a pagar' : null,
+              ),
+              const SizedBox(height: 12),
+              if (_categories.isNotEmpty)
+                DropdownButtonFormField<AccountCategory>(
+                  key: const ValueKey('expense_category_dropdown'),
+                  initialValue: _getValidatedSelectedCategory(),
+                  decoration: _inputDecoration(
+                    context,
+                    label: 'Categoria',
+                    icon: Icons.label,
+                  ),
+                  items: _categories
+                      .map((cat) => DropdownMenuItem(
+                            value: cat,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(cat.logo ?? '📁', style: const TextStyle(fontSize: 18)),
+                                const SizedBox(width: 8),
+                                Text(cat.categoria),
+                              ],
+                            ),
+                          ))
+                      .toList(),
+                  selectedItemBuilder: (context) {
+                    return _categories
+                        .map((cat) => Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text('${cat.logo ?? '📁'} ${cat.categoria}'),
+                            ))
+                        .toList();
+                  },
+                  onChanged: (val) => setState(() => _selectedCategory = val),
+                  validator: (val) => val == null ? 'Selecione a categoria' : null,
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+                  ),
+                  child: const Text('Nenhuma categoria encontrada para o tipo selecionado.'),
+                ),
+            ],
+          ],
+        ),
+        launchContent: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            LaunchTypeSegmented(
+              value: _isRecurrent ? 1 : 0,
+              onChanged: (val) {
+                setState(() {
+                  _isRecurrent = val == 1;
+                  if (_isRecurrent) {
+                    _installmentsQtyController.text = '1';
+                  }
+                });
+                _updatePreview();
+              },
+            ),
+            const SizedBox(height: 8),
+            if (!_isRecurrent)
+              TextFormField(
+                controller: _installmentsQtyController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: _inputDecoration(
+                  context,
+                  label: 'Quantidade de Parcelas',
+                  icon: Icons.format_list_numbered,
+                ),
+                readOnly: _isEditing,
+                validator: (v) {
+                  if (v!.isEmpty) return 'Obrigatório';
+                  final qty = int.tryParse(v);
+                  if (qty == null || qty < 1 || qty > 48) return 'Entre 1 e 48 parcelas';
+                  return null;
+                },
+                onChanged: (_) => _updatePreview(),
+              )
+            else
+              Text(
+                'Recorrência mensal',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+              ),
+          ],
+        ),
+        descriptionValueContent: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 780;
+            final itemWidth = isWide
+                ? (constraints.maxWidth - 12) / 2
+                : constraints.maxWidth;
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                SizedBox(
+                  width: itemWidth,
+                  child: TextFormField(
+                    controller: _descController,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: _inputDecoration(
+                      context,
+                      label: 'Descrição da Compra',
+                      icon: Icons.description_outlined,
+                    ),
+                    onTap: () {
+                      if (_descTouched) return;
+                      setState(() => _descTouched = true);
+                    },
+                    onChanged: (_) {
+                      if (_descTouched) return;
+                      setState(() => _descTouched = true);
+                    },
+                    validator: (v) {
+                      if (!_submitted && !_descTouched) return null;
+                      return (v == null || v.isEmpty) ? 'Obrigatório' : null;
+                    },
+                  ),
+                ),
+                SizedBox(
+                  width: itemWidth,
+                  child: TextFormField(
+                    controller: _valueController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      CentavosInputFormatter(moeda: true),
+                    ],
+                    decoration: _inputDecoration(
+                      context,
+                      label: 'Valor Total (R\$)',
+                      icon: Icons.attach_money,
+                    ),
+                    onTap: () {
+                      if (_valueTouched) return;
+                      setState(() => _valueTouched = true);
+                    },
+                    onChanged: (_) {
+                      if (!_valueTouched) {
+                        setState(() => _valueTouched = true);
+                      }
+                      _updatePreview();
+                    },
+                    validator: (v) {
+                      if (!_submitted && !_valueTouched) return null;
+                      if (v == null || v.isEmpty) return 'Obrigatório';
+                      try {
+                        final val = UtilBrasilFields.converterMoedaParaDouble(v);
+                        if (val <= 0) return 'Valor deve ser maior que zero';
+                      } catch (_) {
+                        return 'Valor inválido';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        datesContent: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 780;
+            final itemWidth = isWide
+                ? (constraints.maxWidth - 12) / 2
+                : constraints.maxWidth;
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                SizedBox(
+                  width: itemWidth,
+                  child: TextFormField(
+                    controller: _purchaseDateController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly, DataInputFormatter()],
+                    decoration: _inputDecoration(
+                      context,
+                      label: 'Data da Compra',
+                      icon: Icons.calendar_today,
+                      suffixIcon: IconButton(
+                        icon: Icon(Icons.date_range, color: colorScheme.onSurfaceVariant),
+                        tooltip: 'Selecionar Data',
+                        onPressed: _selectPurchaseDate,
+                      ),
+                    ),
+                    onChanged: (_) => _updatePreview(),
+                    validator: (v) {
+                      if (v!.isEmpty) return 'Obrigatório';
+                      try {
+                        _parseDateString(v);
+                      } catch (_) {
+                        return 'Data inválida';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+                SizedBox(
+                  width: itemWidth,
+                  child: DropdownButtonFormField<int>(
+                    initialValue: _invoiceOffset,
+                    decoration: _inputDecoration(
+                      context,
+                      label: 'Fatura',
+                      icon: Icons.event_note,
+                    ),
+                    onChanged: (val) {
+                      if (val == null) return;
+                      setState(() => _invoiceOffset = val);
+                      _updatePreview();
+                    },
+                    items: List.generate(9, (i) => i - 2).map((offset) {
+                      final (baseMonth, baseYear) =
+                          _calculateInvoiceMonth(_parseDateString(_purchaseDateController.text));
+                      final target = DateTime(baseYear, baseMonth + offset, 1);
+                      final label = '${DateFormat('MMMM', 'pt_BR').format(target)}/${target.year}';
+                      final desc = offset == 0
+                          ? ' (sugerido)'
+                          : offset > 0
+                              ? ' (+$offset)'
+                              : ' ($offset)';
+                      return DropdownMenuItem<int>(
+                        value: offset,
+                        child: Text('$label$desc'),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                SizedBox(
+                  width: itemWidth,
+                  child: Text(
+                    'Melhor dia: ${(widget.card.bestBuyDay ?? 1).toString().padLeft(2, '0')}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ),
+                SizedBox(
+                  width: itemWidth,
+                  child: Text(
+                    'Vencimento: ${widget.card.dueDay.toString().padLeft(2, '0')}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        optionsContent: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ColorPickerField(
+              label: 'Cor do lançamento',
+              color: Color(_selectedColor),
+              subtitle: _selectedColorLabel(),
+              onPick: _showColorPicker,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _observationController,
+              decoration: _inputDecoration(
+                context,
+                label: 'Observações (opcional)',
+                icon: Icons.note,
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        parcelasContent: hasInstallments ? _buildInstallmentScheduleCard() : null,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
@@ -883,8 +1261,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
     final maxWidth = (screenSize.width * 0.95).clamp(320.0, 860.0);
     final availableHeight = screenSize.height - viewInsets.bottom;
     final maxHeight = (availableHeight * 0.9).clamp(420.0, 850.0);
-    final installmentsQty = int.tryParse(_installmentsQtyController.text) ?? 1;
-    final hasInstallments = !_isRecurrent && installmentsQty > 1;
 
     if (_isLoading) {
       return const Dialog(
@@ -901,575 +1277,77 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
       widget.card.cardBrand?.trim() ?? '',
     ].where((t) => t.isNotEmpty).join(' • ');
 
-    return Dialog(
-      insetPadding: EdgeInsets.zero,
-      backgroundColor: Colors.transparent,
-      child: Center(
-        child: Container(
-          constraints: BoxConstraints(
-            maxWidth: maxWidth,
-            maxHeight: maxHeight,
+    final title = _isEditing ? 'Editar Despesa Cartão' : 'Nova Despesa Cartão';
+
+    return StandardModalShell(
+      title: title,
+      onClose: () => Navigator.pop(context),
+      maxWidth: maxWidth,
+      maxHeight: maxHeight,
+      bodyPadding: EdgeInsets.zero,
+      actions: [
+        Chip(
+          label: Text('Fech: ${(widget.card.bestBuyDay ?? 1).toString().padLeft(2, '0')}'),
+          visualDensity: VisualDensity.compact,
+          backgroundColor: colorScheme.surfaceContainerHighest,
+          side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+          labelStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 11),
+        ),
+        const SizedBox(width: 6),
+        Chip(
+          label: Text('Venc: ${widget.card.dueDay.toString().padLeft(2, '0')}'),
+          visualDensity: VisualDensity.compact,
+          backgroundColor: colorScheme.surfaceContainerHighest,
+          side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+          labelStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 11),
+        ),
+      ],
+      body: _buildFormContent(colorScheme, cardTitle),
+      footer: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          border: Border(
+            top: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
           ),
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: colorScheme.surface,
-                  border: Border(
-                    bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        cardTitle.isEmpty ? 'Cartão' : cardTitle,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: colorScheme.onSurface,
-                            ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Chip(
-                      label: Text('Fech: ${(widget.card.bestBuyDay ?? 1).toString().padLeft(2, '0')}'),
-                      visualDensity: VisualDensity.compact,
-                      backgroundColor: colorScheme.surfaceContainerHighest,
-                      side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-                      labelStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 11),
-                    ),
-                    const SizedBox(width: 6),
-                    Chip(
-                      label: Text('Venc: ${widget.card.dueDay.toString().padLeft(2, '0')}'),
-                      visualDensity: VisualDensity.compact,
-                      backgroundColor: colorScheme.surfaceContainerHighest,
-                      side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-                      labelStyle: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 11),
-                    ),
-                    const SizedBox(width: 6),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      iconSize: 20,
-                      color: colorScheme.onSurfaceVariant,
-                      onPressed: () => Navigator.pop(context),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
+        ),
+        child: Row(
+          children: [
+            OutlinedButton.icon(
+              icon: const Icon(Icons.close),
+              label: const Text('Cancelar'),
+              onPressed: _isSaving ? null : () => Navigator.pop(context),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              // Formulário
-              Flexible(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'Tipo e identificação',
-                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                        const SizedBox(height: 6),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: colorScheme.surfaceContainerLow,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-                          ),
-                          child: SwitchListTile(
-                            value: _isRecurrent,
-                            onChanged: (val) => setState(() => _isRecurrent = val),
-                            title: const Text('Despesa recorrente (mensal)'),
-                            secondary: Icon(Icons.autorenew, color: colorScheme.onSurfaceVariant),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Descrição
-                        SizedBox(
-                          height: 48,
-                          child: TextFormField(
-                            controller: _descController,
-                            textCapitalization: TextCapitalization.sentences,
-                            decoration: _inputDecoration(
-                              context,
-                              label: 'Descrição da Compra',
-                              icon: Icons.description_outlined,
-                            ),
-                            onTap: () {
-                              if (_descTouched) return;
-                              setState(() => _descTouched = true);
-                            },
-                            onChanged: (_) {
-                              if (_descTouched) return;
-                              setState(() => _descTouched = true);
-                            },
-                            validator: (v) {
-                              if (!_submitted && !_descTouched) return null;
-                              return (v == null || v.isEmpty) ? 'Obrigatório' : null;
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Valor
-                        SizedBox(
-                          height: 48,
-                          child: TextFormField(
-                            controller: _valueController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [FilteringTextInputFormatter.digitsOnly, CentavosInputFormatter(moeda: true)],
-                            decoration: _inputDecoration(
-                              context,
-                              label: 'Valor Total (R\$)',
-                              icon: Icons.attach_money,
-                            ),
-                            onTap: () {
-                              if (_valueTouched) return;
-                              setState(() => _valueTouched = true);
-                            },
-                            onChanged: (_) {
-                              if (!_valueTouched) {
-                                setState(() => _valueTouched = true);
-                              }
-                              _updatePreview();
-                            },
-                            validator: (v) {
-                              if (!_submitted && !_valueTouched) return null;
-                              if (v == null || v.isEmpty) return 'Obrigatório';
-                              try {
-                                final val = UtilBrasilFields.converterMoedaParaDouble(v);
-                                if (val <= 0) return 'Valor deve ser maior que zero';
-                              } catch (_) {
-                                return 'Valor inválido';
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        Text(
-                          'Datas e fatura',
-                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                        const SizedBox(height: 6),
-
-                        // Data da Compra
-                        SizedBox(
-                          height: 48,
-                          child: TextFormField(
-                            controller: _purchaseDateController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [FilteringTextInputFormatter.digitsOnly, DataInputFormatter()],
-                            decoration: _inputDecoration(
-                              context,
-                              label: 'Data da Compra',
-                              icon: Icons.calendar_today,
-                              suffixIcon: IconButton(
-                                icon: Icon(Icons.date_range, color: colorScheme.onSurfaceVariant),
-                                tooltip: 'Selecionar Data',
-                                onPressed: _selectPurchaseDate,
-                              ),
-                            ),
-                            onChanged: (_) => _updatePreview(),
-                            validator: (v) {
-                              if (v!.isEmpty) return 'Obrigatório';
-                              try {
-                                _parseDateString(v);
-                              } catch (_) {
-                                return 'Data inválida';
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<int>(
-                          initialValue: _invoiceOffset,
-                          decoration: _inputDecoration(
-                            context,
-                            label: 'Fatura',
-                            icon: Icons.event_note,
-                          ),
-                          onChanged: (val) {
-                            if (val == null) return;
-                            setState(() => _invoiceOffset = val);
-                            _updatePreview();
-                          },
-                          items: List.generate(9, (i) => i - 2).map((offset) {
-                            final (baseMonth, baseYear) =
-                                _calculateInvoiceMonth(_parseDateString(_purchaseDateController.text));
-                            final target = DateTime(baseYear, baseMonth + offset, 1);
-                            final label = '${DateFormat('MMMM', 'pt_BR').format(target)}/${target.year}';
-                            final desc = offset == 0
-                                ? ' (sugerido)'
-                                : offset > 0
-                                    ? ' (+$offset)'
-                                    : ' ($offset)';
-                            return DropdownMenuItem<int>(
-                              value: offset,
-                              child: Text('$label$desc'),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Melhor dia: ${(widget.card.bestBuyDay ?? 1).toString().padLeft(2, '0')}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        Text(
-                          'Classificação',
-                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                        const SizedBox(height: 6),
-
-                        if (_typesList.isEmpty)
-                          InkWell(
-                            onTap: _openCategoriesManager,
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: AppColors.warningBackground,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: AppColors.warning),
-                              ),
-                              child: const Row(
-                                children: [
-                                  Icon(Icons.warning, color: AppColors.warning),
-                                  SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text('Cadastre a tabela pai e categorias para classificar a despesa.'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        else ...[
-                          DropdownButtonFormField<AccountType>(
-                            key: const ValueKey('expense_type_dropdown'),
-                            initialValue: _getValidatedSelectedType(),
-                            decoration: _inputDecoration(
-                              context,
-                              label: 'Conta a Pagar',
-                              icon: Icons.account_balance_wallet,
-                            ),
-                            items: _typesList
-                                .map((type) => DropdownMenuItem(
-                                      value: type,
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(type.logo ?? '📁', style: const TextStyle(fontSize: 18)),
-                                          const SizedBox(width: 8),
-                                          Text(type.name),
-                                        ],
-                                      ),
-                                    ))
-                                .toList(),
-                            selectedItemBuilder: (context) {
-                              return _typesList
-                                  .map((type) => Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Text('${type.logo ?? '📁'} ${type.name}'),
-                                      ))
-                                  .toList();
-                            },
-                            onChanged: (val) {
-                              setState(() {
-                                _selectedType = val;
-                                _selectedCategory = null;
-                                _categories = [];
-                              });
-                              _reloadCategoriesForSelectedType();
-                            },
-                            validator: (val) => val == null ? 'Selecione a conta a pagar' : null,
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  'Categorias',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: _openCategoriesManager,
-                                child: const Text('Gerenciar'),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          if (_categories.isNotEmpty)
-                            DropdownButtonFormField<AccountCategory>(
-                              key: const ValueKey('expense_category_dropdown'),
-                              initialValue: _getValidatedSelectedCategory(),
-                              decoration: _inputDecoration(
-                                context,
-                                label: 'Categoria',
-                                icon: Icons.label,
-                              ),
-                              items: _categories
-                                  .map((cat) => DropdownMenuItem(
-                                        value: cat,
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(cat.logo ?? '📁', style: const TextStyle(fontSize: 18)),
-                                            const SizedBox(width: 8),
-                                            Text(cat.categoria),
-                                          ],
-                                        ),
-                                      ))
-                                  .toList(),
-                              selectedItemBuilder: (context) {
-                                return _categories
-                                    .map((cat) => Align(
-                                          alignment: Alignment.centerLeft,
-                                          child: Text('${cat.logo ?? '📁'} ${cat.categoria}'),
-                                        ))
-                                    .toList();
-                              },
-                              onChanged: (val) => setState(() => _selectedCategory = val),
-                              validator: (val) => val == null ? 'Selecione a categoria' : null,
-                            )
-                          else
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: colorScheme.surfaceContainerLow,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-                              ),
-                              child: const Text('Nenhuma categoria encontrada para o tipo selecionado.'),
-                            ),
-                          const SizedBox(height: 12),
-                        ],
-                        const SizedBox(height: 12),
-
-                        Text(
-                          'Opções',
-                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: colorScheme.surfaceContainerLow,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 24,
-                                height: 24,
-                                decoration: BoxDecoration(
-                                  color: Color(_selectedColor),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Cor do lançamento',
-                                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                    ),
-                                    Text(
-                                      _selectedColorLabel(),
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                            color: colorScheme.onSurfaceVariant,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              OutlinedButton(
-                                onPressed: _showColorPicker,
-                                child: const Text('Escolher'),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        if (!_isRecurrent && installmentsQty == 1)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: colorScheme.surfaceContainerLow,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    'Parcelamento',
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: _isEditing
-                                      ? null
-                                      : () {
-                                          _installmentsQtyController.text = '2';
-                                          _updatePreview();
-                                          setState(() {});
-                                        },
-                                  child: const Text('Adicionar'),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                        if (hasInstallments) ...[
-                          const SizedBox(height: 12),
-                          TextFormField(
-                            controller: _installmentsQtyController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                            decoration: _inputDecoration(
-                              context,
-                              label: 'Quantidade de Parcelas',
-                              icon: Icons.format_list_numbered,
-                            ),
-                            readOnly: _isEditing,
-                            validator: (v) {
-                              if (v!.isEmpty) return 'Obrigatório';
-                              final qty = int.tryParse(v);
-                              if (qty == null || qty < 1 || qty > 48) return 'Entre 1 e 48 parcelas';
-                              return null;
-                            },
-                            onChanged: (_) => _updatePreview(),
-                          ),
-                        ],
-
-                        const SizedBox(height: 12),
-
-                        TextFormField(
-                          controller: _observationController,
-                          maxLines: 2,
-                          decoration: _inputDecoration(
-                            context,
-                            label: 'Observação (opcional)',
-                            icon: Icons.notes,
-                          ),
-                        ),
-
-                        if (hasInstallments) ...[
-                          const SizedBox(height: 16),
-                          Text(
-                            'Calendário das parcelas',
-                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: colorScheme.onSurfaceVariant,
-                                ),
-                          ),
-                          const SizedBox(height: 8),
-                          _buildInstallmentScheduleCard(),
-                        ],
-                      ],
-                    ),
-                  ),
+            ),
+            const Spacer(),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 18),
+                backgroundColor: AppColors.success,
+                disabledBackgroundColor: AppColors.success.withValues(alpha: 0.6),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              // Botoes
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(color: Colors.grey.shade300),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Spacer(),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.close),
-                      label: const Text('Cancelar'),
-                      onPressed: _isSaving ? null : () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
-                        backgroundColor: AppColors.success,
-                        disabledBackgroundColor: AppColors.success.withValues(alpha: 0.6),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: _isSaving ? null : _saveExpense,
-                      icon: _isSaving
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                            )
-                          : const Icon(Icons.check_circle, size: 20),
-                      label: Text(
-                        _isSaving ? 'Gravando...' : 'Gravar',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
+              onPressed: _isSaving ? null : _saveExpense,
+              icon: _isSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Icon(Icons.check_circle, size: 20),
+              label: Text(
+                _isSaving ? 'Gravando...' : 'Gravar',
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -6,6 +6,7 @@ import '../services/bank_service.dart';
 import '../widgets/app_input_decoration.dart';
 import '../services/prefs_service.dart';
 import '../utils/color_contrast.dart';
+import '../ui/components/app_modal_header.dart';
 
 class BankAccountsScreen extends StatefulWidget {
   const BankAccountsScreen({super.key});
@@ -223,19 +224,11 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: bank == null
-                                      ? const Text('Adicionar Banco', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
-                                      : const Text('Editar Banco', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.close),
-                                  tooltip: 'Fechar',
-                                  onPressed: () => Navigator.of(ctx).pop(),
-                                ),
-                              ],
+                            AppModalHeader(
+                              title: bank == null ? 'Adicionar Banco' : 'Editar Banco',
+                              onClose: () => Navigator.of(ctx).pop(),
+                              showDivider: false,
+                              padding: EdgeInsets.zero,
                             ),
                             const SizedBox(height: 12),
                             TextFormField(

@@ -17,6 +17,11 @@ import 'account_types_screen.dart';
 import 'recebimentos_table_screen.dart';
 import '../utils/installment_utils.dart';
 import '../widgets/icon_picker_dialog.dart';
+import '../ui/components/app_modal_header.dart';
+import '../ui/components/color_picker_field.dart';
+import '../ui/components/launch_type_segmented.dart';
+import '../ui/components/standard_modal_shell.dart';
+import '../ui/components/lancamento_form_padrao.dart';
 
 const List<String> _monthShortLabels = [
   'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
@@ -78,7 +83,7 @@ class AccountEditDialog extends StatelessWidget {
     required this.accountToEdit,
     required this.isRecebimento,
   });
-
+  
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
@@ -86,61 +91,18 @@ class AccountEditDialog extends StatelessWidget {
     final availableHeight = media.size.height - media.viewInsets.bottom;
     final maxHeight = availableHeight * 0.88;
     final title = isRecebimento ? 'Editar Recebimento' : 'Editar Conta';
-    final colorScheme = Theme.of(context).colorScheme;
 
-    return Dialog(
-      insetPadding: const EdgeInsets.all(22),
-      backgroundColor: colorScheme.surface,
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-      ),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          minWidth: dialogWidth,
-          maxWidth: dialogWidth,
-          maxHeight: maxHeight,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Column(
-            children: [
-              SizedBox(
-                height: 52,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Fechar',
-                        onPressed: () => Navigator.pop(context),
-                        icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Divider(height: 1, color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-              Expanded(
-                child: AccountFormScreen(
-                  accountToEdit: accountToEdit,
-                  isRecebimento: isRecebimento,
-                  showAppBar: false,
-                ),
-              ),
-            ],
-          ),
-        ),
+    return StandardModalShell(
+      title: title,
+      onClose: () => Navigator.pop(context),
+      maxWidth: dialogWidth,
+      maxHeight: maxHeight,
+      scrollBody: false,
+      bodyPadding: EdgeInsets.zero,
+      body: AccountFormScreen(
+        accountToEdit: accountToEdit,
+        isRecebimento: isRecebimento,
+        showAppBar: false,
       ),
     );
   }
@@ -1337,40 +1299,6 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     return const SizedBox.shrink();
   }
 
-  Widget _buildManageCategoriesButton() {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'Gerenciar Categorias',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          icon: Icon(Icons.category, size: 18, color: colorScheme.onSurfaceVariant),
-          label: Text(
-            'Gerenciar Categorias',
-            style: TextStyle(color: colorScheme.onSurfaceVariant),
-          ),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            minimumSize: const Size(0, 40),
-            side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
-          onPressed: _showCategoriesDialog,
-        ),
-      ],
-    );
-  }
-
   Widget _buildDescriptionField() {
     return _buildFieldWithIcon(
       icon: Icons.description_outlined,
@@ -1387,110 +1315,84 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     );
   }
 
-  Widget _buildColorPaletteSection() {
-    debugPrint('🎨 _buildColorPaletteSection');
+  String _selectedColorLabel() {
+    final index = _colors.indexWhere((c) => c.toARGB32() == _selectedColor);
+    if (index == -1) return 'Cor personalizada';
+    return 'Opção ${index + 1}';
+  }
+
+  Future<void> _showColorPicker() async {
     final colorScheme = Theme.of(context).colorScheme;
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: _colors
-          .map(
-            (color) {
-              final colorInt = color.toARGB32();
-              final isSelected = _selectedColor == colorInt;
-              return ChoiceChip(
-                selected: isSelected,
-                onSelected: (_) => setState(() => _selectedColor = colorInt),
-                label: const SizedBox(width: 0, height: 0),
-                labelPadding: EdgeInsets.zero,
-                padding: const EdgeInsets.all(6),
-                showCheckmark: false,
-                backgroundColor: colorScheme.surfaceContainerLow,
-                selectedColor: colorScheme.surfaceContainerHighest,
-                side: BorderSide(
-                  color: isSelected
-                      ? colorScheme.primary
-                      : colorScheme.outlineVariant.withValues(alpha: 0.6),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                avatar: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      width: 14,
-                      height: 14,
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Escolher cor',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: _colors.map((color) {
+                  final colorInt = color.toARGB32();
+                  final isSelected = _selectedColor == colorInt;
+                  return InkWell(
+                    onTap: () {
+                      setState(() => _selectedColor = colorInt);
+                      Navigator.pop(ctx);
+                    },
+                    borderRadius: BorderRadius.circular(99),
+                    child: Container(
+                      width: 28,
+                      height: 28,
                       decoration: BoxDecoration(
                         color: color,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-                          width: 1,
+                          color: isSelected
+                              ? colorScheme.onSurface
+                              : colorScheme.outlineVariant.withValues(alpha: 0.6),
+                          width: isSelected ? 2 : 1,
                         ),
                       ),
+                      child: isSelected
+                          ? Icon(
+                              Icons.check,
+                              size: 14,
+                              color: colorScheme.onSurface,
+                            )
+                          : null,
                     ),
-                    if (isSelected)
-                      Icon(
-                        Icons.check,
-                        size: 12,
-                        color: colorScheme.primary,
-                      ),
-                  ],
-                ),
-              );
-            },
-          )
-          .toList(),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
   Widget _buildLaunchTypeSelector({bool compact = false}) {
     debugPrint('📝 _buildLaunchTypeSelector (_entryMode=$_entryMode)');
-    final colorScheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (!compact) ...[
-          Text(
-            "Tipo de Lançamento",
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-              color: colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-        SegmentedButton<int>(
-          segments: const [
-            ButtonSegment(
-                value: 0,
-                label: Text("Avulsa / Parcelada", style: TextStyle(fontSize: 13)),
-                icon: Icon(Icons.receipt_long, size: 18)),
-            ButtonSegment(
-                value: 1,
-                label: Text("Recorrente Fixa", style: TextStyle(fontSize: 13)),
-                icon: Icon(Icons.loop, size: 18)),
-          ],
-          selected: {_entryMode},
-          onSelectionChanged: (Set<int> newSelection) =>
-              setState(() => _entryMode = newSelection.first),
-          style: ButtonStyle(
-            visualDensity: compact ? VisualDensity.compact : VisualDensity.standard,
-            padding: MaterialStateProperty.all(
-              EdgeInsets.symmetric(horizontal: 12, vertical: compact ? 6 : 8),
-            ),
-            minimumSize: MaterialStateProperty.all(Size(0, compact ? 36 : 40)),
-            shape: MaterialStateProperty.all(
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-            side: MaterialStateProperty.all(
-              BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-            ),
-          ),
-        ),
-      ],
+    return LaunchTypeSegmented(
+      value: _entryMode,
+      compact: compact,
+      onChanged: (val) => setState(() => _entryMode = val),
     );
   }
 
@@ -1518,201 +1420,6 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         return null;
       },
     );
-  }
-
-  Widget _buildAvulsaMode() {
-    final dateField = _buildFieldWithIcon(
-      icon: Icons.calendar_month,
-      label: _baseDateLabel,
-      child: TextFormField(
-        controller: _dateController,
-        keyboardType: TextInputType.number,
-        inputFormatters: [_dateMaskFormatter],
-        decoration: buildOutlinedInputDecoration(
-          label: _baseDateLabel,
-          icon: Icons.calendar_month,
-          hintText: "dd/mm/aa",
-          suffixIcon: IconButton(
-            icon: Icon(Icons.date_range, color: Theme.of(context).colorScheme.onSurfaceVariant),
-            tooltip: 'Selecionar Data',
-            onPressed: () => _selectDate(_dateController),
-          ),
-        ),
-        onChanged: _onMainDateChanged,
-        validator: (value) => value == null || value.length < 8
-            ? 'Data incompleta (dd/mm/aa)'
-            : null,
-      ),
-    );
-
-    final valueField = _buildFieldWithIcon(
-      icon: Icons.attach_money,
-      label: 'Valor Total (R\$)',
-      child: TextFormField(
-        controller: _totalValueController,
-        keyboardType: TextInputType.number,
-        inputFormatters: [
-          FilteringTextInputFormatter.digitsOnly,
-          CentavosInputFormatter(moeda: true),
-        ],
-        decoration: buildOutlinedInputDecoration(
-          label: 'Valor Total (R\$)',
-          icon: Icons.attach_money,
-        ),
-        onChanged: (val) => _updateInstallments(),
-      ),
-    );
-
-    final installmentsField = _buildFieldWithIcon(
-      icon: Icons.repeat,
-      label: widget.isRecebimento ? 'Forma de Recebimento' : 'Forma de Pagamento',
-      child: _buildInstallmentDropdown(),
-    );
-
-    final showInstallments = widget.useInstallmentDropdown || _entryMode == 0;
-
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth >= 780;
-          final itemWidth = isWide
-              ? (constraints.maxWidth - 12) / 2
-              : constraints.maxWidth;
-          return Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              SizedBox(width: itemWidth, child: dateField),
-              SizedBox(width: itemWidth, child: valueField),
-              if (showInstallments) SizedBox(width: itemWidth, child: installmentsField),
-            ],
-          );
-        },
-      ),
-
-      if (_mainOriginalDueDate != null)
-        Padding(
-          padding: const EdgeInsets.only(top: 6, left: 6),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Data original: ${DateFormat('dd/MM/yyyy').format(_mainOriginalDueDate!)}',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              if (_mainDueDateWasAdjusted && _mainAdjustedDueDate != null)
-                Text(
-                  'Data ajustada: ${DateFormat('dd/MM/yyyy').format(_mainAdjustedDueDate!)}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Theme.of(context).colorScheme.error,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-            ],
-          ),
-        ),
-
-      const SizedBox(height: 12),
-
-      // CAMPOS ADICIONAIS PARA RECORRÊNCIA
-      if (_entryMode == 1)
-        Column(
-          children: [
-            // Seletor de Mês/Ano de Início
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isWide = constraints.maxWidth >= 780;
-                final itemWidth = isWide
-                    ? (constraints.maxWidth - 12) / 2
-                    : constraints.maxWidth;
-                return Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    SizedBox(
-                      width: itemWidth,
-                      child: _buildFieldWithIcon(
-                        icon: Icons.calendar_month,
-                        label: 'Mês Início',
-                        child: DropdownButtonFormField<int>(
-                          value: _recurrentStartMonth,
-                          decoration: buildOutlinedInputDecoration(
-                            label: 'Mês',
-                            icon: Icons.calendar_month,
-                          ),
-                          items: [
-                            ...List.generate(12, (i) {
-                              final months = [
-                                'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
-                                'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
-                              ];
-                              return DropdownMenuItem(
-                                value: i,
-                                child: Text(months[i]),
-                              );
-                            })
-                          ],
-                          onChanged: (val) {
-                            if (val != null) {
-                              setState(() => _recurrentStartMonth = val);
-                            }
-                          },
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: itemWidth,
-                      child: _buildFieldWithIcon(
-                        icon: Icons.today,
-                        label: 'Ano Início',
-                        child: TextFormField(
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(4),
-                          ],
-                          decoration: buildOutlinedInputDecoration(
-                            label: 'Ano (YYYY)',
-                            icon: Icons.today,
-                          ),
-                          initialValue: _recurrentStartYear == 0
-                              ? DateTime.now().year.toString()
-                              : _recurrentStartYear.toString(),
-                          onChanged: (val) {
-                            setState(() {
-                              _recurrentStartYear =
-                                  int.tryParse(val) ?? DateTime.now().year;
-                              _recurrentStartYearController.text =
-                                  _recurrentStartYear.toString();
-                            });
-                          },
-                          validator: (val) {
-                            if (val == null || val.isEmpty) return 'Ano obrigatório';
-                            final year = int.tryParse(val);
-                            if (year == null || year < 2000 || year > 2100) {
-                              return 'Ano inválido';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-          ],
-        ),
-
-      const SizedBox(height: 12),
-      // REMOVIDO: Barra Total
-    ]);
   }
 
   Widget _buildRecurrentMode() {
@@ -1900,90 +1607,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     try {
       debugPrint('🏗️ _buildFormContent INÍCIO');
       final colorScheme = Theme.of(context).colorScheme;
-      if (widget.isRecebimento) {
-        return _buildRecebimentoFormContent(colorScheme);
-      }
-      return SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Seção: Tipo / Cor
-              _buildSectionCard(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isWide = constraints.maxWidth >= 780;
-                    final itemWidth = isWide
-                        ? (constraints.maxWidth - 16) / 2
-                        : constraints.maxWidth;
-                    return Wrap(
-                      spacing: 16,
-                      runSpacing: 12,
-                      children: [
-                        SizedBox(width: itemWidth, child: _buildTypeDropdown()),
-                        SizedBox(width: itemWidth, child: _buildColorPaletteSection()),
-                        SizedBox(width: itemWidth, child: _buildLaunchTypeSelector()),
-                      ],
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Seção: Classificação
-              _buildSectionCard(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isWide = constraints.maxWidth >= 780;
-                    final itemWidth = isWide
-                        ? (constraints.maxWidth - 12) / 2
-                        : constraints.maxWidth;
-                    return Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        SizedBox(width: itemWidth, child: _buildCategorySection()),
-                        SizedBox(width: itemWidth, child: _buildDescriptionField()),
-                        SizedBox(width: itemWidth, child: _buildManageCategoriesButton()),
-                      ],
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Seção: Valores
-              _buildSectionCard(
-                child: _entryMode == 0 ? _buildAvulsaMode() : _buildRecurrentMode(),
-              ),
-              if (_entryMode == 0 && _installments.isNotEmpty && _installmentsQtyController.text != "-1") ...[
-                const SizedBox(height: 12),
-                _buildSectionCard(
-                  child: _buildInstallmentsList(colorScheme),
-                ),
-              ],
-              const SizedBox(height: 12),
-              _buildSectionCard(
-                child: _buildFieldWithIcon(
-                  icon: Icons.note,
-                  label: 'Observações (Opcional)',
-                  child: TextFormField(
-                    controller: _observationController,
-                    decoration: buildOutlinedInputDecoration(
-                      label: 'Observações (Opcional)',
-                      icon: Icons.note,
-                      alignLabelWithHint: true,
-                    ),
-                    maxLines: 3,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        ),
-      );
+      return _buildTransactionFormContent(colorScheme);
     } catch (e, stackTrace) {
       debugPrint('❌ CRASH em _buildFormContent: $e');
       debugPrint('Stack trace:\n$stackTrace');
@@ -2000,15 +1624,10 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     }
   }
 
-  Widget _buildRecebimentoFormContent(ColorScheme colorScheme) {
+  Widget _buildTransactionFormContent(ColorScheme colorScheme) {
     final installmentsQty = int.tryParse(_installmentsQtyController.text) ?? 1;
     final showInstallmentsList =
         _entryMode == 0 && installmentsQty > 1 && _installments.isNotEmpty;
-
-    final sectionTitleStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.w700,
-          color: colorScheme.onSurface,
-        );
 
     final dateField = _buildFieldWithIcon(
       icon: Icons.calendar_month,
@@ -2052,152 +1671,129 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       ),
     );
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    return Form(
+      key: _formKey,
+      child: LancamentoFormPadrao(
+        useScroll: true,
+        typeContent: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildSectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Tipo', style: sectionTitleStyle),
-                  const SizedBox(height: 8),
-                  _buildTypeDropdown(),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildSectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Tipo de lançamento', style: sectionTitleStyle),
-                  const SizedBox(height: 8),
-                  _buildLaunchTypeSelector(),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildSectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Classificação / Categorias', style: sectionTitleStyle),
-                  const SizedBox(height: 8),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isWide = constraints.maxWidth >= 780;
-                      final itemWidth = isWide
-                          ? (constraints.maxWidth - 12) / 2
-                          : constraints.maxWidth;
-                      return Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          SizedBox(width: itemWidth, child: _buildCategorySection()),
-                          SizedBox(width: itemWidth, child: _buildDescriptionField()),
-                          SizedBox(width: itemWidth, child: _buildManageCategoriesButton()),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildSectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Datas / Valores', style: sectionTitleStyle),
-                  const SizedBox(height: 8),
-                  if (_entryMode == 1)
-                    _buildRecurrentMode()
-                  else
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isWide = constraints.maxWidth >= 780;
-                        final itemWidth = isWide
-                            ? (constraints.maxWidth - 12) / 2
-                            : constraints.maxWidth;
-                        return Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: [
-                            SizedBox(width: itemWidth, child: dateField),
-                            SizedBox(width: itemWidth, child: valueField),
-                          ],
-                        );
-                      },
-                    ),
-                ],
-              ),
-            ),
-            if (_entryMode == 0) ...[
-              const SizedBox(height: 12),
-              _buildSectionCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Parcelas', style: sectionTitleStyle),
-                    const SizedBox(height: 8),
-                    _buildInstallmentDropdown(),
-                    if (showInstallmentsList) ...[
-                      const SizedBox(height: 12),
-                      _buildInstallmentsList(colorScheme),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 12),
-            _buildSectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Opções', style: sectionTitleStyle),
-                  const SizedBox(height: 8),
-                  _buildColorPaletteSection(),
-                  const SizedBox(height: 12),
-                  _buildFieldWithIcon(
-                    icon: Icons.note,
-                    label: 'Observações (Opcional)',
-                    child: TextFormField(
-                      controller: _observationController,
-                      decoration: buildOutlinedInputDecoration(
-                        label: 'Observações (Opcional)',
-                        icon: Icons.note,
-                        alignLabelWithHint: true,
-                      ),
-                      maxLines: 3,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
+            _buildTypeDropdown(),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildSectionCard({required Widget child}) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Card(
-      elevation: 0,
-      color: colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: child,
+        categoryTrailing: TextButton.icon(
+          onPressed: _showCategoriesDialog,
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.zero,
+            visualDensity: VisualDensity.compact,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          icon: const Icon(Icons.tune, size: 16),
+          label: const Text('Gerenciar categorias'),
+        ),
+        categoryContent: _buildCategorySection(),
+        launchContent: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildLaunchTypeSelector(),
+            const SizedBox(height: 8),
+            if (_entryMode == 0) _buildInstallmentDropdown(),
+            if (_entryMode == 1) ...[
+              const SizedBox(height: 12),
+              _buildRecurrentMode(),
+            ],
+          ],
+        ),
+        descriptionValueContent: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth >= 780;
+                final itemWidth = isWide
+                    ? (constraints.maxWidth - 12) / 2
+                    : constraints.maxWidth;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    SizedBox(width: itemWidth, child: _buildDescriptionField()),
+                    if (_entryMode == 0)
+                      SizedBox(width: itemWidth, child: valueField)
+                    else
+                      SizedBox(width: itemWidth, child: const SizedBox.shrink()),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+        datesContent: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_entryMode == 0) ...[
+              dateField,
+              if (_mainOriginalDueDate != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6, left: 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Data original: ${DateFormat('dd/MM/yyyy').format(_mainOriginalDueDate!)}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (_mainDueDateWasAdjusted && _mainAdjustedDueDate != null)
+                        Text(
+                          'Data ajustada: ${DateFormat('dd/MM/yyyy').format(_mainAdjustedDueDate!)}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colorScheme.error,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ] else
+              Text(
+                'Recorrência mensal configurada no lançamento.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+              ),
+          ],
+        ),
+        optionsContent: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ColorPickerField(
+              label: 'Cor do lançamento',
+              color: Color(_selectedColor),
+              subtitle: _selectedColorLabel(),
+              onPick: _showColorPicker,
+            ),
+            const SizedBox(height: 12),
+            _buildFieldWithIcon(
+              icon: Icons.note,
+              label: 'Observações (Opcional)',
+              child: TextFormField(
+                controller: _observationController,
+                decoration: buildOutlinedInputDecoration(
+                  label: 'Observações (Opcional)',
+                  icon: Icons.note,
+                  alignLabelWithHint: true,
+                ),
+                maxLines: 3,
+              ),
+            ),
+          ],
+        ),
+        parcelasContent: showInstallmentsList ? _buildInstallmentsList(colorScheme) : null,
       ),
     );
   }
@@ -2333,78 +1929,39 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         top: false,
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: widget.isRecebimento
-              ? Align(
-                  alignment: Alignment.centerRight,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      OutlinedButton(
-                        onPressed: _isSaving ? null : _closeScreen,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                          minimumSize: const Size(0, 48),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: const Text('Cancelar'),
-                      ),
-                      const SizedBox(width: 12),
-                      FilledButton(
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                          minimumSize: const Size(0, 48),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        onPressed: _isSaving ? null : _saveAccount,
-                        child: _isSaving
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : Text(_saveButtonLabel()),
-                      ),
-                    ],
+          child: Row(
+            children: [
+              OutlinedButton(
+                onPressed: _isSaving ? null : _closeScreen,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  minimumSize: const Size(0, 44),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                )
-              : Row(
-                  children: [
-                    const Spacer(),
-                    OutlinedButton(
-                      onPressed: _isSaving ? null : _closeScreen,
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                        minimumSize: const Size(0, 44),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const Text('Cancelar'),
-                    ),
-                    const SizedBox(width: 12),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                        minimumSize: const Size(0, 44),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      onPressed: _isSaving ? null : _saveAccount,
-                      child: _isSaving
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(_saveButtonLabel()),
-                    ),
-                  ],
                 ),
+                child: const Text('Cancelar'),
+              ),
+              const Spacer(),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  minimumSize: const Size(0, 44),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: _isSaving ? null : _saveAccount,
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(_saveButtonLabel()),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -3380,22 +2937,13 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Editar Categoria',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Fechar',
-                        onPressed: () => Navigator.pop(context),
-                        icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
-                      ),
-                    ],
+                  AppModalHeader(
+                    title: 'Editar Categoria',
+                    onClose: () => Navigator.pop(context),
+                    showDivider: false,
+                    padding: EdgeInsets.zero,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Text(
                     'Nome da categoria',
                     style: TextStyle(
@@ -3586,22 +3134,13 @@ class _CategoriasDialogState extends State<_CategoriasDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Gerenciar Categorias',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Fechar',
-                    onPressed: () => Navigator.pop(context),
-                    icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
-                  ),
-                ],
+              AppModalHeader(
+                title: 'Gerenciar Categorias',
+                onClose: () => Navigator.pop(context),
+                showDivider: false,
+                padding: EdgeInsets.zero,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(

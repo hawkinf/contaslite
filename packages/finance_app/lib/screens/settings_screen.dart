@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/holiday_service.dart';
 import '../services/prefs_service.dart';
+import '../ui/components/app_modal_header.dart';
 import '../services/auth_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/sync_service.dart';
@@ -91,23 +92,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Selecionar Cidade',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          searchController.dispose();
-                          Navigator.pop(context);
-                        },
-                      ),
-                    ],
+                  AppModalHeader(
+                    title: 'Selecionar Cidade',
+                    onClose: () {
+                      searchController.dispose();
+                      Navigator.pop(context);
+                    },
+                    showDivider: false,
+                    padding: EdgeInsets.zero,
                   ),
                   const SizedBox(height: 16),
                   TextField(

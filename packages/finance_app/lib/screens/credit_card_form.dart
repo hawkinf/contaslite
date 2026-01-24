@@ -12,6 +12,9 @@ import '../widgets/mastercard_logo.dart';
 import '../widgets/visa_logo.dart';
 import '../widgets/elo_logo.dart';
 import '../widgets/amex_logo.dart';
+import '../ui/components/color_picker_field.dart';
+import '../ui/components/transaction_form_base.dart';
+import '../ui/components/standard_modal_shell.dart';
 
 class _CreditCardForm extends StatefulWidget {
   final Account? cardToEdit;
@@ -26,21 +29,7 @@ class CreditCardFormScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final viewInsets = MediaQuery.of(context).viewInsets;
-
-    final maxWidth = (screenSize.width * 0.92).clamp(320.0, 860.0);
-    final availableHeight = screenSize.height - viewInsets.bottom;
-    final maxHeight = math.min(620.0, availableHeight * 0.85);
-
-    return Dialog(
-      insetPadding: const EdgeInsets.all(16),
-      constraints: BoxConstraints(
-        maxWidth: maxWidth,
-        maxHeight: maxHeight,
-      ),
-      child: _CreditCardForm(cardToEdit: cardToEdit),
-    );
+    return _CreditCardForm(cardToEdit: cardToEdit);
   }
 }
 
@@ -222,10 +211,11 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isEditing = widget.cardToEdit != null;
-    final editColor = isEditing && widget.cardToEdit?.cardColor != null
-        ? Color(widget.cardToEdit!.cardColor!)
-        : colorScheme.surface;
-    final editFg = foregroundColorFor(editColor);
+    final screenSize = MediaQuery.of(context).size;
+    final viewInsets = MediaQuery.of(context).viewInsets;
+    final maxWidth = (screenSize.width * 0.92).clamp(320.0, 860.0);
+    final availableHeight = screenSize.height - viewInsets.bottom;
+    final maxHeight = math.min(640.0, availableHeight * 0.9);
 
     InputDecoration inputDecoration({
       required String label,
@@ -260,323 +250,229 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Editar Cartão' : 'Novo Cartão'),
-        backgroundColor: colorScheme.surface,
-        foregroundColor: editFg,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        actions: const [],
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final double maxWidth = constraints.maxWidth < 820
-              ? constraints.maxWidth
-              : 820.0;
-            final bool compactPadding = constraints.maxHeight < 620;
-            final bool tightLayout = constraints.maxHeight < 580;
-            final EdgeInsets contentPadding = compactPadding
-              ? const EdgeInsets.fromLTRB(12, 10, 12, 10)
-              : const EdgeInsets.fromLTRB(16, 12, 16, 12);
-            final EdgeInsets sectionPadding = compactPadding
-              ? const EdgeInsets.all(12)
-              : const EdgeInsets.all(16);
-            final double gapSm = compactPadding ? 8 : 10;
-            final double gapMd = compactPadding ? 10 : 12;
-
-          return Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: maxWidth),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: contentPadding,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Container(
-                            padding: sectionPadding,
-                            decoration: BoxDecoration(
-                              color: colorScheme.surfaceContainerLow,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 18,
-                                        height: 18,
-                                        decoration: BoxDecoration(
-                                          color: Color(_selectedColor),
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Expanded(
-                                        child: Text(
-                                          'Cor do cartão',
-                                          style: TextStyle(fontWeight: FontWeight.w600),
-                                        ),
-                                      ),
-                                      OutlinedButton(
-                                        onPressed: _showColorPicker,
-                                        child: const Text('Escolher'),
-                                      ),
-                                    ],
-                                  ),
-                                  if (!tightLayout) ...[
-                                    SizedBox(height: gapSm),
-                                    Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Chip(
-                                        label: Text('Cor: ${_selectedColorLabel()}'),
-                                        backgroundColor: colorScheme.surfaceContainerHighest,
-                                        side: BorderSide(
-                                          color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-                                        ),
-                                        avatar: Container(
-                                          width: 10,
-                                          height: 10,
-                                          decoration: BoxDecoration(
-                                            color: Color(_selectedColor),
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  SizedBox(height: gapSm),
-                                  TextFormField(
-                                    initialValue: 'Cartões de Crédito',
-                                    readOnly: true,
-                                    style: TextStyle(color: colorScheme.onSurfaceVariant),
-                                    decoration: inputDecoration(
-                                      label: 'Categoria no App',
-                                      icon: Icons.lock,
-                                      isDense: compactPadding,
-                                    ),
-                                  ),
-                                  SizedBox(height: gapSm),
-                                  DropdownButtonFormField<String>(
-                                    initialValue: _brands.contains(_selectedBrand)
-                                        ? _selectedBrand
-                                        : null,
-                                    isExpanded: true,
-                                    selectedItemBuilder: (context) => _brands
-                                        .map((b) => _buildBrandRow(b, compactLogo: true))
-                                        .toList(),
-                                    decoration: inputDecoration(
-                                      label: 'Bandeira',
-                                      icon: Icons.flag,
-                                      isDense: compactPadding,
-                                    ),
-                                    items: _brands
-                                        .map(
-                                          (b) => DropdownMenuItem(
-                                            value: b,
-                                            child: _buildBrandRow(b, compactLogo: true),
-                                          ),
-                                        )
-                                        .toList(),
-                                    onChanged: (val) => setState(() => _selectedBrand = val),
-                                    hint: const Text('Selecione'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(height: gapSm),
-                            Container(
-                              padding: sectionPadding,
-                              decoration: BoxDecoration(
-                                color: colorScheme.surfaceContainerLow,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  TextFormField(
-                                    controller: _bankController,
-                                    textCapitalization: TextCapitalization.words,
-                                    decoration: inputDecoration(
-                                      label: 'Banco Emissor',
-                                      icon: Icons.account_balance,
-                                      hintText: 'Ex: Nubank',
-                                      isDense: compactPadding,
-                                    ),
-                                    validator: (v) =>
-                                        v!.isEmpty ? 'Obrigatório informar o banco' : null,
-                                  ),
-                                  SizedBox(height: gapSm),
-                                  LayoutBuilder(
-                                    builder: (context, rowConstraints) {
-                                      final isWide = rowConstraints.maxWidth >= 600;
-                                      final helper = !tightLayout && _bestBuyDay != null
-                                          ? 'Estimativa de fechamento: Dia $_bestBuyDay'
-                                          : null;
-                                      final fields = [
-                                        Expanded(
-                                          child: DropdownButtonFormField<int>(
-                                            initialValue: _dueDay,
-                                            decoration: inputDecoration(
-                                              label: 'Vencimento',
-                                              icon: Icons.calendar_today,
-                                              isDense: compactPadding,
-                                            ),
-                                            items: List.generate(
-                                              31,
-                                              (i) => DropdownMenuItem(
-                                                value: i + 1,
-                                                child: Text('Dia ${i + 1}'),
-                                              ),
-                                            ),
-                                            onChanged: (val) {
-                                              setState(() => _dueDay = val!);
-                                              _calculateBestDay(val!);
-                                            },
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10, height: 10),
-                                        Expanded(
-                                          child: DropdownButtonFormField<int?>(
-                                            initialValue: _bestBuyDay,
-                                            decoration: inputDecoration(
-                                              label: 'Melhor Dia',
-                                              icon: Icons.shopping_bag,
-                                              helperText: helper,
-                                              isDense: compactPadding,
-                                            ),
-                                            items: [
-                                              const DropdownMenuItem(
-                                                value: null,
-                                                child: Text('Não sei'),
-                                              ),
-                                              ...List.generate(
-                                                31,
-                                                (i) => DropdownMenuItem(
-                                                  value: i + 1,
-                                                  child: Text('Dia ${i + 1}'),
-                                                ),
-                                              ),
-                                            ],
-                                            onChanged: (val) => setState(() => _bestBuyDay = val),
-                                          ),
-                                        ),
-                                      ];
-
-                                      return isWide
-                                          ? Row(children: fields)
-                                          : Column(children: fields);
-                                    },
-                                  ),
-                                  SizedBox(height: gapSm),
-                                  TextFormField(
-                                    controller: _limitController,
-                                    keyboardType: TextInputType.number,
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.digitsOnly,
-                                      CentavosInputFormatter(moeda: true),
-                                    ],
-                                    decoration: inputDecoration(
-                                      label: 'Limite (R\$) - Opcional',
-                                      icon: Icons.attach_money,
-                                      isDense: compactPadding,
-                                    ),
-                                  ),
-                                  SizedBox(height: gapMd),
-                                  const Text(
-                                    'Se o vencimento cair em feriado/fim de semana:',
-                                    style: TextStyle(fontWeight: FontWeight.w600),
-                                  ),
-                                  SizedBox(height: gapSm),
-                                  SegmentedButton<bool>(
-                                    segments: const [
-                                      ButtonSegment(
-                                        value: false,
-                                        label: Text('Pagar depois'),
-                                        icon: Icon(Icons.arrow_forward),
-                                      ),
-                                      ButtonSegment(
-                                        value: true,
-                                        label: Text('Antecipar'),
-                                        icon: Icon(Icons.arrow_back),
-                                      ),
-                                    ],
-                                    selected: {_payInAdvance},
-                                    onSelectionChanged: (sel) =>
-                                        setState(() => _payInAdvance = sel.first),
-                                    style: const ButtonStyle(
-                                      visualDensity: VisualDensity.compact,
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                      minimumSize: WidgetStatePropertyAll(Size(0, 32)),
-                                      padding: WidgetStatePropertyAll(
-                                        EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          SizedBox(height: gapMd),
-                        ],
-                      ),
+    return StandardModalShell(
+      title: isEditing ? 'Editar Cartão' : 'Novo Cartão',
+      onClose: () => Navigator.pop(context),
+      maxWidth: maxWidth,
+      maxHeight: maxHeight,
+      bodyPadding: EdgeInsets.zero,
+      body: Form(
+        key: _formKey,
+        child: TransactionFormBase(
+          useScroll: false,
+          sections: [
+            TransactionFormSection(
+              title: 'Tipo / Identificação',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextFormField(
+                    initialValue: 'Cartões de Crédito',
+                    readOnly: true,
+                    style: TextStyle(color: colorScheme.onSurfaceVariant),
+                    decoration: inputDecoration(
+                      label: 'Categoria no App',
+                      icon: Icons.lock,
                     ),
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        contentPadding.left,
-                        0,
-                        contentPadding.right,
-                        contentPadding.bottom,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: Wrap(
-                          spacing: 12,
-                          children: [
-                            OutlinedButton(
-                              onPressed: () => Navigator.pop(context),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              child: const Text('Cancelar'),
-                            ),
-                            FilledButton(
-                              style: FilledButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 28),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              onPressed: _saveCard,
-                              child: const Text('Gravar'),
-                            ),
-                          ],
-                        ),
-                      ),
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: _brands.contains(_selectedBrand)
+                        ? _selectedBrand
+                        : null,
+                    isExpanded: true,
+                    selectedItemBuilder: (context) => _brands
+                        .map((b) => _buildBrandRow(b, compactLogo: true))
+                        .toList(),
+                    decoration: inputDecoration(
+                      label: 'Bandeira',
+                      icon: Icons.flag,
                     ),
-                  ],
-                ),
+                    items: _brands
+                        .map(
+                          (b) => DropdownMenuItem(
+                            value: b,
+                            child: _buildBrandRow(b, compactLogo: true),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (val) => setState(() => _selectedBrand = val),
+                    hint: const Text('Selecione'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _bankController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: inputDecoration(
+                      label: 'Banco Emissor',
+                      icon: Icons.account_balance,
+                      hintText: 'Ex: Nubank',
+                    ),
+                    validator: (v) => v!.isEmpty ? 'Obrigatório informar o banco' : null,
+                  ),
+                ],
               ),
             ),
-          );
-        },
+            TransactionFormSection(
+              title: 'Datas / Limites',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  LayoutBuilder(
+                    builder: (context, rowConstraints) {
+                      final isWide = rowConstraints.maxWidth >= 600;
+                      final helper = _bestBuyDay != null
+                          ? 'Estimativa de fechamento: Dia $_bestBuyDay'
+                          : null;
+                      final fields = [
+                        Expanded(
+                          child: DropdownButtonFormField<int>(
+                            initialValue: _dueDay,
+                            decoration: inputDecoration(
+                              label: 'Vencimento',
+                              icon: Icons.calendar_today,
+                            ),
+                            items: List.generate(
+                              31,
+                              (i) => DropdownMenuItem(
+                                value: i + 1,
+                                child: Text('Dia ${i + 1}'),
+                              ),
+                            ),
+                            onChanged: (val) {
+                              setState(() => _dueDay = val!);
+                              _calculateBestDay(val!);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10, height: 10),
+                        Expanded(
+                          child: DropdownButtonFormField<int?>(
+                            initialValue: _bestBuyDay,
+                            decoration: inputDecoration(
+                              label: 'Melhor Dia',
+                              icon: Icons.shopping_bag,
+                              helperText: helper,
+                            ),
+                            items: [
+                              const DropdownMenuItem(
+                                value: null,
+                                child: Text('Não sei'),
+                              ),
+                              ...List.generate(
+                                31,
+                                (i) => DropdownMenuItem(
+                                  value: i + 1,
+                                  child: Text('Dia ${i + 1}'),
+                                ),
+                              ),
+                            ],
+                            onChanged: (val) => setState(() => _bestBuyDay = val),
+                          ),
+                        ),
+                      ];
+
+                      return isWide
+                          ? Row(children: fields)
+                          : Column(children: fields);
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _limitController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      CentavosInputFormatter(moeda: true),
+                    ],
+                    decoration: inputDecoration(
+                      label: 'Limite (R\$) - Opcional',
+                      icon: Icons.attach_money,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            TransactionFormSection(
+              title: 'Opções',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ColorPickerField(
+                    label: 'Cor do cartão',
+                    color: Color(_selectedColor),
+                    subtitle: _selectedColorLabel(),
+                    onPick: _showColorPicker,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Se o vencimento cair em feriado/fim de semana:',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                        value: false,
+                        label: Text('Pagar depois'),
+                        icon: Icon(Icons.arrow_forward),
+                      ),
+                      ButtonSegment(
+                        value: true,
+                        label: Text('Antecipar'),
+                        icon: Icon(Icons.arrow_back),
+                      ),
+                    ],
+                    selected: {_payInAdvance},
+                    onSelectionChanged: (sel) => setState(() => _payInAdvance = sel.first),
+                    style: const ButtonStyle(
+                      visualDensity: VisualDensity.compact,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      minimumSize: WidgetStatePropertyAll(Size(0, 32)),
+                      padding: WidgetStatePropertyAll(
+                        EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      footer: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          border: Border(
+            top: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+          ),
+        ),
+        child: Row(
+          children: [
+            OutlinedButton(
+              onPressed: () => Navigator.pop(context),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: const Text('Cancelar'),
+            ),
+            const Spacer(),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 28),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              onPressed: _saveCard,
+              child: const Text('Gravar'),
+            ),
+          ],
+        ),
       ),
     );
   }

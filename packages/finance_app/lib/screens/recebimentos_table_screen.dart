@@ -6,6 +6,7 @@ import '../widgets/app_input_decoration.dart';
 import '../widgets/icon_picker_dialog.dart';
 import '../services/prefs_service.dart';
 import '../services/default_account_categories_service.dart';
+import '../ui/components/app_modal_header.dart';
 
 /// Opções de tipo de pessoa para seleção
 const List<String> tipoPessoaOptions = [
@@ -200,20 +201,10 @@ class _RecebimentosTableScreenState extends State<RecebimentosTableScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Contas a Receber',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
+            AppModalHeader(
+              title: 'Contas a Receber',
+              onClose: () => Navigator.pop(context),
             ),
-            const Divider(),
             Expanded(child: _buildContent()),
           ],
         ),
