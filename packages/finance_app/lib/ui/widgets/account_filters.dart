@@ -146,9 +146,12 @@ class AccountFilters extends StatelessWidget {
             color: colorScheme.onSurfaceVariant,
           ),
           items: const [
-            DropdownMenuItem(value: 'month', child: Text('Mês Atual')),
+            DropdownMenuItem(value: 'today', child: Text('Hoje')),
+            DropdownMenuItem(value: 'tomorrow', child: Text('Amanhã')),
+            DropdownMenuItem(value: 'yesterday', child: Text('Ontem')),
             DropdownMenuItem(value: 'currentWeek', child: Text('Semana Atual')),
             DropdownMenuItem(value: 'nextWeek', child: Text('Próx. Semana')),
+            DropdownMenuItem(value: 'month', child: Text('Mês Atual')),
           ],
         ),
       ),

@@ -8,11 +8,13 @@ class LancamentoFormPadrao extends StatelessWidget {
   final Widget launchContent;
   final Widget descriptionValueContent;
   final Widget datesContent;
+  final Widget? extraClassificationContent;
   final Widget optionsContent;
   final Widget? parcelasContent;
   final Widget? categoryTrailing;
   final EdgeInsetsGeometry padding;
   final bool useScroll;
+  final double sectionGap;
 
   const LancamentoFormPadrao({
     super.key,
@@ -21,24 +23,39 @@ class LancamentoFormPadrao extends StatelessWidget {
     required this.launchContent,
     required this.descriptionValueContent,
     required this.datesContent,
+    this.extraClassificationContent,
     required this.optionsContent,
     this.parcelasContent,
     this.categoryTrailing,
     this.padding = const EdgeInsets.all(AppSpacing.md),
     this.useScroll = true,
+    this.sectionGap = AppSpacing.md,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Construir o conteúdo da seção Classificação
+    // Se extraClassificationContent estiver presente, mostrá-lo junto com categoryContent
+    final classificationChild = extraClassificationContent != null
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              extraClassificationContent!,
+              const SizedBox(height: 12),
+              categoryContent,
+            ],
+          )
+        : categoryContent;
+
     final sections = <TransactionFormSection>[
       TransactionFormSection(
         title: 'Tipo / Identificação',
         child: typeContent,
       ),
       TransactionFormSection(
-        title: 'Categoria',
+        title: 'Categorias',
         trailing: categoryTrailing,
-        child: categoryContent,
+        child: classificationChild,
       ),
       TransactionFormSection(
         title: 'Lançamento',
@@ -52,25 +69,22 @@ class LancamentoFormPadrao extends StatelessWidget {
         title: 'Datas',
         child: datesContent,
       ),
+      if (parcelasContent != null)
+        TransactionFormSection(
+          title: 'Parcelamento',
+          child: parcelasContent!,
+        ),
       TransactionFormSection(
         title: 'Opções',
         child: optionsContent,
       ),
     ];
 
-    if (parcelasContent != null) {
-      sections.add(
-        TransactionFormSection(
-          title: 'Parcelamento',
-          child: parcelasContent!,
-        ),
-      );
-    }
-
     return TransactionFormBase(
       sections: sections,
       padding: padding,
       useScroll: useScroll,
+      sectionGap: sectionGap,
     );
   }
 }

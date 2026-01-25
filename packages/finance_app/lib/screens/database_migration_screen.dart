@@ -102,16 +102,15 @@ class _DatabaseMigrationScreenState extends State<DatabaseMigrationScreen> {
                         child: Column(
                           children: [
                             const SizedBox(height: 24),
-                            ElevatedButton.icon(
-                              icon: const Icon(Icons.check_circle),
-                              label: const Text('Continuar'),
+                            FilledButton(
                               onPressed: () => Navigator.of(context).pop(true),
-                              style: ElevatedButton.styleFrom(
+                              style: FilledButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 32,
                                   vertical: 12,
                                 ),
                               ),
+                              child: const Text('Continuar'),
                             ),
                           ],
                         ),
@@ -132,17 +131,15 @@ class _DatabaseMigrationScreenState extends State<DatabaseMigrationScreen> {
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 24),
-                            ElevatedButton.icon(
-                              icon: const Icon(Icons.close),
-                              label: const Text('Fechar'),
+                            OutlinedButton(
                               onPressed: () => Navigator.of(context).pop(false),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
+                              style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 32,
                                   vertical: 12,
                                 ),
                               ),
+                              child: const Text('Fechar'),
                             ),
                           ],
                         ),

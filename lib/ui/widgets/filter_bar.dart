@@ -44,22 +44,26 @@ class FilterBar extends StatelessWidget {
       },
       style: ButtonStyle(
         padding: WidgetStateProperty.all(
-          const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 6),
         ),
+        visualDensity: VisualDensity.compact,
         foregroundColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return colorScheme.onPrimaryContainer;
+            return colorScheme.onPrimary;
           }
           return colorScheme.onSurfaceVariant;
         }),
         backgroundColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return colorScheme.primaryContainer;
+            return colorScheme.primary.withValues(alpha: 0.12);
           }
-          return colorScheme.surfaceContainerHighest;
+          return colorScheme.surface;
         }),
         side: WidgetStateProperty.all(
-          BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+          BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.35)),
+        ),
+        shape: WidgetStateProperty.all(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
     );

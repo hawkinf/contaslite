@@ -22,11 +22,18 @@ class MonthHeader extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -34,21 +41,33 @@ class MonthHeader extends StatelessWidget {
             onPressed: onPrevious,
             icon: const Icon(Icons.chevron_left),
             color: colorScheme.onSurfaceVariant,
+            iconSize: 20,
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           ),
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  title,
-                  style: AppTextStyles.title.copyWith(color: colorScheme.onSurface),
+                  title.toUpperCase(),
+                  style: AppTextStyles.title.copyWith(
+                    color: colorScheme.onSurface,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     subtitle!,
-                    style: AppTextStyles.subtitle.copyWith(color: colorScheme.onSurfaceVariant),
+                    style: AppTextStyles.subtitle.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -59,6 +78,9 @@ class MonthHeader extends StatelessWidget {
             onPressed: onNext,
             icon: const Icon(Icons.chevron_right),
             color: colorScheme.onSurfaceVariant,
+            iconSize: 20,
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           ),
         ],
       ),

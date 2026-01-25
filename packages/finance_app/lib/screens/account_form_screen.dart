@@ -237,9 +237,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   String get _baseDateLabel => widget.isRecebimento
       ? 'Data Base do Recebimento'
       : 'Dia Base do Vencimento';
-  String get _descriptionLabel => widget.isRecebimento
-      ? 'Descricao do Recebimento'
-      : 'Descricao (Ex: TV Nova, Aluguel)';
+  String get _descriptionLabel => 'Descrição';
   String get _typeSelectMessage => widget.isRecebimento
       ? 'Selecione um tipo de recebimento primeiro'
       : 'Selecione um tipo de conta primeiro';
@@ -1323,64 +1321,63 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
   Future<void> _showColorPicker() async {
     final colorScheme = Theme.of(context).colorScheme;
-    await showModalBottomSheet<void>(
+    await showDialog<void>(
       context: context,
-      showDragHandle: true,
-      backgroundColor: colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Escolher cor',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: _colors.map((color) {
-                  final colorInt = color.toARGB32();
-                  final isSelected = _selectedColor == colorInt;
-                  return InkWell(
-                    onTap: () {
-                      setState(() => _selectedColor = colorInt);
-                      Navigator.pop(ctx);
-                    },
-                    borderRadius: BorderRadius.circular(99),
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected
-                              ? colorScheme.onSurface
-                              : colorScheme.outlineVariant.withValues(alpha: 0.6),
-                          width: isSelected ? 2 : 1,
-                        ),
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: colorScheme.surface,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Escolher cor',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
-                      child: isSelected
-                          ? Icon(
-                              Icons.check,
-                              size: 14,
-                              color: colorScheme.onSurface,
-                            )
-                          : null,
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: _colors.map((color) {
+                    final colorInt = color.toARGB32();
+                    final isSelected = _selectedColor == colorInt;
+                    return InkWell(
+                      onTap: () {
+                        setState(() => _selectedColor = colorInt);
+                        Navigator.pop(ctx);
+                      },
+                      borderRadius: BorderRadius.circular(99),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected
+                                ? colorScheme.onSurface
+                                : colorScheme.outlineVariant.withValues(alpha: 0.6),
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        child: isSelected
+                            ? Icon(
+                                Icons.check,
+                                size: 14,
+                                color: colorScheme.onSurface,
+                              )
+                            : null,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -1425,64 +1422,6 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
   Widget _buildRecurrentMode() {
     final colorScheme = Theme.of(context).colorScheme;
     return Column(children: [
-      // Valores
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Valores', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          Row(children: [
-            Expanded(
-              flex: 2,
-              child: _buildFieldWithIcon(
-                icon: Icons.trending_flat,
-                label: 'Valor Médio',
-                child: TextFormField(
-                  controller: _recurrentValueController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                    CentavosInputFormatter(moeda: true),
-                  ],
-                  decoration: buildOutlinedInputDecoration(
-                    label: 'Valor Médio',
-                    icon: Icons.trending_flat,
-                  ),
-                  validator: (value) => value == null || value.isEmpty
-                      ? 'Valor médio é obrigatório'
-                      : null,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 2,
-              child: _buildFieldWithIcon(
-                icon: Icons.attach_money,
-                label: 'Valor Lançado',
-                child: TextFormField(
-                  controller: _recurrentLaunchedValueController,
-                  readOnly: true,
-                  enableInteractiveSelection: false,
-                  keyboardType: TextInputType.number,
-                  style: TextStyle(
-                    color: Colors.grey.shade700,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  decoration: buildOutlinedInputDecoration(
-                    label: 'Valor Lançado',
-                    icon: Icons.attach_money,
-                  ).copyWith(
-                    fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    filled: true,
-                  ),
-                ),
-              ),
-            ),
-          ]),
-        ],
-      ),
-      const SizedBox(height: 12),
       // Dia Vencimento, Mês Inicial e Ano Inicial
       Row(children: [
         Expanded(
@@ -1653,11 +1592,13 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       ),
     );
 
+    final bool isRecurrent = _entryMode == 1;
+    final valueController = isRecurrent ? _recurrentValueController : _totalValueController;
     final valueField = _buildFieldWithIcon(
       icon: Icons.attach_money,
       label: 'Valor Total (R\$)',
       child: TextFormField(
-        controller: _totalValueController,
+        controller: valueController,
         keyboardType: TextInputType.number,
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
@@ -1667,7 +1608,23 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           label: 'Valor Total (R\$)',
           icon: Icons.attach_money,
         ),
-        onChanged: (val) => _updateInstallments(),
+        onChanged: (val) {
+          if (!isRecurrent) {
+            _updateInstallments();
+          }
+        },
+        validator: (value) {
+          if (value == null || value.trim().isEmpty) {
+            return 'Valor obrigatório';
+          }
+          try {
+            final parsed = UtilBrasilFields.converterMoedaParaDouble(value);
+            if (parsed <= 0) return 'Valor deve ser maior que zero';
+          } catch (_) {
+            return 'Valor inválido';
+          }
+          return null;
+        },
       ),
     );
 
@@ -1681,15 +1638,14 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             _buildTypeDropdown(),
           ],
         ),
-        categoryTrailing: TextButton.icon(
+        categoryTrailing: TextButton(
           onPressed: _showCategoriesDialog,
           style: TextButton.styleFrom(
             padding: EdgeInsets.zero,
             visualDensity: VisualDensity.compact,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
-          icon: const Icon(Icons.tune, size: 16),
-          label: const Text('Gerenciar categorias'),
+          child: const Text('Gerenciar categorias'),
         ),
         categoryContent: _buildCategorySection(),
         launchContent: Column(
@@ -1718,10 +1674,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                   runSpacing: 12,
                   children: [
                     SizedBox(width: itemWidth, child: _buildDescriptionField()),
-                    if (_entryMode == 0)
-                      SizedBox(width: itemWidth, child: valueField)
-                    else
-                      SizedBox(width: itemWidth, child: const SizedBox.shrink()),
+                    SizedBox(width: itemWidth, child: valueField),
                   ],
                 );
               },
@@ -1780,11 +1733,11 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
             const SizedBox(height: 12),
             _buildFieldWithIcon(
               icon: Icons.note,
-              label: 'Observações (Opcional)',
+              label: 'Observações (opcional)',
               child: TextFormField(
                 controller: _observationController,
                 decoration: buildOutlinedInputDecoration(
-                  label: 'Observações (Opcional)',
+                  label: 'Observações (opcional)',
                   icon: Icons.note,
                   alignLabelWithHint: true,
                 ),
@@ -1935,7 +1888,6 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                 onPressed: _isSaving ? null : _closeScreen,
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  minimumSize: const Size(0, 44),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -1945,8 +1897,9 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
               const Spacer(),
               FilledButton(
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  minimumSize: const Size(0, 44),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 18),
+                  backgroundColor: colorScheme.primary,
+                  disabledBackgroundColor: colorScheme.primary.withValues(alpha: 0.6),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -1956,9 +1909,12 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       )
-                    : Text(_saveButtonLabel()),
+                    : Text(
+                        _saveButtonLabel(),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
               ),
             ],
           ),

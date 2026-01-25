@@ -13,6 +13,7 @@ import '../services/holiday_service.dart';
 import '../utils/installment_utils.dart';
 import '../widgets/new_expense_dialog.dart';
 import '../ui/components/entry_card.dart';
+import '../ui/components/action_banner.dart';
 import '../ui/components/section_header.dart';
 import '../ui/widgets/date_pill.dart';
 import '../ui/widgets/mini_chip.dart';
@@ -49,6 +50,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
   late final VoidCallback _dateRangeListener;
   bool _isFabVisible = true;
   double _lastScrollOffset = 0;
+  Account? _selectedExpense;
 
   @override
   void initState() {
@@ -297,9 +299,43 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     final isCompactFab = media.size.height < 640 || media.size.width < 360;
     final fabRight = math.max(8.0, math.min(24.0, media.size.width * 0.02));
     final fabBottom = math.max(16.0, math.min(48.0, media.size.height * 0.08));
+    final colorScheme = Theme.of(context).colorScheme;
 
     final filteredExpenses = _applySelectedDateFilter(_visibleExpenses);
     final headerRow = _buildCardHeaderRow(context);
+    final selectionBanner = _selectedExpense == null
+        ? null
+        : Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: ActionBanner(
+              leadingIcon: Icons.credit_card,
+              text: '${cleanInstallmentDescription(_selectedExpense!.description)} – ${UtilBrasilFields.obterReal(_selectedExpense!.value)}',
+              actions: [
+                Tooltip(
+                  message: 'Editar',
+                  child: IconButton(
+                    onPressed: () => _showEditDialog(_selectedExpense!),
+                    constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                    icon: Icon(Icons.edit, color: colorScheme.primary),
+                  ),
+                ),
+                Tooltip(
+                  message: 'Excluir',
+                  child: IconButton(
+                    onPressed: () => _confirmDelete(_selectedExpense!),
+                    constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                    icon: Icon(Icons.delete_outline, color: colorScheme.error.withValues(alpha: 0.85)),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Fechar',
+                  onPressed: () => setState(() => _selectedExpense = null),
+                  constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                  icon: Icon(Icons.close, color: colorScheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          );
     final body = Focus(
       autofocus: true,
       onKeyEvent: (node, event) {
@@ -328,6 +364,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
             ],
             _buildSummaryStrip(),
             const SizedBox(height: 2),
+            if (selectionBanner != null) selectionBanner,
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -910,6 +947,9 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
       });
 
     return ListView.builder(
+      physics: const ClampingScrollPhysics(),
+      primary: false,
+      shrinkWrap: false,
       padding: const EdgeInsets.only(bottom: 96),
       itemCount: sortedDates.length,
       itemBuilder: (context, index) {
@@ -1019,7 +1059,15 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: InkWell(
         onTap: () => _showEditDialog(expense),
-        onLongPress: () => _showDetailsPopup(expense),
+        onLongPress: () {
+          setState(() {
+            if (_selectedExpense?.id == expense.id) {
+              _selectedExpense = null;
+            } else {
+              _selectedExpense = expense;
+            }
+          });
+        },
         borderRadius: BorderRadius.circular(16),
         child: EntryCard(
           datePill: DatePill(
@@ -1041,18 +1089,12 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
             onSelected: (value) {
               if (value == 'editar') {
                 _showEditDialog(expense);
-              } else if (value == 'mover') {
-                _showMoveDialog(expense);
-              } else if (value == 'detalhes') {
-                _showDetailsPopup(expense);
               } else if (value == 'excluir') {
                 _confirmDelete(expense);
               }
             },
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'editar', child: Text('Editar')),
-              const PopupMenuItem(value: 'mover', child: Text('Mover para outra fatura')),
-              const PopupMenuItem(value: 'detalhes', child: Text('Ver detalhes')),
               const PopupMenuItem(value: 'excluir', child: Text('Excluir')),
             ],
           ),
@@ -1062,6 +1104,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
   }
 
   // --- DIÁLOGO DE MOVER (COM TABELA DE SIMULAÇÃO RESTAURADA) ---
+  // ignore: unused_element
   Future<void> _showMoveDialog(Account expense) async {
     // 1. Carrega a série ANTES de abrir o diálogo
     List<Account> seriesPreview = [];
@@ -1201,6 +1244,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
       }));
   }
 
+  // ignore: unused_element
   void _showDetailsPopup(Account expense) {
     String purchased = expense.purchaseDate != null ? DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(expense.purchaseDate!)) : '-';
 

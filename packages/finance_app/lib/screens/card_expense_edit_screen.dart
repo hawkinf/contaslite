@@ -205,6 +205,7 @@ class _CardExpenseEditScreenState extends State<CardExpenseEditScreen> {
     return ValueListenableBuilder<DateTimeRange>(
       valueListenable: PrefsService.dateRangeNotifier,
       builder: (context, range, _) {
+        final colorScheme = Theme.of(context).colorScheme;
         return Scaffold(
       appBar: DateRangeAppBar(
           title: 'Editar Despesa',
@@ -366,35 +367,39 @@ class _CardExpenseEditScreenState extends State<CardExpenseEditScreen> {
         child: Row(
           children: [
             Expanded(
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.close),
-                label: const Text('Cancelar'),
+              child: OutlinedButton(
                 onPressed: _isSaving ? null : () => Navigator.pop(context),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
+                child: const Text('Cancelar'),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: FilledButton.icon(
+              child: FilledButton(
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 32),
-                  backgroundColor: AppColors.success,
-                  disabledBackgroundColor: AppColors.success.withValues(alpha: 0.6),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 18),
+                  backgroundColor: colorScheme.primary,
+                  disabledBackgroundColor: colorScheme.primary.withValues(alpha: 0.6),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
                 onPressed: _isSaving ? null : _saveExpense,
-                icon: _isSaving ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)) : const Icon(Icons.check_circle, size: 24),
-                label: Text(
-                  _isSaving ? 'Gravando...' : 'Gravar',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Text(
+                        'Gravar',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
               ),
             ),
           ],

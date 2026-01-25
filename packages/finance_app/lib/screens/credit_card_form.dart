@@ -215,7 +215,7 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
     final viewInsets = MediaQuery.of(context).viewInsets;
     final maxWidth = (screenSize.width * 0.92).clamp(320.0, 860.0);
     final availableHeight = screenSize.height - viewInsets.bottom;
-    final maxHeight = math.min(640.0, availableHeight * 0.9);
+    final maxHeight = math.min(560.0, availableHeight * 0.85);
 
     InputDecoration inputDecoration({
       required String label,
@@ -257,6 +257,7 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
       maxHeight: maxHeight,
       bodyPadding: EdgeInsets.zero,
       scrollBody: false,
+      shrinkWrap: true,
       body: Form(
         key: _formKey,
         child: TransactionFormBase(
@@ -487,64 +488,63 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
 
   Future<void> _showColorPicker() async {
     final colorScheme = Theme.of(context).colorScheme;
-    await showModalBottomSheet<void>(
+    await showDialog<void>(
       context: context,
-      showDragHandle: true,
-      backgroundColor: colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Escolher cor',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: _colors
-                    .map(
-                      (color) => InkWell(
-                        onTap: () {
-                          setState(() => _selectedColor = color.toARGB32());
-                          Navigator.pop(ctx);
-                        },
-                        borderRadius: BorderRadius.circular(99),
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: _selectedColor == color.toARGB32()
-                                  ? colorScheme.onSurface
-                                  : colorScheme.outlineVariant.withValues(alpha: 0.6),
-                              width: _selectedColor == color.toARGB32() ? 2 : 1,
-                            ),
-                          ),
-                          child: _selectedColor == color.toARGB32()
-                              ? Icon(
-                                  Icons.check,
-                                  size: 14,
-                                  color: foregroundColorFor(color),
-                                )
-                              : null,
-                        ),
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: colorScheme.surface,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Escolher cor',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
-                    )
-                    .toList(),
-              ),
-            ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: _colors
+                      .map(
+                        (color) => InkWell(
+                          onTap: () {
+                            setState(() => _selectedColor = color.toARGB32());
+                            Navigator.pop(ctx);
+                          },
+                          borderRadius: BorderRadius.circular(99),
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: _selectedColor == color.toARGB32()
+                                    ? colorScheme.onSurface
+                                    : colorScheme.outlineVariant.withValues(alpha: 0.6),
+                                width: _selectedColor == color.toARGB32() ? 2 : 1,
+                              ),
+                            ),
+                            child: _selectedColor == color.toARGB32()
+                                ? Icon(
+                                    Icons.check,
+                                    size: 14,
+                                    color: foregroundColorFor(color),
+                                  )
+                                : null,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ),
           ),
         );
       },

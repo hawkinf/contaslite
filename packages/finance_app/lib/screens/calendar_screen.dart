@@ -8,6 +8,9 @@ import '../services/holiday_service.dart';
 import '../services/prefs_service.dart';
 import '../utils/app_colors.dart';
 
+/// Modos de visualização do calendário
+enum CalendarViewMode { weekly, monthly, yearly }
+
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
 
@@ -16,7 +19,7 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
-  CalendarFormat _calendarFormat = CalendarFormat.month;
+  CalendarViewMode _viewMode = CalendarViewMode.monthly;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<String, List<Account>> _events = {};
@@ -92,7 +95,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       if (eventMonth == currentMonth && eventYear == currentYear) {
         for (var account in accounts) {
-          // Para recorrências, usar estimatedValue se value for 0
           final isRecurrent = account.isRecurrent || account.recurrenceId != null;
           final displayValue = (isRecurrent && account.value <= 0.01)
               ? (account.estimatedValue ?? account.value)
@@ -226,7 +228,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         });
       }
     } catch (e, stack) {
-      debugPrint('❌ Erro ao carregar eventos: $e');
+      debugPrint('Erro ao carregar eventos: $e');
       debugPrint('Stack: $stack');
       if (mounted) {
         setState(() => _isLoading = false);
@@ -240,8 +242,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return _events[key] ?? [];
   }
 
-  /// Calcula totais de um dia específico
-  /// Para contas recorrentes não lançadas (value == 0), usa estimatedValue
   (double pagar, double receber, int countPagar, int countReceber) _getDayTotals(DateTime day) {
     final events = _getEventsForDay(day);
     double totalPagar = 0;
@@ -250,7 +250,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     int countReceber = 0;
 
     for (var event in events) {
-      // Para recorrências, usar estimatedValue se value for 0
       final isRecurrent = event.isRecurrent || event.recurrenceId != null;
       final displayValue = (isRecurrent && event.value <= 0.01)
           ? (event.estimatedValue ?? event.value)
@@ -268,13 +267,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return (totalPagar, totalReceber, countPagar, countReceber);
   }
 
-  /// Mostra modal flutuante com detalhes do dia
   void _showDayDetailsModal(DateTime day) {
     final events = _getEventsForDay(day);
     if (events.isEmpty) return;
 
     final (totalPagar, totalReceber, countPagar, countReceber) = _getDayTotals(day);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
 
     showModalBottomSheet(
       context: context,
@@ -286,11 +284,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
         maxChildSize: 0.9,
         builder: (context, scrollController) => Container(
           decoration: BoxDecoration(
-            color: isDark ? Colors.grey.shade900 : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            color: colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
+                color: Colors.black.withValues(alpha: 0.15),
                 blurRadius: 20,
                 offset: const Offset(0, -5),
               ),
@@ -304,54 +302,51 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade400,
+                  color: colorScheme.outlineVariant,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
               // Header com data e totais
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    // Data
                     Text(
                       DateFormat('dd \'de\' MMMM \'de\' yyyy', 'pt_BR').format(day),
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black87,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                     Text(
                       DateFormat('EEEE', 'pt_BR').format(day),
                       style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
+                        fontSize: 13,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    // Cards de totais
+                    const SizedBox(height: 12),
+                    // Cards de totais compactos
                     Row(
                       children: [
                         Expanded(
-                          child: _buildTotalCard(
+                          child: _buildCompactTotalCard(
                             title: 'A Pagar',
                             value: totalPagar,
                             count: countPagar,
-                            color: Colors.red,
-                            icon: Icons.arrow_upward,
-                            isDark: isDark,
+                            color: AppColors.error,
+                            icon: Icons.arrow_upward_rounded,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(
-                          child: _buildTotalCard(
+                          child: _buildCompactTotalCard(
                             title: 'A Receber',
                             value: totalReceber,
                             count: countReceber,
-                            color: Colors.green,
-                            icon: Icons.arrow_downward,
-                            isDark: isDark,
+                            color: AppColors.success,
+                            icon: Icons.arrow_downward_rounded,
                           ),
                         ),
                       ],
@@ -359,12 +354,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ],
                 ),
               ),
-              const Divider(height: 1),
+              Divider(height: 1, color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
               // Lista de contas
               Expanded(
                 child: ListView.builder(
                   controller: scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   itemCount: events.length,
                   itemBuilder: (context, index) {
                     final account = events[index];
@@ -379,71 +374,71 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildTotalCard({
+  Widget _buildCompactTotalCard({
     required String title,
     required double value,
     required int count,
     required Color color,
     required IconData icon,
-    required bool isDark,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            color.withValues(alpha: isDark ? 0.3 : 0.15),
-            color.withValues(alpha: isDark ? 0.15 : 0.05),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 1,
-        ),
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: color, size: 16),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 16),
           ),
-          const SizedBox(height: 8),
-          Text(
-            UtilBrasilFields.obterReal(value),
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black87,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  UtilBrasilFields.obterReal(value),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
             ),
           ),
-          Text(
-            '$count ${count == 1 ? 'conta' : 'contas'}',
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey.shade600,
+          if (count > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -456,330 +451,568 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
   }
 
-  Widget _buildMonthNavigator() {
-    final monthYear = DateFormat('MMMM yyyy', 'pt_BR').format(_focusedDay);
-    final capitalizedMonth = monthYear[0].toUpperCase() + monthYear.substring(1);
+  void _changeWeek(int delta) {
+    setState(() {
+      _focusedDay = _focusedDay.add(Duration(days: 7 * delta));
+      _calculateMonthTotals();
+    });
+  }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(25),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          InkWell(
-            onTap: () => _changeMonth(-1),
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.chevron_left,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              capitalizedMonth,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          InkWell(
-            onTap: () => _changeMonth(1),
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.chevron_right,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  void _changeYear(int delta) {
+    setState(() {
+      _focusedDay = DateTime(_focusedDay.year + delta, _focusedDay.month, 1);
+      _calculateMonthTotals();
+    });
+  }
+
+  int _getWeekOfYear(DateTime date) {
+    final firstDayOfYear = DateTime(date.year, 1, 1);
+    final daysDiff = date.difference(firstDayOfYear).inDays;
+    return ((daysDiff + firstDayOfYear.weekday) / 7).ceil();
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final cellWidth = screenWidth / 7;
-    final dayOfWeekFontSize = cellWidth * 0.28;
-    final dayFontSize = cellWidth * 0.35;
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: isDark ? Colors.blue.shade900 : Colors.blue.shade700,
-        foregroundColor: Colors.white,
-        title: _buildMonthNavigator(),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.today),
-            tooltip: 'Ir para hoje',
-            onPressed: () {
-              setState(() {
-                _focusedDay = DateTime.now();
-                _selectedDay = DateTime.now();
-                _calculateMonthTotals();
-              });
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Atualizar',
-            onPressed: _loadEvents,
-          ),
-        ],
+    // No AppBar - main navigation is in HomeScreen
+    return _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : Column(
+            children: [
+              // Header compacto com navegacao + seletor de modo
+              _buildCompactHeader(colorScheme),
+              // Totais do periodo
+              _buildPeriodTotals(colorScheme),
+              // Conteudo principal baseado no modo
+              Expanded(
+                child: _buildCalendarContent(colorScheme, isDark),
+              ),
+            ],
+          );
+  }
+
+  /// Header compacto com navegacao e seletor de modo
+  Widget _buildCompactHeader(ColorScheme colorScheme) {
+    String periodLabel;
+    VoidCallback onPrevious;
+    VoidCallback onNext;
+
+    switch (_viewMode) {
+      case CalendarViewMode.weekly:
+        final weekNum = _getWeekOfYear(_focusedDay);
+        periodLabel = '${DateFormat('MMMM yyyy', 'pt_BR').format(_focusedDay)} - Semana $weekNum';
+        onPrevious = () => _changeWeek(-1);
+        onNext = () => _changeWeek(1);
+        break;
+      case CalendarViewMode.monthly:
+        periodLabel = DateFormat('MMMM yyyy', 'pt_BR').format(_focusedDay);
+        onPrevious = () => _changeMonth(-1);
+        onNext = () => _changeMonth(1);
+        break;
+      case CalendarViewMode.yearly:
+        periodLabel = _focusedDay.year.toString();
+        onPrevious = () => _changeYear(-1);
+        onNext = () => _changeYear(1);
+        break;
+    }
+
+    // Capitalizar primeira letra
+    periodLabel = periodLabel[0].toUpperCase() + periodLabel.substring(1);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+        ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                // Header com totais do mês
-                _buildMonthTotalsHeader(isDark),
-                // Calendário
-                Expanded(
-                  child: TableCalendar<Account>(
-                    locale: 'pt_BR',
-                    firstDay: DateTime.now().subtract(const Duration(days: 365)),
-                    lastDay: DateTime.now().add(const Duration(days: 365)),
-                    focusedDay: _focusedDay,
-                    calendarFormat: _calendarFormat,
-                    eventLoader: _getEventsForDay,
-                    startingDayOfWeek: StartingDayOfWeek.sunday,
-                    selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                    onDaySelected: (selectedDay, focusedDay) {
-                      setState(() {
-                        _selectedDay = selectedDay;
-                        _focusedDay = focusedDay;
-                      });
-                      _showDayDetailsModal(selectedDay);
-                    },
-                    onFormatChanged: (format) {
-                      setState(() {
-                        _calendarFormat = format;
-                      });
-                    },
-                    onPageChanged: (focusedDay) {
-                      setState(() {
-                        _focusedDay = focusedDay;
-                        _calculateMonthTotals();
-                      });
-                    },
-                    daysOfWeekHeight: 40,
-                    rowHeight: 80,
-                    headerVisible: false, // Escondemos o header padrão
-                    daysOfWeekStyle: DaysOfWeekStyle(
-                      weekdayStyle: TextStyle(
-                        fontSize: dayOfWeekFontSize,
-                        fontWeight: FontWeight.w900,
-                        color: isDark ? Colors.white : Colors.black,
-                      ),
-                      weekendStyle: TextStyle(
-                        fontSize: dayOfWeekFontSize,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.red.shade600,
-                      ),
-                    ),
-                    calendarStyle: CalendarStyle(
-                      markersMaxCount: 0,
-                      cellMargin: const EdgeInsets.all(2),
-                      defaultTextStyle: TextStyle(fontSize: dayFontSize),
-                      weekendTextStyle: TextStyle(
-                        fontSize: dayFontSize,
-                        color: Colors.red.shade400,
-                      ),
-                      outsideTextStyle: TextStyle(
-                        fontSize: dayFontSize,
-                        color: Colors.grey.shade400,
-                      ),
-                      todayDecoration: BoxDecoration(
-                        color: Colors.blue.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      todayTextStyle: TextStyle(
-                        fontSize: dayFontSize,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                      ),
-                      selectedDecoration: BoxDecoration(
-                        color: isDark ? AppColors.successDark.withValues(alpha: 0.3) : Colors.green.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      selectedTextStyle: TextStyle(
-                        fontSize: dayFontSize,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.successDark,
-                      ),
-                    ),
-                    calendarBuilders: CalendarBuilders(
-                      defaultBuilder: (context, day, focusedDay) {
-                        return _buildDayCell(day, isDark, dayFontSize, false, false);
-                      },
-                      todayBuilder: (context, day, focusedDay) {
-                        return _buildDayCell(day, isDark, dayFontSize, true, false);
-                      },
-                      selectedBuilder: (context, day, focusedDay) {
-                        return _buildDayCell(day, isDark, dayFontSize, false, true);
-                      },
-                      outsideBuilder: (context, day, focusedDay) {
-                        return _buildDayCell(day, isDark, dayFontSize * 0.8, false, false, isOutside: true);
-                      },
+      child: Column(
+        children: [
+          // Navegacao do periodo
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildNavButton(Icons.chevron_left, onPrevious, colorScheme),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: _pickMonthYear,
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: Text(
+                    periodLabel,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              _buildNavButton(Icons.chevron_right, onNext, colorScheme),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Seletor de modo
+          _buildModeSelector(colorScheme),
+        ],
+      ),
     );
   }
 
-  Widget _buildMonthTotalsHeader(bool isDark) {
+  Widget _buildNavButton(IconData icon, VoidCallback onTap, ColorScheme colorScheme) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: colorScheme.onSurfaceVariant, size: 20),
+      ),
+    );
+  }
+
+  /// Seletor de modo padronizado (Semanal/Mensal/Anual)
+  Widget _buildModeSelector(ColorScheme colorScheme) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey.shade900 : Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-            width: 1,
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildModeButton('Semanal', CalendarViewMode.weekly, colorScheme),
+          _buildModeButton('Mensal', CalendarViewMode.monthly, colorScheme),
+          _buildModeButton('Anual', CalendarViewMode.yearly, colorScheme),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModeButton(String label, CalendarViewMode mode, ColorScheme colorScheme) {
+    final isSelected = _viewMode == mode;
+    return GestureDetector(
+      onTap: () => setState(() => _viewMode = mode),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? colorScheme.primary.withValues(alpha: 0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
           ),
         ),
+      ),
+    );
+  }
+
+  /// Totais do periodo
+  Widget _buildPeriodTotals(ColorScheme colorScheme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildInlineTotalChip(
+              label: 'Pagar',
+              value: _totalPagarMes,
+              count: _countPagarMes,
+              color: AppColors.error,
+              colorScheme: colorScheme,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildInlineTotalChip(
+              label: 'Receber',
+              value: _totalReceberMes,
+              count: _countReceberMes,
+              color: AppColors.success,
+              colorScheme: colorScheme,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInlineTotalChip({
+    required String label,
+    required double value,
+    required int count,
+    required Color color,
+    required ColorScheme colorScheme,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Contas a Pagar
-          _buildHeaderTotal(
-            label: 'Contas a Pagar:',
-            value: _totalPagarMes,
-            count: _countPagarMes,
-            suffix: 'D',
-            color: Colors.red.shade700,
-            isDark: isDark,
+          Row(
+            children: [
+              Icon(
+                label == 'Pagar' ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                color: color,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+            ],
           ),
-          // Contas a Receber
-          _buildHeaderTotal(
-            label: 'Contas a Receber:',
-            value: _totalReceberMes,
-            count: _countReceberMes,
-            suffix: 'C',
-            color: Colors.green.shade700,
-            isDark: isDark,
+          Row(
+            children: [
+              Text(
+                UtilBrasilFields.obterReal(value),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              if (count > 0) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHeaderTotal({
-    required String label,
-    required double value,
-    required int count,
-    required String suffix,
-    required Color color,
-    required bool isDark,
-  }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          UtilBrasilFields.obterReal(value),
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        Text(
-          suffix,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        if (count > 0) ...[
-          const SizedBox(width: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              '$count',
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
+  /// Conteudo principal baseado no modo
+  Widget _buildCalendarContent(ColorScheme colorScheme, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: switch (_viewMode) {
+          CalendarViewMode.weekly => _buildWeeklyView(colorScheme, isDark),
+          CalendarViewMode.monthly => _buildMonthlyView(colorScheme, isDark),
+          CalendarViewMode.yearly => _buildYearlyView(colorScheme, isDark),
+        },
+      ),
+    );
+  }
+
+  /// MODO SEMANAL
+  Widget _buildWeeklyView(ColorScheme colorScheme, bool isDark) {
+    // Encontrar o inicio da semana (domingo)
+    final weekStart = _focusedDay.subtract(Duration(days: _focusedDay.weekday % 7));
+    final days = List.generate(7, (i) => weekStart.add(Duration(days: i)));
+
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        // Dias da semana em cards compactos
+        for (var day in days) _buildWeekDayCard(day, colorScheme, isDark),
       ],
     );
   }
 
-  Widget _buildDayCell(DateTime day, bool isDark, double fontSize, bool isToday, bool isSelected, {bool isOutside = false}) {
+  Widget _buildWeekDayCard(DateTime day, ColorScheme colorScheme, bool isDark) {
+    final (totalPagar, totalReceber, countPagar, countReceber) = _getDayTotals(day);
+    final hasEvents = countPagar > 0 || countReceber > 0;
+    final isToday = DateUtils.isSameDay(day, DateTime.now());
+    final isWeekend = day.weekday == DateTime.saturday || day.weekday == DateTime.sunday;
+    final dayName = DateFormat('EEE', 'pt_BR').format(day).toUpperCase();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: isToday
+            ? colorScheme.primary.withValues(alpha: 0.08)
+            : colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isToday
+              ? colorScheme.primary.withValues(alpha: 0.3)
+              : colorScheme.outlineVariant.withValues(alpha: 0.3),
+        ),
+      ),
+      child: InkWell(
+        onTap: hasEvents ? () => _showDayDetailsModal(day) : null,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              // Data
+              SizedBox(
+                width: 50,
+                child: Column(
+                  children: [
+                    Text(
+                      dayName,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: isWeekend ? AppColors.error : colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      '${day.day}',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: isToday ? colorScheme.primary : colorScheme.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Chip de HOJE
+              if (isToday) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'HOJE',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+              const Spacer(),
+              // Valores
+              if (hasEvents) ...[
+                if (countPagar > 0)
+                  _buildCompactValueBadge(totalPagar, countPagar, AppColors.error, Icons.arrow_upward_rounded),
+                if (countPagar > 0 && countReceber > 0)
+                  const SizedBox(width: 8),
+                if (countReceber > 0)
+                  _buildCompactValueBadge(totalReceber, countReceber, AppColors.success, Icons.arrow_downward_rounded),
+              ] else
+                Text(
+                  'Sem lancamentos',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactValueBadge(double value, int count, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 12),
+          const SizedBox(width: 4),
+          Text(
+            UtilBrasilFields.obterReal(value),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// MODO MENSAL
+  Widget _buildMonthlyView(ColorScheme colorScheme, bool isDark) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cellWidth = (screenWidth - 48) / 7; // 48 = margin + padding
+    final dayFontSize = (cellWidth * 0.32).clamp(12.0, 16.0);
+
+    return TableCalendar<Account>(
+      locale: 'pt_BR',
+      firstDay: DateTime.now().subtract(const Duration(days: 365)),
+      lastDay: DateTime.now().add(const Duration(days: 365)),
+      focusedDay: _focusedDay,
+      calendarFormat: CalendarFormat.month,
+      eventLoader: _getEventsForDay,
+      startingDayOfWeek: StartingDayOfWeek.sunday,
+      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+      onDaySelected: (selectedDay, focusedDay) {
+        setState(() {
+          _selectedDay = selectedDay;
+          _focusedDay = focusedDay;
+        });
+        _showDayDetailsModal(selectedDay);
+      },
+      onPageChanged: (focusedDay) {
+        setState(() {
+          _focusedDay = focusedDay;
+          _calculateMonthTotals();
+        });
+      },
+      daysOfWeekHeight: 36,
+      rowHeight: 70,
+      headerVisible: false,
+      daysOfWeekStyle: DaysOfWeekStyle(
+        weekdayStyle: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: colorScheme.onSurfaceVariant,
+        ),
+        weekendStyle: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: AppColors.error.withValues(alpha: 0.8),
+        ),
+      ),
+      calendarStyle: CalendarStyle(
+        markersMaxCount: 0,
+        cellMargin: const EdgeInsets.all(2),
+        defaultTextStyle: TextStyle(fontSize: dayFontSize),
+        weekendTextStyle: TextStyle(
+          fontSize: dayFontSize,
+          color: AppColors.error.withValues(alpha: 0.7),
+        ),
+        outsideTextStyle: TextStyle(
+          fontSize: dayFontSize,
+          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+        ),
+        todayDecoration: BoxDecoration(
+          color: colorScheme.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: colorScheme.primary.withValues(alpha: 0.5)),
+        ),
+        todayTextStyle: TextStyle(
+          fontSize: dayFontSize,
+          fontWeight: FontWeight.bold,
+          color: colorScheme.primary,
+        ),
+        selectedDecoration: BoxDecoration(
+          color: AppColors.success.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.5)),
+        ),
+        selectedTextStyle: TextStyle(
+          fontSize: dayFontSize,
+          fontWeight: FontWeight.bold,
+          color: AppColors.successDark,
+        ),
+      ),
+      calendarBuilders: CalendarBuilders(
+        defaultBuilder: (context, day, focusedDay) {
+          return _buildMonthDayCell(day, colorScheme, dayFontSize, false, false);
+        },
+        todayBuilder: (context, day, focusedDay) {
+          return _buildMonthDayCell(day, colorScheme, dayFontSize, true, false);
+        },
+        selectedBuilder: (context, day, focusedDay) {
+          return _buildMonthDayCell(day, colorScheme, dayFontSize, false, true);
+        },
+        outsideBuilder: (context, day, focusedDay) {
+          return _buildMonthDayCell(day, colorScheme, dayFontSize * 0.85, false, false, isOutside: true);
+        },
+      ),
+    );
+  }
+
+  Widget _buildMonthDayCell(DateTime day, ColorScheme colorScheme, double fontSize, bool isToday, bool isSelected, {bool isOutside = false}) {
     final (totalPagar, totalReceber, countPagar, countReceber) = _getDayTotals(day);
     final hasEvents = countPagar > 0 || countReceber > 0;
     final isWeekend = day.weekday == DateTime.saturday || day.weekday == DateTime.sunday;
 
-    // Cores do texto do dia
     Color dayTextColor;
     if (isOutside) {
-      dayTextColor = Colors.grey.shade400;
+      dayTextColor = colorScheme.onSurfaceVariant.withValues(alpha: 0.3);
     } else if (isToday) {
-      dayTextColor = Colors.blue;
+      dayTextColor = colorScheme.primary;
     } else if (isSelected) {
       dayTextColor = AppColors.successDark;
     } else if (isWeekend) {
-      dayTextColor = Colors.red.shade400;
+      dayTextColor = AppColors.error.withValues(alpha: 0.7);
     } else {
-      dayTextColor = isDark ? Colors.white : Colors.black87;
+      dayTextColor = colorScheme.onSurface;
     }
 
-    // Background do dia
     BoxDecoration? dayDecoration;
     if (isToday) {
       dayDecoration = BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue.withValues(alpha: 0.5), width: 1.5),
+        color: colorScheme.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.4)),
       );
     } else if (isSelected) {
       dayDecoration = BoxDecoration(
-        color: AppColors.successDark.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.successDark.withValues(alpha: 0.5), width: 1.5),
+        color: AppColors.success.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.4)),
       );
     }
 
@@ -789,7 +1022,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Número do dia
           Text(
             '${day.day}',
             style: TextStyle(
@@ -798,28 +1030,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
               color: dayTextColor,
             ),
           ),
-          // Badges de totais
           if (hasEvents && !isOutside) ...[
             const SizedBox(height: 2),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (countPagar > 0)
-                  _buildBadge(
-                    value: totalPagar,
-                    count: countPagar,
-                    color: Colors.red,
-                    isCompact: countReceber > 0,
-                  ),
+                  _buildMiniBadge(totalPagar, AppColors.error, countReceber > 0),
                 if (countPagar > 0 && countReceber > 0)
                   const SizedBox(width: 2),
                 if (countReceber > 0)
-                  _buildBadge(
-                    value: totalReceber,
-                    count: countReceber,
-                    color: Colors.green,
-                    isCompact: countPagar > 0,
-                  ),
+                  _buildMiniBadge(totalReceber, AppColors.success, countPagar > 0),
               ],
             ),
           ],
@@ -828,42 +1049,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildBadge({
-    required double value,
-    required int count,
-    required Color color,
-    required bool isCompact,
-  }) {
-    // Formatar valor de forma compacta
+  Widget _buildMiniBadge(double value, Color color, bool isCompact) {
     String formattedValue;
     if (value >= 1000000) {
       formattedValue = '${(value / 1000000).toStringAsFixed(1)}M';
     } else if (value >= 1000) {
-      formattedValue = '${(value / 1000).toStringAsFixed(1)}K';
+      formattedValue = '${(value / 1000).toStringAsFixed(0)}K';
     } else {
       formattedValue = value.toStringAsFixed(0);
     }
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isCompact ? 3 : 4,
+        horizontal: isCompact ? 2 : 3,
         vertical: 1,
       ),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(6),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.4),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         formattedValue,
         style: TextStyle(
-          fontSize: isCompact ? 8 : 9,
+          fontSize: isCompact ? 7 : 8,
           fontWeight: FontWeight.bold,
           color: Colors.white,
         ),
@@ -871,12 +1079,180 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  /// MODO ANUAL
+  Widget _buildYearlyView(ColorScheme colorScheme, bool isDark) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(12),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        childAspectRatio: 1.0,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemCount: 12,
+      itemBuilder: (context, index) {
+        final month = index + 1;
+        return _buildMiniMonthCard(month, colorScheme, isDark);
+      },
+    );
+  }
+
+  Widget _buildMiniMonthCard(int month, ColorScheme colorScheme, bool isDark) {
+    final monthDate = DateTime(_focusedDay.year, month, 1);
+    final monthName = DateFormat('MMM', 'pt_BR').format(monthDate);
+    final isCurrentMonth = month == DateTime.now().month && _focusedDay.year == DateTime.now().year;
+
+    // Calcular totais do mes
+    double totalPagar = 0;
+    double totalReceber = 0;
+    int countPagar = 0;
+    int countReceber = 0;
+
+    _events.forEach((dateKey, accounts) {
+      final parts = dateKey.split('-');
+      final eventYear = int.parse(parts[0]);
+      final eventMonth = int.parse(parts[1]);
+
+      if (eventMonth == month && eventYear == _focusedDay.year) {
+        for (var account in accounts) {
+          final isRecurrent = account.isRecurrent || account.recurrenceId != null;
+          final displayValue = (isRecurrent && account.value <= 0.01)
+              ? (account.estimatedValue ?? account.value)
+              : account.value;
+
+          if (_recebimentosTypeIds.contains(account.typeId)) {
+            totalReceber += displayValue;
+            countReceber++;
+          } else {
+            totalPagar += displayValue;
+            countPagar++;
+          }
+        }
+      }
+    });
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _focusedDay = DateTime(_focusedDay.year, month, 1);
+          _viewMode = CalendarViewMode.monthly;
+          _calculateMonthTotals();
+        });
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: isCurrentMonth
+              ? colorScheme.primary.withValues(alpha: 0.08)
+              : colorScheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isCurrentMonth
+                ? colorScheme.primary.withValues(alpha: 0.3)
+                : colorScheme.outlineVariant.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Nome do mes
+            Text(
+              monthName.toUpperCase(),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: isCurrentMonth ? colorScheme.primary : colorScheme.onSurface,
+              ),
+            ),
+            if (isCurrentMonth) ...[
+              const SizedBox(height: 2),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: colorScheme.primary,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'ATUAL',
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 6),
+            // Mini totais
+            if (countPagar > 0 || countReceber > 0) ...[
+              if (countPagar > 0)
+                _buildMiniTotalRow(totalPagar, AppColors.error, Icons.arrow_upward_rounded),
+              if (countReceber > 0)
+                _buildMiniTotalRow(totalReceber, AppColors.success, Icons.arrow_downward_rounded),
+            ] else
+              Text(
+                'Sem lancamentos',
+                style: TextStyle(
+                  fontSize: 9,
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                  fontStyle: FontStyle.italic,
+                ),
+                textAlign: TextAlign.center,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniTotalRow(double value, Color color, IconData icon) {
+    String formattedValue;
+    if (value >= 1000000) {
+      formattedValue = '${(value / 1000000).toStringAsFixed(1)}M';
+    } else if (value >= 1000) {
+      formattedValue = '${(value / 1000).toStringAsFixed(0)}K';
+    } else {
+      formattedValue = UtilBrasilFields.obterReal(value);
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 10),
+        const SizedBox(width: 2),
+        Text(
+          formattedValue,
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _pickMonthYear() async {
+    final result = await showDatePicker(
+      context: context,
+      initialDate: _focusedDay,
+      firstDate: DateTime.now().subtract(const Duration(days: 365 * 5)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+      initialDatePickerMode: DatePickerMode.year,
+    );
+    if (result != null) {
+      setState(() {
+        _focusedDay = result;
+        _calculateMonthTotals();
+      });
+    }
+  }
+
   Widget _buildEventTile(Account account) {
+    final colorScheme = Theme.of(context).colorScheme;
     final isCard = account.cardBrand != null;
     final isRecurrent = account.isRecurrent || account.recurrenceId != null;
     final isPrevisao = isRecurrent && account.id == null;
     final isRecebimento = _recebimentosTypeIds.contains(account.typeId);
-    // Para recorrências, usar estimatedValue se value for 0
     final displayValue = (isRecurrent && account.value <= 0.01)
         ? (account.estimatedValue ?? account.value)
         : account.value;
@@ -885,13 +1261,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
     Color cardBgColor;
     if (isRecebimento) {
       valueColor = AppColors.successDark;
-      cardBgColor = Colors.green.withValues(alpha: 0.1);
+      cardBgColor = AppColors.success.withValues(alpha: 0.08);
     } else if (isCard) {
       valueColor = AppColors.cardPurple;
-      cardBgColor = Colors.purple.withValues(alpha: 0.1);
+      cardBgColor = Colors.purple.withValues(alpha: 0.08);
     } else {
-      valueColor = Colors.red.shade700;
-      cardBgColor = Colors.red.withValues(alpha: 0.1);
+      valueColor = AppColors.error;
+      cardBgColor = AppColors.error.withValues(alpha: 0.08);
     }
 
     IconData leadingIcon;
@@ -902,40 +1278,44 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ? Color(account.cardColor!)
           : Colors.purple;
     } else if (isRecebimento) {
-      leadingIcon = Icons.arrow_downward;
-      iconBgColor = Colors.green;
+      leadingIcon = Icons.arrow_downward_rounded;
+      iconBgColor = AppColors.success;
     } else {
-      leadingIcon = Icons.arrow_upward;
-      iconBgColor = Colors.red;
+      leadingIcon = Icons.arrow_upward_rounded;
+      iconBgColor = AppColors.error;
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
+      margin: const EdgeInsets.symmetric(vertical: 3),
       decoration: BoxDecoration(
         color: cardBgColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: valueColor.withValues(alpha: 0.3),
-          width: 1,
+          color: valueColor.withValues(alpha: 0.2),
         ),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
         leading: Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: iconBgColor.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(10),
+            color: iconBgColor.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             leadingIcon,
             color: iconBgColor,
-            size: 20,
+            size: 18,
           ),
         ),
         title: Text(
           account.description,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            color: colorScheme.onSurface,
+          ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -943,16 +1323,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
           children: [
             if (isPrevisao)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                margin: const EdgeInsets.only(right: 6),
                 decoration: BoxDecoration(
                   color: Colors.orange.shade100,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(3),
                 ),
                 child: Text(
-                  'PREVISÃO',
+                  'PREVISAO',
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 8,
                     fontWeight: FontWeight.bold,
                     color: Colors.orange.shade800,
                   ),
@@ -960,48 +1340,35 @@ class _CalendarScreenState extends State<CalendarScreen> {
               )
             else if (isRecurrent)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                margin: const EdgeInsets.only(right: 6),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade100,
-                  borderRadius: BorderRadius.circular(4),
+                  color: AppColors.success.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(3),
                 ),
-                child: Text(
-                  'LANÇADO',
+                child: const Text(
+                  'LANCADO',
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 8,
                     fontWeight: FontWeight.bold,
-                    color: Colors.green.shade800,
+                    color: AppColors.successDark,
                   ),
                 ),
               ),
             if (isCard)
               Text(
                 '${account.cardBank} - ${account.cardBrand}',
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),
               ),
           ],
         ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              UtilBrasilFields.obterReal(displayValue),
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: valueColor,
-              ),
-            ),
-            Text(
-              isRecebimento ? 'Recebimento' : 'Pagamento',
-              style: TextStyle(
-                fontSize: 10,
-                color: valueColor.withValues(alpha: 0.7),
-              ),
-            ),
-          ],
+        trailing: Text(
+          UtilBrasilFields.obterReal(displayValue),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+            color: valueColor,
+          ),
         ),
       ),
     );

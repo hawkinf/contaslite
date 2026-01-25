@@ -3750,45 +3750,58 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
             );
           },
           child: Transform.scale(
-            scale: 0.92,
+            scale: 1,
             alignment: Alignment.topCenter,
             child: Card(
-              elevation: 1,
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              elevation: 0,
+              color: Colors.transparent,
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(6),
                 child: Column(
                   children: [
-                    Column(
-                      children: [
-                        MonthHeader(
-                          title: '${monthNamesComplete[startOfWeek.month - 1].toUpperCase()} ${startOfWeek.year}',
-                          subtitle: 'Semana #$weekNumber',
-                          onPrevious: () => _changeWeek(-1),
-                          onNext: () => _changeWeek(1),
+                    Card(
+                      elevation: 1,
+                      color: colorScheme.surface,
+                      shadowColor: colorScheme.shadow.withValues(alpha: 0.12),
+                      surfaceTintColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(
+                          color: colorScheme.outlineVariant.withValues(alpha: 0.6),
                         ),
-                        const SizedBox(height: AppSpacing.md),
-                        FilterBar(
-                          options: const [
-                            FilterBarOption(value: 'semanal', label: 'Semanal'),
-                            FilterBarOption(value: 'mensal', label: 'Mensal'),
-                            FilterBarOption(value: 'anual', label: 'Anual'),
-                          ],
-                          selectedValue: _calendarType,
-                          onSelected: (type) {
-                            setState(() {
-                              _calendarType = type;
-                            });
-                            _savePreferences();
-                          },
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        Row(
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+                        child: Column(
                           children: [
+                            MonthHeader(
+                              title: '${monthNamesComplete[startOfWeek.month - 1].toUpperCase()} ${startOfWeek.year}',
+                              subtitle: 'Semana #$weekNumber',
+                              onPrevious: () => _changeWeek(-1),
+                              onNext: () => _changeWeek(1),
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            FilterBar(
+                              options: const [
+                                FilterBarOption(value: 'semanal', label: 'Semanal'),
+                                FilterBarOption(value: 'mensal', label: 'Mensal'),
+                                FilterBarOption(value: 'anual', label: 'Anual'),
+                              ],
+                              selectedValue: _calendarType,
+                              onSelected: (type) {
+                                setState(() {
+                                  _calendarType = type;
+                                });
+                                _savePreferences();
+                              },
+                            ),
+                            const SizedBox(height: AppSpacing.xs),
+                            Row(
+                              children: [
                             // Card A PAGAR
                             Expanded(
                               child: Container(
-                                padding: const EdgeInsets.all(12),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: Color.alphaBlend(
                                     colorScheme.error.withValues(alpha: 0.08),
@@ -3812,7 +3825,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                         letterSpacing: 0.5,
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 6),
                                     Row(
                                       children: [
                                         Container(
@@ -3828,7 +3841,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                             size: 18,
                                           ),
                                         ),
-                                        const SizedBox(width: 10),
+                                        const SizedBox(width: 6),
                                         Expanded(
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3840,7 +3853,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                 child: Text(
                                                   moneyFormat.format(displayWeekPayTotal),
                                                   style: TextStyle(
-                                                    fontSize: 18,
+                                                    fontSize: 17,
                                                     fontWeight: FontWeight.w900,
                                                     color: colorScheme.error,
                                                     height: 1.1,
@@ -3851,7 +3864,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                               Text(
                                                 'Previsto ${moneyFormat.format(weekPayPrevistoTotal)}',
                                                 style: TextStyle(
-                                                  fontSize: 10,
+                                                  fontSize: 9,
                                                   color: colorScheme.onSurfaceVariant,
                                                   fontWeight: FontWeight.w500,
                                                 ),
@@ -3867,11 +3880,11 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 10),
                             // Card A RECEBER
                             Expanded(
                               child: Container(
-                                padding: const EdgeInsets.all(12),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: Color.alphaBlend(
                                     colorScheme.primary.withValues(alpha: 0.08),
@@ -3895,7 +3908,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                         letterSpacing: 0.5,
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 6),
                                     Row(
                                       children: [
                                         Container(
@@ -3911,7 +3924,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                             size: 18,
                                           ),
                                         ),
-                                        const SizedBox(width: 10),
+                                        const SizedBox(width: 6),
                                         Expanded(
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -3923,7 +3936,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                 child: Text(
                                                   moneyFormat.format(displayWeekReceiveTotal),
                                                   style: TextStyle(
-                                                    fontSize: 18,
+                                                    fontSize: 17,
                                                     fontWeight: FontWeight.w900,
                                                     color: colorScheme.primary,
                                                     height: 1.1,
@@ -3934,7 +3947,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                               Text(
                                                 'Previsto ${moneyFormat.format(weekReceivePrevistoTotal)}',
                                                 style: TextStyle(
-                                                  fontSize: 10,
+                                                  fontSize: 9,
                                                   color: colorScheme.onSurfaceVariant,
                                                   fontWeight: FontWeight.w500,
                                                 ),
@@ -3950,16 +3963,28 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 ),
                               ),
                             ),
+                              ],
+                            ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            children: weekDays.map((day) {
+                    const SizedBox(height: 6),
+                    Card(
+                      elevation: 1,
+                      color: colorScheme.surface,
+                      shadowColor: colorScheme.shadow.withValues(alpha: 0.12),
+                      surfaceTintColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: BorderSide(
+                          color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        child: Column(
+                          children: weekDays.map((day) {
                               final now = DateTime.now();
                               final isToday = day.date.year == now.year && day.date.month == now.month && day.date.day == now.day;
                               final holidayKey = '${day.date.year}-${day.date.month.toString().padLeft(2, '0')}-${day.date.day.toString().padLeft(2, '0')}';
@@ -3997,8 +4022,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 child: Stack(
                                   children: [
                                     Container(
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      padding: const EdgeInsets.all(10),
+                                      margin: const EdgeInsets.only(bottom: 4),
+                                      padding: const EdgeInsets.all(7),
                                       decoration: BoxDecoration(
                                         color: bgColor,
                                         borderRadius: BorderRadius.circular(8),
@@ -4301,15 +4326,15 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                                   ],
                                                 ],
                                               ),
-                                              const SizedBox(height: 8),
+                                              const SizedBox(height: 5),
                                               if (payAccounts.isEmpty && receiveAccounts.isEmpty)
                                                 Padding(
-                                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                                  padding: const EdgeInsets.symmetric(vertical: 6),
                                                   child: Center(
                                                     child: Text(
                                                       'Sem lançamentos',
                                                       style: const TextStyle(
-                                                        fontSize: 12,
+                                                        fontSize: 10,
                                                         color: Color(0xFF9CA3AF),
                                                         fontStyle: FontStyle.italic,
                                                       ),
@@ -4446,10 +4471,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                   ],
                                 ),
                               );
-                            }).toList(),
-                          ),
+                          }).toList(),
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),

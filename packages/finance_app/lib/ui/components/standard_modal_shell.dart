@@ -13,6 +13,8 @@ class StandardModalShell extends StatelessWidget {
   final bool scrollBody;
   final double maxWidth;
   final double maxHeight;
+  /// Se true, o modal ajusta sua altura ao conteúdo (não expande até maxHeight)
+  final bool shrinkWrap;
 
   const StandardModalShell({
     super.key,
@@ -26,6 +28,7 @@ class StandardModalShell extends StatelessWidget {
     this.scrollBody = true,
     this.maxWidth = 860,
     this.maxHeight = 850,
+    this.shrinkWrap = false,
   });
 
   @override
@@ -35,6 +38,13 @@ class StandardModalShell extends StatelessWidget {
       padding: bodyPadding,
       child: body,
     );
+
+    // Se shrinkWrap, não usa Expanded (ajusta ao conteúdo)
+    final bodyWidget = shrinkWrap
+        ? (scrollBody ? SingleChildScrollView(child: content) : content)
+        : Expanded(
+            child: scrollBody ? SingleChildScrollView(child: content) : content,
+          );
 
     return Dialog(
       insetPadding: EdgeInsets.zero,
@@ -58,6 +68,7 @@ class StandardModalShell extends StatelessWidget {
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(
+            mainAxisSize: shrinkWrap ? MainAxisSize.min : MainAxisSize.max,
             children: [
               AppModalHeader(
                 title: title,
@@ -65,9 +76,7 @@ class StandardModalShell extends StatelessWidget {
                 actions: actions,
                 onClose: onClose,
               ),
-              Expanded(
-                child: scrollBody ? SingleChildScrollView(child: content) : content,
-              ),
+              bodyWidget,
               if (footer != null) footer!,
             ],
           ),

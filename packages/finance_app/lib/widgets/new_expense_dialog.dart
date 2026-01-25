@@ -420,27 +420,21 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
     Widget? suffixIcon,
   }) {
     final colorScheme = Theme.of(context).colorScheme;
+    final baseBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: Colors.grey.shade400),
+    );
     return InputDecoration(
       labelText: label,
+      labelStyle: const TextStyle(fontSize: 12),
       hintText: hintText,
       helperText: helperText,
       prefixIcon: icon != null ? Icon(icon) : null,
-      prefixIconConstraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-      prefixIconColor: colorScheme.onSurfaceVariant,
       suffixIcon: suffixIcon,
-      filled: true,
-      fillColor: colorScheme.surfaceContainerLow,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: colorScheme.primary.withValues(alpha: 0.6)),
+      border: baseBorder,
+      enabledBorder: baseBorder,
+      focusedBorder: baseBorder.copyWith(
+        borderSide: BorderSide(color: colorScheme.primary, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
     );
@@ -454,64 +448,63 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
 
   Future<void> _showColorPicker() async {
     final colorScheme = Theme.of(context).colorScheme;
-    await showModalBottomSheet<void>(
+    await showDialog<void>(
       context: context,
-      showDragHandle: true,
-      backgroundColor: colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Escolher cor',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: _colors.map((color) {
-                  final colorInt = color.toARGB32();
-                  final isSelected = _selectedColor == colorInt;
-                  return InkWell(
-                    onTap: () {
-                      setState(() => _selectedColor = colorInt);
-                      Navigator.pop(ctx);
-                    },
-                    borderRadius: BorderRadius.circular(99),
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected
-                              ? colorScheme.onSurface
-                              : colorScheme.outlineVariant.withValues(alpha: 0.6),
-                          width: isSelected ? 2 : 1,
-                        ),
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: colorScheme.surface,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Escolher cor',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
-                      child: isSelected
-                          ? Icon(
-                              Icons.check,
-                              size: 14,
-                              color: foregroundColorFor(color),
-                            )
-                          : null,
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: _colors.map((color) {
+                    final colorInt = color.toARGB32();
+                    final isSelected = _selectedColor == colorInt;
+                    return InkWell(
+                      onTap: () {
+                        setState(() => _selectedColor = colorInt);
+                        Navigator.pop(ctx);
+                      },
+                      borderRadius: BorderRadius.circular(99),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected
+                                ? colorScheme.onSurface
+                                : colorScheme.outlineVariant.withValues(alpha: 0.6),
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        child: isSelected
+                            ? Icon(
+                                Icons.check,
+                                size: 14,
+                                color: foregroundColorFor(color),
+                              )
+                            : null,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -886,23 +879,23 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
     return Form(
       key: _formKey,
       child: LancamentoFormPadrao(
-        useScroll: false,
-        typeContent: Row(
-          children: [
-            Icon(Icons.credit_card, color: colorScheme.onSurfaceVariant),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Cartão: $displayTitle',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-            ),
-          ],
+        useScroll: true,
+        typeContent: TextFormField(
+          initialValue: displayTitle,
+          readOnly: true,
+          decoration: _inputDecoration(
+            context,
+            label: 'Cartão selecionado',
+            icon: Icons.credit_card,
+          ),
         ),
         categoryTrailing: TextButton(
           onPressed: _openCategoriesManager,
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.zero,
+            visualDensity: VisualDensity.compact,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
           child: const Text('Gerenciar categorias'),
         ),
         categoryContent: Column(
@@ -930,46 +923,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                 ),
               )
             else ...[
-              DropdownButtonFormField<AccountType>(
-                key: const ValueKey('expense_type_dropdown'),
-                initialValue: _getValidatedSelectedType(),
-                decoration: _inputDecoration(
-                  context,
-                  label: 'Conta a Pagar',
-                  icon: Icons.account_balance_wallet,
-                ),
-                items: _typesList
-                    .map((type) => DropdownMenuItem(
-                          value: type,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(type.logo ?? '📁', style: const TextStyle(fontSize: 18)),
-                              const SizedBox(width: 8),
-                              Text(type.name),
-                            ],
-                          ),
-                        ))
-                    .toList(),
-                selectedItemBuilder: (context) {
-                  return _typesList
-                      .map((type) => Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text('${type.logo ?? '📁'} ${type.name}'),
-                          ))
-                      .toList();
-                },
-                onChanged: (val) {
-                  setState(() {
-                    _selectedType = val;
-                    _selectedCategory = null;
-                    _categories = [];
-                  });
-                  _reloadCategoriesForSelectedType();
-                },
-                validator: (val) => val == null ? 'Selecione a conta a pagar' : null,
-              ),
-              const SizedBox(height: 12),
               if (_categories.isNotEmpty)
                 DropdownButtonFormField<AccountCategory>(
                   key: const ValueKey('expense_category_dropdown'),
@@ -1016,6 +969,61 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
             ],
           ],
         ),
+        extraClassificationContent: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_typesList.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+                ),
+                child: const Text('Cadastre uma conta a pagar para classificar a despesa.'),
+              )
+            else
+              DropdownButtonFormField<AccountType>(
+                key: const ValueKey('expense_type_dropdown'),
+                initialValue: _getValidatedSelectedType(),
+                decoration: _inputDecoration(
+                  context,
+                  label: 'Conta a Pagar',
+                  icon: Icons.account_balance_wallet,
+                ),
+                items: _typesList
+                    .map((type) => DropdownMenuItem(
+                          value: type,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(type.logo ?? '📁', style: const TextStyle(fontSize: 18)),
+                              const SizedBox(width: 8),
+                              Text(type.name),
+                            ],
+                          ),
+                        ))
+                    .toList(),
+                selectedItemBuilder: (context) {
+                  return _typesList
+                      .map((type) => Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text('${type.logo ?? '📁'} ${type.name}'),
+                          ))
+                      .toList();
+                },
+                onChanged: (val) {
+                  setState(() {
+                    _selectedType = val;
+                    _selectedCategory = null;
+                    _categories = [];
+                  });
+                  _reloadCategoriesForSelectedType();
+                },
+                validator: (val) => val == null ? 'Selecione a conta a pagar' : null,
+              ),
+          ],
+        ),
         launchContent: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1040,7 +1048,7 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                 decoration: _inputDecoration(
                   context,
                   label: 'Quantidade de Parcelas',
-                  icon: Icons.format_list_numbered,
+                  icon: Icons.repeat,
                 ),
                 readOnly: _isEditing,
                 validator: (v) {
@@ -1077,7 +1085,7 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                     textCapitalization: TextCapitalization.sentences,
                     decoration: _inputDecoration(
                       context,
-                      label: 'Descrição da Compra',
+                      label: 'Descrição',
                       icon: Icons.description_outlined,
                     ),
                     onTap: () {
@@ -1279,9 +1287,34 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
 
     final title = _isEditing ? 'Editar Despesa Cartão' : 'Nova Despesa Cartão';
 
+    Widget headerChip(String label) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurfaceVariant,
+              ),
+        ),
+      );
+    }
+
+    final headerActions = <Widget>[];
+    if (widget.card.bestBuyDay != null) {
+      headerActions.add(headerChip('Fech: ${widget.card.bestBuyDay!.toString().padLeft(2, '0')}'));
+    }
+    headerActions.add(headerChip('Venc: ${widget.card.dueDay.toString().padLeft(2, '0')}'));
+
     return StandardModalShell(
       title: title,
       onClose: () => Navigator.pop(context),
+      actions: headerActions,
       maxWidth: maxWidth,
       maxHeight: maxHeight,
       bodyPadding: EdgeInsets.zero,
@@ -1296,9 +1329,7 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
         ),
         child: Row(
           children: [
-            OutlinedButton.icon(
-              icon: const Icon(Icons.close),
-              label: const Text('Cancelar'),
+            OutlinedButton(
               onPressed: _isSaving ? null : () => Navigator.pop(context),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -1306,29 +1337,29 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
+              child: const Text('Cancelar'),
             ),
             const Spacer(),
-            FilledButton.icon(
+            FilledButton(
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 18),
-                backgroundColor: AppColors.success,
-                disabledBackgroundColor: AppColors.success.withValues(alpha: 0.6),
+                backgroundColor: colorScheme.primary,
+                disabledBackgroundColor: colorScheme.primary.withValues(alpha: 0.6),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
               onPressed: _isSaving ? null : _saveExpense,
-              icon: _isSaving
+              child: _isSaving
                   ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
-                  : const Icon(Icons.check_circle, size: 20),
-              label: Text(
-                _isSaving ? 'Gravando...' : 'Gravar',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
+                  : const Text(
+                      'Gravar',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
             ),
           ],
         ),

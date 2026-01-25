@@ -170,7 +170,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   
   // Novos filtros
   bool _hidePaidAccounts = true; // Ocultar contas pagas/recebidas (true = oculta)
-  String _periodFilter = 'month'; // 'month', 'currentWeek', 'nextWeek'
+  String _periodFilter = 'month'; // 'today', 'tomorrow', 'yesterday', 'currentWeek', 'nextWeek', 'month'
   // Controle do FAB durante scroll
   bool _isFabVisible = true;
   
@@ -295,24 +295,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
     DateTime end;
 
     switch (filter) {
+      case 'today':
+        start = DateTime(now.year, now.month, now.day);
+        end = start;
+        break;
+      case 'tomorrow':
+        start = DateTime(now.year, now.month, now.day + 1);
+        end = start;
+        break;
+      case 'yesterday':
+        start = DateTime(now.year, now.month, now.day - 1);
+        end = start;
+        break;
       case 'currentWeek':
-        // Início da semana (domingo) até fim (sábado)
-        final weekday = now.weekday % 7; // Domingo = 0
-        start = DateTime(now.year, now.month, now.day - weekday);
+        // Semana corrente (segunda a domingo)
+        final weekdayIndex = now.weekday - 1; // Segunda = 0
+        start = DateTime(now.year, now.month, now.day - weekdayIndex);
         end = start.add(const Duration(days: 6));
         break;
       case 'nextWeek':
-        // Próxima semana
-        final weekday = now.weekday % 7;
-        final nextSunday = DateTime(now.year, now.month, now.day - weekday + 7);
-        start = nextSunday;
+        // Próxima semana (segunda a domingo)
+        final weekdayIndex = now.weekday - 1;
+        final nextMonday = DateTime(now.year, now.month, now.day - weekdayIndex + 7);
+        start = nextMonday;
         end = start.add(const Duration(days: 6));
         break;
       case 'month':
       default:
-        // Mês inteiro
-        start = DateTime(_startDate.year, _startDate.month, 1);
-        end = DateTime(_startDate.year, _startDate.month + 1, 0);
+        // Mês atual
+        start = DateTime(now.year, now.month, 1);
+        end = DateTime(now.year, now.month + 1, 0);
         break;
     }
 
@@ -1189,6 +1201,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       leadingIcon: isCard ? Icons.credit_card : Icons.info_outline,
                       text: '$categoryStr – $descStr – $valueStr',
                       actions: [
+                        if (isCard)
+                          Tooltip(
+                            message: 'Nova despesa',
+                            child: IconButton(
+                              onPressed: () => _showExpenseDialog(selectedAccount),
+                              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                              icon: Icon(Icons.add_shopping_cart, color: colorScheme.primary),
+                            ),
+                          ),
                         if (onLaunch != null)
                           Tooltip(
                             message: launchLabel ?? 'Lançar',
@@ -1307,6 +1328,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             : NotificationListener<UserScrollNotification>(
                                 onNotification: _handleScrollNotification,
                                 child: ListView.builder(
+                                  physics: const ClampingScrollPhysics(),
+                                  primary: false,
+                                  shrinkWrap: false,
                                   padding: const EdgeInsets.fromLTRB(0, 8, 0, 110),
                                   itemCount: _displayList.length,
                                   itemBuilder: (context, index) {
@@ -1557,10 +1581,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     // Configurações de Cor e Estilo
-    bool isCard = account.cardBrand != null;
-    bool isRecurrent = account.isRecurrent || account.recurrenceId != null;
-
     final String? typeName = _typeNames[account.typeId]?.toLowerCase();
+    bool isCard = account.cardBrand != null || (typeName?.contains('cart') ?? false);
+    bool isRecurrent = account.isRecurrent || account.recurrenceId != null;
     final bool isRecebimento = _isRecebimentosFilter || (typeName != null && typeName.contains('receb'));
     final colorScheme = Theme.of(context).colorScheme;
     final breakdown = isCard ? CardBreakdown.parse(account.observation) : const CardBreakdown(total: 0, installments: 0, oneOff: 0, subscriptions: 0);
@@ -1732,11 +1755,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     if (isCard) {
-      menuActions.add(_MenuAction(
-        label: 'Nova despesa',
-        icon: Icons.add_shopping_cart,
-        onTap: () => _showExpenseDialog(account),
-      ));
+      // Nova despesa fica no ActionBanner quando houver seleção
     }
 
     if (isPaid) {
