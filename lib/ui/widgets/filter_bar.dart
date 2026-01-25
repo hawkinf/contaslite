@@ -49,7 +49,7 @@ class FilterBar extends StatelessWidget {
         visualDensity: VisualDensity.compact,
         foregroundColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return colorScheme.onPrimary;
+            return colorScheme.primary;
           }
           return colorScheme.onSurfaceVariant;
         }),
@@ -57,7 +57,7 @@ class FilterBar extends StatelessWidget {
           if (states.contains(WidgetState.selected)) {
             return colorScheme.primary.withValues(alpha: 0.12);
           }
-          return colorScheme.surface;
+          return Colors.transparent;
         }),
         side: WidgetStateProperty.all(
           BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.35)),

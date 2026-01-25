@@ -380,19 +380,21 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     }
 
     // Em desktop, usar botão
-    return SizedBox(
-      height: 32,
-      child: ElevatedButton(
-        onPressed: _goToToday,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          foregroundColor: Theme.of(context).colorScheme.onPrimary,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          textStyle: const TextStyle(fontWeight: FontWeight.w700),
-          elevation: 0,
-        ),
-        child: const Text('Hoje'),
+    return ActionChip(
+      onPressed: _goToToday,
+      label: const Text('Hoje'),
+      labelStyle: TextStyle(
+        fontWeight: FontWeight.w700,
+        color: Theme.of(context).colorScheme.primary,
+        fontSize: 11,
       ),
+      backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      visualDensity: VisualDensity.compact,
     );
   }
 
@@ -3039,6 +3041,26 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     _tabController.animateTo(0);
   }
 
+  Widget _buildCalendarContainer({required Widget child}) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Card(
+      elevation: 1,
+      color: colorScheme.surface,
+      shadowColor: colorScheme.shadow.withValues(alpha: 0.08),
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: child,
+      ),
+    );
+  }
+
   Widget _buildCalendarGrid() {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
@@ -3052,10 +3074,10 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
 
     // Responsive font sizing based on CELL SIZE (proportional to fit)
     final baseFontSize = cellSize / 10;
-    final double dayNumberSize = baseFontSize * 2.34;   // +30%
-    final double hojeTextSize = baseFontSize * 1.20;    // +60%
-    final double moneyTextSize = baseFontSize * 1.52;   // +60%
-    final double holidayTextSize = baseFontSize * 1.10; // Larger holiday name
+    final double dayNumberSize = baseFontSize * 2.1;
+    final double hojeTextSize = baseFontSize * 1.0;
+    final double moneyTextSize = baseFontSize * 1.25;
+    final double holidayTextSize = baseFontSize * 0.95;
     final double minHolidayWidth = cellSize * 0.80;     // Min 80% of cell width
     final double maxHolidayWidth = cellSize * 0.95;     // Max 95% of cell width
 
@@ -3181,10 +3203,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  decoration: const BoxDecoration(),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                   child: Stack(
                     alignment: Alignment.center,
@@ -3416,8 +3435,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                                 if (isToday) {
                                   textColor = colorScheme.onPrimaryContainer;
                                 } else if (isHoliday) {
-                                  bgColor = colorScheme.tertiaryContainer;
-                                  textColor = colorScheme.onTertiaryContainer;
+                                  bgColor = colorScheme.surfaceContainerHighest;
+                                  textColor = colorScheme.onSurface;
                                   opacity = 1.0;
                                 } else if (dayOfWeek == 0) { // Domingo
                                   bgColor = colorScheme.errorContainer.withValues(alpha: 0.4);
@@ -3750,13 +3769,13 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
             );
           },
           child: Transform.scale(
-            scale: 1,
-            alignment: Alignment.topCenter,
-            child: Card(
-              elevation: 0,
-              color: Colors.transparent,
-              child: Padding(
-                padding: const EdgeInsets.all(6),
+              scale: 1,
+              alignment: Alignment.topCenter,
+              child: Card(
+                elevation: 0,
+                color: Colors.transparent,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
                 child: Column(
                   children: [
                     Card(
@@ -4559,10 +4578,10 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                 );
               },
               child: Card(
-                elevation: 1,
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                elevation: 0,
+                color: Colors.transparent,
                 child: Padding(
-                  padding: EdgeInsets.all(isSmallMobile ? 8 : 16),
+                  padding: EdgeInsets.all(isSmallMobile ? 4 : 8),
                   child: Column(
                     children: [
                       MonthHeader(
@@ -4599,9 +4618,9 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                       final now = DateTime.now();
                       final double monthCardHeight = isSmallMobile ? 200 : 280;
                       const double verticalSpacingTop = 2;
-                      const double verticalSpacingBetweenRows = 4;
+                      const double verticalSpacingBetweenRows = 8;
                       const double verticalSpacingBottom = 4;
-                      final double gridHorizontalPadding = isSmallMobile ? 8.0 : 32.0;
+                      final double gridHorizontalPadding = isSmallMobile ? 8.0 : 24.0;
 
                       Widget buildMonthRow(List<int> monthIndices) {
                         return Row(
@@ -4694,13 +4713,15 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
             expandedHeight: isSmallMobile ? 110 : (isMobile ? 72 : 68),
             pinned: true,
             centerTitle: true,
+            iconTheme: const IconThemeData(color: Colors.white),
+            foregroundColor: Colors.white,
             actions: isSmallMobile
                 ? []
                 : [
                     Padding(
                       padding: const EdgeInsets.only(right: 6.0),
                       child: IconButton(
-                        icon: const Icon(Icons.print),
+                        icon: const Icon(Icons.print, color: Colors.white),
                         iconSize: isMobile ? 22 : 20,
                         tooltip: 'Imprimir Relatório',
                         onPressed: () => _printReport(),
@@ -4709,7 +4730,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     Padding(
                       padding: const EdgeInsets.only(right: 6.0),
                       child: IconButton(
-                        icon: const Icon(Icons.calculate),
+                        icon: const Icon(Icons.calculate, color: Colors.white),
                         iconSize: isMobile ? 22 : 20,
                         tooltip: 'Calcular Datas',
                         onPressed: () => _showDateCalculator(context),
@@ -4719,7 +4740,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     Padding(
                       padding: const EdgeInsets.only(right: 6.0),
                       child: _buildThemeToggleButton(
-                        iconColor: Theme.of(context).colorScheme.onSurface,
+                        iconColor: Colors.white,
                         iconSize: isMobile ? 22 : 20,
                       ),
                     ),
@@ -4727,7 +4748,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     Padding(
                       padding: const EdgeInsets.only(right: 6.0),
                       child: IconButton(
-                        icon: const Icon(Icons.settings),
+                        icon: const Icon(Icons.settings, color: Colors.white),
                         iconSize: isMobile ? 22 : 20,
                         tooltip: 'Preferências',
                         onPressed: () => showDialog(
@@ -4784,17 +4805,17 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                           padding: const EdgeInsets.only(left: 10, right: 0),
                           child: Chip(
                             label: Text(
-                              '${_nextHolidayData!.holiday!.name} • Faltam ${_nextHolidayData!.daysUntil} dia${_nextHolidayData!.daysUntil == 1 ? '' : 's'}',
+                              '${_nextHolidayData!.holiday!.name} • ${_nextHolidayData!.daysUntil}d',
                               style: TextStyle(
                                 fontWeight: FontWeight.w700,
-                                fontSize: isSmallMobile ? 10 : 11,
+                                fontSize: isSmallMobile ? 10 : 10.5,
                                 color: Colors.black,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             backgroundColor: Colors.amber.shade400,
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
                             visualDensity: VisualDensity.compact,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -4918,16 +4939,22 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                               children: [
                                 // CALENDARIO CONFORME TIPO SELECIONADO
                                 if (_calendarType == 'mensal')
-                                  RepaintBoundary(
-                                    key: _calendarGridKey,
-                                    child: _buildCalendarGrid(),
+                                  _buildCalendarContainer(
+                                    child: RepaintBoundary(
+                                      key: _calendarGridKey,
+                                      child: _buildCalendarGrid(),
+                                    ),
                                   )
                                 else if (_calendarType == 'semanal')
-                                  _buildWeeklyCalendar()
+                                  _buildCalendarContainer(
+                                    child: _buildWeeklyCalendar(),
+                                  )
                                 else if (_calendarType == 'anual')
-                                  RepaintBoundary(
-                                    key: _annualCalendarKey,
-                                    child: _buildAnnualCalendar(),
+                                  _buildCalendarContainer(
+                                    child: RepaintBoundary(
+                                      key: _annualCalendarKey,
+                                      child: _buildAnnualCalendar(),
+                                    ),
                                   ),
                               ],
                             ),

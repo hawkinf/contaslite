@@ -22,7 +22,7 @@ class MonthHeader extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppRadius.md),
@@ -41,8 +41,9 @@ class MonthHeader extends StatelessWidget {
             onPressed: onPrevious,
             icon: const Icon(Icons.chevron_left),
             color: colorScheme.onSurfaceVariant,
-            iconSize: 20,
-            padding: const EdgeInsets.all(6),
+            iconSize: 18,
+            padding: const EdgeInsets.all(4),
+            splashRadius: 18,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           ),
           Expanded(
@@ -53,7 +54,7 @@ class MonthHeader extends StatelessWidget {
                   title.toUpperCase(),
                   style: AppTextStyles.title.copyWith(
                     color: colorScheme.onSurface,
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.6,
                   ),
@@ -65,7 +66,7 @@ class MonthHeader extends StatelessWidget {
                     subtitle!,
                     style: AppTextStyles.subtitle.copyWith(
                       color: colorScheme.onSurfaceVariant,
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.w500,
                     ),
                     textAlign: TextAlign.center,
@@ -78,8 +79,9 @@ class MonthHeader extends StatelessWidget {
             onPressed: onNext,
             icon: const Icon(Icons.chevron_right),
             color: colorScheme.onSurfaceVariant,
-            iconSize: 20,
-            padding: const EdgeInsets.all(6),
+            iconSize: 18,
+            padding: const EdgeInsets.all(4),
+            splashRadius: 18,
             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           ),
         ],
