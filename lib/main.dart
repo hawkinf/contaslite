@@ -350,53 +350,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       }
     });
   }
-  
-  void _goToToday() {
-    final now = DateTime.now();
-    setState(() {
-      _selectedYear = now.year;
-      _calendarMonth = now.month;
-      _selectedWeek = now;
-      _holidaysFuture = _getHolidaysForDisplay(_selectedYear);
-      _monthlyTotalsFuture = _loadMonthlyTotals(_calendarMonth, _selectedYear);
-      _annualTotalsFuture = _loadAnnualTotals(_selectedYear);
-    });
-    _savePreferences();
-  }
-  
-  Widget _buildTodayButton() {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallMobile = screenWidth < 600;
-
-    if (isSmallMobile) {
-      // Em mobile, usar ícone de reset
-      return IconButton(
-        icon: const Icon(Icons.restore),
-        iconSize: 24,
-        color: Theme.of(context).colorScheme.primary,
-        tooltip: 'Voltar para hoje',
-        onPressed: _goToToday,
-      );
-    }
-
-    // Em desktop, usar botão
-    return ActionChip(
-      onPressed: _goToToday,
-      label: const Text('Hoje'),
-      labelStyle: TextStyle(
-        fontWeight: FontWeight.w700,
-        color: Theme.of(context).colorScheme.primary,
-        fontSize: 11,
-      ),
-      backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-      visualDensity: VisualDensity.compact,
-    );
-  }
 
   Widget _buildThemeToggleButton({required Color iconColor, required double iconSize}) {
     return ValueListenableBuilder<ThemeMode>(
@@ -4604,13 +4557,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                           _savePreferences();
                         },
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildTodayButton(),
-                        ],
-                      ),
                       const SizedBox(height: AppSpacing.md),
                   // GRID DOS MESES
                   Builder(
@@ -4797,24 +4743,21 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
               children: [
                 // ABA CONTAS
                 const ContasResumoTab(),
-                // ABA CALENDÁRIO - scroll interno
+                // ABA CALENDÁRIO - scroll interno (sem header redundante)
                 SingleChildScrollView(
                   physics: const ClampingScrollPhysics(),
                   padding: EdgeInsets.all(cardPadding),
-                  child: AppScaffold(
-                    title: 'Calendário',
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (_calendarType == 'mensal')
-                          _buildCalendarContainer(child: RepaintBoundary(key: _calendarGridKey, child: _buildCalendarGrid()))
-                        else if (_calendarType == 'semanal')
-                          _buildCalendarContainer(child: _buildWeeklyCalendar())
-                        else if (_calendarType == 'anual')
-                          _buildCalendarContainer(child: RepaintBoundary(key: _annualCalendarKey, child: _buildAnnualCalendar())),
-                      ],
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_calendarType == 'mensal')
+                        _buildCalendarContainer(child: RepaintBoundary(key: _calendarGridKey, child: _buildCalendarGrid()))
+                      else if (_calendarType == 'semanal')
+                        _buildCalendarContainer(child: _buildWeeklyCalendar())
+                      else if (_calendarType == 'anual')
+                        _buildCalendarContainer(child: RepaintBoundary(key: _annualCalendarKey, child: _buildAnnualCalendar())),
+                    ],
                   ),
                 ),
                 // ABA FERIADOS - scroll interno

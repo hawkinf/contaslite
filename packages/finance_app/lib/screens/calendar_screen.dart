@@ -504,31 +504,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   /// Header compacto com navegacao e seletor de modo
   Widget _buildCompactHeader(ColorScheme colorScheme) {
-    String periodLabel;
+    // Título principal: mesmo estilo para todos os modos
+    String mainTitle;
+    String? subtitle;
     VoidCallback onPrevious;
     VoidCallback onNext;
 
     switch (_viewMode) {
       case CalendarViewMode.weekly:
         final weekNum = _getWeekOfYear(_focusedDay);
-        periodLabel = '${DateFormat('MMMM yyyy', 'pt_BR').format(_focusedDay)} - Semana $weekNum';
+        mainTitle = DateFormat('MMMM / yyyy', 'pt_BR').format(_focusedDay);
+        subtitle = 'Semana #$weekNum';
         onPrevious = () => _changeWeek(-1);
         onNext = () => _changeWeek(1);
         break;
       case CalendarViewMode.monthly:
-        periodLabel = DateFormat('MMMM yyyy', 'pt_BR').format(_focusedDay);
+        mainTitle = DateFormat('MMMM / yyyy', 'pt_BR').format(_focusedDay);
         onPrevious = () => _changeMonth(-1);
         onNext = () => _changeMonth(1);
         break;
       case CalendarViewMode.yearly:
-        periodLabel = _focusedDay.year.toString();
+        mainTitle = _focusedDay.year.toString();
         onPrevious = () => _changeYear(-1);
         onNext = () => _changeYear(1);
         break;
     }
 
     // Capitalizar primeira letra
-    periodLabel = periodLabel[0].toUpperCase() + periodLabel.substring(1);
+    mainTitle = mainTitle[0].toUpperCase() + mainTitle.substring(1);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
@@ -540,7 +543,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       child: Column(
         children: [
-          // Navegacao do periodo
+          // Navegação do período - título principal centralizado
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -551,13 +554,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Text(
-                    periodLabel,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurface,
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Título principal: mesmo estilo em TODOS os modos
+                      Text(
+                        mainTitle.toUpperCase(),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurface,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      // Subtexto apenas no modo Semanal
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),

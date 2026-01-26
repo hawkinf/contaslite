@@ -36,20 +36,6 @@ import '../ui/components/section_header.dart';
 
 enum DashboardFilter { all, pagar, receber, cartoes }
 
-class _InstallmentSummary {
-  final double totalAmount;
-  final double remainingAmount;
-  final DateTime? nextDueDate;
-  final double? nextValue;
-
-  const _InstallmentSummary({
-    required this.totalAmount,
-    required this.remainingAmount,
-    this.nextDueDate,
-    this.nextValue,
-  });
-}
-
 class _QuickActionItem {
   final IconData icon;
   final String label;
@@ -70,48 +56,6 @@ class _MenuAction {
   final VoidCallback? onTap;
 
   const _MenuAction({required this.label, required this.icon, this.onTap});
-}
-
-
-class _SeriesSummary {
-  final double totalAmount;
-  final List<double> remainingFromIndex;
-  final Map<int, int> idToIndex;
-  final List<Account> orderedInstallments;
-
-  const _SeriesSummary({
-    required this.totalAmount,
-    required this.remainingFromIndex,
-    required this.idToIndex,
-    required this.orderedInstallments,
-  });
-
-  _InstallmentSummary? summaryFor(Account account, InstallmentDisplay display) {
-    int? idx;
-    if (account.id != null) {
-      idx = idToIndex[account.id!];
-    }
-    idx ??= display.index - 1;
-    if (idx < 0 || idx >= remainingFromIndex.length) {
-      return null;
-    }
-    DateTime? nextDueDate;
-    double? nextValue;
-    final nextIndex = idx + 1;
-    if (nextIndex < orderedInstallments.length) {
-      final nextAccount = orderedInstallments[nextIndex];
-      final nextYear = nextAccount.year ?? DateTime.now().year;
-      final nextMonth = nextAccount.month ?? DateTime.now().month;
-      nextDueDate = DateTime(nextYear, nextMonth, nextAccount.dueDay);
-      nextValue = nextAccount.value;
-    }
-    return _InstallmentSummary(
-      totalAmount: totalAmount,
-      remainingAmount: remainingFromIndex[idx],
-      nextDueDate: nextDueDate,
-      nextValue: nextValue,
-    );
-  }
 }
 
 class DashboardScreen extends StatefulWidget {
@@ -166,7 +110,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Totais para visão combinada
   double _totalLancadoPagar = 0.0;
   double _totalLancadoReceber = 0.0;
-  Map<int, _InstallmentSummary> _installmentSummaries = {};
   Map<int, Map<String, dynamic>> _paymentInfo = {};
   final Map<int, double> _recurrenceParentValues = {}; // Mapeia recurrence ID -> valor previsto
   DashboardFilter _categoryFilter = DashboardFilter.all;
@@ -905,11 +848,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
         return sum + item.value;
       });
-      final installmentSummaries = await timed(
-        'buildInstallmentSummaries',
-        _buildInstallmentSummaries(processedList),
-        timeout: const Duration(seconds: 15),
-      );
 
       // Carregar informações de pagamento de forma assíncrona não-bloqueante
       final paymentIds = processedList
@@ -1021,7 +959,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _totalPrevistoReceber = previstoReceber;
           _totalLancadoPagar = lancadoPagar;
           _totalLancadoReceber = lancadoReceber;
-          _installmentSummaries = installmentSummaries;
           _paymentInfo = paymentInfo;
         });
       }
@@ -1659,8 +1596,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             }
             return '$childLabel - $desc';
           })();
-    final installmentSummary =
-        account.id != null ? _installmentSummaries[account.id!] : null;
     final bool isPaid =
         account.id != null && _paymentInfo.containsKey(account.id!);
 
@@ -1695,15 +1630,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
     // Badge para parcela única (chip informativo neutro)
     final Widget singlePaymentBadge = const MiniChip(label: 'Parcela única');
-    final String nextValueLabel = installmentSummary?.nextValue != null
-        ? UtilBrasilFields.obterReal(installmentSummary!.nextValue!)
-        : '-';
-    final Widget nextDueBadge = MiniChip(label: 'Próx: $nextValueLabel');
 
     final List<Widget> chips = [];
-    // Chips padronizados: Tipo de Conta e Categoria
+    // Chips sem redundância: não repetir título/subtítulo
+    // Título = categoryParent ?? accountTypeName, Subtítulo = middleLineText
     final String? accountTypeName = _typeNames[account.typeId];
-    if (accountTypeName != null && accountTypeName.isNotEmpty) {
+    final bool titleIsAccountType = categoryParent == null;
+    // Tipo: só adicionar se categoryParent existe (título não é accountTypeName)
+    if (accountTypeName != null && accountTypeName.isNotEmpty && !titleIsAccountType) {
       chips.add(MiniChip(
         label: accountTypeName,
         backgroundColor: colorScheme.surfaceContainerHighest,
@@ -1711,7 +1645,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         borderColor: colorScheme.outlineVariant.withValues(alpha: 0.6),
       ));
     }
-    if (sanitizedCategoryChild != null && sanitizedCategoryChild.isNotEmpty) {
+    // Categoria: só adicionar se não está no subtítulo
+    final bool categoryInSubtitle = sanitizedCategoryChild != null &&
+        (middleLineText == sanitizedCategoryChild ||
+         middleLineText.toLowerCase().contains(sanitizedCategoryChild.toLowerCase()));
+    if (sanitizedCategoryChild != null && sanitizedCategoryChild.isNotEmpty && !categoryInSubtitle) {
       chips.add(MiniChip(
         label: sanitizedCategoryChild,
         backgroundColor: colorScheme.surfaceContainerHighest,
@@ -1719,33 +1657,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
         borderColor: colorScheme.outlineVariant.withValues(alpha: 0.6),
       ));
     }
+    // State chips: prioridade após tipo e categoria
+    final List<Widget> stateChips = [];
     if (isPaid) {
-      chips.add(MiniChip(
+      stateChips.add(MiniChip(
         label: _isRecebimentosFilter ? 'Recebido' : 'Pago',
         icon: Icons.check_circle,
         iconColor: app_tokens.AppColors.textSecondary,
       ));
-      final method = _paymentInfo[account.id!]?['method_name'] ?? '';
-      if (method.toString().trim().isNotEmpty) {
-        chips.add(MiniChip(label: 'via $method'));
-      }
     }
     if (isSinglePayment) {
-      chips.add(singlePaymentBadge);
+      stateChips.add(singlePaymentBadge);
     }
     if (hasRecurrence && !isCard) {
-      chips.add(const MiniChip(label: 'Recorrência'));
+      stateChips.add(const MiniChip(label: 'Recorrência'));
     }
     if (installmentDisplay.isInstallment) {
-      chips.add(installmentBadge);
-      chips.add(nextDueBadge);
+      stateChips.add(installmentBadge);
     }
     if (showPrevisto) {
-      chips.add(MiniChip(label: 'Previsto: $previstoDisplay'));
+      stateChips.add(MiniChip(label: 'Previsto: $previstoDisplay'));
     }
     if (isCard) {
-      chips.add(MiniChip(label: 'Próx.: $cardNextDueLabel'));
-      chips.add(MiniChip(label: 'Previsto: $previstoDisplay'));
+      stateChips.add(MiniChip(label: 'Próx.: $cardNextDueLabel'));
+    }
+    // Limitar a 3 chips no total (tipo → categoria → estado)
+    final int remaining = 3 - chips.length;
+    if (remaining > 0) {
+      chips.addAll(stateChips.take(remaining));
     }
 
     final bool canLaunchPayment = !isPaid;
@@ -2260,136 +2199,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<Map<int, _InstallmentSummary>> _buildInstallmentSummaries(
-      List<Account> accounts) async {
-    final Map<int, _InstallmentSummary> result = {};
-    final Map<String, _SeriesSummary?> cache = {};
-
-    // Filtrar apenas contas que são parcelas
-    final installments = accounts
-        .where((a) => a.id != null && resolveInstallmentDisplay(a).isInstallment)
-        .toList();
-
-    for (final account in installments) {
-      final display = resolveInstallmentDisplay(account);
-      final accountId = account.id!;
-      final key = _installmentSeriesKey(account, display);
-      if (key == null) continue;
-
-      if (!cache.containsKey(key)) {
-        cache[key] = await _buildSeriesSummary(account, display);
-      }
-
-      final seriesSummary = cache[key];
-      if (seriesSummary != null) {
-        final summary = seriesSummary.summaryFor(account, display);
-        if (summary != null) {
-          result[accountId] = summary;
-        }
-      }
-    }
-    return result;
-  }
-
-  Future<_SeriesSummary?> _buildSeriesSummary(
-      Account account, InstallmentDisplay display) async {
-    final series = await _fetchInstallmentSeries(account, display);
-    if (series.isEmpty) return null;
-
-    final sorted = _sortInstallments(series);
-    final total = sorted.fold<double>(0.0, (sum, item) => sum + item.value);
-
-    // Calcular remaining amounts e idToIndex em uma única passagem
-    final List<double> remaining = List<double>.filled(sorted.length, 0.0, growable: false);
-    final Map<int, int> idToIndex = {};
-    double running = 0.0;
-
-    for (int i = sorted.length - 1; i >= 0; i--) {
-      remaining[i] = running;
-      running += sorted[i].value;
-
-      final id = sorted[i].id;
-      if (id != null) {
-        idToIndex[id] = i;
-      }
-    }
-
-    return _SeriesSummary(
-      totalAmount: total,
-      remainingFromIndex: remaining,
-      idToIndex: idToIndex,
-      orderedInstallments: sorted,
-    );
-  }
-
-  Future<List<Account>> _fetchInstallmentSeries(
-      Account account, InstallmentDisplay display) async {
-    if (account.purchaseUuid?.isNotEmpty == true) {
-      return DatabaseHelper.instance
-          .readInstallmentSeriesByUuid(account.purchaseUuid!);
-    }
-    final db = await DatabaseHelper.instance.database;
-    final String baseDescription = cleanAccountDescription(account);
-    final clauses = <String>['isRecurrent = 0', 'description = ?'];
-    final args = <Object?>[baseDescription];
-    if (display.total > 1) {
-      clauses.add('installmentTotal = ?');
-      args.add(display.total);
-    }
-    if (account.cardId != null) {
-      clauses.add('cardId = ?');
-      args.add(account.cardId);
-    } else {
-      clauses.add('typeId = ?');
-      args.add(account.typeId);
-    }
-    final rows = await db.query('accounts',
-        where: clauses.join(' AND '),
-        whereArgs: args,
-        orderBy: 'year ASC, month ASC, dueDay ASC, id ASC');
-    if (rows.isNotEmpty) {
-      return rows.map((json) => Account.fromMap(json)).toList();
-    }
-    if (account.cardId != null) {
-      return DatabaseHelper.instance.readInstallmentSeries(account.cardId!,
-          baseDescription,
-          installmentTotal: display.total);
-    }
-    return DatabaseHelper.instance.readInstallmentSeriesByDescription(
-        account.typeId, baseDescription,
-        installmentTotal: display.total);
-  }
-
-  String? _installmentSeriesKey(
-      Account account, InstallmentDisplay display) {
-    if (account.purchaseUuid?.isNotEmpty == true) {
-      return 'uuid:${account.purchaseUuid}';
-    }
-    final baseDescription = cleanAccountDescription(account);
-    if (baseDescription.isEmpty) return null;
-    if (account.cardId != null) {
-      return 'card:${account.cardId}:$baseDescription:${display.total}';
-    }
-    return 'type:${account.typeId}:$baseDescription:${display.total}';
-  }
-
-  List<Account> _sortInstallments(List<Account> source) {
-    final sorted = List<Account>.from(source);
-    sorted.sort(_compareAccountsByDate);
-    return sorted;
-  }
-
-  int _compareAccountsByDate(Account a, Account b) {
-    final yearCompare = (a.year ?? 0).compareTo(b.year ?? 0);
-    if (yearCompare != 0) return yearCompare;
-    final monthCompare = (a.month ?? 0).compareTo(b.month ?? 0);
-    if (monthCompare != 0) return monthCompare;
-    final dayCompare = a.dueDay.compareTo(b.dueDay);
-    if (dayCompare != 0) return dayCompare;
-    return (a.id ?? 0).compareTo(b.id ?? 0);
-  }
-
-  // ... (Diálogos mantidos)
   Future<void> _showLaunchDialog(Account rule) async {
     // Usar o estimatedValue (Valor Previsto) da recorrência pai
     double averageValue = rule.estimatedValue ?? rule.value;
