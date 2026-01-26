@@ -6,6 +6,7 @@ import '../database/db_helper.dart';
 import '../models/account.dart';
 import '../services/holiday_service.dart';
 import '../services/prefs_service.dart';
+import '../ui/components/period_header.dart';
 import '../utils/app_colors.dart';
 
 /// Modos de visualização do calendário
@@ -474,12 +475,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
   }
 
-  int _getWeekOfYear(DateTime date) {
-    final firstDayOfYear = DateTime(date.year, 1, 1);
-    final daysDiff = date.difference(firstDayOfYear).inDays;
-    return ((daysDiff + firstDayOfYear.weekday) / 7).ceil();
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -490,8 +485,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ? const Center(child: CircularProgressIndicator())
         : Column(
             children: [
-              // Header compacto com navegacao + seletor de modo
-              _buildCompactHeader(colorScheme),
+              // PeriodHeader idêntico ao Contas (56px)
+              PeriodHeader(
+                label: _getPeriodLabel(),
+                onPrevious: _onPrevious,
+                onNext: _onNext,
+                onTap: _pickMonthYear,
+              ),
+              // Seletor de modo (Semanal/Mensal/Anual)
+              _buildModeSelector(colorScheme),
               // Totais do periodo
               _buildPeriodTotals(colorScheme),
               // Conteudo principal baseado no modo
@@ -502,127 +504,73 @@ class _CalendarScreenState extends State<CalendarScreen> {
           );
   }
 
-  /// Header compacto com navegacao e seletor de modo
-  Widget _buildCompactHeader(ColorScheme colorScheme) {
-    // Título principal: mesmo estilo para todos os modos
-    String mainTitle;
-    String? subtitle;
-    VoidCallback onPrevious;
-    VoidCallback onNext;
-
+  /// Retorna o label formatado para o PeriodHeader baseado no modo atual
+  String _getPeriodLabel() {
+    String label;
     switch (_viewMode) {
       case CalendarViewMode.weekly:
-        final weekNum = _getWeekOfYear(_focusedDay);
-        mainTitle = DateFormat('MMMM / yyyy', 'pt_BR').format(_focusedDay);
-        subtitle = 'Semana #$weekNum';
-        onPrevious = () => _changeWeek(-1);
-        onNext = () => _changeWeek(1);
-        break;
       case CalendarViewMode.monthly:
-        mainTitle = DateFormat('MMMM / yyyy', 'pt_BR').format(_focusedDay);
-        onPrevious = () => _changeMonth(-1);
-        onNext = () => _changeMonth(1);
+        label = DateFormat('MMMM yyyy', 'pt_BR').format(_focusedDay);
         break;
       case CalendarViewMode.yearly:
-        mainTitle = _focusedDay.year.toString();
-        onPrevious = () => _changeYear(-1);
-        onNext = () => _changeYear(1);
+        label = _focusedDay.year.toString();
         break;
     }
-
     // Capitalizar primeira letra
-    mainTitle = mainTitle[0].toUpperCase() + mainTitle.substring(1);
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Navegação do período - título principal centralizado
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildNavButton(Icons.chevron_left, onPrevious, colorScheme),
-              const SizedBox(width: 8),
-              InkWell(
-                onTap: _pickMonthYear,
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Título principal: mesmo estilo em TODOS os modos
-                      Text(
-                        mainTitle.toUpperCase(),
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.onSurface,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      // Subtexto apenas no modo Semanal
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              _buildNavButton(Icons.chevron_right, onNext, colorScheme),
-            ],
-          ),
-          const SizedBox(height: 10),
-          // Seletor de modo
-          _buildModeSelector(colorScheme),
-        ],
-      ),
-    );
+    return label[0].toUpperCase() + label.substring(1);
   }
 
-  Widget _buildNavButton(IconData icon, VoidCallback onTap, ColorScheme colorScheme) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, color: colorScheme.onSurfaceVariant, size: 20),
-      ),
-    );
+  /// Callbacks de navegação baseados no modo atual
+  VoidCallback get _onPrevious {
+    switch (_viewMode) {
+      case CalendarViewMode.weekly:
+        return () => _changeWeek(-1);
+      case CalendarViewMode.monthly:
+        return () => _changeMonth(-1);
+      case CalendarViewMode.yearly:
+        return () => _changeYear(-1);
+    }
+  }
+
+  VoidCallback get _onNext {
+    switch (_viewMode) {
+      case CalendarViewMode.weekly:
+        return () => _changeWeek(1);
+      case CalendarViewMode.monthly:
+        return () => _changeMonth(1);
+      case CalendarViewMode.yearly:
+        return () => _changeYear(1);
+    }
   }
 
   /// Seletor de modo padronizado (Semanal/Mensal/Anual)
+  /// Altura fixa para manter consistência visual
   Widget _buildModeSelector(ColorScheme colorScheme) {
     return Container(
-      padding: const EdgeInsets.all(3),
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(10),
+        color: colorScheme.surfaceContainerLow,
+        border: Border(
+          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+        ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildModeButton('Semanal', CalendarViewMode.weekly, colorScheme),
-          _buildModeButton('Mensal', CalendarViewMode.monthly, colorScheme),
-          _buildModeButton('Anual', CalendarViewMode.yearly, colorScheme),
-        ],
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildModeButton('Semanal', CalendarViewMode.weekly, colorScheme),
+              _buildModeButton('Mensal', CalendarViewMode.monthly, colorScheme),
+              _buildModeButton('Anual', CalendarViewMode.yearly, colorScheme),
+            ],
+          ),
+        ),
       ),
     );
   }

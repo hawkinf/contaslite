@@ -33,6 +33,7 @@ import '../ui/components/summary_card.dart';
 import '../ui/components/action_banner.dart';
 import '../ui/components/standard_modal_shell.dart';
 import '../ui/components/section_header.dart';
+import '../ui/components/period_header.dart';
 
 enum DashboardFilter { all, pagar, receber, cartoes }
 
@@ -328,65 +329,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Widget _buildMonthHeaderPill({
-    required String label,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: Icon(Icons.chevron_left, color: colorScheme.onSurfaceVariant, size: 18),
-            splashRadius: 18,
-            onPressed: () => _changeMonth(-1),
-          ),
-          InkWell(
-            borderRadius: BorderRadius.circular(999),
-            onTap: _pickMonthYear,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Text(
-                label,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurface,
-                    ),
-              ),
-            ),
-          ),
-          IconButton(
-            icon: Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant, size: 18),
-            splashRadius: 18,
-            onPressed: () => _changeMonth(1),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildMonthNavBar(String label) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerLow,
-        border: Border(
-          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-        ),
-      ),
-      child: Center(
-        child: _buildMonthHeaderPill(label: label),
-      ),
+    return PeriodHeader(
+      label: label,
+      onPrevious: () => _changeMonth(-1),
+      onNext: () => _changeMonth(1),
+      onTap: _pickMonthYear,
     );
   }
 
