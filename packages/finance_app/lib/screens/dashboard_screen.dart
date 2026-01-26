@@ -1701,6 +1701,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final Widget nextDueBadge = MiniChip(label: 'Próx: $nextValueLabel');
 
     final List<Widget> chips = [];
+    // Chips padronizados: Tipo de Conta e Categoria
+    final String? accountTypeName = _typeNames[account.typeId];
+    if (accountTypeName != null && accountTypeName.isNotEmpty) {
+      chips.add(MiniChip(
+        label: accountTypeName,
+        backgroundColor: colorScheme.surfaceContainerHighest,
+        textColor: colorScheme.onSurfaceVariant,
+        borderColor: colorScheme.outlineVariant.withValues(alpha: 0.6),
+      ));
+    }
+    if (sanitizedCategoryChild != null && sanitizedCategoryChild.isNotEmpty) {
+      chips.add(MiniChip(
+        label: sanitizedCategoryChild,
+        backgroundColor: colorScheme.surfaceContainerHighest,
+        textColor: colorScheme.onSurfaceVariant,
+        borderColor: colorScheme.outlineVariant.withValues(alpha: 0.6),
+      ));
+    }
     if (isPaid) {
       chips.add(MiniChip(
         label: _isRecebimentosFilter ? 'Recebido' : 'Pago',

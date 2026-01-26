@@ -43,6 +43,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
   late int _currentYear;
   List<Account> _expenses = [];
   double _invoiceLaunchedTotal = 0;
+  Map<int, AccountType> _typeById = {};
   Map<int, AccountCategory> _categoryById = {};
   bool _isLoading = true;
   Map<int, InstallmentDisplay> _installmentById = {};
@@ -276,6 +277,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
       setState(() {
         _expenses = displayList;
         _invoiceLaunchedTotal = invoiceLaunchedTotal;
+        _typeById = typeMap;
         _categoryById = categoryMap;
         _installmentById = installmentMap;
         _isLoading = false;
@@ -286,6 +288,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
       setState(() {
         _expenses = [];
         _invoiceLaunchedTotal = 0;
+        _typeById = {};
         _categoryById = {};
         _installmentById = {};
         _isLoading = false;
@@ -355,42 +358,65 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
           children: [
             // Month banner primeiro
             _buildSharedMonthHeader(),
-            // Barra com botão Voltar + título
+            // Header fixo em 2 linhas: título + filtros
             Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.only(left: 8, right: 8, top: 4, bottom: 8),
               decoration: BoxDecoration(
                 color: colorScheme.surface,
                 border: Border(
                   bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
                 ),
               ),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    tooltip: 'Voltar',
-                    onPressed: () {
-                      if (widget.inline && widget.onClose != null) {
-                        widget.onClose!();
-                      } else {
-                        Navigator.of(context).maybePop();
-                      }
-                    },
+                  // Linha 1: ← Voltar + título
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, size: 22),
+                        tooltip: 'Voltar',
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                        onPressed: () {
+                          if (widget.inline && widget.onClose != null) {
+                            widget.onClose!();
+                          } else {
+                            Navigator.of(context).maybePop();
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Despesas do Cartão',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Despesas do Cartão',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                  // Linha 2: Filtros compactos com scroll horizontal
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildCompactFilterChip('Todos', null, Icons.grid_view),
+                        const SizedBox(width: 8),
+                        _buildCompactFilterChip('Recorrência', 'recorrencia', Icons.autorenew),
+                        const SizedBox(width: 8),
+                        _buildCompactFilterChip('À Vista', 'avista', Icons.attach_money),
+                        const SizedBox(width: 8),
+                        _buildCompactFilterChip('Parcelado', 'parcelado', Icons.view_agenda),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            // Header row com info do cartão
+            // Header row com info do cartão (inclui totais compactos)
             headerRow,
-            _buildSummaryStrip(),
             const SizedBox(height: 2),
             if (selectionBanner != null) selectionBanner,
             Expanded(
@@ -588,10 +614,20 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
       ? Color(widget.card.cardColor!)
       : colorScheme.primary;
 
-    // Calcular totais
+    // Calcular totais por tipo
     double totalGeral = 0;
+    double totalSubs = 0;
+    double totalVista = 0;
+    double totalParcel = 0;
     for (final e in _expenses) {
       totalGeral += e.value;
+      if (e.isRecurrent) {
+        totalSubs += e.value;
+      } else if (_isParcel(e)) {
+        totalParcel += e.value;
+      } else {
+        totalVista += e.value;
+      }
     }
 
     final cardTitle = [cardBank, brand].where((t) => t.isNotEmpty).join(' • ');
@@ -682,6 +718,35 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                       ),
                     ],
                   ),
+                  // Linha compacta de totais por tipo
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        Icon(Icons.autorenew, size: 16, color: colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Text('Recorr. ', style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant)),
+                        Text(UtilBrasilFields.obterReal(totalSubs), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: colorScheme.onSurfaceVariant)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Text('|', style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4))),
+                        ),
+                        Icon(Icons.attach_money, size: 16, color: colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Text('À vista ', style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant)),
+                        Text(UtilBrasilFields.obterReal(totalVista), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: colorScheme.onSurfaceVariant)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Text('|', style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4))),
+                        ),
+                        Icon(Icons.view_agenda, size: 16, color: colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Text('Parcel. ', style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant)),
+                        Text(UtilBrasilFields.obterReal(totalParcel), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: colorScheme.onSurfaceVariant)),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -755,194 +820,59 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     return 'avista';
   }
 
-  Widget _buildSummaryStrip() {
-    final colorScheme = Theme.of(context).colorScheme;
-    // Calcular totais por tipo
-    double totalSubs = 0, totalVista = 0, totalParcel = 0;
-    for (final e in _expenses) {
-      if (e.isRecurrent) {
-        totalSubs += e.value;
-      } else if (_isParcel(e)) {
-        totalParcel += e.value;
-      } else {
-        totalVista += e.value;
-      }
-    }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              _buildTotalCard(
-                'Recorrência',
-                totalSubs,
-                colorScheme.secondary,
-                Icons.autorenew,
-                'recorrencia',
-              ),
-              const SizedBox(width: 8),
-              _buildTotalCard(
-                'À Vista',
-                totalVista,
-                colorScheme.primary,
-                Icons.attach_money,
-                'avista',
-              ),
-              const SizedBox(width: 8),
-              _buildTotalCard(
-                'Parcelado',
-                totalParcel,
-                colorScheme.tertiary,
-                Icons.view_agenda,
-                'parcelado',
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildFilterChip('Todos', null, Icons.grid_view),
-              _buildFilterChip('Recorrência', 'recorrencia', Icons.autorenew),
-              _buildFilterChip('À Vista', 'avista', Icons.attach_money),
-              _buildFilterChip('Parcelado', 'parcelado', Icons.view_agenda),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTotalCard(String label, double value, Color color, IconData icon, String filterKey) {
-    final isActive = _activeFilters.contains(filterKey);
-    const cardHeight = 52.0;
-    const iconSize = 18.0;
-    const labelSize = 11.0;
-    const valueSize = 14.0;
+  /// Chip compacto para filtros no header
+  Widget _buildCompactFilterChip(String label, String? filterKey, IconData icon) {
+    final isAll = filterKey == null;
+    final isActive = isAll ? _activeFilters.isEmpty : _activeFilters.contains(filterKey);
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Expanded(
+    return Material(
+      color: Colors.transparent,
       child: InkWell(
         onTap: () => setState(() {
-          if (_activeFilters.contains(filterKey)) {
-            _activeFilters.remove(filterKey);
+          if (isAll) {
+            _activeFilters.clear();
           } else {
-            _activeFilters.add(filterKey);
+            if (_activeFilters.contains(filterKey)) {
+              _activeFilters.remove(filterKey);
+            } else {
+              _activeFilters.add(filterKey);
+            }
           }
         }),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
-          height: cardHeight,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          height: 28,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: isActive
-                ? colorScheme.surfaceContainerHighest
-                : colorScheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(12),
+            color: isActive ? colorScheme.primaryContainer : colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isActive
-                  ? colorScheme.primary.withValues(alpha: 0.6)
+                  ? colorScheme.primary.withValues(alpha: 0.5)
                   : colorScheme.outlineVariant.withValues(alpha: 0.6),
               width: 1,
             ),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: color, size: iconSize),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: labelSize,
-                        fontWeight: FontWeight.w600,
-                        color: colorScheme.onSurfaceVariant,
-                        height: 1.0,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        UtilBrasilFields.obterReal(value),
-                        style: TextStyle(
-                          fontSize: valueSize,
-                          fontWeight: FontWeight.w700,
-                          color: color,
-                          height: 1.0,
-                        ),
-                      ),
-                    ),
-                  ],
+              Icon(
+                icon,
+                size: 14,
+                color: isActive ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: isActive ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(String label, String? filterKey, IconData icon) {
-    final isAll = filterKey == null;
-    final isActive = isAll ? _activeFilters.isEmpty : _activeFilters.contains(filterKey);
-    final colorScheme = Theme.of(context).colorScheme;
-    final chipHeight = 30.0;
-    final chipPadding = 12.0;
-    final chipFontSize = 12.0;
-    final iconSize = 15.0;
-
-    return InkWell(
-      onTap: () => setState(() {
-        if (isAll) {
-          _activeFilters.clear();
-        } else {
-          if (_activeFilters.contains(filterKey)) {
-            _activeFilters.remove(filterKey);
-          } else {
-            _activeFilters.add(filterKey);
-          }
-        }
-      }),
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        height: chipHeight,
-        padding: EdgeInsets.symmetric(horizontal: chipPadding, vertical: 4),
-        decoration: BoxDecoration(
-          color: isActive ? colorScheme.primaryContainer : colorScheme.surface,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: iconSize,
-              color: isActive ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: chipFontSize,
-                fontWeight: FontWeight.w600,
-                color: isActive ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -1056,7 +986,23 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
         ? DateFormat('EEE', 'pt_BR').format(purchaseDate).replaceAll('.', '').toUpperCase()
         : '';
 
+    // Chips padronizados: Tipo de Conta e Categoria primeiro
+    final String? typeName = _typeById[expense.typeId]?.name;
     final chips = <Widget>[
+      if (typeName != null && typeName.isNotEmpty)
+        MiniChip(
+          label: typeName,
+          backgroundColor: colorScheme.surfaceContainerHighest,
+          textColor: colorScheme.onSurfaceVariant,
+          borderColor: colorScheme.outlineVariant.withValues(alpha: 0.6),
+        ),
+      if (categoryText.isNotEmpty)
+        MiniChip(
+          label: categoryText,
+          backgroundColor: colorScheme.surfaceContainerHighest,
+          textColor: colorScheme.onSurfaceVariant,
+          borderColor: colorScheme.outlineVariant.withValues(alpha: 0.6),
+        ),
       MiniChip(
         label: isSubscription
             ? 'Recorrência'
@@ -1068,13 +1014,6 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
       if (installmentDisplay.isInstallment)
         MiniChip(
           label: '${installmentDisplay.index}/${installmentDisplay.total}',
-          backgroundColor: colorScheme.surfaceContainerHighest,
-          textColor: colorScheme.onSurfaceVariant,
-          borderColor: colorScheme.outlineVariant.withValues(alpha: 0.6),
-        ),
-      if (categoryText.isNotEmpty)
-        MiniChip(
-          label: categoryText,
           backgroundColor: colorScheme.surfaceContainerHighest,
           textColor: colorScheme.onSurfaceVariant,
           borderColor: colorScheme.outlineVariant.withValues(alpha: 0.6),
