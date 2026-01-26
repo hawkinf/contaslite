@@ -4693,6 +4693,83 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     );
   }
 
+  // === SHELL FIXO: AppBar nunca rola ===
+  Widget _buildFixedAppBar(bool isSmallMobile, bool isMobile) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [colorScheme.primary, colorScheme.primary.withValues(alpha: 0.7)],
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: isSmallMobile ? 12 : 16, vertical: isSmallMobile ? 8 : 12),
+          child: Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('ContasPRO', style: TextStyle(fontWeight: FontWeight.w900, fontSize: isSmallMobile ? 17 : 20, color: Colors.white)),
+                  Text('by Aguinaldo Liesack Baptistini', style: TextStyle(fontWeight: FontWeight.w600, fontSize: isSmallMobile ? 10 : 11, color: Colors.white.withValues(alpha: 0.9))),
+                ],
+              ),
+              if (_nextHolidayData?.holiday != null)
+                Padding(
+                  padding: const EdgeInsets.only(left: 10),
+                  child: Chip(
+                    label: Text('${_nextHolidayData!.holiday!.name} • ${_nextHolidayData!.daysUntil}d', style: TextStyle(fontWeight: FontWeight.w700, fontSize: isSmallMobile ? 10 : 10.5, color: Colors.black), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    backgroundColor: Colors.amber.shade400,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    visualDensity: VisualDensity.compact,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.black.withValues(alpha: 0.4), width: 1)),
+                  ),
+                ),
+              const Spacer(),
+              IconButton(icon: const Icon(Icons.print, color: Colors.white), iconSize: isMobile ? 22 : 20, tooltip: 'Imprimir Relatório', onPressed: () => _printReport()),
+              IconButton(icon: const Icon(Icons.calculate, color: Colors.white), iconSize: isMobile ? 22 : 20, tooltip: 'Calcular Datas', onPressed: () => _showDateCalculator(context)),
+              _buildThemeToggleButton(iconColor: Colors.white, iconSize: isMobile ? 22 : 20),
+              IconButton(icon: const Icon(Icons.settings, color: Colors.white), iconSize: isMobile ? 22 : 20, tooltip: 'Preferências', onPressed: () => showDialog(context: context, builder: (ctx) => Dialog(child: const SettingsScreen()))),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // === SHELL FIXO: TabBar nunca rola ===
+  Widget _buildFixedTabBar(double cardPadding) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: cardPadding, vertical: 8),
+      child: TabBar(
+        controller: _tabController,
+        dividerColor: Colors.transparent,
+        labelColor: colorScheme.primary,
+        unselectedLabelColor: const Color(0xFF6B7280),
+        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.3),
+        unselectedLabelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicator: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          color: colorScheme.primary.withValues(alpha: 0.08),
+          border: Border.all(color: colorScheme.primary.withValues(alpha: 0.25)),
+        ),
+        indicatorPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        tabs: [
+          _buildPremiumTab('Contas', Icons.dashboard_outlined, 0),
+          _buildPremiumTab('Calendário', Icons.calendar_month, 1),
+          _buildPremiumTab('Feriados', Icons.list_alt, 2),
+          _buildPremiumTab('Tabelas', Icons.table_chart, 3),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -4700,468 +4777,147 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     final isSmallMobile = screenWidth < 600;
     final double fontSize = isMobile ? 18.0 : 16.0;
     final double cardPadding = isMobile ? 20.0 : 16.0;
+    final colorScheme = Theme.of(context).colorScheme;
 
     if (_isLoading) {
-      return Scaffold(body: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(color: Theme.of(context).colorScheme.primary), const SizedBox(height: 16), Text('Carregando feriados...', style: Theme.of(context).textTheme.titleMedium)])));
+      return Scaffold(body: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [CircularProgressIndicator(color: colorScheme.primary), const SizedBox(height: 16), Text('Carregando feriados...', style: Theme.of(context).textTheme.titleMedium)])));
     }
 
+    // === ARQUITETURA SHELL FIXO ===
+    // AppBar e TabBar NUNCA rolam - cada aba gerencia seu próprio scroll
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar.large(
-            expandedHeight: isSmallMobile ? 110 : (isMobile ? 72 : 68),
-            pinned: true,
-            centerTitle: true,
-            iconTheme: const IconThemeData(color: Colors.white),
-            foregroundColor: Colors.white,
-            actions: isSmallMobile
-                ? []
-                : [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6.0),
-                      child: IconButton(
-                        icon: const Icon(Icons.print, color: Colors.white),
-                        iconSize: isMobile ? 22 : 20,
-                        tooltip: 'Imprimir Relatório',
-                        onPressed: () => _printReport(),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6.0),
-                      child: IconButton(
-                        icon: const Icon(Icons.calculate, color: Colors.white),
-                        iconSize: isMobile ? 22 : 20,
-                        tooltip: 'Calcular Datas',
-                        onPressed: () => _showDateCalculator(context),
-                      ),
-                    ),
-
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6.0),
-                      child: _buildThemeToggleButton(
-                        iconColor: Colors.white,
-                        iconSize: isMobile ? 22 : 20,
-                      ),
-                    ),
-
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6.0),
-                      child: IconButton(
-                        icon: const Icon(Icons.settings, color: Colors.white),
-                        iconSize: isMobile ? 22 : 20,
-                        tooltip: 'Preferências',
-                        onPressed: () => showDialog(
-                          context: context,
-                          builder: (context) => Dialog(
-                            child: const SettingsScreen(),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-            flexibleSpace: FlexibleSpaceBar(
-              title: ValueListenableBuilder<DateTimeRange>(
-              valueListenable: contas_prefs.PrefsService.dateRangeNotifier,
-              builder: (context, range, _) {
-                final titleFontSize = isSmallMobile ? 17.0 : 20.0;
-                return SizedBox(
-                  width: double.infinity,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 2),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'ContasPRO',
-                              textAlign: TextAlign.left,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: titleFontSize,
-                                color: Colors.white,
-                              ),
-                            ),
-                            Text(
-                              'by Aguinaldo Liesack Baptistini',
-                              textAlign: TextAlign.left,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: isSmallMobile ? 10 : 11,
-                                color: Colors.white.withValues(alpha: 0.9),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (_nextHolidayData?.holiday != null)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 10, right: 0),
-                          child: Chip(
-                            label: Text(
-                              '${_nextHolidayData!.holiday!.name} • ${_nextHolidayData!.daysUntil}d',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: isSmallMobile ? 10 : 10.5,
-                                color: Colors.black,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            backgroundColor: Colors.amber.shade400,
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            visualDensity: VisualDensity.compact,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(color: Colors.black.withValues(alpha: 0.4), width: 1),
-                            ),
-                          ),
-                        ),
-                      const SizedBox(width: 12),
-                    ],
-                  ),
-                );
-              },
-            ),
-            background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Theme.of(context).colorScheme.primary,
-                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          if (isSmallMobile)
-            SliverToBoxAdapter(
-              child: Container(
-                color: Theme.of(context).colorScheme.primary,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.print),
-                      iconSize: 24,
-                      tooltip: 'Imprimir Relatório',
-                      color: Colors.white,
-                      onPressed: () => _printReport(),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.calculate),
-                      iconSize: 24,
-                      tooltip: 'Calcular Datas',
-                      color: Colors.white,
-                      onPressed: () => _showDateCalculator(context),
-                    ),
-                    _buildThemeToggleButton(
-                      iconColor: Colors.white,
-                      iconSize: 24,
-                    ),
-
-                    IconButton(
-                      icon: const Icon(Icons.settings),
-                      iconSize: 24,
-                      tooltip: 'Preferências',
-                      color: Colors.white,
-                      onPressed: () => showDialog(
-                        context: context,
-                        builder: (context) => Dialog(
-                          child: const SettingsScreen(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.only(left: cardPadding, right: cardPadding, top: cardPadding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // TABBAR COM DUAS ABAS - Premium Style
-                  TabBar(
-                    controller: _tabController,
-                    dividerColor: Colors.transparent,
-                    labelColor: Theme.of(context).colorScheme.primary,
-                    unselectedLabelColor: const Color(0xFF6B7280),
-                    labelStyle: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.3,
-                    ),
-                    unselectedLabelStyle: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    indicator: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
-                      border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25)),
-                    ),
-                    indicatorPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                    tabs: [
-                      _buildPremiumTab('Contas', Icons.dashboard_outlined, 0),
-                      _buildPremiumTab('Calendário', Icons.calendar_month, 1),
-                      _buildPremiumTab('Feriados', Icons.list_alt, 2),
-                      _buildPremiumTab('Tabelas', Icons.table_chart, 3),
-                    ],
-                  ),
-                  // TABBARVIEW COM O CONTEÚDO DAS DUAS ABAS
-                  SizedBox(
-                    height: MediaQuery.of(context).size.height - (isSmallMobile ? 120 : 100),
-                    child: TabBarView(
-                      controller: _tabController,
+      backgroundColor: colorScheme.surface,
+      body: Column(
+        children: [
+          _buildFixedAppBar(isSmallMobile, isMobile),
+          _buildFixedTabBar(cardPadding),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // ABA CONTAS
+                const ContasResumoTab(),
+                // ABA CALENDÁRIO - scroll interno
+                SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  padding: EdgeInsets.all(cardPadding),
+                  child: AppScaffold(
+                    title: 'Calendário',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        // ABA 1: CONTAS (visão consolidada)
-                        const ContasResumoTab(),
-                        // ABA 2: CALENDARIO
-                        SingleChildScrollView(
-                          child: AppScaffold(
-                            title: 'Calendário',
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                // CALENDARIO CONFORME TIPO SELECIONADO
-                                if (_calendarType == 'mensal')
-                                  _buildCalendarContainer(
-                                    child: RepaintBoundary(
-                                      key: _calendarGridKey,
-                                      child: _buildCalendarGrid(),
-                                    ),
-                                  )
-                                else if (_calendarType == 'semanal')
-                                  _buildCalendarContainer(
-                                    child: _buildWeeklyCalendar(),
-                                  )
-                                else if (_calendarType == 'anual')
-                                  _buildCalendarContainer(
-                                    child: RepaintBoundary(
-                                      key: _annualCalendarKey,
-                                      child: _buildAnnualCalendar(),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        // ABA 3: FERIADOS
-                        SingleChildScrollView(
-                          child: AppScaffold(
-                            title: 'Feriados',
-                            subtitle: 'Ano $_selectedYear',
-                            child: FutureBuilder<List<Holiday>>(
-                              future: _holidaysFuture,
-                              builder: (context, snapshot) {
-                                if (snapshot.connectionState == ConnectionState.waiting) {
-                                  return const EmptyState(
-                                    icon: Icons.event_busy,
-                                    title: 'Carregando feriados...',
-                                  );
-                                } else if (snapshot.hasError) {
-                                  return EmptyState(
-                                    icon: Icons.error_outline,
-                                    title: 'Erro ao carregar feriados',
-                                    subtitle: '${snapshot.error}',
-                                  );
-                                } else if (snapshot.hasData) {
-                                  final holidays = snapshot.data!;
-                                  if (holidays.isEmpty) {
-                                    return const EmptyState(
-                                      icon: Icons.event_busy,
-                                      title: 'Nenhum feriado encontrado',
-                                    );
-                                  }
-
-                                  final holidaysCurrentYear = holidays.where((h) {
-                                    try {
-                                      final year = DateTime.parse(h.date).year;
-                                      return year == _selectedYear;
-                                    } catch (_) {
-                                      return false;
-                                    }
-                                  }).toList();
-
-                                  final Map<String, Holiday> uniqueHolidaysMap = {};
-                                  for (var holiday in holidaysCurrentYear) {
-                                    if (!uniqueHolidaysMap.containsKey(holiday.date)) {
-                                      uniqueHolidaysMap[holiday.date] = holiday;
-                                    }
-                                  }
-                                  final uniqueHolidays = uniqueHolidaysMap.values.toList();
-
-                                  final stats = _calculateStats(holidaysCurrentYear);
-                                  final colorScheme = Theme.of(context).colorScheme;
-
-                                  Color typeColor(String type) {
-                                    if (type.contains('Bancário')) return colorScheme.secondary;
-                                    if (type.contains('Nacional')) return colorScheme.primary;
-                                    if (type.contains('Estadual')) return colorScheme.tertiary;
-                                    if (type.contains('Municipal')) return colorScheme.secondaryContainer;
-                                    return colorScheme.onSurfaceVariant;
-                                  }
-
-                                  return Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      _buildMainStatsSummary(stats, fontSize, isSmallMobile: isSmallMobile),
-                                      _buildWeekdayStatsChips(stats, fontSize),
-                                      const SizedBox(height: AppSpacing.sm),
-                                      SectionHeader(
-                                        title: 'Lista de Feriados de $_selectedYear',
-                                        icon: Icons.event_note,
-                                      ),
-                                      const SizedBox(height: AppSpacing.md),
-                                      ListView.builder(
-                                        shrinkWrap: true,
-                                        physics: const NeverScrollableScrollPhysics(),
-                                        itemCount: uniqueHolidays.length,
-                                        itemBuilder: (context, index) {
-                                          final holiday = uniqueHolidays[index];
-                                          final formattedDate = _formatDate(holiday.date);
-                                          DateTime? parsed;
-                                          try {
-                                            parsed = DateFormat('yyyy-MM-dd').parse(holiday.date);
-                                          } catch (_) {}
-
-                                          final dayLabel = parsed != null
-                                              ? parsed.day.toString().padLeft(2, '0')
-                                              : '--';
-                                          final weekdayLabel = parsed != null
-                                              ? DateFormat('EEE', 'pt_BR')
-                                                  .format(parsed)
-                                                  .replaceAll('.', '')
-                                                  .toUpperCase()
-                                              : '--';
-
-                                          return Container(
-                                            margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                                            padding: const EdgeInsets.all(AppSpacing.md),
-                                            decoration: BoxDecoration(
-                                              color: colorScheme.surface,
-                                              borderRadius: BorderRadius.circular(16),
-                                              border: Border.all(
-                                                color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-                                              ),
-                                            ),
-                                            child: Row(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                ui_date.DatePill(
-                                                  day: dayLabel,
-                                                  weekday: weekdayLabel,
-                                                ),
-                                                const SizedBox(width: AppSpacing.md),
-                                                Expanded(
-                                                  child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Text(
-                                                        holiday.name,
-                                                        style: Theme.of(context)
-                                                            .textTheme
-                                                            .titleMedium
-                                                            ?.copyWith(
-                                                              fontWeight: FontWeight.w600,
-                                                            ),
-                                                      ),
-                                                      const SizedBox(height: AppSpacing.xs),
-                                                      Text(
-                                                        formattedDate,
-                                                        style: Theme.of(context)
-                                                            .textTheme
-                                                            .bodyMedium
-                                                            ?.copyWith(
-                                                              color: colorScheme.onSurfaceVariant,
-                                                            ),
-                                                      ),
-                                                      const SizedBox(height: AppSpacing.sm),
-                                                      Wrap(
-                                                        spacing: AppSpacing.sm,
-                                                        runSpacing: AppSpacing.sm,
-                                                        children: holiday.types
-                                                            .map((type) => ui_chips.MiniChip(
-                                                                  label: type,
-                                                                  textColor: typeColor(type),
-                                                                ))
-                                                            .toList(),
-                                                      ),
-                                                      if (holiday.specialNote != null) ...[
-                                                        const SizedBox(height: AppSpacing.sm),
-                                                        Container(
-                                                          padding: const EdgeInsets.all(AppSpacing.sm),
-                                                          decoration: BoxDecoration(
-                                                            color: colorScheme.surfaceContainerHighest,
-                                                            borderRadius: BorderRadius.circular(12),
-                                                            border: Border.all(
-                                                              color: colorScheme.outlineVariant
-                                                                  .withValues(alpha: 0.6),
-                                                            ),
-                                                          ),
-                                                          child: Row(
-                                                            children: [
-                                                              Icon(
-                                                                Icons.access_time,
-                                                                size: 16,
-                                                                color: colorScheme.onSurfaceVariant,
-                                                              ),
-                                                              const SizedBox(width: AppSpacing.sm),
-                                                              Expanded(
-                                                                child: Text(
-                                                                  holiday.specialNote!,
-                                                                  style: Theme.of(context)
-                                                                      .textTheme
-                                                                      .bodySmall
-                                                                      ?.copyWith(
-                                                                        color: colorScheme.onSurfaceVariant,
-                                                                      ),
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  );
-                                }
-                                return const SizedBox.shrink();
-                              },
-                            ),
-                          ),
-                        ),
-                        // ABA 4: TABELAS
-                        const TablesScreen(),
-],
+                        if (_calendarType == 'mensal')
+                          _buildCalendarContainer(child: RepaintBoundary(key: _calendarGridKey, child: _buildCalendarGrid()))
+                        else if (_calendarType == 'semanal')
+                          _buildCalendarContainer(child: _buildWeeklyCalendar())
+                        else if (_calendarType == 'anual')
+                          _buildCalendarContainer(child: RepaintBoundary(key: _annualCalendarKey, child: _buildAnnualCalendar())),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+                // ABA FERIADOS - scroll interno
+                SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  padding: EdgeInsets.all(cardPadding),
+                  child: _buildFeriadosContent(fontSize, isSmallMobile),
+                ),
+                // ABA TABELAS
+                const TablesScreen(),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // Conteúdo da aba Feriados (extraído para método separado)
+  Widget _buildFeriadosContent(double fontSize, bool isSmallMobile) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return AppScaffold(
+      title: 'Feriados',
+      subtitle: 'Ano $_selectedYear',
+      child: FutureBuilder<List<Holiday>>(
+        future: _holidaysFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const EmptyState(icon: Icons.event_busy, title: 'Carregando feriados...');
+          } else if (snapshot.hasError) {
+            return EmptyState(icon: Icons.error_outline, title: 'Erro ao carregar feriados', subtitle: '${snapshot.error}');
+          } else if (snapshot.hasData) {
+            final holidays = snapshot.data!;
+            if (holidays.isEmpty) return const EmptyState(icon: Icons.event_busy, title: 'Nenhum feriado encontrado');
+            final holidaysCurrentYear = holidays.where((h) { try { return DateTime.parse(h.date).year == _selectedYear; } catch (_) { return false; } }).toList();
+            final Map<String, Holiday> uniqueHolidaysMap = {};
+            for (var holiday in holidaysCurrentYear) { if (!uniqueHolidaysMap.containsKey(holiday.date)) uniqueHolidaysMap[holiday.date] = holiday; }
+            final uniqueHolidays = uniqueHolidaysMap.values.toList();
+            final stats = _calculateStats(holidaysCurrentYear);
+            Color typeColor(String type) {
+              if (type.contains('Bancário')) return colorScheme.secondary;
+              if (type.contains('Nacional')) return colorScheme.primary;
+              if (type.contains('Estadual')) return colorScheme.tertiary;
+              if (type.contains('Municipal')) return colorScheme.secondaryContainer;
+              return colorScheme.onSurfaceVariant;
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildMainStatsSummary(stats, fontSize, isSmallMobile: isSmallMobile),
+                _buildWeekdayStatsChips(stats, fontSize),
+                const SizedBox(height: AppSpacing.sm),
+                SectionHeader(title: 'Lista de Feriados de $_selectedYear', icon: Icons.event_note),
+                const SizedBox(height: AppSpacing.md),
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: uniqueHolidays.length,
+                  itemBuilder: (context, index) {
+                    final holiday = uniqueHolidays[index];
+                    final formattedDate = _formatDate(holiday.date);
+                    DateTime? parsed; try { parsed = DateFormat('yyyy-MM-dd').parse(holiday.date); } catch (_) {}
+                    final dayLabel = parsed != null ? parsed.day.toString().padLeft(2, '0') : '--';
+                    final weekdayLabel = parsed != null ? DateFormat('EEE', 'pt_BR').format(parsed).replaceAll('.', '').toUpperCase() : '--';
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(color: colorScheme.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6))),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ui_date.DatePill(day: dayLabel, weekday: weekdayLabel),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(holiday.name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                                const SizedBox(height: AppSpacing.xs),
+                                Text(formattedDate, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
+                                const SizedBox(height: AppSpacing.sm),
+                                Wrap(spacing: AppSpacing.sm, runSpacing: AppSpacing.sm, children: holiday.types.map((type) => ui_chips.MiniChip(label: type, textColor: typeColor(type))).toList()),
+                                if (holiday.specialNote != null) ...[
+                                  const SizedBox(height: AppSpacing.sm),
+                                  Container(
+                                    padding: const EdgeInsets.all(AppSpacing.sm),
+                                    decoration: BoxDecoration(color: colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(12), border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6))),
+                                    child: Row(children: [Icon(Icons.access_time, size: 16, color: colorScheme.onSurfaceVariant), const SizedBox(width: AppSpacing.sm), Expanded(child: Text(holiday.specialNote!, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant)))]),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            );
+          }
+          return const SizedBox.shrink();
+        },
       ),
     );
   }

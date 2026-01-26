@@ -26,6 +26,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _isLoading = true;
   Set<int> _recebimentosTypeIds = {};
 
+  // ScrollController for weekly view
+  final ScrollController _weeklyScrollController = ScrollController();
+
   // Totais gerais do mês
   double _totalPagarMes = 0;
   double _totalReceberMes = 0;
@@ -37,6 +40,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     super.initState();
     _selectedDay = _focusedDay;
     _loadEvents();
+  }
+
+  @override
+  void dispose() {
+    _weeklyScrollController.dispose();
+    super.dispose();
   }
 
   String _dateKey(DateTime date) {
@@ -760,12 +769,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final weekStart = _focusedDay.subtract(Duration(days: _focusedDay.weekday % 7));
     final days = List.generate(7, (i) => weekStart.add(Duration(days: i)));
 
-    return ListView(
-      padding: const EdgeInsets.all(12),
-      children: [
-        // Dias da semana em cards compactos
-        for (var day in days) _buildWeekDayCard(day, colorScheme, isDark),
-      ],
+    // ListView with explicit controller and Scrollbar
+    return Scrollbar(
+      controller: _weeklyScrollController,
+      thumbVisibility: true,
+      interactive: true,
+      child: ListView.builder(
+        controller: _weeklyScrollController,
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: ClampingScrollPhysics(),
+        ),
+        padding: const EdgeInsets.all(12),
+        itemCount: days.length,
+        itemBuilder: (context, index) => _buildWeekDayCard(days[index], colorScheme, isDark),
+      ),
     );
   }
 

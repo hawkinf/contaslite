@@ -353,15 +353,43 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
         color: Theme.of(context).colorScheme.surface,
         child: Column(
           children: [
-            if (widget.inline)
-              Padding(
-                padding: const EdgeInsets.only(top: 2, right: 6),
-                child: headerRow,
-              )
-            else ...[
-              _buildSharedMonthHeader(),
-              headerRow,
-            ],
+            // Month banner primeiro
+            _buildSharedMonthHeader(),
+            // Barra com botão Voltar + título
+            Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                border: Border(
+                  bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.3)),
+                ),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    tooltip: 'Voltar',
+                    onPressed: () {
+                      if (widget.inline && widget.onClose != null) {
+                        widget.onClose!();
+                      } else {
+                        Navigator.of(context).maybePop();
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Despesas do Cartão',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Header row com info do cartão
+            headerRow,
             _buildSummaryStrip(),
             const SizedBox(height: 2),
             if (selectionBanner != null) selectionBanner,
@@ -389,14 +417,12 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     if (widget.inline) {
       final bottomInset = media.viewInsets.bottom + media.padding.bottom;
       final rightInset = media.padding.right;
+      // Use Expanded-friendly structure - no fixed SizedBox
       return Stack(
+        fit: StackFit.expand,
         clipBehavior: Clip.none,
         children: [
-          SizedBox(
-            width: media.size.width,
-            height: media.size.height,
-            child: body,
-          ),
+          body,
           Positioned(
             right: fabRight + rightInset,
             bottom: fabBottom + bottomInset,

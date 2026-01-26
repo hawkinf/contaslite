@@ -32,6 +32,7 @@ import '../ui/widgets/mini_chip.dart';
 import '../ui/components/summary_card.dart';
 import '../ui/components/action_banner.dart';
 import '../ui/components/standard_modal_shell.dart';
+import '../ui/components/section_header.dart';
 
 enum DashboardFilter { all, pagar, receber, cartoes }
 
@@ -136,10 +137,12 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final bool _isInlineEditing = false;
+  // Page stack for internal navigation (replaces single inline widget)
+  final List<Widget> _pageStack = [];
   bool _isNavigating = false;
-  Widget? _inlineEditWidget; // Widget de edição inline
-  final bool _inlinePreserveAppBar = false;
+
+  // ScrollController for the main list
+  final ScrollController _listScrollController = ScrollController();
 
   Future<void>? _activeLoad;
   bool _pendingReload = false;
@@ -192,6 +195,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void dispose() {
     PrefsService.dateRangeNotifier.removeListener(_dateRangeListener);
     _selectedConta.dispose();
+    _listScrollController.dispose();
     super.dispose();
   }
 
@@ -279,11 +283,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _refresh() => _loadData();
-
-  String _getDayOfWeekAbbr(int weekday) {
-    const days = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
-    return days[(weekday - 1) % 7];
-  }
 
   Color _adaptiveGreyTextColor(BuildContext context, Color lightGrey, {Color? darkGrey}) {
     return Theme.of(context).brightness == Brightness.dark ? (darkGrey ?? Colors.grey.shade600) : lightGrey;
@@ -1293,107 +1292,107 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 }
               }
 
-              return Column(children: [
-                if (!_inlinePreserveAppBar && !isSingleDayFilter)
-                  _buildMonthNavBar(monthLabel),
-                if (!_inlinePreserveAppBar) _buildTopControlsBar(),
-                headerWidget,
-                if (selectionBanner != null) selectionBanner,
-                Expanded(
-                    child: _isLoading
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const CircularProgressIndicator(),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _currentLoadStage.isEmpty
-                                      ? 'Carregando...'
-                                      : 'Carregando... ($_currentLoadStage)',
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 8),
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() => _isLoading = false);
-                                  },
-                                  child: const Text('Cancelar carregamento'),
-                                ),
-                              ],
-                            ),
-                          )
-                        : _displayList.isEmpty
-                            ? Center(child: Text(emptyText))
-                            : NotificationListener<UserScrollNotification>(
-                                onNotification: _handleScrollNotification,
-                                child: ListView.builder(
-                                  physics: const ClampingScrollPhysics(),
-                                  primary: false,
-                                  shrinkWrap: false,
-                                  padding: const EdgeInsets.fromLTRB(0, 8, 0, 110),
-                                  itemCount: _displayList.length,
-                                  itemBuilder: (context, index) {
+              // Fixed header section (FIG1) - NEVER scrolls
+              final fixedHeader = Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_pageStack.isEmpty && !isSingleDayFilter)
+                    _buildMonthNavBar(monthLabel),
+                  if (_pageStack.isEmpty) _buildTopControlsBar(),
+                  headerWidget,
+                  if (selectionBanner != null) selectionBanner,
+                ],
+              );
+
+              // Scrollable content - ONLY this scrolls
+              final scrollableContent = _isLoading
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const CircularProgressIndicator(),
+                          const SizedBox(height: 12),
+                          Text(
+                            _currentLoadStage.isEmpty
+                                ? 'Carregando...'
+                                : 'Carregando... ($_currentLoadStage)',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          TextButton(
+                            onPressed: () {
+                              setState(() => _isLoading = false);
+                            },
+                            child: const Text('Cancelar carregamento'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _displayList.isEmpty
+                      ? Center(child: Text(emptyText))
+                      : NotificationListener<UserScrollNotification>(
+                          onNotification: _handleScrollNotification,
+                          child: Scrollbar(
+                            controller: _listScrollController,
+                            thumbVisibility: true,
+                            interactive: true,
+                            child: ListView.builder(
+                              controller: _listScrollController,
+                              physics: const AlwaysScrollableScrollPhysics(
+                                parent: ClampingScrollPhysics(),
+                              ),
+                              primary: false,
+                              shrinkWrap: false,
+                              padding: const EdgeInsets.fromLTRB(0, 8, 0, 110),
+                              itemCount: _displayList.length,
+                              itemBuilder: (context, index) {
                                     try {
                                       final account = _displayList[index];
-                                      
+                                      final colorScheme = Theme.of(context).colorScheme;
+
                                       // Usar effectiveDate (após redirecionamentos) para agrupamento
                                       final currentEffectiveDate = _resolveEffectiveDate(account, _startDate);
-                                      
-                                      // Verificar se a data efetiva mudou em relação ao card anterior
-                                      bool showDateSeparator = false;
+
+                                      // Verificar se é o primeiro item ou se a data mudou
+                                      bool showDateSeparator = index == 0;
                                       if (index > 0) {
                                         final prevAccount = _displayList[index - 1];
                                         final prevEffectiveDate = _resolveEffectiveDate(prevAccount, _startDate);
                                         showDateSeparator = !DateUtils.isSameDay(currentEffectiveDate, prevEffectiveDate);
                                       }
-                                      
+
+                                      // Contar itens com a mesma data efetiva
+                                      int itemCount = 0;
+                                      if (showDateSeparator) {
+                                        for (int i = index; i < _displayList.length; i++) {
+                                          final itemDate = _resolveEffectiveDate(_displayList[i], _startDate);
+                                          if (DateUtils.isSameDay(itemDate, currentEffectiveDate)) {
+                                            itemCount++;
+                                          } else {
+                                            break;
+                                          }
+                                        }
+                                      }
+
+                                      // Formato padronizado: dd/MM/yyyy • DIA_SEMANA
+                                      final dateLabel = DateFormat('dd/MM/yyyy').format(currentEffectiveDate);
+                                      final dayOfWeek = DateFormat('EEEE', 'pt_BR').format(currentEffectiveDate).toUpperCase();
+
                                       return Column(
                                         children: [
-                                          if (showDateSeparator) ...[
-                                            Container(
-                                              margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Row(
-                                                    children: [
-                                                      Text(
-                                                        '${currentEffectiveDate.day.toString().padLeft(2, '0')} • ${_getDayOfWeekAbbr(currentEffectiveDate.weekday)}',
-                                                        style: const TextStyle(
-                                                          fontSize: 12,
-                                                          fontWeight: FontWeight.w600,
-                                                          color: Color(0xFF6B7280),
-                                                          letterSpacing: 0.5,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 12),
-                                                      Expanded(
-                                                        child: Container(
-                                                          height: 1,
-                                                          decoration: BoxDecoration(
-                                                            gradient: LinearGradient(
-                                                              colors: [
-                                                                const Color(0xFF6B7280).withValues(alpha: 0.3),
-                                                                Colors.transparent,
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 8),
-                                                  Container(
-                                                    height: 1,
-                                                    color: Colors.black.withValues(alpha: 0.08),
-                                                  ),
-                                                ],
+                                          if (showDateSeparator)
+                                            SectionHeader(
+                                              icon: Icons.calendar_today,
+                                              title: '$dateLabel • $dayOfWeek',
+                                              trailing: MiniChip(
+                                                label: itemCount == 1 ? '1 item' : '$itemCount itens',
+                                                backgroundColor: colorScheme.surfaceContainerHighest,
+                                                textColor: colorScheme.onSurfaceVariant,
+                                                borderColor: colorScheme.outlineVariant.withValues(alpha: 0.6),
                                               ),
                                             ),
-                                          ],
                                           Padding(
-                                            padding: const EdgeInsets.symmetric(vertical: 4),
+                                            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
                                             child: _buildAccountCard(account),
                                           ),
                                         ],
@@ -1410,20 +1409,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     }
                                   },
                                 ),
-                              )),
-              ]);
+                              ),
+                            );
+
+              // Return Column with fixed header + scrollable content in Expanded
+              return Column(
+                children: [
+                  fixedHeader,
+                  Expanded(child: scrollableContent),
+                ],
+              );
           },
         ),
       );
 
       return Scaffold(
-        appBar: _isInlineEditing && !_inlinePreserveAppBar ? null : appBarWidget,
-        body: _isInlineEditing && _inlineEditWidget != null
-            ? _inlineEditWidget!
+        appBar: _pageStack.isNotEmpty ? null : appBarWidget,
+        body: _pageStack.isNotEmpty
+            ? _pageStack.last
             : dashboardBody,
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         floatingActionButtonAnimator: FloatingActionButtonAnimator.scaling,
-        floatingActionButton: _isInlineEditing
+        floatingActionButton: _pageStack.isNotEmpty
             ? null
             : SafeArea(
                 child: Padding(
@@ -2192,22 +2199,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
         resolvedCard = account;
       }
     }
-    try {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => CardExpensesScreen(
-            card: resolvedCard,
-            month: targetMonth,
-            year: targetYear,
-            selectedDate: selectedDate,
-          ),
-        ),
-      );
-      if (mounted) _refresh();
-    } finally {
-      _isNavigating = false;
-    }
+
+    // Use pageStack navigation to keep header fixed
+    _pushPage(CardExpensesScreen(
+      card: resolvedCard,
+      month: targetMonth,
+      year: targetYear,
+      selectedDate: selectedDate,
+      inline: true,
+      onClose: _popPage,
+    ));
+    _isNavigating = false;
+  }
+
+  /// Push a page onto the internal navigation stack
+  void _pushPage(Widget page) {
+    setState(() {
+      _pageStack.add(page);
+    });
+  }
+
+  /// Pop the top page from the internal navigation stack
+  void _popPage() {
+    if (_pageStack.isEmpty) return;
+    setState(() {
+      _pageStack.removeLast();
+    });
+    _refresh();
   }
 
   Future<void> _openCardEditor(Account account) async {
