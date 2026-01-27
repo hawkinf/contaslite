@@ -2382,6 +2382,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
 
       for (final account in accounts) {
         if (account.observation == '[CANCELADA]') continue;
+        if (account.cardId != null) continue;
         if (account.cardBrand != null && account.recurrenceId == null) {
           final parentKey = '${account.id}-${account.month ?? month}-${_normalizeYear(account.year)}';
           if (launchedCardParents.contains(parentKey)) {
@@ -2931,6 +2932,21 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       default:
         return '${monthNames[_calendarMonth - 1]} $_selectedYear';
     }
+  }
+
+  int _getIsoWeekNumber(DateTime date) {
+    final normalized = DateTime(date.year, date.month, date.day);
+    final weekday = normalized.weekday == DateTime.sunday ? 7 : normalized.weekday;
+    final thursday = normalized.add(Duration(days: 4 - weekday));
+    final firstThursday = DateTime(thursday.year, 1, 4);
+    final firstWeekday = firstThursday.weekday == DateTime.sunday ? 7 : firstThursday.weekday;
+    final firstWeekThursday = firstThursday.add(Duration(days: 4 - firstWeekday));
+    return 1 + ((thursday.difference(firstWeekThursday).inDays) ~/ 7);
+  }
+
+  String _getWeeklySubtitle() {
+    final week = _getIsoWeekNumber(_selectedWeek);
+    return 'Semana $week';
   }
 
   /// Callback para navegação anterior baseado no tipo de calendário
@@ -4550,6 +4566,19 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                       onPrevious: _getCalendarOnPrevious(),
                       onNext: _getCalendarOnNext(),
                     ),
+                    if (_calendarType == 'semanal')
+                      Container(
+                        height: 24,
+                        alignment: Alignment.center,
+                        color: Theme.of(context).colorScheme.surfaceContainerLow,
+                        child: Text(
+                          _getWeeklySubtitle(),
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ),
                     // FilterBar para tipo de calendário (fixo)
                     _buildCalendarTypeFilterBar(),
                     // Totais fixos (para todos os tipos)

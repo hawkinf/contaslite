@@ -39,7 +39,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   void initState() {
     super.initState();
-    print('===== CALENDAR SCREEN INIT STATE =====');
     _selectedDay = _focusedDay;
     _loadEvents();
   }
@@ -127,8 +126,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Buscar todas as contas e cartões
-      final allAccountsRaw = await DatabaseHelper.instance.readAllAccountsRaw();
+      // Buscar contas JÁ FILTRADAS (sem despesas de cartão e sem cartões)
+      // Este método faz WHERE cardId IS NULL AND cardBrand IS NULL no SQL
+      final allAccounts = await DatabaseHelper.instance.readAllAccountsExcludingCardExpenses();
       final cards = await DatabaseHelper.instance.readAllCards();
       final types = await DatabaseHelper.instance.readAllTypes();
 
@@ -141,49 +141,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final startMonth = DateTime(now.year, now.month - 6, 1);
       final endMonth = DateTime(now.year, now.month + 6 + 1, 0);
 
-      // COLETAR TODOS OS IDs DE DESPESAS DE CARTÃO
-      // para excluí-los da lista de contas do calendário
-      final Set<int> cardExpenseIds = {};
-      DateTime tempDate = DateTime(startMonth.year, startMonth.month, 1);
-      while (tempDate.isBefore(endMonth)) {
-        for (var card in cards) {
-          final expenses = await DatabaseHelper.instance
-              .getCardExpensesForMonth(card.id!, tempDate.month, tempDate.year);
-          for (var exp in expenses) {
-            if (exp.id != null) {
-              cardExpenseIds.add(exp.id!);
-            }
-          }
-        }
-        tempDate = DateTime(tempDate.year, tempDate.month + 1, 1);
-      }
-
-      debugPrint('=== CALENDAR DEBUG ===');
-      debugPrint('Total contas raw: ${allAccountsRaw.length}');
-      debugPrint('Total IDs de despesas de cartão coletados: ${cardExpenseIds.length}');
-      debugPrint('IDs coletados: $cardExpenseIds');
-
-      // Verificar contas com cardId
-      final contasComCardId = allAccountsRaw.where((a) => a.cardId != null).toList();
-      debugPrint('Contas com cardId preenchido: ${contasComCardId.length}');
-      for (var c in contasComCardId.take(5)) {
-        debugPrint('  - ${c.description} cardId=${c.cardId} id=${c.id}');
-      }
-
-      // Filtrar contas excluindo:
-      // 1. Despesas de cartão (por ID coletado acima)
-      // 2. Cartões de crédito (cardBrand != null)
-      final allAccounts = allAccountsRaw.where((a) {
-        // Excluir se for cartão de crédito
-        if (a.cardBrand != null) return false;
-        // Excluir se for despesa de cartão (por ID)
-        if (a.id != null && cardExpenseIds.contains(a.id!)) return false;
-        // Excluir se tiver cardId preenchido
-        if (a.cardId != null) return false;
-        return true;
-      }).toList();
-
-      debugPrint('Contas após filtro: ${allAccounts.length}');
+      debugPrint('=== CALENDAR DEBUG (V2) ===');
+      debugPrint('Contas filtradas pelo DB: ${allAccounts.length}');
+      debugPrint('Cartões encontrados: ${cards.length}');
       debugPrint('=== FIM DEBUG ===');
 
       final Map<String, List<Account>> events = {};
@@ -299,30 +259,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   List<Account> _getEventsForDay(DateTime day) {
     final normalizedDay = DateTime(day.year, day.month, day.day);
     final key = _dateKey(normalizedDay);
-    final rawEvents = _events[key] ?? [];
-
-    print('>>> _getEventsForDay($key): ${rawEvents.length} eventos brutos');
-    for (var e in rawEvents) {
-      print('   - ${e.description} cardId=${e.cardId} cardBrand=${e.cardBrand}');
-    }
-
-    // FILTRAR: Excluir despesas de cartão de crédito
-    // Manter APENAS:
-    // 1. Faturas consolidadas (descrição começa com "Fatura:")
-    // 2. Contas normais (sem cardId e sem cardBrand)
-    final filtered = rawEvents.where((a) {
-      // MANTER faturas consolidadas (descrição começa com "Fatura:")
-      if (a.description.startsWith('Fatura:')) return true;
-      // EXCLUIR cartões de crédito (definição do cartão)
-      if (a.cardBrand != null) return false;
-      // EXCLUIR despesas de cartão (tem cardId preenchido)
-      if (a.cardId != null) return false;
-      // Manter todas as outras contas normais
-      return true;
-    }).toList();
-
-    print('>>> Após filtro: ${filtered.length} eventos');
-    return filtered;
+    final events = _events[key] ?? [];
+    // Os eventos já estão filtrados:
+    // - Contas normais vieram de readAllAccountsExcludingCardExpenses() (sem cardId/cardBrand)
+    // - Faturas consolidadas foram adicionadas manualmente com "Fatura:" no nome
+    return events;
   }
 
   (double pagar, double receber, int countPagar, int countReceber) _getDayTotals(DateTime day) {

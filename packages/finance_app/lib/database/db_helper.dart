@@ -1072,10 +1072,13 @@ class DatabaseHelper {
     // Excluir:
     // - Despesas de cartão (cardId preenchido)
     // - Cartões de crédito (cardBrand preenchido)
+    // - Despesas de cartão antigas (purchaseUuid ou purchaseDate preenchidos)
     final maps = await db.rawQuery('''
       SELECT * FROM accounts
       WHERE cardId IS NULL
         AND cardBrand IS NULL
+        AND (purchaseUuid IS NULL OR purchaseUuid = '')
+        AND (purchaseDate IS NULL OR purchaseDate = '')
     ''');
     return maps.map((json) => Account.fromMap(json)).toList();
   }
