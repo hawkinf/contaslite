@@ -93,7 +93,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void>? _activeLoad;
   bool _pendingReload = false;
-  int _loadCounter = 0;
   String _currentLoadStage = '';
 
   late final VoidCallback _dateRangeListener;
@@ -386,26 +385,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return _activeLoad!;
     }
 
-    final loadId = ++_loadCounter;
     final completer = Completer<void>();
     _activeLoad = completer.future;
 
-    final stopwatch = Stopwatch()..start();
     Future<T> timed<T>(
       String label,
       Future<T> future, {
       Duration timeout = const Duration(seconds: 10),
     }) async {
       _currentLoadStage = label;
-      debugPrint('⏳ DashboardScreen: $label (#$loadId)');
-      final result = await future.timeout(timeout);
-      debugPrint(
-        '✅ DashboardScreen: $label ok (${stopwatch.elapsedMilliseconds}ms) (#$loadId)',
-      );
-      return result;
+      return await future.timeout(timeout);
     }
-
-    debugPrint('⏳ DashboardScreen: _loadData start (#$loadId)');
     setState(() => _isLoading = true);
 
     try {
@@ -523,19 +513,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
 
-      debugPrint('📋 Tipos no banco: ${types.map((t) => '${t.name}(id: ${t.id})').join(', ')}');
-      debugPrint('📋 Total de contas: ${allAccounts.length}');
-      debugPrint('🔗 categoryParentNameMap: $categoryParentNameMap');
-
       final typeFilter = widget.typeNameFilter?.trim();
       final excludeTypeFilter = widget.excludeTypeNameFilter?.trim();
-
-      if (typeFilter != null) {
-        debugPrint('🎯 typeNameFilter recebido: "$typeFilter"');
-      }
-      if (excludeTypeFilter != null) {
-        debugPrint('🎯 excludeTypeNameFilter recebido: "$excludeTypeFilter"');
-      }
 
       Set<int>? allowedTypeIds;
       Set<int>? excludedTypeIds;
@@ -559,11 +538,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             .where((t) => t.name.trim().toLowerCase() == normalizedFilter)
             .map((t) => t.id!)
             .toSet();
-        debugPrint('🔍 Filtro de exclusão aplicado: $excludeTypeFilter → IDs: $excludedTypeIds');
-      }
-
-      if (allowedTypeIds != null) {
-        debugPrint('🔍 Filtro de inclusão aplicado: $typeFilter → IDs: $allowedTypeIds');
       }
 
       // Preencher mapa de valores de recorrências pai
@@ -598,7 +572,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (y != null && exp.month != null) {
             final key = '${exp.recurrenceId}_${y}_${exp.month}';
             launchedIndex.putIfAbsent(exp.recurrenceId!, () => {}).add(key);
-            debugPrint('📝 Lançamento indexado: recurrenceId=${exp.recurrenceId}, key=$key, description=${exp.description}');
           }
         }
       }
@@ -609,14 +582,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (y != null && cancelled.month != null) {
             final key = '${cancelled.recurrenceId}_${y}_${cancelled.month}';
             launchedIndex.putIfAbsent(cancelled.recurrenceId!, () => {}).add(key);
-            debugPrint('🚫 Instância cancelada indexada: recurrenceId=${cancelled.recurrenceId}, key=$key');
           }
         }
-      }
-      debugPrint('🔍 launchedIndex completo: $launchedIndex');
-      debugPrint('📊 normalExpenses ${normalExpenses.length} contas:');
-      for (var exp in normalExpenses) {
-        debugPrint('   - ${exp.description} (id=${exp.id}, recId=${exp.recurrenceId}, isRec=${exp.isRecurrent}, instTotal=${exp.installmentTotal}, ${exp.year}_${exp.month})');
       }
 
       // Processar contas pelo mês (não dia por dia)
@@ -638,12 +605,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (!processedMonths.contains(monthKey)) {
           processedMonths.add(monthKey);
           final monthAccounts = accountsByMonth[monthKey] ?? [];
-          if (monthAccounts.isNotEmpty) {
-            debugPrint('📋 Adicionando ${monthAccounts.length} contas do mês $monthKey:');
-            for (var acc in monthAccounts) {
-              debugPrint('   - ${acc.description} (id=${acc.id}, recurrenceId=${acc.recurrenceId}, value=${acc.value})');
-            }
-          }
           processedList.addAll(
             monthAccounts.where((account) => !(account.cardBrand != null && account.recurrenceId == null)),
           );
@@ -654,11 +615,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             final launchKey = '${rec.id}_${current.year}_${current.month}';
             final wasLaunched = launchedIndex[rec.id]?.contains(launchKey) ?? false;
-            debugPrint('🔎 Verificando recorrência: ${rec.description} (id=${rec.id}), launchKey=$launchKey');
-            debugPrint('   launchedIndex[${rec.id}] = ${launchedIndex[rec.id]}');
-            debugPrint('   wasLaunched=$wasLaunched, value=${rec.value}');
               if (!wasLaunched) {
-                debugPrint('➕ ADICIONANDO recorrência PAI: ${rec.description}');
                 processedList.add(Account(
                   id: rec.id,
                   typeId: rec.typeId,
@@ -673,8 +630,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 month: current.month,
                 year: current.year,
               ));
-            } else {
-              debugPrint('✅ PULANDO recorrência PAI pois foi lançada: ${rec.description} (id=${rec.id})');
             }
           }
         }
@@ -790,29 +745,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
             .toList();
       }
 
-      debugPrint('📊 Antes de filtros: ${processedList.length} contas');
-      debugPrint('   Detalhes: ${processedList.map((a) => '${a.description}(id=${a.id},rec=${a.isRecurrent},recId=${a.recurrenceId})').join(', ')}');
-
       // Aplicar filtro de inclusão (se especificado)
       if (allowedTypeIds != null) {
-        final beforeFilter = processedList.length;
         processedList = processedList
             .where((account) => allowedTypeIds!.contains(account.typeId))
             .toList();
-        debugPrint('✓ Filtro de inclusão: $beforeFilter → ${processedList.length} contas');
       }
 
       // Aplicar filtro de exclusão (se especificado)
       if (excludedTypeIds != null && excludedTypeIds.isNotEmpty) {
-        final beforeFilter = processedList.length;
         processedList = processedList
             .where((account) => !excludedTypeIds!.contains(account.typeId))
             .toList();
-        debugPrint('✓ Filtro de exclusão: $beforeFilter → ${processedList.length} contas');
       }
 
       if (_isCombinedView && _categoryFilter != DashboardFilter.all) {
-        final beforeFilter = processedList.length;
         processedList = processedList.where((account) {
           final isCard = account.cardBrand != null;
           final typeName = typeMap[account.typeId]?.toLowerCase() ?? '';
@@ -829,14 +776,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               return true;
           }
         }).toList();
-        debugPrint('✓ Filtro de categorias: $beforeFilter → ${processedList.length} contas');
       }
 
-      debugPrint('📊 Depois de filtros: ${processedList.length} contas');
-      
       // Aplicar filtro de período (semana atual, próxima semana)
       if (_periodFilter != 'month') {
-        final beforePeriod = processedList.length;
         processedList = processedList.where((account) {
           final year = account.year ?? _startDate.year;
           final month = account.month ?? _startDate.month;
@@ -846,7 +789,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           final dueDate = DateTime(year, month, day);
           return !dueDate.isBefore(_startDate) && !dueDate.isAfter(_endDate);
         }).toList();
-        debugPrint('✓ Filtro de período ($_periodFilter): $beforePeriod → ${processedList.length} contas');
       }
       
       processedList.sort((a, b) {
@@ -892,7 +834,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           .where((account) => account.id != null)
           .map((account) => account.id!)
           .toList();
-      debugPrint('💳 Buscando pagamentos para IDs: $paymentIds');
       final paymentInfo = paymentIds.isEmpty
           ? <int, Map<String, dynamic>>{}
           : await timed(
@@ -904,19 +845,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               timeout: const Duration(seconds: 10),
             );
-      debugPrint('💳 Pagamentos encontrados: ${paymentInfo.keys.toList()}');
-      for (var entry in paymentInfo.entries) {
-        debugPrint('   accountId=${entry.key}: ${entry.value}');
-      }
-      
       // Filtrar contas pagas se a opção "Ocultar" estiver ativa
       if (_hidePaidAccounts) {
-        final beforePaid = processedList.length;
         processedList = processedList.where((account) {
           if (account.id == null) return true;
           return !paymentInfo.containsKey(account.id!);
         }).toList();
-        debugPrint('✓ Filtro de pagas (ocultar): $beforePaid → ${processedList.length} contas');
       }
       
       final totalPaid = paymentIds.isEmpty
@@ -1008,9 +942,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _paymentInfo = paymentInfo;
         });
       }
-    } catch (e, stackTrace) {
-      debugPrint('❌ Erro ao carregar dados: $e');
-      debugPrint('Stack trace: $stackTrace');
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1024,10 +956,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
-      debugPrint(
-        '✅ DashboardScreen: _loadData end (#$loadId) '
-        'isLoading=$_isLoading items=${_displayList.length}',
-      );
       _currentLoadStage = '';
       _activeLoad = null;
       completer.complete();
@@ -1450,9 +1378,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
       );
-    } catch (e, stackTrace) {
-      debugPrint('❌ Erro ao renderizar DashboardScreen: $e');
-      debugPrintStack(stackTrace: stackTrace);
+    } catch (e) {
       return Scaffold(
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.primary,
@@ -2448,14 +2374,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _showLaunchDialog(Account rule) async {
     // Usar o estimatedValue (Valor Previsto) da recorrência pai
     double averageValue = rule.estimatedValue ?? rule.value;
-
-    debugPrint('💰💰💰 LANÇANDO RECORRÊNCIA 💰💰💰');
-    debugPrint('   rule.id=${rule.id} (DEVE SER A RECORRÊNCIA PAI)');
-    debugPrint('   rule.recurrenceId=${rule.recurrenceId} (DEVE SER NULL para PAI)');
-    debugPrint('   rule.isRecurrent=${rule.isRecurrent} (DEVE SER TRUE)');
-    debugPrint('   rule.estimatedValue=${rule.estimatedValue}');
-    debugPrint('   rule.value=${rule.value}');
-    debugPrint('   averageValue final=$averageValue');
 
     // Controllers para valores médio e lançado
     final averageController =
@@ -3456,23 +3374,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _confirmDelete(Account acc) async {
     if (acc.id == null) return;
 
-    debugPrint('🗑️ _confirmDelete iniciado para conta:');
-    debugPrint('   id=${acc.id}');
-    debugPrint('   description=${acc.description}');
-    debugPrint('   isRecurrent=${acc.isRecurrent}');
-    debugPrint('   recurrenceId=${acc.recurrenceId}');
-    debugPrint('   installmentTotal=${acc.installmentTotal}');
-    debugPrint('   month=${acc.month}, year=${acc.year}');
-
     // Se é recorrente (PAI ou FILHA) ou parcelada (installment)
     final isRecurringOrInstallment = acc.isRecurrent || acc.recurrenceId != null || (acc.installmentTotal != null && acc.installmentTotal! > 1);
-    debugPrint('   isRecurringOrInstallment=$isRecurringOrInstallment');
-    
+
     if (isRecurringOrInstallment) {
       // Determinar se é recorrência ou parcelamento
       final isInstallment = acc.installmentTotal != null && acc.installmentTotal! > 1 && acc.recurrenceId == null;
       final isRecurrence = acc.isRecurrent || acc.recurrenceId != null;
-      debugPrint('   isInstallment=$isInstallment, isRecurrence=$isRecurrence');
 
       // Se é filha de recorrência, carregar o pai para referência
       Account? parent;
