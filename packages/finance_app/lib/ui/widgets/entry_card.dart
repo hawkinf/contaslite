@@ -25,6 +25,8 @@ class EntryCard extends StatelessWidget {
   /// Widget opcional para ícone do subtítulo (tem prioridade sobre subtitleEmoji)
   /// Usado para logos de bandeiras de cartão de crédito
   final Widget? subtitleIcon;
+  /// Valor previsto/estimado (exibido discretamente abaixo do valor principal)
+  final String? estimatedValue;
 
   const EntryCard({
     super.key,
@@ -44,6 +46,7 @@ class EntryCard extends StatelessWidget {
     this.titleEmoji,
     this.subtitleEmoji,
     this.subtitleIcon,
+    this.estimatedValue,
   });
 
   @override
@@ -166,6 +169,16 @@ class EntryCard extends StatelessWidget {
                           ),
                         ],
                       ),
+                      if (estimatedValue != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'Prev: $estimatedValue',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
                       if (trailing != null) ...[
                         const SizedBox(height: AppSpacing.sm),
                         trailing!,

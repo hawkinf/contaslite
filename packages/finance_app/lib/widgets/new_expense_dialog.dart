@@ -15,7 +15,6 @@ import '../services/holiday_service.dart';
 import '../services/default_account_categories_service.dart';
 import '../utils/installment_utils.dart';
 import '../ui/components/color_picker_field.dart';
-import '../ui/components/launch_type_segmented.dart';
 import '../ui/components/standard_modal_shell.dart';
 import '../ui/components/lancamento_form_padrao.dart';
 import 'invoice_adjustment_dialog.dart';
@@ -1087,19 +1086,6 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
         launchContent: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            LaunchTypeSegmented(
-              value: _isRecurrent ? 1 : 0,
-              onChanged: (val) {
-                setState(() {
-                  _isRecurrent = val == 1;
-                  if (_isRecurrent) {
-                    _installmentsQtyController.text = '1';
-                  }
-                });
-                _updatePreview();
-              },
-            ),
-            const SizedBox(height: 8),
             if (!_isRecurrent)
               TextFormField(
                 controller: _installmentsQtyController,
@@ -1121,7 +1107,7 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
               )
             else
               Text(
-                'Recorrência mensal',
+                'Recorrência mensal - cobrança automática todo mês',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),
@@ -1218,6 +1204,45 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
               spacing: 12,
               runSpacing: 12,
               children: [
+                // Switch para ativar recorrência (antes do campo de data)
+                SizedBox(
+                  width: constraints.maxWidth,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.repeat, color: colorScheme.onSurfaceVariant, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Compra recorrente',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                        Switch(
+                          value: _isRecurrent,
+                          onChanged: (value) {
+                            setState(() {
+                              _isRecurrent = value;
+                              if (value) {
+                                _installmentsQtyController.text = '1';
+                              }
+                            });
+                            _updatePreview();
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 SizedBox(
                   width: itemWidth,
                   child: TextFormField(

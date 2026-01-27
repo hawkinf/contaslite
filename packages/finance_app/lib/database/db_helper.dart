@@ -1065,6 +1065,21 @@ class DatabaseHelper {
     return maps.map((json) => Account.fromMap(json)).toList();
   }
 
+  /// Retorna todas as contas EXCLUINDO despesas de cartão e cartões de crédito
+  /// Usado pelo calendário para não duplicar lançamentos de cartão
+  Future<List<Account>> readAllAccountsExcludingCardExpenses() async {
+    final db = await database;
+    // Excluir:
+    // - Despesas de cartão (cardId preenchido)
+    // - Cartões de crédito (cardBrand preenchido)
+    final maps = await db.rawQuery('''
+      SELECT * FROM accounts
+      WHERE cardId IS NULL
+        AND cardBrand IS NULL
+    ''');
+    return maps.map((json) => Account.fromMap(json)).toList();
+  }
+
   /// Busca uma conta específica por ID
   Future<Account?> getAccountById(int? id) async {
     if (id == null) return null;

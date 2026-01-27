@@ -19,7 +19,6 @@ import '../utils/installment_utils.dart';
 import '../widgets/icon_picker_dialog.dart';
 import '../ui/components/app_modal_header.dart';
 import '../ui/components/color_picker_field.dart';
-import '../ui/components/launch_type_segmented.dart';
 import '../ui/components/standard_modal_shell.dart';
 import '../ui/components/lancamento_form_padrao.dart';
 import '../widgets/calculator_dialog.dart';
@@ -779,7 +778,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       _selectedType = val;
       _categorias = [];
       _selectedCategory = null;
-      _descController.clear();
+      // Não limpar a descrição ao mudar o tipo
     });
     await _loadCategories();
   }
@@ -1402,15 +1401,6 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     );
   }
 
-  Widget _buildLaunchTypeSelector({bool compact = false}) {
-    debugPrint('📝 _buildLaunchTypeSelector (_entryMode=$_entryMode)');
-    return LaunchTypeSegmented(
-      value: _entryMode,
-      compact: compact,
-      onChanged: (val) => setState(() => _entryMode = val),
-    );
-  }
-
   Widget _buildInstallmentDropdown() {
     return TextFormField(
       controller: _installmentsQtyController,
@@ -1435,128 +1425,6 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         return null;
       },
     );
-  }
-
-  Widget _buildRecurrentMode() {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Column(children: [
-      // Dia Vencimento, Mês Inicial e Ano Inicial
-      Row(children: [
-        Expanded(
-          flex: 1,
-          child: _buildFieldWithIcon(
-            icon: Icons.calendar_today,
-            label: 'Dia Venc.',
-            child: DropdownButtonFormField<int>(
-              value: _recurrentDay,
-              decoration: buildOutlinedInputDecoration(
-                label: 'Dia Venc.',
-                icon: Icons.calendar_today,
-              ),
-              items: List.generate(
-                  31,
-                  (index) => DropdownMenuItem(
-                      value: index + 1, child: Text("${index + 1}"))),
-              onChanged: (val) => setState(() => _recurrentDay = val!),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 1,
-          child: _buildFieldWithIcon(
-            icon: Icons.calendar_month,
-            label: 'Mês Inicial',
-            child: DropdownButtonFormField<int>(
-              value: _recurrentStartMonth,
-              decoration: buildOutlinedInputDecoration(
-                label: 'Mês Inicial',
-                icon: Icons.calendar_month,
-              ),
-              items: List.generate(12, (index) {
-                return DropdownMenuItem(
-                  value: index,
-                  child: Text(_monthShortLabels[index]),
-                );
-              }),
-              onChanged: (val) {
-                if (val != null) {
-                  setState(() => _recurrentStartMonth = val);
-                }
-              },
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          flex: 1,
-          child: _buildFieldWithIcon(
-            icon: Icons.event,
-            label: 'Ano Inicial',
-            child: TextFormField(
-              controller: _recurrentStartYearController,
-              keyboardType: TextInputType.number,
-              decoration: buildOutlinedInputDecoration(
-                label: 'Ano Inicial',
-                icon: Icons.event,
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(4),
-              ],
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Ano inicial obrigatório';
-                }
-                final year = int.tryParse(value);
-                if (year == null || year < 2000 || year > 2100) {
-                  return 'Ano inválido';
-                }
-                return null;
-              },
-              onChanged: (value) {
-                final parsed = int.tryParse(value);
-                if (parsed != null) {
-                  _recurrentStartYear = parsed;
-                }
-              },
-            ),
-          ),
-        ),
-      ]),
-      const SizedBox(height: 20),
-      const Text("Em caso de feriado/fim de semana:",
-          style: TextStyle(fontWeight: FontWeight.bold)),
-      const SizedBox(height: 10),
-      SegmentedButton<bool>(
-        segments: const [
-          ButtonSegment(
-              value: false,
-              label: Text('Pagar Depois'),
-              icon: Icon(Icons.arrow_forward)),
-          ButtonSegment(
-              value: true,
-              label: Text('Antecipar'),
-              icon: Icon(Icons.arrow_back))
-        ],
-        selected: {_payInAdvance},
-        onSelectionChanged: (Set<bool> sel) =>
-            setState(() => _payInAdvance = sel.first),
-        style: ButtonStyle(
-          visualDensity: VisualDensity.compact,
-          padding: MaterialStateProperty.all(
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          ),
-          minimumSize: MaterialStateProperty.all(const Size(0, 40)),
-          shape: MaterialStateProperty.all(
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          ),
-          side: MaterialStateProperty.all(
-            BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-          ),
-        ),
-      )
-    ]);
   }
 
   // Widget com o conteúdo do formulário (scrollável)
@@ -1614,7 +1482,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     final valueController = isRecurrent ? _recurrentValueController : _totalValueController;
     final valueField = _buildFieldWithIcon(
       icon: Icons.attach_money,
-      label: 'Valor Total (R\$)',
+      label: 'Valor (R\$) - Opcional',
       child: TextFormField(
         controller: valueController,
         keyboardType: TextInputType.number,
@@ -1623,7 +1491,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           CentavosInputFormatter(moeda: true),
         ],
         decoration: buildOutlinedInputDecoration(
-          label: 'Valor Total (R\$)',
+          label: 'Valor (R\$) - Opcional',
           icon: Icons.attach_money,
           suffixIcon: IconButton(
             icon: Icon(Icons.calculate, color: colorScheme.onSurfaceVariant),
@@ -1639,12 +1507,13 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           }
         },
         validator: (value) {
+          // Valor é opcional - só valida se preenchido
           if (value == null || value.trim().isEmpty) {
-            return 'Valor obrigatório';
+            return null; // Aceita vazio
           }
           try {
             final parsed = UtilBrasilFields.converterMoedaParaDouble(value);
-            if (parsed <= 0) return 'Valor deve ser maior que zero';
+            if (parsed < 0) return 'Valor não pode ser negativo';
           } catch (_) {
             return 'Valor inválido';
           }
@@ -1653,15 +1522,25 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
       ),
     );
 
+    // Tipo do formulário baseado em se é recebimento ou conta a pagar
+    final formTypeLabel = widget.isRecebimento ? 'Novo Recebimento' : 'Nova Conta a Pagar';
+    final formTypeIcon = widget.isRecebimento ? Icons.arrow_downward : Icons.arrow_upward;
+    final formTypeColor = widget.isRecebimento ? Colors.green : Colors.red;
+
     return Form(
       key: _formKey,
       child: LancamentoFormPadrao(
         useScroll: true,
-        typeContent: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildTypeDropdown(),
-          ],
+        typeContent: TextFormField(
+          initialValue: widget.accountToEdit != null
+              ? (widget.isRecebimento ? 'Editar Recebimento' : 'Editar Conta')
+              : formTypeLabel,
+          readOnly: true,
+          decoration: buildOutlinedInputDecoration(
+            label: 'Tipo de lançamento',
+            icon: formTypeIcon,
+            prefixIcon: Icon(formTypeIcon, color: formTypeColor),
+          ),
         ),
         categoryTrailing: TextButton(
           onPressed: _showCategoriesDialog,
@@ -1672,16 +1551,45 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
           ),
           child: const Text('Gerenciar categorias'),
         ),
+        extraClassificationContent: _buildTypeDropdown(),
         categoryContent: _buildCategorySection(),
         launchContent: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildLaunchTypeSelector(),
-            const SizedBox(height: 8),
             if (_entryMode == 0) _buildInstallmentDropdown(),
             if (_entryMode == 1) ...[
-              const SizedBox(height: 12),
-              _buildRecurrentMode(),
+              // Opção de ajuste para feriados/fins de semana
+              const Text("Em caso de feriado/fim de semana:",
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(
+                      value: false,
+                      label: Text('Pagar Depois'),
+                      icon: Icon(Icons.arrow_forward)),
+                  ButtonSegment(
+                      value: true,
+                      label: Text('Antecipar'),
+                      icon: Icon(Icons.arrow_back))
+                ],
+                selected: {_payInAdvance},
+                onSelectionChanged: (Set<bool> sel) =>
+                    setState(() => _payInAdvance = sel.first),
+                style: ButtonStyle(
+                  visualDensity: VisualDensity.compact,
+                  padding: WidgetStateProperty.all(
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  minimumSize: WidgetStateProperty.all(const Size(0, 40)),
+                  shape: WidgetStateProperty.all(
+                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  side: WidgetStateProperty.all(
+                    BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+                  ),
+                ),
+              ),
             ],
           ],
         ),
@@ -1709,6 +1617,48 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         datesContent: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Switch para ativar recorrência (antes do campo de data)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.repeat, color: colorScheme.onSurfaceVariant, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Conta recorrente',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  Switch(
+                    value: _entryMode == 1,
+                    onChanged: (value) {
+                      setState(() {
+                        _entryMode = value ? 1 : 0;
+                        if (value) {
+                          // Ao ativar recorrência, extrair dia da data atual
+                          if (_dateController.text.isNotEmpty) {
+                            try {
+                              final date = DateFormat('dd/MM/yy').parse(_dateController.text);
+                              _recurrentDay = date.day;
+                            } catch (_) {}
+                          }
+                        }
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
             if (_entryMode == 0) ...[
               dateField,
               if (_mainOriginalDueDate != null)
@@ -1737,13 +1687,81 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
                     ],
                   ),
                 ),
-            ] else
-              Text(
-                'Recorrência mensal configurada no lançamento.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: colorScheme.onSurfaceVariant,
+            ] else ...[
+              // Campos de recorrência: Dia Venc., Mês Inicial, Ano Inicial
+              Row(children: [
+                Expanded(
+                  flex: 1,
+                  child: DropdownButtonFormField<int>(
+                    value: _recurrentDay,
+                    decoration: buildOutlinedInputDecoration(
+                      label: 'Dia Venc.',
+                      icon: Icons.calendar_today,
                     ),
-              ),
+                    items: List.generate(
+                        31,
+                        (index) => DropdownMenuItem(
+                            value: index + 1, child: Text("${index + 1}"))),
+                    onChanged: (val) => setState(() => _recurrentDay = val!),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 1,
+                  child: DropdownButtonFormField<int>(
+                    value: _recurrentStartMonth,
+                    decoration: buildOutlinedInputDecoration(
+                      label: 'Mês Inicial',
+                      icon: Icons.calendar_month,
+                    ),
+                    items: List.generate(12, (index) {
+                      return DropdownMenuItem(
+                        value: index,
+                        child: Text(_monthShortLabels[index]),
+                      );
+                    }),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _recurrentStartMonth = val);
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 1,
+                  child: TextFormField(
+                    controller: _recurrentStartYearController,
+                    keyboardType: TextInputType.number,
+                    decoration: buildOutlinedInputDecoration(
+                      label: 'Ano Inicial',
+                      icon: Icons.event,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(4),
+                    ],
+                    validator: (value) {
+                      if (_entryMode != 1) return null;
+                      if (value == null || value.isEmpty) {
+                        return 'Obrigatório';
+                      }
+                      final year = int.tryParse(value);
+                      if (year == null || year < 2000 || year > 2100) {
+                        return 'Ano inválido';
+                      }
+                      return null;
+                    },
+                    onChanged: (value) {
+                      final parsed = int.tryParse(value);
+                      if (parsed != null) {
+                        _recurrentStartYear = parsed;
+                      }
+                    },
+                  ),
+                ),
+              ]),
+            ],
           ],
         ),
         optionsContent: Column(
@@ -2499,16 +2517,7 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
 
       // MODO CRIAÇÃO - Criar novo
       if (_entryMode == 1) {
-        // Modo Recorrente Fixa
-        if (_recurrentValueController.text.isEmpty) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text("Valor médio é obrigatório para recorrências."),
-                backgroundColor: AppColors.error));
-          }
-          setState(() => _isSaving = false);
-          return;
-        }
+        // Modo Recorrente Fixa - valor é opcional
 
         final parsedStartYear =
             int.tryParse(_recurrentStartYearController.text.trim());

@@ -1053,14 +1053,34 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
         textColor: colorScheme.onSurfaceVariant,
         borderColor: colorScheme.outlineVariant.withValues(alpha: 0.6),
       ),
-      if (installmentDisplay.isInstallment)
+      if (installmentDisplay.isInstallment) ...[
         MiniChip(
           label: '${installmentDisplay.index}/${installmentDisplay.total}',
           backgroundColor: colorScheme.surfaceContainerHighest,
           textColor: colorScheme.onSurfaceVariant,
           borderColor: colorScheme.outlineVariant.withValues(alpha: 0.6),
         ),
+        // Chip de término do parcelamento
+        if (expense.month != null && expense.year != null)
+          Builder(builder: (context) {
+            final int remainingInstallments = installmentDisplay.total - installmentDisplay.index;
+            final DateTime endDate = DateTime(expense.year!, expense.month! + remainingInstallments, 1);
+            return MiniChip(
+              label: 'Término: ${DateFormat('MM/yy').format(endDate)}',
+              backgroundColor: colorScheme.surfaceContainerHighest,
+              textColor: colorScheme.onSurfaceVariant,
+              borderColor: colorScheme.outlineVariant.withValues(alpha: 0.6),
+            );
+          }),
+      ],
     ];
+
+    // Calcular valor previsto para parcelados (valor total do parcelamento)
+    String? estimatedValueDisplay;
+    if (isParcel && installmentDisplay.isInstallment && installmentDisplay.total > 1) {
+      final totalValue = expense.value * installmentDisplay.total;
+      estimatedValueDisplay = UtilBrasilFields.obterReal(totalValue);
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -1091,6 +1111,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
           valueColor: typeColor,
           chips: chips,
           accentColor: typeColor,
+          estimatedValue: estimatedValueDisplay,
           trailing: PopupMenuButton<String>(
             icon: Icon(Icons.more_vert, size: 18, color: colorScheme.onSurfaceVariant),
             padding: EdgeInsets.zero,

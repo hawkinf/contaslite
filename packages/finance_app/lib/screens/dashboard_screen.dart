@@ -933,8 +933,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final totalRemaining = math.max(0.0, totalForecast - totalPaid);
 
       // Calcular totais separados para visão combinada
-      // Total Lançado = soma de contas lançadas + contas que não precisam ser lançadas
-      // Total Previsto = se não lançada usa previsto, se lançada usa o valor lançado
+      // Total Lançado = soma de contas (avulsa/lançada) - NÃO usa previsto
+      // Total Previsto = soma de previsões (estimatedValue) + soma de contas lançadas (que não têm previsão)
       double previstoPagar = 0.0;
       double previstoReceber = 0.0;
       double lancadoPagar = 0.0;
@@ -954,25 +954,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (isCard) {
           final breakdown = CardBreakdown.parse(item.observation);
           // Previsto do cartão vem do breakdown
-          final cardPrevisto = breakdown.total;
+          itemPrevisto = breakdown.total;
           // Lançado é o value da fatura
           itemLancado = item.value;
-          // Previsto: se tem valor lançado, usa lançado; senão usa previsto
-          itemPrevisto = cardPrevisto;
         } else if (isRecurrenceParent) {
-          // Conta pai de recorrência: não soma no lançado, mas soma no previsto
+          // Conta pai de recorrência: só soma no previsto, não no lançado
           itemPrevisto = item.estimatedValue ?? item.value;
-          itemLancado = 0.0; // Não conta no total lançado
+          itemLancado = 0.0;
         } else {
           // Conta normal ou filha de recorrência
-          final valorPrevisto = item.estimatedValue ?? item.value;
-          final valorLancado = item.value;
+          // Lançado: sempre usa value (avulsa ou lançada)
+          itemLancado = item.value;
 
-          // Total lançado: valor da conta (se > 0)
-          itemLancado = valorLancado;
+          // Previsto: usa estimatedValue se existe, senão usa value (quando lançada)
+          final hasEstimatedValue = item.estimatedValue != null && item.estimatedValue!.abs() > 0.01;
+          final hasLaunchedValue = item.value.abs() > 0.01;
 
-          // Total previsto: se lançado > 0, usa lançado; senão usa previsto
-          itemPrevisto = valorLancado > 0.01 ? valorLancado : valorPrevisto;
+          if (hasEstimatedValue) {
+            // Tem previsão: usa o estimatedValue
+            itemPrevisto = item.estimatedValue!;
+          } else if (hasLaunchedValue) {
+            // Não tem previsão mas tem lançamento: usa o value
+            itemPrevisto = item.value;
+          } else {
+            // Nem previsão nem lançamento
+            itemPrevisto = 0.0;
+          }
         }
 
         if (isRecebimento) {
@@ -1582,13 +1589,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
         : account.value;
     final String lancadoDisplay =
         UtilBrasilFields.obterReal(lancadoValue ?? previstoValue);
-    final String previstoDisplay = UtilBrasilFields.obterReal(previstoValue);
-    // Mostrar previsto para contas recorrentes filhas que têm estimatedValue definido
-    final bool showPrevisto = !isCard &&
-        isRecurrent &&
-        account.recurrenceId != null &&
-        account.estimatedValue != null &&
-        account.estimatedValue!.abs() > 0.009;
+
+    // Calcular se deve exibir o valor previsto no card (abaixo do valor principal)
+    // Casos:
+    // 1. Cartões: usar breakdown.total como valor previsto da fatura
+    // 2. Recorrência não lançada (parent): usar estimatedValue ou value
+    // 3. Lançada (child) com estimatedValue diferente: mostrar o estimado
+    final bool isParentRecurrence = !isCard && isRecurrent && account.recurrenceId == null;
+    final double? valorPrevisto = isCard
+        ? (breakdown.total > 0.009 ? breakdown.total : null)
+        : (account.estimatedValue ??
+            (isParentRecurrence && account.value.abs() > 0.009 ? account.value : null));
+    final double valorExibido = lancadoValue ?? previstoValue;
+
+    // Mostrar "Prev:" se:
+    // - Cartão com fatura prevista > 0 e diferente do exibido
+    // - Recorrência não lançada (parent) com valor > 0
+    // - Lançada (child) mas valor previsto difere do exibido
+    final bool showEstimatedInCard = valorPrevisto != null &&
+        valorPrevisto.abs() > 0.009 &&
+        (isParentRecurrence || isCard || (valorExibido - valorPrevisto).abs() > 0.50);
+    final String? estimatedDisplayForCard = showEstimatedInCard
+        ? UtilBrasilFields.obterReal(valorPrevisto)
+        : null;
 
     final cleanedDescription =
         cleanAccountDescription(account).replaceAll('Fatura: ', '').trim();
@@ -1790,10 +1813,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
     if (installmentDisplay.isInstallment) {
       stateChips.add(installmentBadge);
+      // Chip de término do parcelamento
+      if (account.month != null && account.year != null) {
+        final int remainingInstallments = installmentDisplay.total - installmentDisplay.index;
+        final DateTime endDate = DateTime(account.year!, account.month! + remainingInstallments, account.dueDay);
+        stateChips.add(MiniChip(
+          label: 'Término: ${DateFormat('MM/yy').format(endDate)}',
+          backgroundColor: colorScheme.surfaceContainerHighest,
+          textColor: colorScheme.onSurfaceVariant,
+          borderColor: colorScheme.outlineVariant.withValues(alpha: 0.6),
+        ));
+      }
     }
-    if (showPrevisto) {
-      stateChips.add(MiniChip(label: 'Previsto: $previstoDisplay'));
-    }
+    // Nota: Valor previsto agora é exibido diretamente no card (abaixo do valor principal)
     if (isCard) {
       stateChips.add(MiniChip(label: 'Próx.: $cardNextDueLabel'));
     }
@@ -1945,6 +1977,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 borderColor: borderColor,
                 boxShadow: boxShadows,
                 padding: const EdgeInsets.all(AppSpacing.lg),
+                estimatedValue: estimatedDisplayForCard,
               ),
             ),
           ),

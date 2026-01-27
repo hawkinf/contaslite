@@ -61,7 +61,10 @@
       "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"pm2 restart contaslite-api && sleep 3 && pm2 logs contaslite-api --lines 20\")",
       "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"pm2 logs contaslite-api --lines 5 --nostream\")",
       "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"curl -s http://localhost:3000/health\")",
-      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"curl -s -X DELETE http://localhost:3000/api/user/data\")"
+      "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"curl -s -X DELETE http://localhost:3000/api/user/data\")",
+      "Bash(tasklist:*)",
+      "Bash(tasklist /FI \"IMAGENAME eq flutter*\")",
+      "Bash(cmd /c \"cd /d c:\\\\flutter\\\\Contaslite\\\\packages\\\\finance_app && flutter clean\")"
     ]
   }
 }
