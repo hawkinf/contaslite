@@ -239,7 +239,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             const SizedBox(width: 10),
             const Text(
-              'ContasPRO',
+              'FácilFin',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,

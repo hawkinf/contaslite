@@ -223,7 +223,7 @@ class _MyAppState extends State<MyApp> {
       valueListenable: contas_prefs.PrefsService.themeNotifier,
       builder: (context, themeMode, _) {
         return MaterialApp(
-          title: 'ContasPRO',
+          title: 'FácilFin',
           debugShowCheckedModeBanner: false,
           themeMode: themeMode,
           localizationsDelegates: const [
@@ -4443,13 +4443,22 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           padding: EdgeInsets.symmetric(horizontal: isSmallMobile ? 12 : 16, vertical: isSmallMobile ? 8 : 12),
           child: Row(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('ContasPRO', style: TextStyle(fontWeight: FontWeight.w900, fontSize: isSmallMobile ? 17 : 20, color: Colors.white)),
-                  Text('by Aguinaldo Liesack Baptistini', style: TextStyle(fontWeight: FontWeight.w600, fontSize: isSmallMobile ? 10 : 11, color: Colors.white.withValues(alpha: 0.9))),
-                ],
+              // Logo com badge branco e borda preta
+              Container(
+                width: isSmallMobile ? 96 : 108,
+                height: isSmallMobile ? 30 : 35,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.black.withValues(alpha: 0.3), width: 1),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                alignment: Alignment.centerLeft,
+                child: Image.asset(
+                  'assets/logo.png',
+                  height: isSmallMobile ? 29 : 34,
+                  fit: BoxFit.contain,
+                ),
               ),
               if (_nextHolidayData?.holiday != null)
                 Padding(
