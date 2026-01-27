@@ -18,6 +18,7 @@ import '../ui/components/color_picker_field.dart';
 import '../ui/components/launch_type_segmented.dart';
 import '../ui/components/standard_modal_shell.dart';
 import '../ui/components/lancamento_form_padrao.dart';
+import 'invoice_adjustment_dialog.dart';
 
 enum _EditScope { single, forward, all }
 
@@ -644,7 +645,36 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
           );
         }
       } else {
-        final baseInvoiceDate = DateTime(invoiceYearBase, invoiceMonthBase + _invoiceOffset, 1);
+        // Se o usuário ajustou a fatura manualmente, mostrar dialog de confirmação
+        int finalInvoiceMonth = invoiceMonthBase;
+        int finalInvoiceYear = invoiceYearBase;
+
+        if (_invoiceOffset != 0) {
+          final selectedDate = DateTime(invoiceYearBase, invoiceMonthBase + _invoiceOffset, 1);
+          final result = await showDialog<InvoiceAdjustmentResult>(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => InvoiceAdjustmentDialog(
+              suggestedMonth: invoiceMonthBase,
+              suggestedYear: invoiceYearBase,
+              selectedMonth: selectedDate.month,
+              selectedYear: selectedDate.year,
+              cardDueDay: widget.card.dueDay,
+              cardClosingDay: widget.card.bestBuyDay,
+            ),
+          );
+
+          if (result == null) {
+            // Usuário cancelou
+            setState(() => _isSaving = false);
+            return;
+          }
+
+          finalInvoiceMonth = result.month;
+          finalInvoiceYear = result.year;
+        }
+
+        final baseInvoiceDate = DateTime(finalInvoiceYear, finalInvoiceMonth, 1);
         final purchaseUuid = '${DateTime.now().millisecondsSinceEpoch}_${description.hashCode}';
         final installmentValue = installments > 1 ? value / installments : value;
 
