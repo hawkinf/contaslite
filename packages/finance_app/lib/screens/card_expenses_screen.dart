@@ -50,7 +50,9 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
   Map<int, InstallmentDisplay> _installmentById = {};
   final Set<String> _activeFilters = {};
   late final VoidCallback _dateRangeListener;
+  late final VoidCallback _compactModeListener;
   bool _isFabVisible = true;
+  bool _isHeaderCollapsed = false;
   double _lastScrollOffset = 0;
   Account? _selectedExpense;
 
@@ -71,6 +73,10 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
       _loadExpenses();
     };
     PrefsService.dateRangeNotifier.addListener(_dateRangeListener);
+    _compactModeListener = () {
+      if (mounted) setState(() {});
+    };
+    PrefsService.compactModeNotifier.addListener(_compactModeListener);
     _loadExpenses();
   }
 
@@ -85,6 +91,12 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
         setState(() => _isFabVisible = false);
       } else if (delta < -2 && !_isFabVisible) {
         setState(() => _isFabVisible = true);
+      }
+
+      // Colapsar header após 50px de scroll
+      final shouldCollapse = currentOffset > 50;
+      if (shouldCollapse != _isHeaderCollapsed) {
+        setState(() => _isHeaderCollapsed = shouldCollapse);
       }
 
       _lastScrollOffset = currentOffset;
@@ -103,6 +115,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
   @override
   void dispose() {
     PrefsService.dateRangeNotifier.removeListener(_dateRangeListener);
+    PrefsService.compactModeNotifier.removeListener(_compactModeListener);
     super.dispose();
   }
 
@@ -287,8 +300,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
         _installmentById = installmentMap;
         _isLoading = false;
       });
-    } catch (e) {
-      debugPrint('🔧 CardExpensesScreen: erro ao carregar despesas: $e');
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _expenses = [];
@@ -310,7 +322,24 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     final filteredExpenses = _applySelectedDateFilter(_visibleExpenses);
-    final headerRow = _buildCardHeaderRow(context);
+    final isCompactMode = PrefsService.compactModeNotifier.value;
+    final showCompactHeader = isCompactMode || _isHeaderCollapsed;
+
+    final headerRow = AnimatedSize(
+      duration: const Duration(milliseconds: 200),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        child: showCompactHeader
+            ? KeyedSubtree(
+                key: const ValueKey('compact'),
+                child: _buildCardHeaderRowCompact(context),
+              )
+            : KeyedSubtree(
+                key: const ValueKey('expanded'),
+                child: _buildCardHeaderRow(context),
+              ),
+      ),
+    );
     final selectionBanner = _selectedExpense == null
         ? null
         : Padding(
@@ -548,6 +577,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     final formattedMonth = monthLabel.isEmpty
         ? monthLabel
         : monthLabel[0].toUpperCase() + monthLabel.substring(1);
+    final isCompact = PrefsService.compactModeNotifier.value;
 
     return Container(
       height: 56,
@@ -558,8 +588,27 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
           bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
         ),
       ),
-      child: Center(
-        child: _buildMonthHeaderPill(label: formattedMonth),
+      child: Row(
+        children: [
+          const SizedBox(width: 40), // Espaço para balancear o botão direito
+          Expanded(
+            child: Center(
+              child: _buildMonthHeaderPill(label: formattedMonth),
+            ),
+          ),
+          Tooltip(
+            message: isCompact ? 'Expandir cards' : 'Compactar cards',
+            child: IconButton(
+              icon: Icon(
+                isCompact ? Icons.unfold_more_rounded : Icons.unfold_less_rounded,
+                size: 20,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              visualDensity: VisualDensity.compact,
+              onPressed: () => PrefsService.saveCompactMode(!isCompact),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -773,6 +822,104 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     );
   }
 
+  /// Versão compacta do header do cartão (quando colapsado)
+  Widget _buildCardHeaderRowCompact(BuildContext context) {
+    final brand = widget.card.cardBrand?.trim() ?? '';
+    final cardBank = widget.card.cardBank?.trim() ?? '';
+    final colorScheme = Theme.of(context).colorScheme;
+    final Color cardColor = widget.card.cardColor != null
+        ? Color(widget.card.cardColor!)
+        : colorScheme.primary;
+
+    // Calcular totais
+    double totalGeral = 0;
+    for (final e in _expenses) {
+      totalGeral += e.value;
+    }
+
+    // Calcular datas
+    final closingDay = widget.card.dueDay - 7;
+    DateTime closingDate = DateTime(_currentYear, _currentMonth, closingDay);
+    DateTime dueDate = DateTime(_currentYear, _currentMonth, widget.card.dueDay);
+
+    final cardTitle = [cardBank, brand].where((t) => t.isNotEmpty).join(' • ');
+    final Widget? brandIcon = _buildCardBrandIcon(brand, height: 12);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+        ),
+        child: Row(
+          children: [
+            // Indicador de cor do cartão
+            Container(
+              width: 3,
+              height: 32,
+              margin: const EdgeInsets.only(right: 10),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Logo da bandeira
+            if (brandIcon != null) ...[
+              brandIcon,
+              const SizedBox(width: 8),
+            ],
+            // Nome do cartão
+            Expanded(
+              child: Text(
+                cardTitle.isEmpty ? 'Cartão' : cardTitle,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            // Datas compactas
+            Text(
+              'Fech. ${DateFormat('dd').format(closingDate)} • Venc. ${DateFormat('dd').format(dueDate)}',
+              style: TextStyle(
+                fontSize: 10,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Total compacto
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  UtilBrasilFields.obterReal(_invoiceLaunchedTotal),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                if ((totalGeral - _invoiceLaunchedTotal).abs() > 0.50)
+                  Text(
+                    'Prev: ${UtilBrasilFields.obterReal(totalGeral)}',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _borderedIcon(
     IconData icon, {
@@ -958,8 +1105,6 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
   }
 
   Widget _buildExpenseItem(Account expense) {
-    debugPrint('🔍 BUILD ITEM: "${expense.description}" | value: ${expense.value} | isRecurrent: ${expense.isRecurrent} | installmentIndex: ${expense.installmentIndex} | cardColor: ${expense.cardColor}');
-
     final colorScheme = Theme.of(context).colorScheme;
     final bool isSubscription = expense.isRecurrent;
     final bool isParcel = _isParcel(expense);
