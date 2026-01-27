@@ -126,8 +126,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Buscar contas JÁ FILTRADAS (sem despesas de cartão e sem cartões)
-      // Este método faz WHERE cardId IS NULL AND cardBrand IS NULL no SQL
       final allAccounts = await DatabaseHelper.instance.readAllAccountsExcludingCardExpenses();
       final cards = await DatabaseHelper.instance.readAllCards();
       final types = await DatabaseHelper.instance.readAllTypes();
@@ -140,11 +138,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final now = DateTime.now();
       final startMonth = DateTime(now.year, now.month - 6, 1);
       final endMonth = DateTime(now.year, now.month + 6 + 1, 0);
-
-      debugPrint('=== CALENDAR DEBUG (V2) ===');
-      debugPrint('Contas filtradas pelo DB: ${allAccounts.length}');
-      debugPrint('Cartões encontrados: ${cards.length}');
-      debugPrint('=== FIM DEBUG ===');
 
       final Map<String, List<Account>> events = {};
 
@@ -247,9 +240,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           _isLoading = false;
         });
       }
-    } catch (e, stack) {
-      debugPrint('Erro ao carregar eventos: $e');
-      debugPrint('Stack: $stack');
+    } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -259,11 +250,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   List<Account> _getEventsForDay(DateTime day) {
     final normalizedDay = DateTime(day.year, day.month, day.day);
     final key = _dateKey(normalizedDay);
-    final events = _events[key] ?? [];
-    // Os eventos já estão filtrados:
-    // - Contas normais vieram de readAllAccountsExcludingCardExpenses() (sem cardId/cardBrand)
-    // - Faturas consolidadas foram adicionadas manualmente com "Fatura:" no nome
-    return events;
+    return _events[key] ?? [];
   }
 
   (double pagar, double receber, int countPagar, int countReceber) _getDayTotals(DateTime day) {
