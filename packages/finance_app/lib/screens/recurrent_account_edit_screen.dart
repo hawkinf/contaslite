@@ -8,6 +8,7 @@ import '../models/account_type.dart';
 import '../models/account_category.dart';
 import '../widgets/app_input_decoration.dart';
 import '../widgets/payment_dialog.dart';
+import '../widgets/calculator_dialog.dart';
 import '../services/prefs_service.dart';
 import '../utils/app_colors.dart';
 import 'recebimentos_table_screen.dart';
@@ -310,6 +311,22 @@ class _RecurrentAccountEditScreenState
       _categorias = cats;
       _selectedCategory = null;
     });
+  }
+
+  Future<void> _showCalculator(TextEditingController controller) async {
+    double currentValue = 0;
+    if (controller.text.isNotEmpty) {
+      try {
+        currentValue = UtilBrasilFields.converterMoedaParaDouble(controller.text);
+      } catch (_) {}
+    }
+    final result = await showDialog<double>(
+      context: context,
+      builder: (ctx) => CalculatorDialog(initialValue: currentValue),
+    );
+    if (result != null && mounted) {
+      controller.text = UtilBrasilFields.obterReal(result);
+    }
   }
 
   Future<void> _showCategoriesDialog() async {
@@ -1050,6 +1067,11 @@ class _RecurrentAccountEditScreenState
                               decoration: buildOutlinedInputDecoration(
                                 label: 'Valor Total (R\$)',
                                 icon: Icons.attach_money,
+                                suffixIcon: IconButton(
+                                  icon: const Icon(Icons.calculate, color: AppColors.primary),
+                                  tooltip: 'Calculadora',
+                                  onPressed: () => _showCalculator(_averageValueController),
+                                ),
                               ),
                               validator: (v) =>
                                   v == null || v.isEmpty ? 'Obrigatório' : null,
@@ -1069,6 +1091,11 @@ class _RecurrentAccountEditScreenState
                                 decoration: buildOutlinedInputDecoration(
                                   label: valueLabel,
                                   icon: Icons.attach_money,
+                                  suffixIcon: IconButton(
+                                    icon: const Icon(Icons.calculate, color: AppColors.primary),
+                                    tooltip: 'Calculadora',
+                                    onPressed: () => _showCalculator(_valueController),
+                                  ),
                                 ),
                                 validator: (v) => v == null || v.isEmpty
                                     ? 'Obrigatório'

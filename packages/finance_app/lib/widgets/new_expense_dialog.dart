@@ -19,6 +19,7 @@ import '../ui/components/launch_type_segmented.dart';
 import '../ui/components/standard_modal_shell.dart';
 import '../ui/components/lancamento_form_padrao.dart';
 import 'invoice_adjustment_dialog.dart';
+import 'calculator_dialog.dart';
 
 enum _EditScope { single, forward, all }
 
@@ -361,11 +362,11 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
 
   (int month, int year) _calculateInvoiceMonth(DateTime purchaseDate) {
     final closingDay = widget.card.bestBuyDay ?? 1;
-    // Compras até o dia de fechamento entram na fatura do próximo mês.
-    // Compras depois do fechamento vão para a fatura do mês seguinte (mês + 2).
+    // Compras até o dia de fechamento entram na fatura do mês atual.
+    // Compras depois do fechamento vão para a fatura do próximo mês.
     final base = purchaseDate.day <= closingDay
-        ? DateTime(purchaseDate.year, purchaseDate.month + 1, 1)
-        : DateTime(purchaseDate.year, purchaseDate.month + 2, 1);
+        ? DateTime(purchaseDate.year, purchaseDate.month, 1)
+        : DateTime(purchaseDate.year, purchaseDate.month + 1, 1);
     return (base.month, base.year);
   }
 
@@ -421,6 +422,24 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
       _installmentValue = installmentValue;
       _installmentTotal = installments;
     });
+  }
+
+  Future<void> _showCalculator() async {
+    double currentValue = 0;
+    if (_valueController.text.isNotEmpty) {
+      try {
+        currentValue = UtilBrasilFields.converterMoedaParaDouble(_valueController.text);
+      } catch (_) {}
+    }
+    final result = await showDialog<double>(
+      context: context,
+      builder: (ctx) => CalculatorDialog(initialValue: currentValue),
+    );
+    if (result != null && mounted) {
+      _valueController.text = UtilBrasilFields.obterReal(result);
+      setState(() => _valueTouched = true);
+      _updatePreview();
+    }
   }
 
   InputDecoration _inputDecoration(
@@ -1156,6 +1175,11 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
                       context,
                       label: 'Valor Total (R\$)',
                       icon: Icons.attach_money,
+                      suffixIcon: IconButton(
+                        icon: Icon(Icons.calculate, color: colorScheme.onSurfaceVariant),
+                        tooltip: 'Calculadora',
+                        onPressed: _showCalculator,
+                      ),
                     ),
                     onTap: () {
                       if (_valueTouched) return;

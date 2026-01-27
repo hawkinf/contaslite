@@ -11,6 +11,7 @@ import '../utils/installment_utils.dart';
 import '../widgets/app_input_decoration.dart';
 import '../services/prefs_service.dart';
 import '../widgets/date_range_app_bar.dart';
+import '../widgets/calculator_dialog.dart';
 
 class CardExpenseEditScreen extends StatefulWidget {
   final Account expense;
@@ -99,6 +100,22 @@ class _CardExpenseEditScreenState extends State<CardExpenseEditScreen> {
       }
     } catch (_) {}
     return DateTime(widget.expense.year ?? DateTime.now().year, widget.expense.month ?? DateTime.now().month, widget.expense.dueDay);
+  }
+
+  Future<void> _showCalculator() async {
+    double currentValue = 0;
+    if (_valueController.text.isNotEmpty) {
+      try {
+        currentValue = UtilBrasilFields.converterMoedaParaDouble(_valueController.text);
+      } catch (_) {}
+    }
+    final result = await showDialog<double>(
+      context: context,
+      builder: (ctx) => CalculatorDialog(initialValue: currentValue),
+    );
+    if (result != null && mounted) {
+      _valueController.text = UtilBrasilFields.obterReal(result);
+    }
   }
 
   Future<void> _selectDate() async {
@@ -296,6 +313,11 @@ class _CardExpenseEditScreenState extends State<CardExpenseEditScreen> {
                   decoration: buildOutlinedInputDecoration(
                     label: 'Valor (R\$)',
                     icon: Icons.attach_money,
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.calculate, color: AppColors.primary),
+                      tooltip: 'Calculadora',
+                      onPressed: _showCalculator,
+                    ),
                   ),
                   validator: (v) {
                     if (v!.isEmpty) return 'Obrigatório';

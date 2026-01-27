@@ -15,6 +15,7 @@ import '../widgets/amex_logo.dart';
 import '../ui/components/color_picker_field.dart';
 import '../ui/components/transaction_form_base.dart';
 import '../ui/components/standard_modal_shell.dart';
+import '../widgets/calculator_dialog.dart';
 
 class _CreditCardForm extends StatefulWidget {
   final Account? cardToEdit;
@@ -131,6 +132,22 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
     });
   }
 
+  Future<void> _showCalculator() async {
+    double currentValue = 0;
+    if (_limitController.text.isNotEmpty) {
+      try {
+        currentValue = UtilBrasilFields.converterMoedaParaDouble(_limitController.text);
+      } catch (_) {}
+    }
+    final result = await showDialog<double>(
+      context: context,
+      builder: (ctx) => CalculatorDialog(initialValue: currentValue),
+    );
+    if (result != null && mounted) {
+      _limitController.text = UtilBrasilFields.obterReal(result);
+    }
+  }
+
   List<String> _dedupBrands(List<String> names) {
     final seen = <String>{};
     final result = <String>[];
@@ -223,6 +240,7 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
       String? hintText,
       String? helperText,
       bool isDense = false,
+      Widget? suffixIcon,
     }) {
       return InputDecoration(
         labelText: label,
@@ -230,6 +248,7 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
         helperText: helperText,
         isDense: isDense,
         prefixIcon: icon != null ? Icon(icon) : null,
+        suffixIcon: suffixIcon,
         filled: true,
         fillColor: colorScheme.surfaceContainerLow,
         border: OutlineInputBorder(
@@ -256,8 +275,8 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
       maxWidth: maxWidth,
       maxHeight: maxHeight,
       bodyPadding: EdgeInsets.zero,
-      scrollBody: false,
-      shrinkWrap: true,
+      scrollBody: true,
+      shrinkWrap: false,
       body: Form(
         key: _formKey,
         child: TransactionFormBase(
@@ -390,6 +409,11 @@ class _CreditCardFormScreenState extends State<_CreditCardForm> {
                     decoration: inputDecoration(
                       label: 'Limite (R\$) - Opcional',
                       icon: Icons.attach_money,
+                      suffixIcon: IconButton(
+                        icon: Icon(Icons.calculate, color: colorScheme.onSurfaceVariant),
+                        tooltip: 'Calculadora',
+                        onPressed: _showCalculator,
+                      ),
                     ),
                   ),
                 ],

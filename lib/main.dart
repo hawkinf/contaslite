@@ -893,9 +893,11 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
       if (match != null) {
         _selectedCity = match;
       }
-      // Sempre usar data atual, não carregar ano anterior
-      _selectedYear = DateTime.now().year;
-      _calendarMonth = DateTime.now().month;
+      // Sempre usar data atual no startup (ignora qualquer data salva)
+      final now = DateTime.now();
+      _selectedYear = now.year;
+      _calendarMonth = now.month;
+      _selectedWeek = now;
       final savedDarkMode = prefs.getBool('isDarkMode');
       if (savedDarkMode != null) _isDarkMode = savedDarkMode;
       final savedCalendarType = prefs.getString('calendarType');

@@ -379,21 +379,27 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                   // Linha 1: ← Voltar + título
                   Row(
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back, size: 22),
-                        tooltip: 'Voltar',
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                        onPressed: () {
-                          if (widget.inline && widget.onClose != null) {
-                            widget.onClose!();
-                          } else {
-                            Navigator.of(context).maybePop();
-                          }
-                        },
+                      Container(
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                          icon: Icon(Icons.arrow_back, size: 22, color: colorScheme.onPrimaryContainer),
+                          tooltip: 'Voltar',
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.all(8),
+                          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                          onPressed: () {
+                            if (widget.inline && widget.onClose != null) {
+                              widget.onClose!();
+                            } else {
+                              Navigator.of(context).maybePop();
+                            }
+                          },
+                        ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 12),
                       Text(
                         'Despesas do Cartão',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -991,7 +997,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
       if (cat != null) {
         categoryText = cat.categoria;
 
-        // Determinar emoji da categoria pai
+        // Determinar emoji da categoria pai usando o typeId da despesa
         final catName = cat.categoria;
         if (catName.contains('||')) {
           // Formato "Parent||Child" para Recebimentos
@@ -1003,14 +1009,14 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                          DefaultAccountCategoriesService.categoryLogos['Recebimentos'];
           }
         } else {
-          // Categoria normal - buscar pai
-          final parentName = _findParentCategory(catName);
-          if (parentName != null) {
-            titleEmoji = DefaultAccountCategoriesService.categoryLogos[parentName];
-          } else {
-            // Se não encontrou pai, usar logo da própria categoria ou do banco
-            titleEmoji = cat.logo ?? DefaultAccountCategoriesService.categoryLogos[catName];
+          // Usar o typeId para encontrar o nome do tipo (categoria pai)
+          final type = _typeById[expense.typeId];
+          if (type != null) {
+            // Usar o logo do tipo (categoria pai)
+            titleEmoji = type.logo ?? DefaultAccountCategoriesService.categoryLogos[type.name];
           }
+          // Se não encontrou pelo tipo, tentar o logo da própria categoria
+          titleEmoji ??= cat.logo ?? DefaultAccountCategoriesService.categoryLogos[catName];
         }
       }
     }
@@ -1091,13 +1097,34 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
             onSelected: (value) {
               if (value == 'editar') {
                 _showEditDialog(expense);
+              } else if (value == 'desfazer') {
+                _confirmUndoExpense(expense);
               } else if (value == 'excluir') {
                 _confirmDelete(expense);
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(value: 'editar', child: Text('Editar')),
-              const PopupMenuItem(value: 'excluir', child: Text('Excluir')),
+              const PopupMenuItem(value: 'editar', child: Row(
+                children: [
+                  Icon(Icons.edit, size: 18),
+                  SizedBox(width: 8),
+                  Text('Editar'),
+                ],
+              )),
+              const PopupMenuItem(value: 'desfazer', child: Row(
+                children: [
+                  Icon(Icons.undo, size: 18),
+                  SizedBox(width: 8),
+                  Text('Desfazer lançamento'),
+                ],
+              )),
+              const PopupMenuItem(value: 'excluir', child: Row(
+                children: [
+                  Icon(Icons.delete_outline, size: 18),
+                  SizedBox(width: 8),
+                  Text('Excluir'),
+                ],
+              )),
             ],
           ),
         ),
@@ -1341,6 +1368,56 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
       await _loadExpenses();
     }
   }
+
+  Future<void> _confirmUndoExpense(Account expense) async {
+    final colorScheme = Theme.of(context).colorScheme;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: Icon(Icons.undo, color: colorScheme.primary, size: 48),
+        title: const Text('Desfazer Lançamento'),
+        content: Text(
+          'Deseja remover "${expense.description}" desta fatura?\n\n'
+          'Valor: ${UtilBrasilFields.obterReal(expense.value)}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Desfazer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await DatabaseHelper.instance.deleteAccount(expense.id!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lançamento desfeito com sucesso'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        await _loadExpenses();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao desfazer: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _confirmDelete(Account expense) async {
     final bool isParcel = (expense.installmentTotal ?? 1) > 1 || expense.purchaseUuid != null;
     final bool isSubscription = expense.recurrenceId != null || expense.isRecurrent;
@@ -1674,30 +1751,6 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     return null;
   }
 
-  /// Encontra o nome da categoria pai a partir do nome da subcategoria
-  String? _findParentCategory(String subcategoryName) {
-    final normalizedSub = subcategoryName.toLowerCase().trim();
-
-    // Busca em todas as listas de categorias padrão
-    final allCategoryLists = [
-      DefaultAccountCategoriesService.defaultCategoriesAmbos,
-      DefaultAccountCategoriesService.defaultCategoriesPF,
-      DefaultAccountCategoriesService.defaultCategoriesPJ,
-    ];
-
-    for (final categoryList in allCategoryLists) {
-      for (final cat in categoryList) {
-        final parentName = cat['category'] as String;
-        final subcategories = cat['subcategories'] as List<dynamic>;
-        for (final sub in subcategories) {
-          if ((sub as String).toLowerCase().trim() == normalizedSub) {
-            return parentName;
-          }
-        }
-      }
-    }
-    return null;
-  }
 }
 // ignore_for_file: use_build_context_synchronously
 

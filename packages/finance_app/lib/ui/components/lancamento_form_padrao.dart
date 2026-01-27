@@ -53,6 +53,14 @@ class LancamentoFormPadrao extends StatelessWidget {
         child: typeContent,
       ),
       TransactionFormSection(
+        title: 'Datas',
+        child: datesContent,
+      ),
+      TransactionFormSection(
+        title: 'Descrição / Valor',
+        child: descriptionValueContent,
+      ),
+      TransactionFormSection(
         title: 'Categorias',
         trailing: categoryTrailing,
         child: classificationChild,
@@ -60,14 +68,6 @@ class LancamentoFormPadrao extends StatelessWidget {
       TransactionFormSection(
         title: 'Lançamento',
         child: launchContent,
-      ),
-      TransactionFormSection(
-        title: 'Descrição / Valor',
-        child: descriptionValueContent,
-      ),
-      TransactionFormSection(
-        title: 'Datas',
-        child: datesContent,
       ),
       if (parcelasContent != null)
         TransactionFormSection(

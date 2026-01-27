@@ -35,6 +35,7 @@ import '../ui/components/action_banner.dart';
 import '../ui/components/standard_modal_shell.dart';
 import '../ui/components/section_header.dart';
 import '../ui/components/period_header.dart';
+import '../widgets/calculator_dialog.dart';
 
 enum DashboardFilter { all, pagar, receber, cartoes }
 
@@ -1812,6 +1813,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ];
 
     if (isCard) {
+      final bool isInvoiceLaunched = account.recurrenceId != null;
+      menuActions.add(_MenuAction(
+        label: 'Nova despesa',
+        icon: Icons.add_shopping_cart,
+        onTap: () => _showExpenseDialog(account),
+      ));
+      if (isInvoiceLaunched) {
+        menuActions.add(_MenuAction(
+          label: 'Desfazer lançamento',
+          icon: Icons.undo,
+          onTap: () => _undoInvoiceLaunch(account),
+        ));
+      } else {
+        menuActions.add(_MenuAction(
+          label: 'Lançar fatura',
+          icon: Icons.rocket_launch,
+          onTap: () => _showCartaoValueDialog(account),
+        ));
+      }
       menuActions.add(_MenuAction(
         label: 'Pagar fatura',
         icon: Icons.attach_money,
@@ -1831,10 +1851,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         icon: Icons.delete_outline,
         onTap: () => _confirmDelete(account),
       ));
-    }
-
-    if (isCard) {
-      // Nova despesa fica no ActionBanner quando houver seleção
     }
 
     if (isPaid) {
@@ -2019,6 +2035,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ],
     );
+  }
+
+  Future<void> _undoInvoiceLaunch(Account account) async {
+    if (account.id == null) return;
+
+    final colorScheme = Theme.of(context).colorScheme;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: Icon(Icons.undo, color: colorScheme.primary, size: 48),
+        title: const Text('Desfazer Lançamento'),
+        content: Text(
+          'Deseja desfazer o lançamento desta fatura?\n\n'
+          'Valor: ${UtilBrasilFields.obterReal(account.value)}\n'
+          'Mês: ${account.month}/${account.year}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Desfazer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await DatabaseHelper.instance.deleteAccount(account.id!);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lançamento desfeito com sucesso'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _refresh();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao desfazer lançamento: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _undoPayment(Account account) async {
@@ -2409,6 +2477,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       decoration: buildOutlinedInputDecoration(
                         label: 'Valor Lançado (R\$)',
                         icon: Icons.attach_money,
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.calculate),
+                          tooltip: 'Calculadora',
+                          onPressed: () async {
+                            double currentValue = 0;
+                            if (launchedValueController.text.isNotEmpty) {
+                              try {
+                                currentValue = UtilBrasilFields.converterMoedaParaDouble(launchedValueController.text);
+                              } catch (_) {}
+                            }
+                            final result = await showDialog<double>(
+                              context: ctx,
+                              builder: (c) => CalculatorDialog(initialValue: currentValue),
+                            );
+                            if (result != null) {
+                              launchedValueController.text = UtilBrasilFields.obterReal(result);
+                            }
+                          },
+                        ),
                       ),
                       keyboardType: TextInputType.number,
                       autofocus: true,
@@ -2716,6 +2803,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         decoration: buildOutlinedInputDecoration(
                           label: 'Valor Lançado (R\$)',
                           icon: Icons.attach_money,
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.calculate),
+                            tooltip: 'Calculadora',
+                            onPressed: () async {
+                              double currentValue = 0;
+                              if (valueController.text.isNotEmpty) {
+                                try {
+                                  currentValue = UtilBrasilFields.converterMoedaParaDouble(valueController.text);
+                                } catch (_) {}
+                              }
+                              final result = await showDialog<double>(
+                                context: ctx,
+                                builder: (c) => CalculatorDialog(initialValue: currentValue),
+                              );
+                              if (result != null) {
+                                valueController.text = UtilBrasilFields.obterReal(result);
+                              }
+                            },
+                          ),
                         ),
                         keyboardType: TextInputType.number,
                         autofocus: true,
@@ -2925,6 +3031,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         decoration: buildOutlinedInputDecoration(
                           label: 'Valor Lançado (R\$)',
                           icon: Icons.attach_money,
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.calculate),
+                            tooltip: 'Calculadora',
+                            onPressed: () async {
+                              double currentValue = 0;
+                              if (valueController.text.isNotEmpty) {
+                                try {
+                                  currentValue = UtilBrasilFields.converterMoedaParaDouble(valueController.text);
+                                } catch (_) {}
+                              }
+                              final result = await showDialog<double>(
+                                context: ctx,
+                                builder: (c) => CalculatorDialog(initialValue: currentValue),
+                              );
+                              if (result != null) {
+                                valueController.text = UtilBrasilFields.obterReal(result);
+                              }
+                            },
+                          ),
                         ),
                         keyboardType: TextInputType.number,
                         autofocus: true,
@@ -3130,6 +3255,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         decoration: buildOutlinedInputDecoration(
                           label: 'Valor Lançado (R\$)',
                           icon: Icons.attach_money,
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.calculate),
+                            tooltip: 'Calculadora',
+                            onPressed: () async {
+                              double currentValue = 0;
+                              if (valueController.text.isNotEmpty) {
+                                try {
+                                  currentValue = UtilBrasilFields.converterMoedaParaDouble(valueController.text);
+                                } catch (_) {}
+                              }
+                              final result = await showDialog<double>(
+                                context: ctx,
+                                builder: (c) => CalculatorDialog(initialValue: currentValue),
+                              );
+                              if (result != null) {
+                                valueController.text = UtilBrasilFields.obterReal(result);
+                              }
+                            },
+                          ),
                         ),
                         keyboardType: TextInputType.number,
                         autofocus: true,

@@ -22,6 +22,7 @@ import '../ui/components/color_picker_field.dart';
 import '../ui/components/launch_type_segmented.dart';
 import '../ui/components/standard_modal_shell.dart';
 import '../ui/components/lancamento_form_padrao.dart';
+import '../widgets/calculator_dialog.dart';
 
 const List<String> _monthShortLabels = [
   'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
@@ -1020,6 +1021,23 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
     });
   }
 
+  Future<void> _showCalculator(TextEditingController controller, {VoidCallback? onChanged}) async {
+    double currentValue = 0;
+    if (controller.text.isNotEmpty) {
+      try {
+        currentValue = UtilBrasilFields.converterMoedaParaDouble(controller.text);
+      } catch (_) {}
+    }
+    final result = await showDialog<double>(
+      context: context,
+      builder: (ctx) => CalculatorDialog(initialValue: currentValue),
+    );
+    if (result != null && mounted) {
+      controller.text = UtilBrasilFields.obterReal(result);
+      onChanged?.call();
+    }
+  }
+
   // --- HELPER PARA CAMPO COM ÍCONE E LABEL ACIMA ---
   Widget _buildFieldWithIcon({
     required IconData icon,
@@ -1607,6 +1625,13 @@ class _AccountFormScreenState extends State<AccountFormScreen> {
         decoration: buildOutlinedInputDecoration(
           label: 'Valor Total (R\$)',
           icon: Icons.attach_money,
+          suffixIcon: IconButton(
+            icon: Icon(Icons.calculate, color: colorScheme.onSurfaceVariant),
+            tooltip: 'Calculadora',
+            onPressed: () => _showCalculator(valueController, onChanged: () {
+              if (!isRecurrent) _updateInstallments();
+            }),
+          ),
         ),
         onChanged: (val) {
           if (!isRecurrent) {

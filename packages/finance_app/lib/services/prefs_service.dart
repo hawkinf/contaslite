@@ -60,8 +60,8 @@ class PrefsService {
     }
     cityNotifier.value = savedCity;
 
-    final range = await loadDateRange();
-    dateRangeNotifier.value = DateTimeRange(start: range.start, end: range.end);
+    // SEMPRE iniciar com o mês atual no startup (ignora data salva)
+    dateRangeNotifier.value = _defaultDateRange();
 
     // Database Protection Settings
     autoBackupEnabled = prefs.getBool('db_auto_backup_enabled') ?? true;
