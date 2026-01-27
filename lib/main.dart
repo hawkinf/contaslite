@@ -30,10 +30,7 @@ import 'ui/theme/app_spacing.dart';
 import 'ui/widgets/app_scaffold.dart';
 import 'ui/widgets/month_header.dart';
 import 'ui/widgets/filter_bar.dart';
-import 'ui/widgets/section_header.dart';
-import 'ui/widgets/mini_chip.dart' as ui_chips;
 import 'ui/widgets/empty_state.dart';
-import 'ui/widgets/date_pill.dart' as ui_date;
 
 import 'package:finance_app/main.dart' as contas_app;
 import 'package:finance_app/services/database_initialization_service.dart' as contas_db;
@@ -1992,345 +1989,269 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
   // --- RESUMO QUE APARECE NA TELA PRINCIPAL (LIMPO E CORRIGIDO PARA DARK MODE) ---
   Widget _buildMainStatsSummary(HolidayStats stats, double fontSize, {bool isSmallMobile = false}) {
     final colorScheme = Theme.of(context).colorScheme;
-    final primary = colorScheme.primary;
-    final secondary = colorScheme.secondary;
-    final error = colorScheme.error;
-    return Card(
-      elevation: 2,
-      color: Theme.of(context).cardTheme.color,
-      margin: const EdgeInsets.only(top: 24, bottom: 24),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+
+    // Apenas cidade + cards de resumo (parte fixa do header)
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // City Selector - card leve e padrão
+        _buildCitySelector(colorScheme),
+        const SizedBox(height: 12),
+        // Resumo do ano - 3 cards padronizados
+        _buildSummaryCards(stats, colorScheme),
+      ],
+    );
+  }
+
+  Widget _buildCitySelector(ColorScheme colorScheme) {
+    return InkWell(
+      onTap: () => _showCitySelector(),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+        ),
+        child: Row(
           children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+            Icon(Icons.location_on_outlined, color: colorScheme.primary, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.chevron_left),
-                    color: Theme.of(context).colorScheme.onPrimary,
-                    tooltip: 'Ano anterior',
-                    onPressed: () => _changeYear(-1),
+                  Text(
+                    'Cidade selecionada',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   Text(
-                    '$_selectedYear',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          fontSize: fontSize + 12,
-                          color: Theme.of(context).colorScheme.onPrimary,
-                          letterSpacing: 1.0,
-                        ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.chevron_right),
-                    color: Theme.of(context).colorScheme.onPrimary,
-                    tooltip: 'Próximo ano',
-                    onPressed: () => _changeYear(1),
+                    _selectedCity.name,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            GestureDetector(
-              onTap: () => _showCitySelector(),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-                    width: 2,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Cidade Selecionada',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _selectedCity.name,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Icon(
-                      Icons.location_on,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 28,
-                    ),
-                  ],
-                ),
-              ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'RESUMO DO ANO $_selectedYear',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              fontSize: fontSize + 2,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-          const Divider(height: 8),
-          isSmallMobile
-                ? Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(child: _buildStatBadgeCompact('Total de Feriados', stats.totalFeriadosUnicos, primary, fontSize)),
-                          const SizedBox(width: 8),
-                          Expanded(child: _buildStatBadgeCompact('Dias Úteis', stats.diasUteis, secondary, fontSize)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(child: _buildStatBadgeCompact('Finais de Semana', stats.finaisSemana, error, fontSize)),
-                        ],
-                      ),
-                    ],
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(child: _buildStatBadge('Total de Feriados', stats.totalFeriadosUnicos, primary, fontSize)),
-                      const SizedBox(width: 8),
-                      Expanded(child: _buildStatBadge('Dias Úteis', stats.diasUteis, secondary, fontSize)),
-                      const SizedBox(width: 8),
-                      Expanded(child: _buildStatBadge('Finais de Semana', stats.finaisSemana, error, fontSize)),
-                    ],
-                  ),
-            const Divider(height: 8),
-            Text('Por Tipo', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            _buildStatRow(context, 'Nacionais', stats.nacionais, backgroundColor: _typeRowBackground(context, colorScheme.primary)),
-            _buildStatRow(context, 'Municipais', stats.municipais, backgroundColor: _typeRowBackground(context, colorScheme.secondary)),
-            _buildStatRow(context, 'Bancários', stats.bancarios, backgroundColor: _typeRowBackground(context, colorScheme.tertiary)),
-            _buildStatRow(context, 'Estaduais', stats.estaduais, backgroundColor: _typeRowBackground(context, colorScheme.primaryContainer)),
+            Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant, size: 20),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryCards(HolidayStats stats, ColorScheme colorScheme) {
+    return Row(
+      children: [
+        Expanded(child: _buildSummaryCard(
+          stats.totalFeriadosUnicos.toString(),
+          'Total',
+          colorScheme.primary.withValues(alpha: 0.12),
+          colorScheme.primary,
+          colorScheme,
+        )),
+        const SizedBox(width: 8),
+        Expanded(child: _buildSummaryCard(
+          stats.diasUteis.toString(),
+          'Dias úteis',
+          colorScheme.secondary.withValues(alpha: 0.12),
+          colorScheme.secondary,
+          colorScheme,
+        )),
+        const SizedBox(width: 8),
+        Expanded(child: _buildSummaryCard(
+          stats.finaisSemana.toString(),
+          'Fim de semana',
+          colorScheme.error.withValues(alpha: 0.12),
+          colorScheme.error,
+          colorScheme,
+        )),
+      ],
+    );
+  }
+
+  Widget _buildSummaryCard(String value, String label, Color bgColor, Color accentColor, ColorScheme colorScheme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accentColor.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: accentColor,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypeStats(HolidayStats stats, ColorScheme colorScheme) {
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+            child: Text(
+              'Por tipo',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          _buildTypeRow('Nacionais', stats.nacionais, colorScheme),
+          _buildTypeRow('Municipais', stats.municipais, colorScheme),
+          _buildTypeRow('Bancários', stats.bancarios, colorScheme),
+          _buildTypeRow('Estaduais', stats.estaduais, colorScheme, isLast: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypeRow(String label, int count, ColorScheme colorScheme, {bool isLast = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        border: isLast ? null : Border(
+          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              count.toString(),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildWeekdayStatsChips(HolidayStats stats, double fontSize) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Card(
-      elevation: 1,
-      margin: const EdgeInsets.symmetric(vertical: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Feriados por Dia da Semana',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+            child: Text(
+              'Por dia da semana',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              alignment: WrapAlignment.center,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+            child: Row(
               children: [
-                _buildDayChip(context, 'Seg', stats.segundas, colorScheme.primary, fontSize),
-                _buildDayChip(context, 'Ter', stats.tercas, colorScheme.secondary, fontSize),
-                _buildDayChip(context, 'Qua', stats.quartas, colorScheme.tertiary, fontSize),
-                _buildDayChip(context, 'Qui', stats.quintas, colorScheme.primaryContainer, fontSize),
-                _buildDayChip(context, 'Sex', stats.sextas, colorScheme.secondaryContainer, fontSize),
-                _buildDayChip(context, 'Sab', stats.sabados, colorScheme.error, fontSize),
-                _buildDayChip(context, 'Dom', stats.domingos, colorScheme.errorContainer, fontSize),
+                _buildDayChip('Seg', stats.segundas, colorScheme, false),
+                _buildDayChip('Ter', stats.tercas, colorScheme, false),
+                _buildDayChip('Qua', stats.quartas, colorScheme, false),
+                _buildDayChip('Qui', stats.quintas, colorScheme, false),
+                _buildDayChip('Sex', stats.sextas, colorScheme, false),
+                _buildDayChip('Sab', stats.sabados, colorScheme, true),
+                _buildDayChip('Dom', stats.domingos, colorScheme, true),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildDayChip(BuildContext context, String label, int count, Color color, double fontSize) {
-    return Container(
-      width: 70,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color, width: 2),
-      ),
-      padding: const EdgeInsets.all(12),
+  Widget _buildDayChip(String label, int count, ColorScheme colorScheme, bool isWeekend) {
+    final bgColor = isWeekend
+        ? colorScheme.errorContainer.withValues(alpha: 0.5)
+        : colorScheme.surfaceContainerHighest;
+    final countColor = isWeekend ? colorScheme.error : colorScheme.primary;
+
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.4)),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               label,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: adaptiveOnSurface(context).withValues(alpha: 0.8),
-                  fontSize: fontSize - 1,
-                ),
-            ),
-          const SizedBox(height: 6),
-          Text(
-            count.toString(),
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: color,
-              fontSize: fontSize + 8,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatBadge(String label, int value, Color color, double fontSize) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: color.withValues(alpha: 0.5),
-              width: 3,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                value.toString(),
-                style: TextStyle(
-                  fontSize: fontSize + 12,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                  letterSpacing: 0.5,
-                ),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
               ),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: fontSize - 2,
-                  color: color.withValues(alpha: 0.85),
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              count.toString(),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: countColor,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
-    );
-  }
-
-  // Versão compacta do badge para mobile com dois itens na mesma linha
-  Widget _buildStatBadgeCompact(String label, int value, Color color, double fontSize) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: color.withValues(alpha: 0.5),
-              width: 2.5,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                value.toString(),
-                style: TextStyle(
-                  fontSize: fontSize + 8,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                  letterSpacing: 0.3,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: fontSize - 3,
-                  color: color.withValues(alpha: 0.85),
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Color _typeRowBackground(BuildContext context, Color base) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return isDark ? base.withValues(alpha: 0.25) : base.withValues(alpha: 0.12);
-  }
-
-  // --- MODIFICADO: _buildStatRow COM CORES DINÂMICAS ---
-  Widget _buildStatRow(BuildContext context, String label, int value, {Color? backgroundColor}) {
-    final brightness = Theme.of(context).brightness;
-    final textColor = adaptiveOnSurface(context);
-    final chipColor = brightness == Brightness.dark ? adaptiveSurfaceVariant(context) : adaptiveSurfaceVariant(context).withValues(alpha: 0.9);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: backgroundColor ?? Colors.transparent,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textColor, fontWeight: FontWeight.w500),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-            decoration: BoxDecoration(
-              color: chipColor,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              value.toString(),
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: textColor),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -4643,11 +4564,20 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     ),
                   ],
                 ),
-                // ABA FERIADOS - scroll interno
-                SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  padding: EdgeInsets.all(cardPadding),
-                  child: _buildFeriadosContent(fontSize, isSmallMobile),
+                // ABA FERIADOS - CustomScrollView com header pinned
+                Column(
+                  children: [
+                    // MonthHeader fixo no topo (igual Calendário/Contas)
+                    MonthHeader(
+                      title: '$_selectedYear',
+                      onPrevious: () => _changeYear(-1),
+                      onNext: () => _changeYear(1),
+                    ),
+                    // CustomScrollView com header pinned + lista
+                    Expanded(
+                      child: _buildFeriadosCustomScrollView(fontSize, isSmallMobile, cardPadding),
+                    ),
+                  ],
                 ),
                 // ABA TABELAS
                 const TablesScreen(),
@@ -4659,93 +4589,274 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     );
   }
 
-  // Conteúdo da aba Feriados (extraído para método separado)
-  Widget _buildFeriadosContent(double fontSize, bool isSmallMobile) {
+  // CustomScrollView para Feriados com header pinned
+  Widget _buildFeriadosCustomScrollView(double fontSize, bool isSmallMobile, double padding) {
     final colorScheme = Theme.of(context).colorScheme;
-    return AppScaffold(
-      title: 'Feriados',
-      subtitle: 'Ano $_selectedYear',
-      child: FutureBuilder<List<Holiday>>(
-        future: _holidaysFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const EmptyState(icon: Icons.event_busy, title: 'Carregando feriados...');
-          } else if (snapshot.hasError) {
-            return EmptyState(icon: Icons.error_outline, title: 'Erro ao carregar feriados', subtitle: '${snapshot.error}');
-          } else if (snapshot.hasData) {
-            final holidays = snapshot.data!;
-            if (holidays.isEmpty) return const EmptyState(icon: Icons.event_busy, title: 'Nenhum feriado encontrado');
-            final holidaysCurrentYear = holidays.where((h) { try { return DateTime.parse(h.date).year == _selectedYear; } catch (_) { return false; } }).toList();
-            final Map<String, Holiday> uniqueHolidaysMap = {};
-            for (var holiday in holidaysCurrentYear) { if (!uniqueHolidaysMap.containsKey(holiday.date)) uniqueHolidaysMap[holiday.date] = holiday; }
-            final uniqueHolidays = uniqueHolidaysMap.values.toList();
-            final stats = _calculateStats(holidaysCurrentYear);
-            Color typeColor(String type) {
-              if (type.contains('Bancário')) return colorScheme.secondary;
-              if (type.contains('Nacional')) return colorScheme.primary;
-              if (type.contains('Estadual')) return colorScheme.tertiary;
-              if (type.contains('Municipal')) return colorScheme.secondaryContainer;
-              return colorScheme.onSurfaceVariant;
+
+    return FutureBuilder<List<Holiday>>(
+      future: _holidaysFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: EmptyState(icon: Icons.event_busy, title: 'Carregando feriados...'));
+        } else if (snapshot.hasError) {
+          return Center(child: EmptyState(icon: Icons.error_outline, title: 'Erro ao carregar feriados', subtitle: '${snapshot.error}'));
+        } else if (snapshot.hasData) {
+          final holidays = snapshot.data!;
+          if (holidays.isEmpty) {
+            return const Center(child: EmptyState(icon: Icons.event_busy, title: 'Nenhum feriado encontrado'));
+          }
+
+          final holidaysCurrentYear = holidays.where((h) {
+            try { return DateTime.parse(h.date).year == _selectedYear; } catch (_) { return false; }
+          }).toList();
+
+          final Map<String, Holiday> uniqueHolidaysMap = {};
+          for (var holiday in holidaysCurrentYear) {
+            if (!uniqueHolidaysMap.containsKey(holiday.date)) {
+              uniqueHolidaysMap[holiday.date] = holiday;
             }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          }
+          final uniqueHolidays = uniqueHolidaysMap.values.toList();
+          final stats = _calculateStats(holidaysCurrentYear);
+
+          return CustomScrollView(
+            physics: const ClampingScrollPhysics(),
+            slivers: [
+              // Header pinned (apenas cidade + 3 cards de resumo)
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _FeriadosHeaderDelegate(
+                  child: _buildFeriadosHeader(stats, fontSize, isSmallMobile, padding),
+                  colorScheme: colorScheme,
+                ),
+              ),
+              // Por tipo (scrollável)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(padding, 12, padding, 0),
+                  child: _buildTypeStats(stats, colorScheme),
+                ),
+              ),
+              // Por dia da semana (scrollável)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: padding),
+                  child: _buildWeekdayStatsChips(stats, fontSize),
+                ),
+              ),
+              // Título da lista
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(padding, 16, padding, 8),
+                  child: Text(
+                    'Feriados de $_selectedYear',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+              // Lista de feriados
+              SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: padding),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => _buildHolidayCard(uniqueHolidays[index], colorScheme),
+                    childCount: uniqueHolidays.length,
+                  ),
+                ),
+              ),
+              // Espaço no final
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+            ],
+          );
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  // Header fixo do Feriados (apenas cidade + 3 cards de resumo)
+  Widget _buildFeriadosHeader(HolidayStats stats, double fontSize, bool isSmallMobile, double padding) {
+    return Padding(
+      padding: EdgeInsets.all(padding),
+      child: _buildMainStatsSummary(stats, fontSize, isSmallMobile: isSmallMobile),
+    );
+  }
+
+  // Card individual de feriado com chips de tipo corrigidos
+  Widget _buildHolidayCard(Holiday holiday, ColorScheme colorScheme) {
+    final formattedDate = _formatDate(holiday.date);
+    DateTime? parsed;
+    try { parsed = DateFormat('yyyy-MM-dd').parse(holiday.date); } catch (_) {}
+    final dayLabel = parsed != null ? parsed.day.toString().padLeft(2, '0') : '--';
+    final weekdayLabel = parsed != null ? DateFormat('EEE', 'pt_BR').format(parsed).replaceAll('.', '').toUpperCase() : '--';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Day badge compacto
+          Container(
+            width: 46,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                _buildMainStatsSummary(stats, fontSize, isSmallMobile: isSmallMobile),
-                _buildWeekdayStatsChips(stats, fontSize),
-                const SizedBox(height: AppSpacing.sm),
-                SectionHeader(title: 'Lista de Feriados de $_selectedYear', icon: Icons.event_note),
-                const SizedBox(height: AppSpacing.md),
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: uniqueHolidays.length,
-                  itemBuilder: (context, index) {
-                    final holiday = uniqueHolidays[index];
-                    final formattedDate = _formatDate(holiday.date);
-                    DateTime? parsed; try { parsed = DateFormat('yyyy-MM-dd').parse(holiday.date); } catch (_) {}
-                    final dayLabel = parsed != null ? parsed.day.toString().padLeft(2, '0') : '--';
-                    final weekdayLabel = parsed != null ? DateFormat('EEE', 'pt_BR').format(parsed).replaceAll('.', '').toUpperCase() : '--';
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      decoration: BoxDecoration(color: colorScheme.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6))),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ui_date.DatePill(day: dayLabel, weekday: weekdayLabel),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(holiday.name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-                                const SizedBox(height: AppSpacing.xs),
-                                Text(formattedDate, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant)),
-                                const SizedBox(height: AppSpacing.sm),
-                                Wrap(spacing: AppSpacing.sm, runSpacing: AppSpacing.sm, children: holiday.types.map((type) => ui_chips.MiniChip(label: type, textColor: typeColor(type))).toList()),
-                                if (holiday.specialNote != null) ...[
-                                  const SizedBox(height: AppSpacing.sm),
-                                  Container(
-                                    padding: const EdgeInsets.all(AppSpacing.sm),
-                                    decoration: BoxDecoration(color: colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(12), border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6))),
-                                    child: Row(children: [Icon(Icons.access_time, size: 16, color: colorScheme.onSurfaceVariant), const SizedBox(width: AppSpacing.sm), Expanded(child: Text(holiday.specialNote!, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant)))]),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                Text(
+                  dayLabel,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.primary,
+                  ),
+                ),
+                Text(
+                  weekdayLabel,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
-            );
-          }
-          return const SizedBox.shrink();
-        },
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  holiday.name,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  formattedDate,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: holiday.types.map((type) => _buildTypeChip(type, colorScheme)).toList(),
+                ),
+                if (holiday.specialNote != null) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 14, color: colorScheme.onSurfaceVariant),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          holiday.specialNote!,
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  // Chip de tipo com cores corrigidas para contraste
+  Widget _buildTypeChip(String type, ColorScheme colorScheme) {
+    // Cores com bom contraste - fundo forte + texto claro
+    Color bgColor;
+    Color textColor;
+
+    if (type.contains('Nacional')) {
+      bgColor = colorScheme.primary;
+      textColor = colorScheme.onPrimary;
+    } else if (type.contains('Bancário')) {
+      bgColor = colorScheme.tertiary;
+      textColor = colorScheme.onTertiary;
+    } else if (type.contains('Estadual')) {
+      bgColor = colorScheme.secondary;
+      textColor = colorScheme.onSecondary;
+    } else if (type.contains('Municipal')) {
+      // Municipal: usar cor neutra com bom contraste
+      bgColor = colorScheme.surfaceContainerHighest;
+      textColor = colorScheme.onSurface;
+    } else {
+      bgColor = colorScheme.surfaceContainerHighest;
+      textColor = colorScheme.onSurface;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        type,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: textColor,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+// Delegate para o header pinned do Feriados
+class _FeriadosHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final ColorScheme colorScheme;
+
+  _FeriadosHeaderDelegate({
+    required this.child,
+    required this.colorScheme,
+  });
+
+  @override
+  double get minExtent => 185; // Altura mínima do header (cidade + 3 cards resumo)
+  @override
+  double get maxExtent => 185; // Altura máxima (igual à mínima = não colapsa)
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        boxShadow: overlapsContent
+            ? [
+                BoxShadow(
+                  color: colorScheme.shadow.withValues(alpha: 0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+      child: child,
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _FeriadosHeaderDelegate oldDelegate) {
+    return child != oldDelegate.child || colorScheme != oldDelegate.colorScheme;
   }
 }
 

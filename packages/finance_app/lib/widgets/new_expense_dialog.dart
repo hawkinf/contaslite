@@ -41,11 +41,17 @@ class _InstallmentPreviewItem {
 class NewExpenseDialog extends StatefulWidget {
   final Account card;
   final Account? expenseToEdit;
+  /// Mês de contexto (fatura sendo visualizada). Se null, usa DateTime.now().
+  final int? contextMonth;
+  /// Ano de contexto (fatura sendo visualizada). Se null, usa DateTime.now().
+  final int? contextYear;
 
   const NewExpenseDialog({
     super.key,
     required this.card,
     this.expenseToEdit,
+    this.contextMonth,
+    this.contextYear,
   });
 
   @override
@@ -140,10 +146,15 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
         _isLoading = false;
       });
     } else {
+      // Nova despesa: data de compra é sempre hoje
       _purchaseDateController.text = DateFormat('dd/MM/yyyy').format(now);
+
+      // Para despesa avulsa, a fatura sugerida é calculada pela data de compra
+      // e dia de fechamento do cartão (offset = 0 = sugerido natural)
       if (!mounted) return;
       setState(() {
         _descController.text = '';
+        _invoiceOffset = 0;
         _isLoading = false;
       });
     }
@@ -1305,11 +1316,22 @@ class _NewExpenseDialogState extends State<NewExpenseDialog> {
       );
     }
 
+    // Calcular datas de fechamento e vencimento baseadas no mês de contexto
+    final now = DateTime.now();
+    final contextMonth = widget.contextMonth ?? now.month;
+    final contextYear = widget.contextYear ?? now.year;
+
     final headerActions = <Widget>[];
     if (widget.card.bestBuyDay != null) {
-      headerActions.add(headerChip('Fech: ${widget.card.bestBuyDay!.toString().padLeft(2, '0')}'));
+      // Fechamento: mês anterior ao contexto (a fatura fecha no mês anterior)
+      final closingMonth = contextMonth == 1 ? 12 : contextMonth - 1;
+      final closingYear = contextMonth == 1 ? contextYear - 1 : contextYear;
+      final closingDate = DateTime(closingYear, closingMonth, widget.card.bestBuyDay!);
+      headerActions.add(headerChip('Fech: ${DateFormat('dd/MM').format(closingDate)}'));
     }
-    headerActions.add(headerChip('Venc: ${widget.card.dueDay.toString().padLeft(2, '0')}'));
+    // Vencimento: no mês de contexto
+    final dueDate = DateTime(contextYear, contextMonth, widget.card.dueDay);
+    headerActions.add(headerChip('Venc: ${DateFormat('dd/MM').format(dueDate)}'));
 
     return StandardModalShell(
       title: title,

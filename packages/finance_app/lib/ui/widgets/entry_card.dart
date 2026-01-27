@@ -18,6 +18,13 @@ class EntryCard extends StatelessWidget {
   final Color? borderColor;
   final List<BoxShadow> boxShadow;
   final EdgeInsetsGeometry padding;
+  /// Emoji opcional que aparece antes do título (categoria pai)
+  final String? titleEmoji;
+  /// Emoji opcional que aparece antes do subtítulo (categoria filho/conta)
+  final String? subtitleEmoji;
+  /// Widget opcional para ícone do subtítulo (tem prioridade sobre subtitleEmoji)
+  /// Usado para logos de bandeiras de cartão de crédito
+  final Widget? subtitleIcon;
 
   const EntryCard({
     super.key,
@@ -34,6 +41,9 @@ class EntryCard extends StatelessWidget {
     this.borderColor,
     this.boxShadow = const [],
     this.padding = const EdgeInsets.all(AppSpacing.lg),
+    this.titleEmoji,
+    this.subtitleEmoji,
+    this.subtitleIcon,
   });
 
   @override
@@ -71,23 +81,61 @@ class EntryCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          title,
-                          style: AppTextStyles.title.copyWith(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        // Primeira linha: [emoji pai] + título
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            if (titleEmoji != null && titleEmoji!.isNotEmpty) ...[
+                              Text(
+                                titleEmoji!,
+                                style: const TextStyle(fontSize: 14, height: 1),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
+                            Expanded(
+                              child: Text(
+                                title,
+                                style: AppTextStyles.title.copyWith(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 6),
-                        Text(
-                          subtitle,
-                          style: AppTextStyles.subtitle.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        // Segunda linha: [ícone/emoji filho] + subtítulo
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // subtitleIcon tem prioridade sobre subtitleEmoji
+                            if (subtitleIcon != null) ...[
+                              SizedBox(
+                                width: 20,
+                                height: 14,
+                                child: subtitleIcon,
+                              ),
+                              const SizedBox(width: 6),
+                            ] else if (subtitleEmoji != null && subtitleEmoji!.isNotEmpty) ...[
+                              Text(
+                                subtitleEmoji!,
+                                style: const TextStyle(fontSize: 13, height: 1),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
+                            Expanded(
+                              child: Text(
+                                subtitle,
+                                style: AppTextStyles.subtitle.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                         if (chips.isNotEmpty) ...[
                           const SizedBox(height: AppSpacing.sm),

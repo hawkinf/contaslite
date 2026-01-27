@@ -8,6 +8,7 @@ import '../database/db_helper.dart';
 import '../models/account.dart';
 import '../models/account_category.dart';
 import '../models/account_type.dart';
+import '../services/default_account_categories_service.dart';
 import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
 import '../utils/installment_utils.dart';
@@ -129,7 +130,11 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => NewExpenseDialog(card: widget.card),
+      builder: (_) => NewExpenseDialog(
+        card: widget.card,
+        contextMonth: _currentMonth,
+        contextYear: _currentYear,
+      ),
     );
     if (result == true && mounted) {
       await _loadExpenses();
@@ -631,6 +636,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     }
 
     final cardTitle = [cardBank, brand].where((t) => t.isNotEmpty).join(' • ');
+    final Widget? brandIcon = _buildCardBrandIcon(brand, height: 14);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
@@ -658,6 +664,11 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                 children: [
                   Row(
                     children: [
+                      // Logo da bandeira do cartão
+                      if (brandIcon != null) ...[
+                        brandIcon,
+                        const SizedBox(width: 8),
+                      ],
                       Expanded(
                         child: Text(
                           cardTitle.isEmpty ? 'Cartão' : cardTitle,
@@ -718,32 +729,32 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                       ),
                     ],
                   ),
-                  // Linha compacta de totais por tipo
+                  // Linha compacta de totais por tipo (ValuePills)
                   const SizedBox(height: 8),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        Icon(Icons.autorenew, size: 16, color: colorScheme.onSurfaceVariant),
-                        const SizedBox(width: 4),
-                        Text('Recorr. ', style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant)),
-                        Text(UtilBrasilFields.obterReal(totalSubs), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: colorScheme.onSurfaceVariant)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Text('|', style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4))),
+                        _buildValuePill(
+                          label: 'Recorr.',
+                          value: UtilBrasilFields.obterReal(totalSubs),
+                          color: Colors.blue.shade600,
+                          icon: Icons.autorenew,
                         ),
-                        Icon(Icons.attach_money, size: 16, color: colorScheme.onSurfaceVariant),
-                        const SizedBox(width: 4),
-                        Text('À vista ', style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant)),
-                        Text(UtilBrasilFields.obterReal(totalVista), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: colorScheme.onSurfaceVariant)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Text('|', style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4))),
+                        const SizedBox(width: 6),
+                        _buildValuePill(
+                          label: 'À vista',
+                          value: UtilBrasilFields.obterReal(totalVista),
+                          color: Colors.green.shade600,
+                          icon: Icons.attach_money,
                         ),
-                        Icon(Icons.view_agenda, size: 16, color: colorScheme.onSurfaceVariant),
-                        const SizedBox(width: 4),
-                        Text('Parcel. ', style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant)),
-                        Text(UtilBrasilFields.obterReal(totalParcel), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: colorScheme.onSurfaceVariant)),
+                        const SizedBox(width: 6),
+                        _buildValuePill(
+                          label: 'Parcel.',
+                          value: UtilBrasilFields.obterReal(totalParcel),
+                          color: Colors.amber.shade700,
+                          icon: Icons.view_agenda,
+                        ),
                       ],
                     ),
                   ),
@@ -974,9 +985,34 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     final String baseDescription = cleanInstallmentDescription(expense.description);
 
     String categoryText = '';
+    String? titleEmoji;
     if (expense.categoryId != null) {
       final cat = _categoryById[expense.categoryId];
-      if (cat != null) categoryText = cat.categoria;
+      if (cat != null) {
+        categoryText = cat.categoria;
+
+        // Determinar emoji da categoria pai
+        final catName = cat.categoria;
+        if (catName.contains('||')) {
+          // Formato "Parent||Child" para Recebimentos
+          final parts = catName.split('||');
+          if (parts.length >= 2) {
+            final recParentName = parts[0].trim();
+            // O emoji do título é o do parent de Recebimentos (ex: Salário/Pró-Labore)
+            titleEmoji = DefaultAccountCategoriesService.recebimentosPaiLogos[recParentName] ??
+                         DefaultAccountCategoriesService.categoryLogos['Recebimentos'];
+          }
+        } else {
+          // Categoria normal - buscar pai
+          final parentName = _findParentCategory(catName);
+          if (parentName != null) {
+            titleEmoji = DefaultAccountCategoriesService.categoryLogos[parentName];
+          } else {
+            // Se não encontrou pai, usar logo da própria categoria ou do banco
+            titleEmoji = cat.logo ?? DefaultAccountCategoriesService.categoryLogos[catName];
+          }
+        }
+      }
     }
 
     final String day = purchaseDate != null
@@ -1040,6 +1076,7 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
             weekday: weekday.isEmpty ? ' ' : weekday,
             accentColor: cardAccent,
           ),
+          titleEmoji: titleEmoji,
           title: baseDescription,
           subtitle: purchaseDate != null
               ? DateFormat('dd/MM').format(purchaseDate)
@@ -1291,7 +1328,12 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
   Future<void> _showEditDialog(Account expense) async {
     final result = await showDialog<bool>(
       context: context,
-      builder: (_) => NewExpenseDialog(card: widget.card, expenseToEdit: expense),
+      builder: (_) => NewExpenseDialog(
+        card: widget.card,
+        expenseToEdit: expense,
+        contextMonth: _currentMonth,
+        contextYear: _currentYear,
+      ),
     );
 
     // Se retornou true, recarregar a lista de despesas
@@ -1560,6 +1602,101 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
         ],
       ),
     );
+  }
+
+  /// Constrói um chip de valor com label, valor, cor e ícone opcional
+  Widget _buildValuePill({
+    required String label,
+    required String value,
+    required Color color,
+    IconData? icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: color.withValues(alpha: 0.35),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: color.withValues(alpha: 0.90)),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: color.withValues(alpha: 0.90),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color.withValues(alpha: 0.90),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Constrói ícone da bandeira do cartão
+  Widget? _buildCardBrandIcon(String? brand, {double height = 14}) {
+    final normalized = (brand ?? '').trim().toUpperCase();
+    if (normalized.isEmpty) return null;
+    String? assetPath;
+    if (normalized == 'VISA') {
+      assetPath = 'assets/icons/cc_visa.png';
+    } else if (normalized == 'AMEX' || normalized == 'AMERICAN EXPRESS') {
+      assetPath = 'assets/icons/cc_amex.png';
+    } else if (normalized == 'MASTER' || normalized == 'MASTERCARD') {
+      assetPath = 'assets/icons/cc_mc.png';
+    } else if (normalized == 'ELO') {
+      assetPath = 'assets/icons/cc_elo.png';
+    }
+    if (assetPath != null) {
+      return Image.asset(
+        assetPath,
+        package: 'finance_app',
+        height: height,
+        fit: BoxFit.contain,
+      );
+    }
+    return null;
+  }
+
+  /// Encontra o nome da categoria pai a partir do nome da subcategoria
+  String? _findParentCategory(String subcategoryName) {
+    final normalizedSub = subcategoryName.toLowerCase().trim();
+
+    // Busca em todas as listas de categorias padrão
+    final allCategoryLists = [
+      DefaultAccountCategoriesService.defaultCategoriesAmbos,
+      DefaultAccountCategoriesService.defaultCategoriesPF,
+      DefaultAccountCategoriesService.defaultCategoriesPJ,
+    ];
+
+    for (final categoryList in allCategoryLists) {
+      for (final cat in categoryList) {
+        final parentName = cat['category'] as String;
+        final subcategories = cat['subcategories'] as List<dynamic>;
+        for (final sub in subcategories) {
+          if ((sub as String).toLowerCase().trim() == normalizedSub) {
+            return parentName;
+          }
+        }
+      }
+    }
+    return null;
   }
 }
 // ignore_for_file: use_build_context_synchronously

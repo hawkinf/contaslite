@@ -11,6 +11,7 @@ import '../database/db_helper.dart';
 import '../models/account.dart';
 import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
+import '../services/default_account_categories_service.dart';
 import '../utils/color_contrast.dart';
 import 'card_expenses_screen.dart';
 import '../utils/app_colors.dart';
@@ -103,6 +104,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<int, String> _typeNames = {};
   Map<int, String> _categoryNames = {};
   Map<int, String> _categoryLogos = {};
+  Map<int, String> _categoryParentNames = {}; // categoria ID -> nome da categoria pai
+
   bool _isLoading = false;
   double _totalPeriod = 0.0;
   double _totalForecast = 0.0;
@@ -428,14 +431,100 @@ class _DashboardScreenState extends State<DashboardScreen> {
         for (final c in categories)
           if (c.id != null) c.id!: c.categoria,
       };
-      final categoryLogoMap = {
+      // Mapa de logos diretos das categorias (do banco)
+      final directLogoMap = <int, String>{
         for (final c in categories)
           if (c.id != null && (c.logo?.trim().isNotEmpty ?? false))
             c.id!: c.logo!.trim(),
       };
 
+      // Construir mapa inverso: subcategoria nome → categoria pai nome
+      // usando os dados do DefaultAccountCategoriesService
+      final subcategoryToParentMap = <String, String>{};
+      final service = DefaultAccountCategoriesService.instance;
+      final allCategoryDefs = service.getDefaultCategories();
+      for (final catDef in allCategoryDefs) {
+        final parentName = catDef.category;
+        for (final subName in catDef.subcategories) {
+          subcategoryToParentMap[subName.toLowerCase()] = parentName;
+        }
+      }
+      // Também incluir subcategorias de Recebimentos (pai||filho)
+      final recebimentosChildDefs = service.getRecebimentosChildDefaults();
+      for (final entry in recebimentosChildDefs.entries) {
+        final recebimentosPai = entry.key; // ex: "Salário/Pró-Labore"
+        for (final filho in entry.value) {
+          // Para Recebimentos, o pai imediato é a subcategoria de Recebimentos
+          subcategoryToParentMap[filho.toLowerCase()] = recebimentosPai;
+          // E a subcategoria de Recebimentos tem "Recebimentos" como avô
+          subcategoryToParentMap[recebimentosPai.toLowerCase()] = 'Recebimentos';
+        }
+      }
+
+      // Mapa de categoria ID -> nome da categoria pai
+      final categoryParentNameMap = <int, String>{};
+      // Mapa final de logos
+      final categoryLogoMap = <int, String>{};
+
+      for (final c in categories) {
+        if (c.id == null) continue;
+        final catName = c.categoria.trim();
+        final catNameLower = catName.toLowerCase();
+
+        // Tratar formato especial "Parent||Child" (Recebimentos)
+        final bool hasRecSeparator = catName.contains('||');
+        String? recParentName;
+        String? recChildName;
+        if (hasRecSeparator) {
+          final parts = catName.split('||');
+          if (parts.length >= 2) {
+            recParentName = parts[0].trim();
+            recChildName = parts[1].trim();
+          }
+        }
+
+        // Verificar se é uma categoria pai (existe em categoryLogos)
+        final isParentCategory = DefaultAccountCategoriesService.categoryLogos.containsKey(catName);
+
+        if (hasRecSeparator && recParentName != null) {
+          // Categoria com formato "||" - o pai é recParentName
+          categoryParentNameMap[c.id!] = recParentName;
+        } else if (!isParentCategory) {
+          // É uma subcategoria normal - encontrar o pai pelo nome
+          final parentName = subcategoryToParentMap[catNameLower];
+          if (parentName != null) {
+            categoryParentNameMap[c.id!] = parentName;
+          }
+        }
+
+        // Determinar logo para esta categoria
+        if (directLogoMap.containsKey(c.id)) {
+          // Tem logo próprio no banco
+          categoryLogoMap[c.id!] = directLogoMap[c.id]!;
+        } else if (hasRecSeparator && recParentName != null && recChildName != null) {
+          // Categoria com formato "||" - usar logo do filho de Recebimentos
+          final childLogo = DefaultAccountCategoriesService.getLogoForRecebimentosFilho(recParentName, recChildName);
+          categoryLogoMap[c.id!] = childLogo;
+        } else if (isParentCategory) {
+          // É categoria pai - usar logo do serviço
+          final logo = DefaultAccountCategoriesService.categoryLogos[catName];
+          if (logo != null) {
+            categoryLogoMap[c.id!] = logo;
+          }
+        } else {
+          // É subcategoria normal - tentar logo do serviço baseado no pai
+          final parentName = categoryParentNameMap[c.id!];
+          if (parentName != null) {
+            // Primeiro tenta o logo específico da subcategoria
+            final subLogo = DefaultAccountCategoriesService.getLogoForSubcategoryInCategory(parentName, catName);
+            categoryLogoMap[c.id!] = subLogo;
+          }
+        }
+      }
+
       debugPrint('📋 Tipos no banco: ${types.map((t) => '${t.name}(id: ${t.id})').join(', ')}');
       debugPrint('📋 Total de contas: ${allAccounts.length}');
+      debugPrint('🔗 categoryParentNameMap: $categoryParentNameMap');
 
       final typeFilter = widget.typeNameFilter?.trim();
       final excludeTypeFilter = widget.excludeTypeNameFilter?.trim();
@@ -901,6 +990,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _typeNames = typeMap;
           _categoryNames = categoryMap;
           _categoryLogos = categoryLogoMap;
+          _categoryParentNames = categoryParentNameMap;
           _totalPeriod = totalPaid;
           _totalForecast = totalRemaining;
           _totalPrevistoPagar = previstoPagar;
@@ -1501,22 +1591,99 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final cleanedDescription =
         cleanAccountDescription(account).replaceAll('Fatura: ', '').trim();
+    // Nome da categoria direta da conta
     final rawCategory = (account.categoryId != null)
         ? _categoryNames[account.categoryId!]
         : null;
-    // Extrair categoria pai (antes do ||) e categoria filho (depois do ||)
-    final categoryParent = rawCategory == null
-        ? null
-        : (rawCategory.contains('||')
-            ? rawCategory.split('||').first.trim()
-            : null);
-    final categoryChild = rawCategory == null
-        ? null
-        : (rawCategory.contains('||')
-            ? rawCategory.split('||').last.trim()
-            : rawCategory.trim());
-    final sanitizedCategoryChild =
-        categoryChild?.replaceAll(RegExp(r'^Fatura:\s*'), '').trim();
+
+    // Tratar formato especial de Recebimentos: "Parent||Child"
+    final bool hasRecebimentosSeparator = rawCategory?.contains('||') ?? false;
+    String? parsedParentName;
+    String? parsedChildName;
+    if (hasRecebimentosSeparator && rawCategory != null) {
+      final parts = rawCategory.split('||');
+      if (parts.length >= 2) {
+        parsedParentName = parts[0].trim(); // Ex: "Aposentadoria/Benefícios"
+        parsedChildName = parts[1].trim();  // Ex: "INSS"
+      }
+    }
+
+    // Descobrir categoria pai:
+    // 1. Se tem formato "||", usar parsedParentName
+    // 2. Senão, usar _categoryParentNames (mapeamento por nome)
+    final String? parentCategoryName = hasRecebimentosSeparator
+        ? parsedParentName
+        : ((account.categoryId != null) ? _categoryParentNames[account.categoryId!] : null);
+    final bool hasParent = parentCategoryName != null;
+
+    // Nome da categoria filha:
+    // 1. Se tem formato "||", usar parsedChildName
+    // 2. Senão, usar rawCategory
+    final String? childCategoryName = hasRecebimentosSeparator
+        ? parsedChildName
+        : rawCategory;
+
+    // Logo da categoria pai (do serviço estático)
+    String? parentCategoryLogo;
+    if (hasParent) {
+      // Primeiro tenta o mapa principal de categorias
+      parentCategoryLogo = DefaultAccountCategoriesService.categoryLogos[parentCategoryName];
+      // Se não encontrou e é Recebimentos, tenta o mapa de subcategorias pai de Recebimentos
+      if (parentCategoryLogo == null && hasRecebimentosSeparator) {
+        parentCategoryLogo = DefaultAccountCategoriesService.getLogoForRecebimentosPai(parentCategoryName);
+      }
+    }
+
+    // Logo da categoria filha (do mapa _categoryLogos ou do serviço)
+    String? childCategoryLogo = (account.categoryId != null)
+        ? _categoryLogos[account.categoryId!]
+        : null;
+    // Se não tem logo no mapa e é Recebimentos com formato "||", buscar do serviço
+    if (childCategoryLogo == null && hasRecebimentosSeparator && parsedParentName != null && parsedChildName != null) {
+      childCategoryLogo = DefaultAccountCategoriesService.getLogoForRecebimentosFilho(parsedParentName, parsedChildName);
+    }
+
+    // Fallback para TIPO quando categoria não tem pai nos defaults
+    final String? typeDisplayName = _typeNames[account.typeId]; // Nome original (case-sensitive)
+    final String? typeEmoji = (typeDisplayName != null)
+        ? DefaultAccountCategoriesService.categoryLogos[typeDisplayName]
+        : null;
+
+    // Título: prioridade: 1) pai da categoria, 2) parsedParentName (||), 3) nome do TIPO
+    final String? categoryParentForTitle = hasParent
+        ? parentCategoryName
+        : (hasRecebimentosSeparator ? parsedParentName : typeDisplayName);
+
+    // Determinar emojis para título e subtítulo
+    String? titleEmoji;
+    if (hasParent && parentCategoryLogo != null) {
+      // Tem pai com logo definido
+      titleEmoji = parentCategoryLogo;
+    } else if (hasRecebimentosSeparator && parentCategoryLogo != null) {
+      // Formato "||" com logo do pai
+      titleEmoji = parentCategoryLogo;
+    } else if (!hasParent && !hasRecebimentosSeparator && typeEmoji != null) {
+      // Sem pai, usar emoji do TIPO
+      titleEmoji = typeEmoji;
+    } else if (isCard) {
+      titleEmoji = '💳';
+    }
+
+    // subtitleEmoji: emoji da categoria/filho
+    String? subtitleEmoji;
+    if (account.logo?.trim().isNotEmpty == true) {
+      subtitleEmoji = account.logo!.trim();
+    } else if (childCategoryLogo != null) {
+      // Mostra logo da categoria
+      subtitleEmoji = childCategoryLogo;
+    } else if (isCard) {
+      subtitleEmoji = '💳';
+    }
+    debugPrint('🔍 Account: ${account.description}, parentName: $parentCategoryName, typeName: $typeDisplayName, childName: $childCategoryName, titleEmoji: $titleEmoji, subtitleEmoji: $subtitleEmoji');
+
+    // Nome da categoria filha para exibição (sem "||")
+    final sanitizedCategoryChild = (childCategoryName ?? rawCategory)
+        ?.replaceAll(RegExp(r'^Fatura:\s*'), '').trim();
     final fallbackDescription = (cleanedDescription.isNotEmpty
             ? cleanedDescription
             : account.description)
@@ -1528,7 +1695,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final String cardBrandLabel = (account.cardBrand ?? '').trim();
     final String middleLineText = isCard
         ? (cardBankLabel.isNotEmpty && cardBrandLabel.isNotEmpty
-            ? '$cardBankLabel - $cardBrandLabel'
+            ? '$cardBankLabel • $cardBrandLabel'
             : (cardBankLabel.isNotEmpty
                 ? cardBankLabel
                 : (cardBrandLabel.isNotEmpty
@@ -1581,10 +1748,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final List<Widget> chips = [];
     // Chips sem redundância: não repetir título/subtítulo
-    // Título = categoryParent ?? accountTypeName, Subtítulo = middleLineText
+    // Título = categoryParentForTitle ?? accountTypeName, Subtítulo = middleLineText
     final String? accountTypeName = _typeNames[account.typeId];
-    final bool titleIsAccountType = categoryParent == null;
-    // Tipo: só adicionar se categoryParent existe (título não é accountTypeName)
+    final bool titleIsAccountType = categoryParentForTitle == null;
+    // Tipo: só adicionar se categoryParentForTitle existe (título não é accountTypeName)
     if (accountTypeName != null && accountTypeName.isNotEmpty && !titleIsAccountType) {
       chips.add(MiniChip(
         label: accountTypeName,
@@ -1745,7 +1912,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   weekday: weekdayLabel,
                   accentColor: accentColor,
                 ),
-                title: categoryParent ?? _typeNames[account.typeId] ?? 'Outro',
+                titleEmoji: titleEmoji,
+                subtitleEmoji: subtitleEmoji,
+                subtitleIcon: isCard ? _buildCardBrandIcon(account.cardBrand) : null,
+                title: categoryParentForTitle ?? _typeNames[account.typeId] ?? 'Outro',
                 subtitle: middleLineText,
                 value: lancadoDisplay,
                 valueColor: valueColor,
@@ -2048,6 +2218,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
     );
+  }
+
+  /// Constrói o ícone da bandeira do cartão para uso no EntryCard (tamanho pequeno)
+  Widget? _buildCardBrandIcon(String? brand) {
+    final normalized = (brand ?? '').trim().toUpperCase();
+    if (normalized.isEmpty) return null;
+
+    String? assetPath;
+    if (normalized == 'VISA') {
+      assetPath = 'assets/icons/cc_visa.png';
+    } else if (normalized == 'AMEX' || normalized == 'AMERICAN EXPRESS' || normalized == 'AMERICANEXPRESS') {
+      assetPath = 'assets/icons/cc_amex.png';
+    } else if (normalized == 'MASTER' || normalized == 'MASTERCARD' || normalized == 'MASTER CARD') {
+      assetPath = 'assets/icons/cc_mc.png';
+    } else if (normalized == 'ELO') {
+      assetPath = 'assets/icons/cc_elo.png';
+    }
+
+    if (assetPath != null) {
+      return Image.asset(
+        assetPath,
+        package: 'finance_app',
+        fit: BoxFit.contain,
+      );
+    }
+
+    return null;
   }
 
   Widget _borderedIcon(
