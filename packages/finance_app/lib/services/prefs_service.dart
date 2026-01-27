@@ -17,6 +17,7 @@ class PrefsService {
       ValueNotifier(_defaultDateRange());
   static final ValueNotifier<int?> tabRequestNotifier = ValueNotifier(null);
   static final ValueNotifier<int?> tabReturnNotifier = ValueNotifier(null);
+  static final ValueNotifier<bool> compactModeNotifier = ValueNotifier(false);
   static bool _embeddedMode = false;
 
   // Database Protection Settings
@@ -63,6 +64,9 @@ class PrefsService {
     // SEMPRE iniciar com o mês atual no startup (ignora data salva)
     dateRangeNotifier.value = _defaultDateRange();
 
+    // Modo compacto da dashboard
+    compactModeNotifier.value = prefs.getBool('dashboard_compact_mode') ?? false;
+
     // Database Protection Settings
     autoBackupEnabled = prefs.getBool('db_auto_backup_enabled') ?? true;
     askBackupOnStartup = prefs.getBool('db_ask_backup_on_startup') ?? false;
@@ -83,6 +87,12 @@ class PrefsService {
     final prefs = await _safePrefs();
     await prefs.setBool('isDark', isDark);
     themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
+  }
+
+  static Future<void> saveCompactMode(bool compact) async {
+    final prefs = await _safePrefs();
+    await prefs.setBool('dashboard_compact_mode', compact);
+    compactModeNotifier.value = compact;
   }
 
   static Future<void> saveLocation(String region, String city) async {

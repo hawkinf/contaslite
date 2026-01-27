@@ -123,7 +123,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _periodFilter = 'month'; // 'today', 'tomorrow', 'yesterday', 'currentWeek', 'nextWeek', 'month'
   // Controle do FAB durante scroll
   bool _isFabVisible = true;
-  
+
+  // Header colapsável
+  bool _isHeaderCollapsed = false;
+  late final VoidCallback _compactModeListener;
+
   // Estado de seleção de card
   final ValueNotifier<Account?> _selectedConta = ValueNotifier<Account?>(null);
 
@@ -137,10 +141,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return false;
   }
 
+  void _onScroll() {
+    final offset = _listScrollController.offset;
+    final shouldCollapse = offset > 50;
+    if (shouldCollapse != _isHeaderCollapsed) {
+      setState(() => _isHeaderCollapsed = shouldCollapse);
+    }
+  }
 
   @override
   void dispose() {
     PrefsService.dateRangeNotifier.removeListener(_dateRangeListener);
+    PrefsService.compactModeNotifier.removeListener(_compactModeListener);
+    _listScrollController.removeListener(_onScroll);
     _selectedConta.dispose();
     _listScrollController.dispose();
     super.dispose();
@@ -172,7 +185,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       });
       _loadData();
     };
+    _compactModeListener = () {
+      if (mounted) setState(() {});
+    };
     PrefsService.dateRangeNotifier.addListener(_dateRangeListener);
+    PrefsService.compactModeNotifier.addListener(_compactModeListener);
+    _listScrollController.addListener(_onScroll);
     _initDates();
   }
 
@@ -333,11 +351,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildMonthNavBar(String label) {
-    return PeriodHeader(
-      label: label,
-      onPrevious: () => _changeMonth(-1),
-      onNext: () => _changeMonth(1),
-      onTap: _pickMonthYear,
+    final isCompact = PrefsService.compactModeNotifier.value;
+    return Row(
+      children: [
+        Expanded(
+          child: PeriodHeader(
+            label: label,
+            onPrevious: () => _changeMonth(-1),
+            onNext: () => _changeMonth(1),
+            onTap: _pickMonthYear,
+          ),
+        ),
+        // Toggle modo compacto
+        Tooltip(
+          message: isCompact ? 'Expandir cards' : 'Compactar cards',
+          child: IconButton(
+            icon: Icon(
+              isCompact ? Icons.unfold_more_rounded : Icons.unfold_less_rounded,
+              size: 20,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            onPressed: () {
+              PrefsService.saveCompactMode(!isCompact);
+            },
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          ),
+        ),
+        const SizedBox(width: 4),
+      ],
     );
   }
 
@@ -1006,44 +1049,97 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final dashboardBody = SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-              const headerPadding = EdgeInsets.symmetric(
-                vertical: AppSpacing.xs,
+              // Modo compacto: do PrefsService ou colapsado por scroll
+              final isCompactMode = PrefsService.compactModeNotifier.value;
+              final showCompactCards = isCompactMode || _isHeaderCollapsed;
+
+              final headerPadding = EdgeInsets.symmetric(
+                vertical: showCompactCards ? AppSpacing.xs / 2 : AppSpacing.xs,
                 horizontal: AppSpacing.md,
               );
 
-              final headerWidget = Padding(
-                padding: headerPadding,
-                child: isCombined
-                    ? Row(
-                        children: [
-                          Expanded(
-                            child: SummaryCard(
-                              title: 'A RECEBER',
-                              value: UtilBrasilFields.obterReal(_totalLancadoReceber),
-                              forecast: UtilBrasilFields.obterReal(_totalPrevistoReceber),
-                              statusColor: app_tokens.AppColors.success,
-                              icon: Icons.trending_up_rounded,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.md),
-                          Expanded(
-                            child: SummaryCard(
-                              title: 'A PAGAR',
-                              value: UtilBrasilFields.obterReal(_totalLancadoPagar),
-                              forecast: UtilBrasilFields.obterReal(_totalPrevistoPagar),
-                              statusColor: app_tokens.AppColors.error,
-                              icon: Icons.trending_down_rounded,
-                            ),
-                          ),
-                        ],
-                      )
-                    : SummaryCard(
-                        title: totalLabel,
-                        value: UtilBrasilFields.obterReal(_totalPeriod),
-                        forecast: UtilBrasilFields.obterReal(_totalForecast),
-                        statusColor: totalColor,
-                        icon: _isRecebimentosFilter ? Icons.trending_up_rounded : Icons.trending_down_rounded,
-                      ),
+              // Widget dos cards de resumo (colapsável)
+              final headerWidget = AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                alignment: Alignment.topCenter,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: showCompactCards
+                      ? Padding(
+                          key: const ValueKey('compact'),
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 4),
+                          child: isCombined
+                              ? Row(
+                                  children: [
+                                    Expanded(
+                                      child: SummaryCard(
+                                        title: 'A RECEBER',
+                                        value: UtilBrasilFields.obterReal(_totalLancadoReceber),
+                                        forecast: UtilBrasilFields.obterReal(_totalPrevistoReceber),
+                                        statusColor: app_tokens.AppColors.success,
+                                        icon: Icons.trending_up_rounded,
+                                        compact: true,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSpacing.sm),
+                                    Expanded(
+                                      child: SummaryCard(
+                                        title: 'A PAGAR',
+                                        value: UtilBrasilFields.obterReal(_totalLancadoPagar),
+                                        forecast: UtilBrasilFields.obterReal(_totalPrevistoPagar),
+                                        statusColor: app_tokens.AppColors.error,
+                                        icon: Icons.trending_down_rounded,
+                                        compact: true,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : SummaryCard(
+                                  title: totalLabel,
+                                  value: UtilBrasilFields.obterReal(_totalPeriod),
+                                  forecast: UtilBrasilFields.obterReal(_totalForecast),
+                                  statusColor: totalColor,
+                                  icon: _isRecebimentosFilter ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                                  compact: true,
+                                ),
+                        )
+                      : Padding(
+                          key: const ValueKey('expanded'),
+                          padding: headerPadding,
+                          child: isCombined
+                              ? Row(
+                                  children: [
+                                    Expanded(
+                                      child: SummaryCard(
+                                        title: 'A RECEBER',
+                                        value: UtilBrasilFields.obterReal(_totalLancadoReceber),
+                                        forecast: UtilBrasilFields.obterReal(_totalPrevistoReceber),
+                                        statusColor: app_tokens.AppColors.success,
+                                        icon: Icons.trending_up_rounded,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSpacing.md),
+                                    Expanded(
+                                      child: SummaryCard(
+                                        title: 'A PAGAR',
+                                        value: UtilBrasilFields.obterReal(_totalLancadoPagar),
+                                        forecast: UtilBrasilFields.obterReal(_totalPrevistoPagar),
+                                        statusColor: app_tokens.AppColors.error,
+                                        icon: Icons.trending_down_rounded,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : SummaryCard(
+                                  title: totalLabel,
+                                  value: UtilBrasilFields.obterReal(_totalPeriod),
+                                  forecast: UtilBrasilFields.obterReal(_totalForecast),
+                                  statusColor: totalColor,
+                                  icon: _isRecebimentosFilter ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                                ),
+                        ),
+                ),
               );
 
               // Widget de indicação de seleção
