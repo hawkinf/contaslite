@@ -1,20 +1,28 @@
 import 'package:flutter/material.dart';
-import '../theme/app_radius.dart';
-import '../theme/app_spacing.dart';
-import '../theme/app_text_styles.dart';
 
+/// Header de período padronizado (igual ao PeriodHeader de Contas).
+///
+/// Layout:
+/// - Altura total: 56px (container)
+/// - Pill interna: 44px de altura, centralizada
+/// - Chevrons: IconButton com icon size 18, splashRadius 18, dentro da pill
+/// - Título: titleMedium, fontWeight w600 (NÃO uppercase)
 class MonthHeader extends StatelessWidget {
   final String title;
+  @Deprecated('subtitle foi removido - header sempre 1 linha')
   final String? subtitle;
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
+  final VoidCallback? onTap;
 
   const MonthHeader({
     super.key,
     required this.title,
+    @Deprecated('subtitle foi removido - header sempre 1 linha')
     this.subtitle,
     this.onPrevious,
     this.onNext,
+    this.onTap,
   });
 
   @override
@@ -22,69 +30,53 @@ class MonthHeader extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: colorScheme.surfaceContainerLow,
+        border: Border(
+          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+        ),
       ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: onPrevious,
-            icon: const Icon(Icons.chevron_left),
-            color: colorScheme.onSurfaceVariant,
-            iconSize: 18,
-            padding: const EdgeInsets.all(4),
-            splashRadius: 18,
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+      child: Center(
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
           ),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title.toUpperCase(),
-                  style: AppTextStyles.title.copyWith(
-                    color: colorScheme.onSurface,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle!,
-                    style: AppTextStyles.subtitle.copyWith(
-                      color: colorScheme.onSurfaceVariant,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(Icons.chevron_left, color: colorScheme.onSurfaceVariant, size: 18),
+                splashRadius: 18,
+                onPressed: onPrevious,
+              ),
+              InkWell(
+                borderRadius: BorderRadius.circular(999),
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
                     ),
-                    textAlign: TextAlign.center,
                   ),
-                ],
-              ],
-            ),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant, size: 18),
+                splashRadius: 18,
+                onPressed: onNext,
+              ),
+            ],
           ),
-          IconButton(
-            onPressed: onNext,
-            icon: const Icon(Icons.chevron_right),
-            color: colorScheme.onSurfaceVariant,
-            iconSize: 18,
-            padding: const EdgeInsets.all(4),
-            splashRadius: 18,
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -2994,6 +2994,315 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     _tabController.animateTo(0);
   }
 
+  /// Retorna o título do header baseado no tipo de calendário atual
+  String _getCalendarHeaderTitle() {
+    final monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    switch (_calendarType) {
+      case 'semanal':
+        return '${monthNames[_selectedWeek.month - 1]} ${_selectedWeek.year}';
+      case 'mensal':
+        return '${monthNames[_calendarMonth - 1]} $_selectedYear';
+      case 'anual':
+        return '$_selectedYear';
+      default:
+        return '${monthNames[_calendarMonth - 1]} $_selectedYear';
+    }
+  }
+
+  /// Callback para navegação anterior baseado no tipo de calendário
+  VoidCallback _getCalendarOnPrevious() {
+    switch (_calendarType) {
+      case 'semanal':
+        return () => _changeWeek(-1);
+      case 'mensal':
+        return () => _changeMonth(-1);
+      case 'anual':
+        return () => _changeYear(-1);
+      default:
+        return () => _changeMonth(-1);
+    }
+  }
+
+  /// Callback para navegação próxima baseado no tipo de calendário
+  VoidCallback _getCalendarOnNext() {
+    switch (_calendarType) {
+      case 'semanal':
+        return () => _changeWeek(1);
+      case 'mensal':
+        return () => _changeMonth(1);
+      case 'anual':
+        return () => _changeYear(1);
+      default:
+        return () => _changeMonth(1);
+    }
+  }
+
+  /// FilterBar para seleção do tipo de calendário (Semanal/Mensal/Anual)
+  Widget _buildCalendarTypeFilterBar() {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        border: Border(
+          bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+        ),
+      ),
+      child: Center(
+        child: FilterBar(
+          options: const [
+            FilterBarOption(value: 'semanal', label: 'Semanal'),
+            FilterBarOption(value: 'mensal', label: 'Mensal'),
+            FilterBarOption(value: 'anual', label: 'Anual'),
+          ],
+          selectedValue: _calendarType,
+          onSelected: (type) {
+            setState(() {
+              _calendarType = type;
+            });
+            _savePreferences();
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Totais do calendário (A PAGAR / A RECEBER) - fixo fora do scroll
+  Widget _buildCalendarTotals() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final moneyFormat = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+
+    // Escolhe o Future baseado no tipo de calendário
+    if (_calendarType == 'semanal') {
+      final startOfWeek = _selectedWeek.subtract(Duration(days: _selectedWeek.weekday % 7));
+      return FutureBuilder<Map<String, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount, double avulsas, int avulsasCount, double recebimentosPrevisto, int recebimentosPrevistoCount, double recebimentosAvulsas, int recebimentosAvulsasCount})>>(
+        future: _loadWeeklyTotals(startOfWeek),
+        builder: (context, totalsSnapshot) {
+          double payTotal = 0.0;
+          double receiveTotal = 0.0;
+          double payPrevistoTotal = 0.0;
+          double receivePrevistoTotal = 0.0;
+
+          if (totalsSnapshot.hasData) {
+            for (final daily in totalsSnapshot.data!.values) {
+              payTotal += daily.lancado;
+              payPrevistoTotal += (daily.previsto + daily.avulsas);
+              receiveTotal += daily.recebimentos;
+              receivePrevistoTotal += (daily.recebimentosPrevisto + daily.recebimentosAvulsas);
+            }
+          }
+
+          return _buildTotalsContainer(colorScheme, moneyFormat, payTotal, payPrevistoTotal, receiveTotal, receivePrevistoTotal);
+        },
+      );
+    } else if (_calendarType == 'anual') {
+      return FutureBuilder<Map<int, ({double pagar, double receber})>>(
+        future: _annualTotalsFuture,
+        builder: (context, totalsSnapshot) {
+          double payTotal = 0.0;
+          double receiveTotal = 0.0;
+
+          if (totalsSnapshot.hasData) {
+            for (final monthly in totalsSnapshot.data!.values) {
+              payTotal += monthly.pagar;
+              receiveTotal += monthly.receber;
+            }
+          }
+
+          return _buildTotalsContainer(colorScheme, moneyFormat, payTotal, payTotal, receiveTotal, receiveTotal);
+        },
+      );
+    } else {
+      // mensal (default)
+      final daysInMonth = DateTime(_selectedYear, _calendarMonth + 1, 0).day;
+      return FutureBuilder<Map<int, ({double previsto, double lancado, int previstoCount, int lancadoCount, double recebimentos, int recebimentosCount, double avulsas, int avulsasCount, double recebimentosPrevisto, int recebimentosPrevistoCount, double recebimentosAvulsas, int recebimentosAvulsasCount})>>(
+        future: _monthlyTotalsFuture,
+        builder: (context, totalsSnapshot) {
+          double payTotal = 0.0;
+          double receiveTotal = 0.0;
+          double payPrevistoTotal = 0.0;
+          double receivePrevistoTotal = 0.0;
+
+          if (totalsSnapshot.hasData) {
+            final totalsByDay = totalsSnapshot.data!;
+            for (int day = 1; day <= daysInMonth; day++) {
+              final daily = totalsByDay[day];
+              if (daily == null) continue;
+              payTotal += (daily.previsto + daily.lancado);
+              payPrevistoTotal += (daily.previsto + daily.avulsas);
+              receiveTotal += daily.recebimentos;
+              receivePrevistoTotal += (daily.recebimentosPrevisto + daily.recebimentosAvulsas);
+            }
+          }
+
+          return _buildTotalsContainer(colorScheme, moneyFormat, payTotal, payPrevistoTotal, receiveTotal, receivePrevistoTotal);
+        },
+      );
+    }
+  }
+
+  /// Widget container para os totais (A PAGAR / A RECEBER)
+  Widget _buildTotalsContainer(ColorScheme colorScheme, NumberFormat moneyFormat, double payTotal, double payPrevistoTotal, double receiveTotal, double receivePrevistoTotal) {
+    return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerLow,
+            border: Border(
+              bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+            ),
+          ),
+          child: Row(
+            children: [
+              // Card A PAGAR
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Color.alphaBlend(
+                      colorScheme.error.withValues(alpha: 0.08),
+                      colorScheme.surface,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: colorScheme.error.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Icon(
+                              Icons.trending_down_rounded,
+                              color: colorScheme.error,
+                              size: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'A PAGAR',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                              color: colorScheme.onSurfaceVariant,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          moneyFormat.format(payTotal),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: colorScheme.error,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Previsto: ${moneyFormat.format(payPrevistoTotal)}',
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Card A RECEBER
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Color.alphaBlend(
+                      colorScheme.primary.withValues(alpha: 0.08),
+                      colorScheme.surface,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Icon(
+                              Icons.trending_up_rounded,
+                              color: colorScheme.primary,
+                              size: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'A RECEBER',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                              color: colorScheme.onSurfaceVariant,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          moneyFormat.format(receiveTotal),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Previsto: ${moneyFormat.format(receivePrevistoTotal)}',
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+  }
+
   Widget _buildCalendarContainer({required Widget child}) {
     final colorScheme = Theme.of(context).colorScheme;
     return Card(
@@ -3014,7 +3323,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     );
   }
 
-  Widget _buildCalendarGrid() {
+  Widget _buildCalendarGridContent() {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallMobile = screenWidth < 600;
@@ -3034,7 +3343,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     final double minHolidayWidth = cellSize * 0.80;     // Min 80% of cell width
     final double maxHolidayWidth = cellSize * 0.95;     // Max 95% of cell width
 
-    final moneyFormat = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     final dayAmountFormat =
         NumberFormat.currency(locale: 'pt_BR', symbol: '', decimalDigits: 2);
     
@@ -3105,18 +3413,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           future: _monthlyTotalsFuture,
           builder: (context, totalsSnapshot) {
             final totalsByDay = totalsSnapshot.data ?? {};
-            double monthPayTotal = 0.0;
-            double monthReceiveTotal = 0.0;
-            double monthPayPrevistoTotal = 0.0;
-            double monthReceivePrevistoTotal = 0.0;
-            for (int day = 1; day <= daysInMonth; day++) {
-              final daily = totalsByDay[day];
-              if (daily == null) continue;
-              monthPayTotal += (daily.previsto + daily.lancado);
-              monthPayPrevistoTotal += (daily.previsto + daily.avulsas);
-              monthReceiveTotal += daily.recebimentos;
-              monthReceivePrevistoTotal += (daily.recebimentosPrevisto + daily.recebimentosAvulsas);
-            }
             return GestureDetector(
           behavior: HitTestBehavior.opaque,
           onHorizontalDragStart: (_) => _horizontalDragDistance = 0,
@@ -3132,30 +3428,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
             );
           },
           child: Center(
-            child: Column(
-              children: [
-                MonthHeader(
-                  title: _getMonthYearText().replaceFirst('Calendário - ', ''),
-                  onPrevious: () => _changeMonth(-1),
-                  onNext: () => _changeMonth(1),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                FilterBar(
-                  options: const [
-                    FilterBarOption(value: 'semanal', label: 'Semanal'),
-                    FilterBarOption(value: 'mensal', label: 'Mensal'),
-                    FilterBarOption(value: 'anual', label: 'Anual'),
-                  ],
-                  selectedValue: _calendarType,
-                  onSelected: (type) {
-                    setState(() {
-                      _calendarType = type;
-                    });
-                    _savePreferences();
-                  },
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Container(
+            child: Container(
                   decoration: const BoxDecoration(),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                   child: Stack(
@@ -3166,156 +3439,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                         padding: EdgeInsets.symmetric(horizontal: isSmallMobile ? 8 : 40),
                         child: Column(
                           children: [
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Row(
-                                children: [
-                                  // Card A PAGAR (primeiro - esquerda)
-                                  Expanded(
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                      decoration: BoxDecoration(
-                                        color: Color.alphaBlend(
-                                          colorScheme.error.withValues(alpha: 0.08),
-                                          colorScheme.surface,
-                                        ),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-                                        ),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Container(
-                                                padding: const EdgeInsets.all(4),
-                                                decoration: BoxDecoration(
-                                                  color: colorScheme.error.withValues(alpha: 0.12),
-                                                  borderRadius: BorderRadius.circular(6),
-                                                ),
-                                                child: Icon(
-                                                  Icons.trending_down_rounded,
-                                                  color: colorScheme.error,
-                                                  size: 14,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                'A PAGAR',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 10,
-                                                  color: colorScheme.onSurfaceVariant,
-                                                  letterSpacing: 0.4,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 6),
-                                          FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              moneyFormat.format(monthPayTotal),
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w900,
-                                                color: colorScheme.error,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 3),
-                                          Text(
-                                            'Previsto: ${moneyFormat.format(monthPayPrevistoTotal)}',
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              color: colorScheme.onSurfaceVariant,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  // Card A RECEBER (segundo - direita)
-                                  Expanded(
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                      decoration: BoxDecoration(
-                                        color: Color.alphaBlend(
-                                          colorScheme.primary.withValues(alpha: 0.08),
-                                          colorScheme.surface,
-                                        ),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-                                        ),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Container(
-                                                padding: const EdgeInsets.all(4),
-                                                decoration: BoxDecoration(
-                                                  color: colorScheme.primary.withValues(alpha: 0.12),
-                                                  borderRadius: BorderRadius.circular(6),
-                                                ),
-                                                child: Icon(
-                                                  Icons.trending_up_rounded,
-                                                  color: colorScheme.primary,
-                                                  size: 14,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                'A RECEBER',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 10,
-                                                  color: colorScheme.onSurfaceVariant,
-                                                  letterSpacing: 0.4,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 6),
-                                          FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            alignment: Alignment.centerLeft,
-                                            child: Text(
-                                              moneyFormat.format(monthReceiveTotal),
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w900,
-                                                color: colorScheme.primary,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 3),
-                                          Text(
-                                            'Previsto: ${moneyFormat.format(monthReceivePrevistoTotal)}',
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              color: colorScheme.onSurfaceVariant,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: dayHeaders.map((day) => Expanded(
@@ -3598,10 +3721,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
-        );
+              ),
+            );
           },
         );
       },
@@ -3609,19 +3730,12 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
   }
 
   // --- CALENDÁRIO SEMANAL ---
-  Widget _buildWeeklyCalendar() {
+  Widget _buildWeeklyCalendarContent() {
     final startOfWeek = _selectedWeek.subtract(Duration(days: _selectedWeek.weekday % 7));
     final weekDays = <({String label, DateTime date})>[];
     final dayLabels = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
     final moneyFormat = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
-    final monthNamesComplete = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
     final colorScheme = Theme.of(context).colorScheme;
-
-    // Calcular o número da semana (ISO 8601)
-    final jan4 = DateTime(startOfWeek.year, 1, 4);
-    final jan4Weekday = jan4.weekday % 7;
-    final startOfYear = jan4.subtract(Duration(days: jan4Weekday));
-    final weekNumber = ((startOfWeek.difference(startOfYear).inDays) ~/ 7) + 1;
 
     for (int i = 0; i < 7; i++) {
       final date = startOfWeek.add(Duration(days: i));
@@ -3690,22 +3804,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           future: _loadWeeklyTotals(startOfWeek),
           builder: (context, totalsSnapshot) {
             final totalsByDate = totalsSnapshot.data ?? {};
-            double weekPayTotal = 0.0;
-            double weekReceiveTotal = 0.0;
-            double weekPayPrevistoTotal = 0.0;
-            double weekReceivePrevistoTotal = 0.0;
-            for (final day in weekDays) {
-              final key =
-                  '${day.date.year}-${day.date.month.toString().padLeft(2, '0')}-${day.date.day.toString().padLeft(2, '0')}';
-              final daily = totalsByDate[key];
-              if (daily == null) continue;
-              weekPayTotal += daily.lancado;
-              weekPayPrevistoTotal += (daily.previsto + daily.avulsas);
-              weekReceiveTotal += daily.recebimentos;
-              weekReceivePrevistoTotal += (daily.recebimentosPrevisto + daily.recebimentosAvulsas);
-            }
-            final displayWeekPayTotal = weekPayTotal;
-            final displayWeekReceiveTotal = weekReceiveTotal;
 
             return GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -3731,217 +3829,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                   padding: const EdgeInsets.all(4),
                 child: Column(
                   children: [
-                    Card(
-                      elevation: 1,
-                      color: colorScheme.surface,
-                      shadowColor: colorScheme.shadow.withValues(alpha: 0.12),
-                      surfaceTintColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        side: BorderSide(
-                          color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
-                        child: Column(
-                          children: [
-                            MonthHeader(
-                              title: '${monthNamesComplete[startOfWeek.month - 1].toUpperCase()} ${startOfWeek.year}',
-                              subtitle: 'Semana #$weekNumber',
-                              onPrevious: () => _changeWeek(-1),
-                              onNext: () => _changeWeek(1),
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            FilterBar(
-                              options: const [
-                                FilterBarOption(value: 'semanal', label: 'Semanal'),
-                                FilterBarOption(value: 'mensal', label: 'Mensal'),
-                                FilterBarOption(value: 'anual', label: 'Anual'),
-                              ],
-                              selectedValue: _calendarType,
-                              onSelected: (type) {
-                                setState(() {
-                                  _calendarType = type;
-                                });
-                                _savePreferences();
-                              },
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            Row(
-                              children: [
-                            // Card A PAGAR
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Color.alphaBlend(
-                                    colorScheme.error.withValues(alpha: 0.08),
-                                    colorScheme.surface,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-                                  ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'A PAGAR',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                        color: colorScheme.onSurfaceVariant,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        Container(
-                                          width: 36,
-                                          height: 36,
-                                          decoration: BoxDecoration(
-                                            color: colorScheme.error.withValues(alpha: 0.12),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            Icons.trending_down_rounded,
-                                            color: colorScheme.error,
-                                            size: 18,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              FittedBox(
-                                                fit: BoxFit.scaleDown,
-                                                alignment: Alignment.centerLeft,
-                                                child: Text(
-                                                  moneyFormat.format(displayWeekPayTotal),
-                                                  style: TextStyle(
-                                                    fontSize: 17,
-                                                    fontWeight: FontWeight.w900,
-                                                    color: colorScheme.error,
-                                                    height: 1.1,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                'Previsto ${moneyFormat.format(weekPayPrevistoTotal)}',
-                                                style: TextStyle(
-                                                  fontSize: 9,
-                                                  color: colorScheme.onSurfaceVariant,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            // Card A RECEBER
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Color.alphaBlend(
-                                    colorScheme.primary.withValues(alpha: 0.08),
-                                    colorScheme.surface,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: colorScheme.outlineVariant.withValues(alpha: 0.6),
-                                  ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'A RECEBER',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                        color: colorScheme.onSurfaceVariant,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        Container(
-                                          width: 36,
-                                          height: 36,
-                                          decoration: BoxDecoration(
-                                            color: colorScheme.primary.withValues(alpha: 0.12),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            Icons.trending_up_rounded,
-                                            color: colorScheme.primary,
-                                            size: 18,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              FittedBox(
-                                                fit: BoxFit.scaleDown,
-                                                alignment: Alignment.centerLeft,
-                                                child: Text(
-                                                  moneyFormat.format(displayWeekReceiveTotal),
-                                                  style: TextStyle(
-                                                    fontSize: 17,
-                                                    fontWeight: FontWeight.w900,
-                                                    color: colorScheme.primary,
-                                                    height: 1.1,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                'Previsto ${moneyFormat.format(weekReceivePrevistoTotal)}',
-                                                style: TextStyle(
-                                                  fontSize: 9,
-                                                  color: colorScheme.onSurfaceVariant,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
                     Card(
                       elevation: 1,
                       color: colorScheme.surface,
@@ -4489,7 +4376,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     );
   }
 
-  Widget _buildAnnualCalendar() {
+  Widget _buildAnnualCalendarContent() {
     return FutureBuilder<List<Holiday>>(
       future: _holidaysFuture,
       builder: (context, snapshot) {
@@ -4537,27 +4424,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                   padding: EdgeInsets.all(isSmallMobile ? 4 : 8),
                   child: Column(
                     children: [
-                      MonthHeader(
-                        title: '$_selectedYear',
-                        onPrevious: () => _changeYear(-1),
-                        onNext: () => _changeYear(1),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      FilterBar(
-                        options: const [
-                          FilterBarOption(value: 'semanal', label: 'Semanal'),
-                          FilterBarOption(value: 'mensal', label: 'Mensal'),
-                          FilterBarOption(value: 'anual', label: 'Anual'),
-                        ],
-                        selectedValue: _calendarType,
-                        onSelected: (type) {
-                          setState(() {
-                            _calendarType = type;
-                          });
-                          _savePreferences();
-                        },
-                      ),
-                      const SizedBox(height: AppSpacing.md),
                   // GRID DOS MESES
                   Builder(
                     builder: (context) {
@@ -4743,22 +4609,39 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
               children: [
                 // ABA CONTAS
                 const ContasResumoTab(),
-                // ABA CALENDÁRIO - scroll interno (sem header redundante)
-                SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  padding: EdgeInsets.all(cardPadding),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_calendarType == 'mensal')
-                        _buildCalendarContainer(child: RepaintBoundary(key: _calendarGridKey, child: _buildCalendarGrid()))
-                      else if (_calendarType == 'semanal')
-                        _buildCalendarContainer(child: _buildWeeklyCalendar())
-                      else if (_calendarType == 'anual')
-                        _buildCalendarContainer(child: RepaintBoundary(key: _annualCalendarKey, child: _buildAnnualCalendar())),
-                    ],
-                  ),
+                // ABA CALENDÁRIO - header fixo + conteúdo scrollável (igual Contas)
+                Column(
+                  children: [
+                    // Header fixo (igual Contas) - MonthHeader fora do scroll
+                    MonthHeader(
+                      title: _getCalendarHeaderTitle(),
+                      onPrevious: _getCalendarOnPrevious(),
+                      onNext: _getCalendarOnNext(),
+                    ),
+                    // FilterBar para tipo de calendário (fixo)
+                    _buildCalendarTypeFilterBar(),
+                    // Totais fixos (para todos os tipos)
+                    _buildCalendarTotals(),
+                    // Conteúdo scrollável
+                    Expanded(
+                      child: SingleChildScrollView(
+                        physics: const ClampingScrollPhysics(),
+                        padding: EdgeInsets.all(cardPadding),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_calendarType == 'mensal')
+                              _buildCalendarContainer(child: RepaintBoundary(key: _calendarGridKey, child: _buildCalendarGridContent()))
+                            else if (_calendarType == 'semanal')
+                              _buildCalendarContainer(child: _buildWeeklyCalendarContent())
+                            else if (_calendarType == 'anual')
+                              _buildCalendarContainer(child: RepaintBoundary(key: _annualCalendarKey, child: _buildAnnualCalendarContent())),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 // ABA FERIADOS - scroll interno
                 SingleChildScrollView(
