@@ -15,9 +15,13 @@ import '../utils/installment_utils.dart';
 import '../widgets/new_expense_dialog.dart';
 import '../ui/components/entry_card.dart';
 import '../ui/components/action_banner.dart';
-import '../ui/components/section_header.dart';
 import '../ui/widgets/date_pill.dart';
 import '../ui/widgets/mini_chip.dart';
+// FF* Design System imports
+import '../ui/components/cards/ff_card_header_summary.dart';
+import '../ui/components/filters/ff_filter_chips_bar.dart';
+import '../ui/components/lists/ff_date_group_header.dart';
+import '../ui/components/states/ff_empty_state.dart';
 
 class CardExpensesScreen extends StatefulWidget {
   final Account card; 
@@ -325,19 +329,55 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     final isCompactMode = PrefsService.compactModeNotifier.value;
     final showCompactHeader = isCompactMode || _isHeaderCollapsed;
 
+    // Calculate header data for FFCardHeaderSummary
+    final brand = widget.card.cardBrand?.trim() ?? '';
+    final cardBank = widget.card.cardBank?.trim() ?? '';
+    final cardTitle = [cardBank, brand].where((t) => t.isNotEmpty).join(' • ');
+    final Color cardColor = widget.card.cardColor != null
+        ? Color(widget.card.cardColor!)
+        : colorScheme.primary;
+    final closingDay = widget.card.dueDay - 7;
+    final closingDate = DateTime(_currentYear, _currentMonth, closingDay);
+    final dueDate = DateTime(_currentYear, _currentMonth, widget.card.dueDay);
+
+    // Calculate totals for summary
+    double totalGeral = 0;
+    double totalSubs = 0;
+    double totalVista = 0;
+    double totalParcel = 0;
+    for (final e in _expenses) {
+      totalGeral += e.value;
+      if (e.isRecurrent) {
+        totalSubs += e.value;
+      } else if (_isParcel(e)) {
+        totalParcel += e.value;
+      } else {
+        totalVista += e.value;
+      }
+    }
+
     final headerRow = AnimatedSize(
       duration: const Duration(milliseconds: 200),
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 200),
-        child: showCompactHeader
-            ? KeyedSubtree(
-                key: const ValueKey('compact'),
-                child: _buildCardHeaderRowCompact(context),
-              )
-            : KeyedSubtree(
-                key: const ValueKey('expanded'),
-                child: _buildCardHeaderRow(context),
-              ),
+        child: KeyedSubtree(
+          key: ValueKey(showCompactHeader ? 'compact' : 'expanded'),
+          child: FFCardHeaderSummary(
+            cardTitle: cardTitle.isEmpty ? 'Cartão' : cardTitle,
+            cardColor: cardColor,
+            cardBrand: brand,
+            closingDate: closingDate,
+            dueDate: dueDate,
+            summary: FFCardInvoiceSummary(
+              launchedTotal: _invoiceLaunchedTotal,
+              forecastTotal: totalGeral,
+              subscriptionsTotal: totalSubs,
+              spotTotal: totalVista,
+              installmentsTotal: totalParcel,
+            ),
+            compact: showCompactHeader,
+          ),
+        ),
       ),
     );
     final selectionBanner = _selectedExpense == null
@@ -437,20 +477,23 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
                       ),
                     ],
                   ),
-                  // Linha 2: Filtros compactos com scroll horizontal
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildCompactFilterChip('Todos', null, Icons.grid_view),
-                        const SizedBox(width: 8),
-                        _buildCompactFilterChip('Recorrência', 'recorrencia', Icons.autorenew),
-                        const SizedBox(width: 8),
-                        _buildCompactFilterChip('À Vista', 'avista', Icons.attach_money),
-                        const SizedBox(width: 8),
-                        _buildCompactFilterChip('Parcelado', 'parcelado', Icons.view_agenda),
-                      ],
-                    ),
+                  // Linha 2: Filtros compactos com FF Design System
+                  FFFilterChipsBar<String?>.custom(
+                    options: const [
+                      FFFilterChipOption(value: null, label: 'Todos', icon: Icons.grid_view),
+                      FFFilterChipOption(value: 'recorrencia', label: 'Recorrência', icon: Icons.autorenew),
+                      FFFilterChipOption(value: 'avista', label: 'À Vista', icon: Icons.attach_money),
+                      FFFilterChipOption(value: 'parcelado', label: 'Parcelado', icon: Icons.view_agenda),
+                    ],
+                    selectedValue: _activeFilters.isEmpty ? null : _activeFilters.first,
+                    onValueSelected: (value) => setState(() {
+                      _activeFilters.clear();
+                      if (value != null) {
+                        _activeFilters.add(value);
+                      }
+                    }),
+                    compact: true,
+                    padding: EdgeInsets.zero,
                   ),
                 ],
               ),
@@ -463,12 +506,14 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : filteredExpenses.isEmpty
-                      ? Center(
-                          child: Text(
-                            widget.selectedDate != null
-                                ? 'Nenhuma despesa neste dia.'
-                                : 'Nenhuma despesa nesta fatura.',
-                          ),
+                      ? FFEmptyState(
+                          icon: Icons.credit_card_outlined,
+                          title: 'Nenhuma despesa',
+                          description: widget.selectedDate != null
+                              ? 'Não há despesas neste dia.'
+                              : 'Não há despesas nesta fatura.',
+                          actionLabel: 'Lançar despesa',
+                          onAction: _openNewExpense,
                         )
                       : NotificationListener<ScrollNotification>(
                           onNotification: _handleScrollNotification,
@@ -660,267 +705,6 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     );
   }
 
-  Widget _buildCardHeaderRow(BuildContext context) {
-    final brand = widget.card.cardBrand?.trim() ?? '';
-    final cardBank = widget.card.cardBank?.trim() ?? '';
-
-    // Calcular datas de fechamento e vencimento  
-    final closingDay = widget.card.dueDay - 7;
-    DateTime closingDate = DateTime(_currentYear, _currentMonth, closingDay);
-    DateTime dueDate = DateTime(_currentYear, _currentMonth, widget.card.dueDay);
-
-    final colorScheme = Theme.of(context).colorScheme;
-    final Color cardColor = widget.card.cardColor != null
-      ? Color(widget.card.cardColor!)
-      : colorScheme.primary;
-
-    // Calcular totais por tipo
-    double totalGeral = 0;
-    double totalSubs = 0;
-    double totalVista = 0;
-    double totalParcel = 0;
-    for (final e in _expenses) {
-      totalGeral += e.value;
-      if (e.isRecurrent) {
-        totalSubs += e.value;
-      } else if (_isParcel(e)) {
-        totalParcel += e.value;
-      } else {
-        totalVista += e.value;
-      }
-    }
-
-    final cardTitle = [cardBank, brand].where((t) => t.isNotEmpty).join(' • ');
-    final Widget? brandIcon = _buildCardBrandIcon(brand, height: 14);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      child: Container(
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 2,
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: cardColor.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 2, 16, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      // Logo da bandeira do cartão
-                      if (brandIcon != null) ...[
-                        brandIcon,
-                        const SizedBox(width: 8),
-                      ],
-                      Expanded(
-                        child: Text(
-                          cardTitle.isEmpty ? 'Cartão' : cardTitle,
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: colorScheme.onSurface,
-                              ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Icon(Icons.credit_card, color: cardColor, size: 20),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    UtilBrasilFields.obterReal(_invoiceLaunchedTotal),
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: colorScheme.onSurface,
-                        ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Previsto: ${UtilBrasilFields.obterReal(totalGeral)}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      Transform.scale(
-                        scale: 0.92,
-                        alignment: Alignment.centerLeft,
-                        child: MiniChip(
-                          label: 'Fech. ${DateFormat('dd/MM').format(closingDate)}',
-                          icon: Icons.event_note,
-                          iconColor: colorScheme.onSurfaceVariant,
-                          textColor: colorScheme.onSurfaceVariant,
-                          backgroundColor: colorScheme.surfaceContainerHighest,
-                          borderColor: colorScheme.outlineVariant.withValues(alpha: 0.6),
-                        ),
-                      ),
-                      Transform.scale(
-                        scale: 0.92,
-                        alignment: Alignment.centerLeft,
-                        child: MiniChip(
-                          label: 'Venc. ${DateFormat('dd/MM').format(dueDate)}',
-                          icon: Icons.event_available,
-                          iconColor: colorScheme.onSurfaceVariant,
-                          textColor: colorScheme.onSurfaceVariant,
-                          backgroundColor: colorScheme.surfaceContainerHighest,
-                          borderColor: colorScheme.outlineVariant.withValues(alpha: 0.6),
-                        ),
-                      ),
-                    ],
-                  ),
-                  // Linha compacta de totais por tipo (ValuePills)
-                  const SizedBox(height: 8),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildValuePill(
-                          label: 'Recorr.',
-                          value: UtilBrasilFields.obterReal(totalSubs),
-                          color: Colors.blue.shade600,
-                          icon: Icons.autorenew,
-                        ),
-                        const SizedBox(width: 6),
-                        _buildValuePill(
-                          label: 'À vista',
-                          value: UtilBrasilFields.obterReal(totalVista),
-                          color: Colors.green.shade600,
-                          icon: Icons.attach_money,
-                        ),
-                        const SizedBox(width: 6),
-                        _buildValuePill(
-                          label: 'Parcel.',
-                          value: UtilBrasilFields.obterReal(totalParcel),
-                          color: Colors.amber.shade700,
-                          icon: Icons.view_agenda,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Versão compacta do header do cartão (quando colapsado)
-  Widget _buildCardHeaderRowCompact(BuildContext context) {
-    final brand = widget.card.cardBrand?.trim() ?? '';
-    final cardBank = widget.card.cardBank?.trim() ?? '';
-    final colorScheme = Theme.of(context).colorScheme;
-    final Color cardColor = widget.card.cardColor != null
-        ? Color(widget.card.cardColor!)
-        : colorScheme.primary;
-
-    // Calcular totais
-    double totalGeral = 0;
-    for (final e in _expenses) {
-      totalGeral += e.value;
-    }
-
-    // Calcular datas
-    final closingDay = widget.card.dueDay - 7;
-    DateTime closingDate = DateTime(_currentYear, _currentMonth, closingDay);
-    DateTime dueDate = DateTime(_currentYear, _currentMonth, widget.card.dueDay);
-
-    final cardTitle = [cardBank, brand].where((t) => t.isNotEmpty).join(' • ');
-    final Widget? brandIcon = _buildCardBrandIcon(brand, height: 12);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
-        ),
-        child: Row(
-          children: [
-            // Indicador de cor do cartão
-            Container(
-              width: 3,
-              height: 32,
-              margin: const EdgeInsets.only(right: 10),
-              decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            // Logo da bandeira
-            if (brandIcon != null) ...[
-              brandIcon,
-              const SizedBox(width: 8),
-            ],
-            // Nome do cartão
-            Expanded(
-              child: Text(
-                cardTitle.isEmpty ? 'Cartão' : cardTitle,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurface,
-                    ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            // Datas compactas
-            Text(
-              'Fech. ${DateFormat('dd').format(closingDate)} • Venc. ${DateFormat('dd').format(dueDate)}',
-              style: TextStyle(
-                fontSize: 10,
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Total compacto
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  UtilBrasilFields.obterReal(_invoiceLaunchedTotal),
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-                if ((totalGeral - _invoiceLaunchedTotal).abs() > 0.50)
-                  Text(
-                    'Prev: ${UtilBrasilFields.obterReal(totalGeral)}',
-                    style: TextStyle(
-                      fontSize: 9,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _borderedIcon(
     IconData icon, {
     Color? iconColor,
@@ -984,64 +768,6 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
     return 'avista';
   }
 
-  /// Chip compacto para filtros no header
-  Widget _buildCompactFilterChip(String label, String? filterKey, IconData icon) {
-    final isAll = filterKey == null;
-    final isActive = isAll ? _activeFilters.isEmpty : _activeFilters.contains(filterKey);
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => setState(() {
-          if (isAll) {
-            _activeFilters.clear();
-          } else {
-            if (_activeFilters.contains(filterKey)) {
-              _activeFilters.remove(filterKey);
-            } else {
-              _activeFilters.add(filterKey);
-            }
-          }
-        }),
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          height: 28,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: isActive ? colorScheme.primaryContainer : colorScheme.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isActive
-                  ? colorScheme.primary.withValues(alpha: 0.5)
-                  : colorScheme.outlineVariant.withValues(alpha: 0.6),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 14,
-                color: isActive ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: isActive ? colorScheme.onPrimaryContainer : colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildGroupedExpenseList(List<Account> expensesToRender) {
     // Agrupar despesas por data
     final Map<String, List<Account>> groupedByDate = {};
@@ -1076,25 +802,14 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
         final dateKey = sortedDates[index];
         final expenses = groupedByDate[dateKey]!;
         final date = DateFormat('dd/MM/yyyy').parse(dateKey);
-        final dayOfWeek = DateFormat('EEEE', 'pt_BR').format(date).toUpperCase();
-        
-        final colorScheme = Theme.of(context).colorScheme;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Separador de data
-            SectionHeader(
-              icon: Icons.calendar_today,
-              title: '$dateKey • $dayOfWeek',
-              trailing: MiniChip(
-                label: expenses.length == 1
-                    ? '1 item'
-                    : '${expenses.length} itens',
-                backgroundColor: colorScheme.surfaceContainerHighest,
-                textColor: colorScheme.onSurfaceVariant,
-                borderColor: colorScheme.outlineVariant.withValues(alpha: 0.6),
-              ),
+            // Separador de data com FF Design System
+            FFDateGroupHeader(
+              date: date,
+              itemCount: expenses.length,
             ),
             // Items do dia
             ...expenses.map((expense) => _buildExpenseItem(expense)),
@@ -1845,76 +1560,6 @@ class _CardExpensesScreenState extends State<CardExpensesScreen> {
         ],
       ),
     );
-  }
-
-  /// Constrói um chip de valor com label, valor, cor e ícone opcional
-  Widget _buildValuePill({
-    required String label,
-    required String value,
-    required Color color,
-    IconData? icon,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: color.withValues(alpha: 0.35),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 14, color: color.withValues(alpha: 0.90)),
-            const SizedBox(width: 4),
-          ],
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: color.withValues(alpha: 0.90),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: color.withValues(alpha: 0.90),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Constrói ícone da bandeira do cartão
-  Widget? _buildCardBrandIcon(String? brand, {double height = 14}) {
-    final normalized = (brand ?? '').trim().toUpperCase();
-    if (normalized.isEmpty) return null;
-    String? assetPath;
-    if (normalized == 'VISA') {
-      assetPath = 'assets/icons/cc_visa.png';
-    } else if (normalized == 'AMEX' || normalized == 'AMERICAN EXPRESS') {
-      assetPath = 'assets/icons/cc_amex.png';
-    } else if (normalized == 'MASTER' || normalized == 'MASTERCARD') {
-      assetPath = 'assets/icons/cc_mc.png';
-    } else if (normalized == 'ELO') {
-      assetPath = 'assets/icons/cc_elo.png';
-    }
-    if (assetPath != null) {
-      return Image.asset(
-        assetPath,
-        package: 'finance_app',
-        height: height,
-        fit: BoxFit.contain,
-      );
-    }
-    return null;
   }
 
 }

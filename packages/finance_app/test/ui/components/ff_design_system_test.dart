@@ -917,4 +917,230 @@ void main() {
       expect(find.text('3/12'), findsOneWidget);
     });
   });
+
+  group('FFCardHeaderSummary', () {
+    testWidgets('exibe título do cartão', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FFCardHeaderSummary(
+              cardTitle: 'Nubank • Mastercard',
+              cardColor: Colors.purple,
+              cardBrand: 'Mastercard',
+              closingDate: DateTime(2024, 1, 25),
+              dueDate: DateTime(2024, 2, 1),
+              summary: const FFCardInvoiceSummary(
+                launchedTotal: 1500.00,
+                forecastTotal: 2000.00,
+                subscriptionsTotal: 200.00,
+                spotTotal: 800.00,
+                installmentsTotal: 500.00,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Nubank • Mastercard'), findsOneWidget);
+    });
+
+    testWidgets('exibe valores no modo expandido', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FFCardHeaderSummary(
+              cardTitle: 'Test Card',
+              cardColor: Colors.blue,
+              closingDate: DateTime(2024, 1, 25),
+              dueDate: DateTime(2024, 2, 1),
+              summary: const FFCardInvoiceSummary(
+                launchedTotal: 1500.00,
+                forecastTotal: 2000.00,
+              ),
+              compact: false,
+            ),
+          ),
+        ),
+      );
+
+      // Verifica que o texto "Previsto:" aparece no modo expandido
+      expect(find.textContaining('Previsto:'), findsOneWidget);
+    });
+
+    testWidgets('modo compacto tem layout diferente', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FFCardHeaderSummary(
+              cardTitle: 'Compact Card',
+              cardColor: Colors.green,
+              closingDate: DateTime(2024, 1, 25),
+              dueDate: DateTime(2024, 2, 1),
+              summary: const FFCardInvoiceSummary(
+                launchedTotal: 500.00,
+                forecastTotal: 600.00,
+              ),
+              compact: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Compact Card'), findsOneWidget);
+    });
+  });
+
+  group('FFCollapsibleCardHeader', () {
+    testWidgets('exibe modo expandido quando isCollapsed = false', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FFCollapsibleCardHeader(
+              cardTitle: 'Test Card',
+              cardColor: Colors.blue,
+              closingDate: DateTime(2024, 1, 25),
+              dueDate: DateTime(2024, 2, 1),
+              summary: const FFCardInvoiceSummary(
+                launchedTotal: 1000.00,
+                forecastTotal: 1200.00,
+              ),
+              isCollapsed: false,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Test Card'), findsOneWidget);
+    });
+
+    testWidgets('exibe modo compacto quando isCollapsed = true', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FFCollapsibleCardHeader(
+              cardTitle: 'Collapsed Card',
+              cardColor: Colors.red,
+              closingDate: DateTime(2024, 1, 25),
+              dueDate: DateTime(2024, 2, 1),
+              summary: const FFCardInvoiceSummary(
+                launchedTotal: 800.00,
+                forecastTotal: 900.00,
+              ),
+              isCollapsed: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Collapsed Card'), findsOneWidget);
+    });
+  });
+
+  group('FFCardExpenseItemCard', () {
+    testWidgets('exibe descrição da despesa', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: FFCardExpenseItemCard(
+              day: '15',
+              weekday: 'SEG',
+              description: 'Netflix',
+              value: 'R\$ 39,90',
+              expenseType: FFCardExpenseType.subscription,
+              cardColor: Color(0xFF9C27B0), // purple
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Netflix'), findsOneWidget);
+      expect(find.text('R\$ 39,90'), findsOneWidget);
+    });
+
+    testWidgets('exibe chip de recorrência para subscription', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: FFCardExpenseItemCard(
+              day: '01',
+              weekday: 'TER',
+              description: 'Spotify',
+              value: 'R\$ 21,90',
+              expenseType: FFCardExpenseType.subscription,
+              cardColor: Color(0xFF4CAF50), // green
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Recorrência'), findsOneWidget);
+    });
+
+    testWidgets('exibe chip de parcela para installment', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: FFCardExpenseItemCard(
+              day: '10',
+              weekday: 'QUA',
+              description: 'TV Samsung',
+              value: 'R\$ 250,00',
+              expenseType: FFCardExpenseType.installment,
+              cardColor: Color(0xFF2196F3), // blue
+              currentInstallment: 3,
+              totalInstallments: 12,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('3/12'), findsOneWidget);
+      expect(find.text('Parcelado'), findsOneWidget);
+    });
+
+    testWidgets('responde a onTap', (tester) async {
+      bool tapped = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FFCardExpenseItemCard(
+              day: '20',
+              weekday: 'QUI',
+              description: 'Tappable Expense',
+              value: 'R\$ 100,00',
+              expenseType: FFCardExpenseType.spot,
+              cardColor: Colors.orange,
+              onTap: () => tapped = true,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Tappable Expense'));
+      await tester.pump();
+
+      expect(tapped, isTrue);
+    });
+
+    testWidgets('modo compacto reduz tamanhos', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: FFCardExpenseItemCard(
+              day: '05',
+              weekday: 'SEX',
+              description: 'Compact Item',
+              value: 'R\$ 50,00',
+              expenseType: FFCardExpenseType.spot,
+              cardColor: Color(0xFF009688), // teal
+              compact: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Compact Item'), findsOneWidget);
+    });
+  });
 }

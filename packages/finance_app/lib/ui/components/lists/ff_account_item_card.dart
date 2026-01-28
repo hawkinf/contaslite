@@ -5,10 +5,15 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/status_indicator.dart';
 
+/// Densidade do card de conta
+enum FFCardDensity { regular, compact }
+
 /// Card de item de conta/lançamento do FácilFin Design System.
 ///
 /// Exibe informações de uma conta com data, título, subtítulo,
 /// valor, chips de status e ações.
+///
+/// Suporta densidade ajustável (compact/regular).
 ///
 /// Exemplo de uso:
 /// ```dart
@@ -21,6 +26,7 @@ import '../../widgets/status_indicator.dart';
 ///   accentColor: AppColors.error,
 ///   chips: [FFMiniChip(label: 'Recorrência')],
 ///   onTap: () => _editAccount(),
+///   density: FFCardDensity.compact,
 /// )
 /// ```
 class FFAccountItemCard extends StatelessWidget {
@@ -60,8 +66,8 @@ class FFAccountItemCard extends StatelessWidget {
   /// Sombras customizadas
   final List<BoxShadow> boxShadow;
 
-  /// Padding interno
-  final EdgeInsetsGeometry padding;
+  /// Padding interno customizado (sobrescreve densidade)
+  final EdgeInsetsGeometry? padding;
 
   /// Emoji opcional antes do título
   final String? titleEmoji;
@@ -81,6 +87,12 @@ class FFAccountItemCard extends StatelessWidget {
   /// Margem externa
   final EdgeInsetsGeometry? margin;
 
+  /// Densidade do card (compact reduz paddings e fontes)
+  final FFCardDensity density;
+
+  /// Largura mínima do valor (garante alinhamento)
+  final double? minValueWidth;
+
   const FFAccountItemCard({
     super.key,
     required this.datePill,
@@ -95,13 +107,15 @@ class FFAccountItemCard extends StatelessWidget {
     this.backgroundColor,
     this.borderColor,
     this.boxShadow = const [],
-    this.padding = const EdgeInsets.all(AppSpacing.lg),
+    this.padding,
     this.titleEmoji,
     this.subtitleEmoji,
     this.subtitleIcon,
     this.estimatedValue,
     this.opacity = 1.0,
     this.margin,
+    this.density = FFCardDensity.regular,
+    this.minValueWidth,
   });
 
   /// Factory para conta a pagar
@@ -120,6 +134,7 @@ class FFAccountItemCard extends StatelessWidget {
     String? estimatedValue,
     bool isPaid = false,
     EdgeInsetsGeometry? margin,
+    FFCardDensity density = FFCardDensity.regular,
   }) {
     return FFAccountItemCard(
       key: key,
@@ -138,6 +153,7 @@ class FFAccountItemCard extends StatelessWidget {
       estimatedValue: estimatedValue,
       opacity: isPaid ? 0.6 : 1.0,
       margin: margin,
+      density: density,
     );
   }
 
@@ -157,6 +173,7 @@ class FFAccountItemCard extends StatelessWidget {
     String? estimatedValue,
     bool isPaid = false,
     EdgeInsetsGeometry? margin,
+    FFCardDensity density = FFCardDensity.regular,
   }) {
     return FFAccountItemCard(
       key: key,
@@ -175,6 +192,7 @@ class FFAccountItemCard extends StatelessWidget {
       estimatedValue: estimatedValue,
       opacity: isPaid ? 0.6 : 1.0,
       margin: margin,
+      density: density,
     );
   }
 
@@ -193,6 +211,7 @@ class FFAccountItemCard extends StatelessWidget {
     String? estimatedValue,
     bool isPaid = false,
     EdgeInsetsGeometry? margin,
+    FFCardDensity density = FFCardDensity.regular,
   }) {
     return FFAccountItemCard(
       key: key,
@@ -210,8 +229,26 @@ class FFAccountItemCard extends StatelessWidget {
       estimatedValue: estimatedValue,
       opacity: isPaid ? 0.6 : 1.0,
       margin: margin,
+      density: density,
     );
   }
+
+  // Getters para valores baseados em densidade
+  EdgeInsetsGeometry get _effectivePadding {
+    if (padding != null) return padding!;
+    return density == FFCardDensity.compact
+        ? const EdgeInsets.all(AppSpacing.md)
+        : const EdgeInsets.all(AppSpacing.lg);
+  }
+
+  double get _titleFontSize => density == FFCardDensity.compact ? 14 : 16;
+  double get _subtitleFontSize => density == FFCardDensity.compact ? 11 : 12;
+  double get _valueFontSize => density == FFCardDensity.compact ? 14 : 16;
+  double get _estimatedFontSize => density == FFCardDensity.compact ? 10 : 11;
+  double get _emojiSize => density == FFCardDensity.compact ? 12 : 14;
+  double get _subtitleEmojiSize => density == FFCardDensity.compact ? 11 : 13;
+  double get _gapAfterTitle => density == FFCardDensity.compact ? 4 : 6;
+  double get _chipSpacing => density == FFCardDensity.compact ? 4 : AppSpacing.sm;
 
   @override
   Widget build(BuildContext context) {
@@ -232,6 +269,7 @@ class FFAccountItemCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Linha de destaque superior
             Container(
@@ -239,15 +277,16 @@ class FFAccountItemCard extends StatelessWidget {
               color: accentColor.withValues(alpha: 0.8),
             ),
             Padding(
-              padding: padding,
+              padding: _effectivePadding,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   datePill,
-                  const SizedBox(width: AppSpacing.md),
+                  SizedBox(width: density == FFCardDensity.compact ? AppSpacing.sm : AppSpacing.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         // Título com emoji
                         Row(
@@ -256,7 +295,7 @@ class FFAccountItemCard extends StatelessWidget {
                             if (titleEmoji != null && titleEmoji!.isNotEmpty) ...[
                               Text(
                                 titleEmoji!,
-                                style: const TextStyle(fontSize: 14, height: 1),
+                                style: TextStyle(fontSize: _emojiSize, height: 1),
                               ),
                               const SizedBox(width: 6),
                             ],
@@ -264,7 +303,7 @@ class FFAccountItemCard extends StatelessWidget {
                               child: Text(
                                 title,
                                 style: AppTextStyles.title.copyWith(
-                                  fontSize: 16,
+                                  fontSize: _titleFontSize,
                                   fontWeight: FontWeight.w600,
                                 ),
                                 maxLines: 1,
@@ -273,7 +312,7 @@ class FFAccountItemCard extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
+                        SizedBox(height: _gapAfterTitle),
                         // Subtítulo com ícone/emoji
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -289,7 +328,7 @@ class FFAccountItemCard extends StatelessWidget {
                                 subtitleEmoji!.isNotEmpty) ...[
                               Text(
                                 subtitleEmoji!,
-                                style: const TextStyle(fontSize: 13, height: 1),
+                                style: TextStyle(fontSize: _subtitleEmojiSize, height: 1),
                               ),
                               const SizedBox(width: 6),
                             ],
@@ -297,6 +336,7 @@ class FFAccountItemCard extends StatelessWidget {
                               child: Text(
                                 subtitle,
                                 style: AppTextStyles.subtitle.copyWith(
+                                  fontSize: _subtitleFontSize,
                                   color: colorScheme.onSurfaceVariant,
                                 ),
                                 maxLines: 1,
@@ -307,51 +347,67 @@ class FFAccountItemCard extends StatelessWidget {
                         ),
                         // Chips
                         if (chips.isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.sm),
+                          SizedBox(height: _chipSpacing),
                           Wrap(
-                            spacing: AppSpacing.sm,
-                            runSpacing: AppSpacing.sm,
+                            spacing: _chipSpacing,
+                            runSpacing: _chipSpacing,
                             children: chips,
                           ),
                         ],
                       ],
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.md),
-                  // Coluna de valor
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          StatusIndicator.dot(color: valueColor, size: 6),
-                          const SizedBox(width: AppSpacing.xs),
-                          Text(
-                            value,
-                            style: AppTextStyles.value.copyWith(
-                              fontSize: 16,
+                  SizedBox(width: density == FFCardDensity.compact ? AppSpacing.sm : AppSpacing.md),
+                  // Coluna de valor - com largura mínima para garantir alinhamento
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minWidth: minValueWidth ?? 80,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            StatusIndicator.dot(
                               color: valueColor,
+                              size: density == FFCardDensity.compact ? 5 : 6,
                             ),
+                            const SizedBox(width: AppSpacing.xs),
+                            Flexible(
+                              child: Text(
+                                value,
+                                style: AppTextStyles.value.copyWith(
+                                  fontSize: _valueFontSize,
+                                  color: valueColor,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.end,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (estimatedValue != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'Prev: $estimatedValue',
+                            style: TextStyle(
+                              fontSize: _estimatedFontSize,
+                              color: colorScheme.onSurfaceVariant
+                                  .withValues(alpha: 0.6),
+                            ),
+                            textAlign: TextAlign.end,
                           ),
                         ],
-                      ),
-                      if (estimatedValue != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          'Prev: $estimatedValue',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.6),
-                          ),
-                        ),
+                        if (trailing != null) ...[
+                          SizedBox(height: density == FFCardDensity.compact ? 4 : AppSpacing.sm),
+                          trailing!,
+                        ],
                       ],
-                      if (trailing != null) ...[
-                        const SizedBox(height: AppSpacing.sm),
-                        trailing!,
-                      ],
-                    ],
+                    ),
                   ),
                 ],
               ),

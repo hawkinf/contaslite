@@ -5,12 +5,27 @@ import '../../theme/app_spacing.dart';
 /// Tipos de filtro de conta disponíveis
 enum FFAccountFilterType { all, pagar, receber, cartoes }
 
+/// Definição de um chip de filtro customizado
+class FFFilterChipOption<T> {
+  final T value;
+  final String label;
+  final IconData? icon;
+
+  const FFFilterChipOption({
+    required this.value,
+    required this.label,
+    this.icon,
+  });
+}
+
 /// Barra de filtros com chips do FácilFin Design System.
 ///
 /// Exibe chips de seleção para filtrar contas por tipo,
-/// toggle para ocultar pagas, e dropdown de período.
+/// toggle para ocultar pagas, dropdown de período e trailing actions.
 ///
-/// Exemplo de uso:
+/// Suporta modo compacto e lista de filtros customizável.
+///
+/// Exemplo de uso básico:
 /// ```dart
 /// FFFilterChipsBar(
 ///   selected: FFAccountFilterType.all,
@@ -21,24 +36,49 @@ enum FFAccountFilterType { all, pagar, receber, cartoes }
 ///   onPeriodChanged: (value) => setState(() => _period = value),
 /// )
 /// ```
-class FFFilterChipsBar extends StatelessWidget {
-  /// Filtro atualmente selecionado
-  final FFAccountFilterType selected;
+///
+/// Exemplo com filtros customizados e trailing:
+/// ```dart
+/// FFFilterChipsBar.custom<String>(
+///   options: [
+///     FFFilterChipOption(value: 'all', label: 'Todos'),
+///     FFFilterChipOption(value: 'recorrente', label: 'Recorrência'),
+///     FFFilterChipOption(value: 'avista', label: 'À vista'),
+///     FFFilterChipOption(value: 'parcelado', label: 'Parcelado'),
+///   ],
+///   selected: 'all',
+///   onSelected: (value) => setState(() => _filter = value),
+///   trailing: IconButton(icon: Icon(Icons.refresh), onPressed: _refresh),
+///   compact: true,
+/// )
+/// ```
+class FFFilterChipsBar<T> extends StatelessWidget {
+  /// Lista de opções de filtro customizadas
+  final List<FFFilterChipOption<T>>? options;
 
-  /// Callback quando o filtro é alterado
-  final ValueChanged<FFAccountFilterType> onSelected;
+  /// Filtro atualmente selecionado (usado com opções padrão)
+  final FFAccountFilterType? selected;
+
+  /// Valor selecionado (usado com opções customizadas)
+  final T? selectedValue;
+
+  /// Callback quando o filtro é alterado (opções padrão)
+  final ValueChanged<FFAccountFilterType>? onSelected;
+
+  /// Callback quando o filtro é alterado (opções customizadas)
+  final ValueChanged<T>? onValueSelected;
 
   /// Se deve ocultar contas pagas/recebidas
   final bool hidePaid;
 
   /// Callback quando o toggle de pagas é alterado
-  final ValueChanged<bool> onHidePaidChanged;
+  final ValueChanged<bool>? onHidePaidChanged;
 
   /// Valor atual do período
   final String periodValue;
 
   /// Callback quando o período é alterado
-  final ValueChanged<String> onPeriodChanged;
+  final ValueChanged<String>? onPeriodChanged;
 
   /// Se deve mostrar o chip de contas pagas
   final bool showPaidChip;
@@ -46,27 +86,66 @@ class FFFilterChipsBar extends StatelessWidget {
   /// Se deve mostrar o dropdown de período
   final bool showPeriodDropdown;
 
+  /// Modo compacto (altura menor, chips menores)
+  final bool compact;
+
+  /// Widget trailing (ex: botões de ação)
+  final Widget? trailing;
+
+  /// Padding interno
+  final EdgeInsetsGeometry? padding;
+
+  /// Construtor com filtros padrão (FFAccountFilterType)
   const FFFilterChipsBar({
     super.key,
-    required this.selected,
-    required this.onSelected,
+    required FFAccountFilterType this.selected,
+    required ValueChanged<FFAccountFilterType> this.onSelected,
     required this.hidePaid,
-    required this.onHidePaidChanged,
+    required ValueChanged<bool> this.onHidePaidChanged,
     required this.periodValue,
-    required this.onPeriodChanged,
+    required ValueChanged<String> this.onPeriodChanged,
     this.showPaidChip = true,
     this.showPeriodDropdown = true,
-  });
+    this.compact = false,
+    this.trailing,
+    this.padding,
+  })  : options = null,
+        selectedValue = null,
+        onValueSelected = null;
+
+  /// Construtor com filtros customizados
+  const FFFilterChipsBar.custom({
+    super.key,
+    required List<FFFilterChipOption<T>> this.options,
+    required T this.selectedValue,
+    required ValueChanged<T> this.onValueSelected,
+    this.hidePaid = false,
+    this.onHidePaidChanged,
+    this.periodValue = 'month',
+    this.onPeriodChanged,
+    this.showPaidChip = false,
+    this.showPeriodDropdown = false,
+    this.compact = false,
+    this.trailing,
+    this.padding,
+  })  : selected = null,
+        onSelected = null;
+
+  double get _chipHeight => compact ? 26 : 30;
+  double get _fontSize => compact ? 11 : 12;
+  double get _iconSize => compact ? 14 : 16;
+  EdgeInsets get _containerPadding => compact
+      ? const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4)
+      : const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: AppSpacing.sm);
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final effectivePadding = padding ?? _containerPadding;
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
+      padding: effectivePadding,
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -80,35 +159,76 @@ class FFFilterChipsBar extends StatelessWidget {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: [
-                  _buildChip(context, 'Todos', FFAccountFilterType.all),
-                  const SizedBox(width: AppSpacing.sm),
-                  _buildChip(context, 'Pagar', FFAccountFilterType.pagar),
-                  const SizedBox(width: AppSpacing.sm),
-                  _buildChip(context, 'Receber', FFAccountFilterType.receber),
-                  const SizedBox(width: AppSpacing.sm),
-                  _buildChip(context, 'Cartões', FFAccountFilterType.cartoes),
-                ],
+                children: _buildFilterChips(context),
               ),
             ),
           ),
-          if (showPaidChip || showPeriodDropdown) ...[
-            const SizedBox(width: AppSpacing.md),
+          if (_hasSecondarySection) ...[
+            SizedBox(width: compact ? AppSpacing.sm : AppSpacing.md),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: [
-                  if (showPaidChip) _buildPaidChip(context),
-                  if (showPaidChip && showPeriodDropdown)
-                    const SizedBox(width: AppSpacing.sm),
-                  if (showPeriodDropdown) _buildPeriodDropdown(context),
-                ],
+                children: _buildSecondarySection(context),
               ),
             ),
+          ],
+          if (trailing != null) ...[
+            SizedBox(width: compact ? AppSpacing.sm : AppSpacing.md),
+            trailing!,
           ],
         ],
       ),
     );
+  }
+
+  bool get _hasSecondarySection =>
+      showPaidChip || showPeriodDropdown || onHidePaidChanged != null;
+
+  List<Widget> _buildFilterChips(BuildContext context) {
+    if (options != null) {
+      return _buildCustomChips(context);
+    }
+    return _buildDefaultChips(context);
+  }
+
+  List<Widget> _buildDefaultChips(BuildContext context) {
+    return [
+      _buildChip(context, 'Todos', FFAccountFilterType.all),
+      SizedBox(width: compact ? 4 : AppSpacing.sm),
+      _buildChip(context, 'Pagar', FFAccountFilterType.pagar),
+      SizedBox(width: compact ? 4 : AppSpacing.sm),
+      _buildChip(context, 'Receber', FFAccountFilterType.receber),
+      SizedBox(width: compact ? 4 : AppSpacing.sm),
+      _buildChip(context, 'Cartões', FFAccountFilterType.cartoes),
+    ];
+  }
+
+  List<Widget> _buildCustomChips(BuildContext context) {
+    final chips = <Widget>[];
+    for (int i = 0; i < options!.length; i++) {
+      if (i > 0) {
+        chips.add(SizedBox(width: compact ? 4 : AppSpacing.sm));
+      }
+      chips.add(_buildCustomChip(context, options![i]));
+    }
+    return chips;
+  }
+
+  List<Widget> _buildSecondarySection(BuildContext context) {
+    final widgets = <Widget>[];
+
+    if (showPaidChip && onHidePaidChanged != null) {
+      widgets.add(_buildPaidChip(context));
+    }
+
+    if (showPeriodDropdown && onPeriodChanged != null) {
+      if (widgets.isNotEmpty) {
+        widgets.add(SizedBox(width: compact ? 4 : AppSpacing.sm));
+      }
+      widgets.add(_buildPeriodDropdown(context));
+    }
+
+    return widgets;
   }
 
   Widget _buildChip(
@@ -123,13 +243,13 @@ class FFFilterChipsBar extends StatelessWidget {
         : colorScheme.onSurfaceVariant;
 
     return SizedBox(
-      height: 30,
+      height: _chipHeight,
       child: ChoiceChip(
-        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+        labelPadding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8),
         label: Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: _fontSize,
             fontWeight: FontWeight.w600,
             color: textColor,
           ),
@@ -142,7 +262,48 @@ class FFFilterChipsBar extends StatelessWidget {
           color: colorScheme.outlineVariant.withValues(alpha: 0.6),
         ),
         shape: const StadiumBorder(),
-        onSelected: (_) => onSelected(type),
+        onSelected: (_) => onSelected?.call(type),
+      ),
+    );
+  }
+
+  Widget _buildCustomChip(BuildContext context, FFFilterChipOption<T> option) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final bool isSelected = selectedValue == option.value;
+    final Color textColor = isSelected
+        ? colorScheme.onPrimaryContainer
+        : colorScheme.onSurfaceVariant;
+
+    return SizedBox(
+      height: _chipHeight,
+      child: ChoiceChip(
+        labelPadding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8),
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (option.icon != null) ...[
+              Icon(option.icon, size: _iconSize, color: textColor),
+              SizedBox(width: compact ? 4 : 6),
+            ],
+            Text(
+              option.label,
+              style: TextStyle(
+                fontSize: _fontSize,
+                fontWeight: FontWeight.w600,
+                color: textColor,
+              ),
+            ),
+          ],
+        ),
+        selected: isSelected,
+        showCheckmark: false,
+        backgroundColor: colorScheme.surface,
+        selectedColor: colorScheme.primaryContainer,
+        side: BorderSide(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+        ),
+        shape: const StadiumBorder(),
+        onSelected: (_) => onValueSelected?.call(option.value),
       ),
     );
   }
@@ -154,18 +315,18 @@ class FFFilterChipsBar extends StatelessWidget {
         : colorScheme.onSurfaceVariant;
 
     return SizedBox(
-      height: 30,
+      height: _chipHeight,
       child: ChoiceChip(
-        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+        labelPadding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8),
         label: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.visibility_off_outlined, size: 16, color: textColor),
-            const SizedBox(width: 6),
+            Icon(Icons.visibility_off_outlined, size: _iconSize, color: textColor),
+            SizedBox(width: compact ? 4 : 6),
             Text(
-              'Contas Pagas',
+              compact ? 'Pagas' : 'Contas Pagas',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: _fontSize,
                 fontWeight: FontWeight.w600,
                 color: textColor,
               ),
@@ -180,18 +341,20 @@ class FFFilterChipsBar extends StatelessWidget {
           color: colorScheme.outlineVariant.withValues(alpha: 0.6),
         ),
         shape: const StadiumBorder(),
-        onSelected: onHidePaidChanged,
+        onSelected: onHidePaidChanged ?? (_) {},
       ),
     );
   }
 
   Widget _buildPeriodDropdown(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final dropdownWidth = compact ? 130.0 : 160.0;
+    final dropdownHeight = compact ? 28.0 : 32.0;
 
     return Container(
-      height: 32,
-      width: 160,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      height: dropdownHeight,
+      width: dropdownWidth,
+      padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 10),
       decoration: BoxDecoration(
         color: colorScheme.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -205,15 +368,15 @@ class FFFilterChipsBar extends StatelessWidget {
           isDense: true,
           isExpanded: true,
           onChanged: (value) {
-            if (value != null) onPeriodChanged(value);
+            if (value != null) onPeriodChanged?.call(value);
           },
           icon: Icon(
             Icons.arrow_drop_down,
-            size: 18,
+            size: _iconSize,
             color: colorScheme.onSurfaceVariant,
           ),
           style: TextStyle(
-            fontSize: 12,
+            fontSize: _fontSize,
             fontWeight: FontWeight.w600,
             color: colorScheme.onSurfaceVariant,
           ),
