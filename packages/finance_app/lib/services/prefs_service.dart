@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'holiday_service.dart';
+import '../models/contas_view_state_snapshot.dart';
 import '../models/database_config.dart';
 
 class PrefsService {
@@ -18,6 +19,11 @@ class PrefsService {
   static final ValueNotifier<int?> tabRequestNotifier = ValueNotifier(null);
   static final ValueNotifier<int?> tabReturnNotifier = ValueNotifier(null);
   static final ValueNotifier<bool> compactModeNotifier = ValueNotifier(false);
+
+  /// Provider para capturar o estado atual da dashboard (Contas)
+  /// O dashboard registra sua função de snapshot aqui
+  static ContasViewStateSnapshot? Function()? dashboardExportStateProvider;
+
   static bool _embeddedMode = false;
 
   // Database Protection Settings

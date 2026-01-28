@@ -2118,6 +2118,182 @@ class DatabaseHelper {
     await clearSyncMetadata();
   }
 
+  /// Conta registros que já foram sincronizados (têm server_id)
+  Future<int> countSyncedRecords(String table) async {
+    final db = await database;
+    try {
+      final result = await db.rawQuery(
+        'SELECT COUNT(*) as count FROM $table WHERE server_id IS NOT NULL',
+      );
+      return Sqflite.firstIntValue(result) ?? 0;
+    } catch (e) {
+      debugPrint('⚠️ Erro ao contar registros sincronizados em $table: $e');
+      return 0;
+    }
+  }
+
+  /// Obtém um registro pelo ID local
+  Future<Map<String, dynamic>?> getRecordById(String table, int id) async {
+    final db = await database;
+    try {
+      final results = await db.query(
+        table,
+        where: 'id = ?',
+        whereArgs: [id],
+        limit: 1,
+      );
+      return results.isNotEmpty ? results.first : null;
+    } catch (e) {
+      debugPrint('⚠️ Erro ao buscar registro em $table (id: $id): $e');
+      return null;
+    }
+  }
+
+  /// Marca um registro para re-sincronização (força envio na próxima sync)
+  Future<void> markForResync(String table, int id) async {
+    final db = await database;
+    try {
+      await db.update(
+        table,
+        {
+          'sync_status': SyncStatus.pendingUpdate.value,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      debugPrint('✅ Registro marcado para re-sync: $table (id: $id)');
+    } catch (e) {
+      debugPrint('⚠️ Erro ao marcar registro para re-sync em $table (id: $id): $e');
+    }
+  }
+
+  /// Marca registros locais "padrão" (sem server_id) como sincronizados
+  /// se já existir um registro equivalente vindo do servidor.
+  /// Isso evita duplicatas ao sincronizar uma instalação nova.
+  Future<void> markLocalDefaultsAsSyncedIfDuplicate() async {
+    final db = await database;
+
+    // Para account_types: marcar como synced se existe outro com mesmo nome e server_id
+    try {
+      // Buscar tipos locais sem server_id
+      final localTypes = await db.query(
+        'account_types',
+        where: 'server_id IS NULL AND sync_status = ?',
+        whereArgs: [SyncStatus.pendingCreate.value],
+      );
+
+      for (final localType in localTypes) {
+        final localName = (localType['name'] as String?)?.trim().toUpperCase();
+        if (localName == null) continue;
+
+        // Buscar se existe tipo sincronizado com mesmo nome
+        final syncedType = await db.query(
+          'account_types',
+          where: 'server_id IS NOT NULL AND UPPER(TRIM(name)) = ?',
+          whereArgs: [localName],
+          limit: 1,
+        );
+
+        if (syncedType.isNotEmpty) {
+          // Já existe um tipo sincronizado com mesmo nome - deletar o local duplicado
+          final localId = localType['id'] as int;
+          await db.delete('account_types', where: 'id = ?', whereArgs: [localId]);
+          debugPrint('🗑️ Removido tipo local duplicado: $localName (id: $localId)');
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Erro ao limpar account_types duplicados: $e');
+    }
+
+    // Para account_descriptions: marcar como synced se existe outro com mesma categoria
+    try {
+      final localDescs = await db.query(
+        'account_descriptions',
+        where: 'server_id IS NULL AND sync_status = ?',
+        whereArgs: [SyncStatus.pendingCreate.value],
+      );
+
+      for (final localDesc in localDescs) {
+        final localCategoria = (localDesc['categoria'] as String?)?.trim().toUpperCase();
+        if (localCategoria == null) continue;
+
+        final syncedDesc = await db.query(
+          'account_descriptions',
+          where: 'server_id IS NOT NULL AND UPPER(TRIM(categoria)) = ?',
+          whereArgs: [localCategoria],
+          limit: 1,
+        );
+
+        if (syncedDesc.isNotEmpty) {
+          final localId = localDesc['id'] as int;
+          await db.delete('account_descriptions', where: 'id = ?', whereArgs: [localId]);
+          debugPrint('🗑️ Removida categoria local duplicada: $localCategoria (id: $localId)');
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Erro ao limpar account_descriptions duplicados: $e');
+    }
+
+    // Para payment_methods: marcar como synced se existe outro com mesmo nome
+    try {
+      final localMethods = await db.query(
+        'payment_methods',
+        where: 'server_id IS NULL AND sync_status = ?',
+        whereArgs: [SyncStatus.pendingCreate.value],
+      );
+
+      for (final localMethod in localMethods) {
+        final localName = (localMethod['name'] as String?)?.trim().toUpperCase();
+        if (localName == null) continue;
+
+        final syncedMethod = await db.query(
+          'payment_methods',
+          where: 'server_id IS NOT NULL AND UPPER(TRIM(name)) = ?',
+          whereArgs: [localName],
+          limit: 1,
+        );
+
+        if (syncedMethod.isNotEmpty) {
+          final localId = localMethod['id'] as int;
+          await db.delete('payment_methods', where: 'id = ?', whereArgs: [localId]);
+          debugPrint('🗑️ Removida forma de pagamento local duplicada: $localName (id: $localId)');
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Erro ao limpar payment_methods duplicados: $e');
+    }
+
+    // Para banks: mesmo tratamento
+    try {
+      final localBanks = await db.query(
+        'banks',
+        where: 'server_id IS NULL AND sync_status = ?',
+        whereArgs: [SyncStatus.pendingCreate.value],
+      );
+
+      for (final localBank in localBanks) {
+        final localName = (localBank['name'] as String?)?.trim().toUpperCase();
+        if (localName == null) continue;
+
+        final syncedBank = await db.query(
+          'banks',
+          where: 'server_id IS NOT NULL AND UPPER(TRIM(name)) = ?',
+          whereArgs: [localName],
+          limit: 1,
+        );
+
+        if (syncedBank.isNotEmpty) {
+          final localId = localBank['id'] as int;
+          await db.delete('banks', where: 'id = ?', whereArgs: [localId]);
+          debugPrint('🗑️ Removido banco local duplicado: $localName (id: $localId)');
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Erro ao limpar banks duplicados: $e');
+    }
+  }
+
   /// Obtém o server_id de um registro pelo ID local
   /// Usado para resolver referências FK antes do push
   Future<String?> getServerIdFromLocalId(String table, int localId) async {

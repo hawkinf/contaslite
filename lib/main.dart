@@ -5,54 +5,35 @@ import 'package:finance_app/screens/payment_methods_screen.dart';
 import 'package:finance_app/screens/recebimentos_table_screen.dart';
 import 'package:finance_app/screens/settings_screen.dart';
 import 'package:finance_app/database/db_helper.dart';
+import 'package:finance_app/services/database_initialization_service.dart' as contas_db;
+import 'package:finance_app/services/export_controller.dart' as contas_export;
 import 'package:finance_app/services/holiday_service.dart';
+import 'package:finance_app/services/prefs_service.dart' as contas_prefs;
 import 'package:finance_app/widgets/backup_dialog.dart';
 import 'package:finance_app/models/account.dart';
-import 'package:flutter/foundation.dart';
+import 'package:finance_app/main.dart' as contas_app;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter/rendering.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:window_manager/window_manager.dart';
 import 'dart:convert';
 import 'dart:async';
-import 'dart:ui' as ui;
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:printing/printing.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:window_manager/window_manager.dart';
-import 'widgets/date_calculator_dialog.dart';
+import 'package:finance_app/services/auth_service.dart' as contas_auth;
+import 'package:finance_app/services/sync_service.dart' as contas_sync;
 import 'ui/theme/app_theme.dart';
 import 'ui/theme/app_spacing.dart';
 import 'ui/widgets/app_scaffold.dart';
-import 'ui/widgets/month_header.dart';
-import 'ui/widgets/filter_bar.dart';
 import 'ui/widgets/empty_state.dart';
-
-import 'package:finance_app/main.dart' as contas_app;
-import 'package:finance_app/services/database_initialization_service.dart' as contas_db;
-import 'package:finance_app/services/prefs_service.dart' as contas_prefs;
-import 'package:finance_app/services/auth_service.dart' as contas_auth;
-import 'package:finance_app/services/sync_service.dart' as contas_sync;
-
+import 'ui/widgets/filter_bar.dart';
+import 'ui/widgets/month_header.dart';
+import 'models/city_data.dart';
+import 'models/holiday.dart';
+import 'widgets/date_calculator_dialog.dart';
 import 'contas_bootstrap.dart';
-
-
-// Versão do App
-const String appVersion = '1.50.0';
-const String appBuild = '22';
-const String apiSource = 'BrasilAPI - https://brasilapi.com.br/api/feriados/v1/';
-
-String get appDisplayVersion {
-  final parts = appVersion.split('.');
-  if (parts.length >= 2) {
-    return '${parts[0]}.${parts[1]}';
-  }
-  return appVersion;
-}
 
 // === INICIALIZAÇÃO E LOCALE ===
 void main() async {
@@ -115,62 +96,13 @@ void main() async {
 
 // Detectar plataforma
 class GetPlatform {
-  static bool get isDesktop => !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.windows ||
-          defaultTargetPlatform == TargetPlatform.linux ||
-          defaultTargetPlatform == TargetPlatform.macOS);
-}
-
-Color adaptiveSurface(BuildContext context) =>
-    Theme.of(context).colorScheme.surface;
-Color adaptiveSurfaceVariant(BuildContext context) =>
-    Theme.of(context).colorScheme.surfaceContainerHighest;
-Color adaptiveOutline(BuildContext context) =>
-    Theme.of(context).colorScheme.outline;
-Color adaptiveOnSurface(BuildContext context) =>
-    Theme.of(context).colorScheme.onSurface;
-Color adaptiveBackground(BuildContext context) =>
-    Theme.of(context).colorScheme.surface;
-
-class Holiday {
-  final String date;
-  final String name;
-  final List<String> types;
-  final String? specialNote;
-
-  Holiday({required this.date, required this.name, required this.types, this.specialNote});
-
-  factory Holiday.fromJson(Map<String, dynamic> json) {
-    return Holiday(
-      date: json['date'] as String,
-      name: json['name'] as String,
-      types: [(json['type'] as String).replaceAll('national', 'Nacional')],
-    );
-  }
-
-  Holiday mergeWith(Holiday other) {
-    final combinedTypes = {...types, ...other.types}.toList();
-    return Holiday(
-      date: date,
-      name: name,
-      types: combinedTypes,
-      specialNote: specialNote ?? other.specialNote,
-    );
-  }
-}
-
-class CityData {
-  final String name;
-  final String state;
-  final String region;
-  final List<Map<String, String>> municipalHolidays;
-
-  CityData({required this.name, required this.state, required this.region, required this.municipalHolidays});
+  static bool get isDesktop => !kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS);
 }
 
 class YearlyData {
   final int year;
   final int weekdayHolidays;
+
   YearlyData(this.year, this.weekdayHolidays);
 }
 
@@ -277,6 +209,7 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
   final Map<int, Future<List<Holiday>>> _holidaysCache = {};
   double _horizontalDragDistance = 0;
   ({Holiday? holiday, int daysUntil})? _nextHolidayData;
+  final contas_export.ExportController _exportController = contas_export.ExportController();
 
   // GlobalKeys para capturar screenshots dos calendários
   final GlobalKey _calendarGridKey = GlobalKey();
@@ -285,6 +218,29 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
   final List<int> availableYears = List.generate(11, (index) => DateTime.now().year - 5 + index);
 
   late final List<CityData> cities;
+
+  String _getCurrentTabName() {
+    switch (_tabController.index) {
+      case 0:
+        return 'Contas';
+      case 1:
+        return 'Calendário';
+      case 2:
+        return 'Feriados';
+      case 3:
+        return 'Tabelas';
+      default:
+        return 'Relatório';
+    }
+  }
+
+  Future<void> exportCurrentViewToPdf() async {
+    await _exportController.exportCurrentViewToPdf(
+      context: context,
+      selectedIndex: _tabController.index,
+      currentTabName: _getCurrentTabName(),
+    );
+  }
 
   @override
   void initState() {
@@ -334,7 +290,10 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     _loadPreferences();
     
     // Setup para salvar tamanho da janela periodicamente em desktop
-    if (GetPlatform.isDesktop) {
+    final isDesktop = !kIsWeb && (defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.macOS);
+    if (isDesktop) {
       Timer.periodic(const Duration(seconds: 2), (_) {
         if (mounted) _saveWindowSize();
       });
@@ -1064,396 +1023,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
     );
   }
 
-  Future<Uint8List?> _captureCalendarScreenshot(GlobalKey boundaryKey) async {
-    try {
-      final renderObject = boundaryKey.currentContext?.findRenderObject();
-      if (renderObject is! RenderRepaintBoundary) {
-        return null;
-      }
-      final ui.Image image = await renderObject.toImage(pixelRatio: 2.0);
-      final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      return byteData?.buffer.asUint8List();
-    } catch (e) {
-      debugPrint('Erro ao capturar screenshot: $e');
-      return null;
-    }
-  }
-
-  Future<void> _printReport() async {
-    try {
-      // Capturar screenshot do calendário mensal se aplicável
-      Uint8List? calendarScreenshot;
-      GlobalKey? screenshotKey;
-      if (_calendarType == 'mensal') {
-        screenshotKey = _calendarGridKey;
-      } else if (_calendarType == 'anual') {
-        screenshotKey = _annualCalendarKey;
-      }
-      if (screenshotKey != null) {
-        calendarScreenshot = await _captureCalendarScreenshot(screenshotKey);
-      }
-
-      // Gerar PDF com o relatório completo
-      final pdf = pw.Document();
-      final productName = 'CalendarPRO v$appDisplayVersion';
-      const pageMargin = pw.EdgeInsets.symmetric(horizontal: 32, vertical: 36);
-      final generatedAt = DateTime.now();
-
-      // Carregar os dados de feriados
-      final holidays = await _holidaysFuture;
-      final holidaysCurrentYear = holidays.where((h) {
-        try {
-          final year = DateTime.parse(h.date).year;
-          return year == _selectedYear;
-        } catch (e) {
-          return false;
-        }
-      }).toList();
-
-      final stats = _calculateStats(holidaysCurrentYear);
-
-      // Ordenar feriados por data
-      final uniqueHolidaysMap = <String, Holiday>{};
-      for (var holiday in holidaysCurrentYear) {
-        if (!uniqueHolidaysMap.containsKey(holiday.date)) {
-          uniqueHolidaysMap[holiday.date] = holiday;
-        }
-      }
-      final sortedHolidays = uniqueHolidaysMap.values.toList();
-      sortedHolidays.sort((a, b) => a.date.compareTo(b.date));
-
-      // Criar PDF de múltiplas páginas para o calendário completo
-      // Página 1: Calendário do mês selecionado
-      pdf.addPage(
-        pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          margin: pageMargin,
-          build: (pw.Context context) {
-            return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                // Cabeçalho
-                pw.Text(
-                  'RELATÓRIO $productName',
-                  style: pw.TextStyle(
-                    fontSize: 20,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.SizedBox(height: 8),
-                pw.Text(
-                  'Cidade: ${_selectedCity.name}',
-                  style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
-                ),
-                pw.SizedBox(height: 20),
-
-                // Calendário - Mensal ou Anual
-                if ((_calendarType == 'mensal' || _calendarType == 'anual') && calendarScreenshot != null) ...[
-                  pw.Text(
-                    _calendarType == 'mensal'
-                        ? 'CALENDÁRIO - ${_getMonthYearText()}'
-                        : 'CALENDÁRIO - $_selectedYear',
-                    style: pw.TextStyle(
-                      fontSize: 13,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.SizedBox(height: 12),
-                  pw.Container(
-                    width: double.infinity,
-                    alignment: pw.Alignment.center,
-                    child: pw.Image(
-                      pw.MemoryImage(calendarScreenshot),
-                      fit: pw.BoxFit.contain,
-                    ),
-                  ),
-                  pw.SizedBox(height: 24),
-                ] else if (_calendarType == 'anual') ...[
-                  pw.Text(
-                    'CALENDÁRIO - $_selectedYear',
-                    style: pw.TextStyle(
-                      fontSize: 13,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.SizedBox(height: 12),
-                  // Grid de 2 colunas com 6 linhas (2x6 = 12 meses)
-                  pw.Column(
-                    children: [
-                      for (int row = 0; row < 6; row++)
-                        pw.SizedBox(
-                          width: double.infinity,
-                          child: pw.Row(
-                            children: [
-                              pw.Expanded(
-                                child: pw.Padding(
-                                  padding: const pw.EdgeInsets.all(4),
-                                  child: _buildMiniCalendarPdf(row * 2 + 1, _selectedYear, uniqueHolidaysMap),
-                                ),
-                              ),
-                              pw.Expanded(
-                                child: pw.Padding(
-                                  padding: const pw.EdgeInsets.all(4),
-                                  child: _buildMiniCalendarPdf(row * 2 + 2, _selectedYear, uniqueHolidaysMap),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                  pw.SizedBox(height: 24),
-                ] else ...[
-                  pw.Text(
-                    _getMonthYearText(),
-                    style: pw.TextStyle(
-                      fontSize: 13,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.SizedBox(height: 12),
-                  _buildCalendarTablePdf(_calendarMonth, _selectedYear, uniqueHolidaysMap),
-                  pw.SizedBox(height: 24),
-                ],
-
-                // Tabela de Resumo
-                pw.Text(
-                  'RESUMO $productName - $_selectedYear',
-                  style: pw.TextStyle(
-                    fontSize: 13,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.SizedBox(height: 10),
-
-                // Tabela com estatísticas principais
-                pw.Table(
-                  border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-                  columnWidths: {
-                    0: const pw.FlexColumnWidth(2),
-                    1: const pw.FlexColumnWidth(1),
-                  },
-                  children: [
-                    pw.TableRow(
-                      decoration: pw.BoxDecoration(color: PdfColors.blue),
-                      children: [
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text('Descrição', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text('Quantidade', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white), textAlign: pw.TextAlign.center),
-                        ),
-                      ],
-                    ),
-                    ...[
-                      ['Total de Feriados', stats.totalFeriadosUnicos.toString()],
-                      ['Dias Úteis', stats.diasUteis.toString()],
-                      ['Finais de Semana', stats.finaisSemana.toString()],
-                    ].asMap().entries.map((entry) {
-                      final isEven = entry.key.isEven;
-                      return pw.TableRow(
-                        decoration: pw.BoxDecoration(color: isEven ? PdfColors.white : PdfColors.grey50),
-                        children: [
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text(entry.value[0], style: const pw.TextStyle(fontSize: 9)),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text(entry.value[1], style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold), textAlign: pw.TextAlign.center),
-                          ),
-                        ],
-                      );
-                    }),
-                  ],
-                ),
-
-                pw.SizedBox(height: 12),
-              ],
-            );
-          },
-        ),
-      );
-
-      // Página 2: Por tipo e lista detalhada de feriados
-      pdf.addPage(
-        pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          margin: pageMargin,
-          build: (pw.Context context) {
-            return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Text(
-                  'RELATÓRIO $productName',
-                  style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
-                ),
-                pw.SizedBox(height: 8),
-                pw.Text(
-                  'Cidade: ${_selectedCity.name}',
-                  style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
-                ),
-                pw.SizedBox(height: 20),
-                pw.Text(
-                  'Por Tipo',
-                  style: pw.TextStyle(
-                    fontSize: 12,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.SizedBox(height: 8),
-                pw.Table(
-                  border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-                  columnWidths: {
-                    0: const pw.FlexColumnWidth(2),
-                    1: const pw.FlexColumnWidth(1),
-                  },
-                  children: [
-                    pw.TableRow(
-                      decoration: pw.BoxDecoration(color: PdfColors.blue),
-                      children: [
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text('Tipo de Feriado', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text('Total', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.white), textAlign: pw.TextAlign.center),
-                        ),
-                      ],
-                    ),
-                    ...[
-                      ['Nacionais', stats.nacionais.toString(), PdfColors.lightBlue100],
-                      ['Municipais', stats.municipais.toString(), PdfColors.yellow100],
-                      ['Bancários', stats.bancarios.toString(), PdfColors.cyan100],
-                      ['Estaduais', stats.estaduais.toString(), PdfColors.purple100],
-                    ].asMap().entries.map((entry) {
-                      final label = entry.value[0];
-                      final value = entry.value[1];
-                      final color = entry.value[2] as PdfColor;
-                      return pw.TableRow(
-                        decoration: pw.BoxDecoration(color: color),
-                        children: [
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text(label as String, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text(value as String, style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold), textAlign: pw.TextAlign.center),
-                          ),
-                        ],
-                      );
-                    }),
-                  ],
-                ),
-                pw.SizedBox(height: 20),
-                pw.Text(
-                  'Lista Detalhada de Feriados - $_selectedYear',
-                  style: pw.TextStyle(
-                    fontSize: 14,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.SizedBox(height: 15),
-                pw.Table(
-                  border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-                  columnWidths: {
-                    0: const pw.FlexColumnWidth(2.5),
-                    1: const pw.FlexColumnWidth(2),
-                    2: const pw.FlexColumnWidth(1.5),
-                    3: const pw.FlexColumnWidth(3),
-                  },
-                  children: [
-                    pw.TableRow(
-                      decoration: pw.BoxDecoration(color: PdfColors.blue),
-                      children: [
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text('Feriado', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text('Data', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text('Dia', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(6),
-                          child: pw.Text('Tipo(s)', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
-                        ),
-                      ],
-                    ),
-                    ...sortedHolidays.asMap().entries.map((entry) {
-                      final isEven = entry.key.isEven;
-                      final holiday = entry.value;
-                      final date = DateTime.parse(holiday.date);
-                      final dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-                      final dayName = dayNames[date.weekday % 7];
-                      final formattedDate = '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-                      final types = holiday.types.join(', ');
-
-                      return pw.TableRow(
-                        decoration: pw.BoxDecoration(color: isEven ? PdfColors.white : PdfColors.grey50),
-                        children: [
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text(holiday.name, style: const pw.TextStyle(fontSize: 8)),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text(formattedDate, style: const pw.TextStyle(fontSize: 8)),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text(dayName, style: const pw.TextStyle(fontSize: 8)),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(6),
-                            child: pw.Text(types, style: const pw.TextStyle(fontSize: 8)),
-                          ),
-                        ],
-                      );
-                    }),
-                  ],
-                ),
-                pw.SizedBox(height: 20),
-                pw.Divider(),
-                pw.SizedBox(height: 8),
-                pw.Text(
-                  'Gerado em ${DateFormat('dd/MM/yyyy HH:mm', 'pt_BR').format(generatedAt)}',
-                  style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
-                ),
-              ],
-            );
-          },
-        ),
-      );
-
-      // Mostrar diálogo de impressão
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async {
-          return pdf.save();
-        },
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao imprimir: $e')),
-        );
-      }
-    }
-  }
-
-  String _getMonthYearText() {
-    final monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-    return 'Calendário - ${monthNames[_calendarMonth - 1]} / $_selectedYear';
-  }
-
   Widget _buildPremiumTab(String label, IconData icon, int index) {
     return AnimatedBuilder(
       animation: _tabController.animation!,
@@ -1476,318 +1045,6 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
           ),
         );
       },
-    );
-  }
-
-  pw.Widget _buildCalendarTablePdf(int month, int year, Map<String, Holiday> holidayMap) {
-    // Replicar exatamente a lógica da tela (_buildCalendarGrid)
-    final now = DateTime(year, month, 1);
-    final firstDayOfWeek = (now.weekday == 7) ? 0 : now.weekday;
-    final daysInMonth = DateTime(year, month + 1, 0).day;
-    final prevMonthDays = DateTime(year, month, 0).day;
-
-    int prevMonth = month == 1 ? 12 : month - 1;
-    int prevYear = month == 1 ? year - 1 : year;
-
-    int nextMonth = month == 12 ? 1 : month + 1;
-    int nextYear = month == 12 ? year + 1 : year;
-
-    final List<String> dayHeaders = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
-    List<({int day, int month, int year, bool isCurrentMonth})> calendarDays = [];
-
-    // Dias do mês anterior
-    for (int i = prevMonthDays - firstDayOfWeek + 1; i <= prevMonthDays; i++) {
-      calendarDays.add((day: i, month: prevMonth, year: prevYear, isCurrentMonth: false));
-    }
-
-    // Dias do mês atual
-    for (int i = 1; i <= daysInMonth; i++) {
-      calendarDays.add((day: i, month: month, year: year, isCurrentMonth: true));
-    }
-
-    // Dias do próximo mês
-    int remainingCells = (7 - (calendarDays.length % 7)) % 7;
-    for (int i = 1; i <= remainingCells; i++) {
-      calendarDays.add((day: i, month: nextMonth, year: nextYear, isCurrentMonth: false));
-    }
-
-    final tableRows = <pw.TableRow>[];
-
-    // Cabeçalho com dias da semana
-    tableRows.add(
-      pw.TableRow(
-        decoration: pw.BoxDecoration(color: PdfColors.blue),
-        children: dayHeaders.map((dayHeader) {
-          final isWeekend = dayHeader == 'DOM' || dayHeader == 'SAB';
-          return pw.Container(
-            padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-            decoration: pw.BoxDecoration(
-              color: isWeekend ? PdfColors.red : PdfColors.blue,
-              border: pw.Border.all(color: PdfColors.black, width: 1),
-            ),
-            child: pw.Text(
-              dayHeader,
-              style: pw.TextStyle(
-                fontSize: 9,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.white,
-              ),
-              textAlign: pw.TextAlign.center,
-            ),
-          );
-        }).toList(),
-      ),
-    );
-
-    // Dividir em semanas
-    for (int i = 0; i < calendarDays.length; i += 7) {
-      final week = calendarDays.sublist(i, i + 7);
-      tableRows.add(
-        pw.TableRow(
-          children: week.map((dayData) {
-            final day = dayData.day;
-            final dayMonth = dayData.month;
-            final dayYear = dayData.year;
-            final isCurrentMonth = dayData.isCurrentMonth;
-            final dateObj = DateTime(dayYear, dayMonth, day);
-            final dayOfWeek = (dateObj.weekday == 7) ? 0 : dateObj.weekday;
-            final holidayKey = '$dayYear-${dayMonth.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
-            final isHoliday = holidayMap.containsKey(holidayKey);
-            final holidayName = isHoliday ? holidayMap[holidayKey]?.name : null;
-
-            PdfColor bgColor = PdfColors.white;
-            PdfColor textColor = PdfColors.black;
-
-            if (isHoliday) {
-              bgColor = PdfColors.green;
-              textColor = PdfColors.white;
-            } else if (dayOfWeek == 0) {
-              bgColor = PdfColors.red;
-              textColor = PdfColors.white;
-            } else if (dayOfWeek == 6) {
-              bgColor = PdfColor.fromHex('#EF9A9A');
-              textColor = PdfColors.white;
-            } else if (!isCurrentMonth) {
-              bgColor = PdfColor.fromHex('#4B4B4B');
-              textColor = PdfColors.white;
-            }
-
-            return pw.Container(
-              padding: const pw.EdgeInsets.all(6),
-              decoration: pw.BoxDecoration(
-                color: bgColor,
-                border: pw.Border.all(color: PdfColors.black, width: 0.8),
-                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-              ),
-              child: pw.Column(
-                mainAxisAlignment: pw.MainAxisAlignment.center,
-                children: [
-                  pw.Text(
-                    day.toString(),
-                    style: pw.TextStyle(
-                      fontSize: 10,
-                      fontWeight: pw.FontWeight.bold,
-                      color: textColor,
-                    ),
-                    textAlign: pw.TextAlign.center,
-                  ),
-                  if (isHoliday && holidayName != null)
-                    pw.SizedBox(height: 1),
-                  if (isHoliday && holidayName != null)
-                    pw.Text(
-                      holidayName,
-                      maxLines: 1,
-                      overflow: pw.TextOverflow.clip,
-                      textAlign: pw.TextAlign.center,
-                      style: pw.TextStyle(
-                        fontSize: 5,
-                        fontWeight: pw.FontWeight.bold,
-                        color: textColor,
-                      ),
-                    ),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
-      );
-    }
-
-    return pw.Table(
-      border: pw.TableBorder.all(color: PdfColors.black, width: 1),
-      columnWidths: {
-        for (int i = 0; i < 7; i++) i: const pw.FlexColumnWidth(1),
-      },
-      children: tableRows,
-    );
-  }
-
-  pw.Widget _buildMiniCalendarPdf(int month, int year, Map<String, Holiday> holidayMap) {
-    final firstDay = DateTime(year, month, 1);
-    final lastDay = DateTime(year, month + 1, 0);
-    final daysInMonth = lastDay.day;
-    // Converter: weekday retorna 1=seg, 2=ter, ..., 7=dom
-    // Queremos: 0=dom, 1=seg, 2=ter, ..., 6=sab
-    final weekdayStart = (firstDay.weekday == 7) ? 0 : firstDay.weekday;
-    final monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-
-    final dayHeaders = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
-    final tableRows = <pw.TableRow>[];
-
-    // Cabeçalho com nome do mês
-    tableRows.add(
-      pw.TableRow(
-        decoration: pw.BoxDecoration(color: PdfColors.blue),
-        children: [
-          pw.Container(
-            padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-            child: pw.Text(
-              '${monthNames[month - 1]} $year',
-              style: pw.TextStyle(
-                fontSize: 9,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.white,
-              ),
-              textAlign: pw.TextAlign.center,
-            ),
-          ),
-        ],
-      ),
-    );
-
-    // Cabeçalho com dias da semana
-    tableRows.add(
-      pw.TableRow(
-        decoration: pw.BoxDecoration(color: PdfColors.grey),
-        children: dayHeaders.map((dayHeader) {
-          return pw.Container(
-            padding: const pw.EdgeInsets.symmetric(vertical: 3, horizontal: 1),
-            child: pw.Text(
-              dayHeader,
-              style: pw.TextStyle(
-                fontSize: 8,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.white,
-              ),
-              textAlign: pw.TextAlign.center,
-            ),
-          );
-        }).toList(),
-      ),
-    );
-
-    // Montar as semanas
-    List<String> currentWeek = [];
-
-    // Preencher dias vazios antes do primeiro dia
-    for (int i = 0; i < weekdayStart; i++) {
-      currentWeek.add('');
-    }
-
-    // Preencher dias do mês
-    for (int day = 1; day <= daysInMonth; day++) {
-      currentWeek.add(day.toString());
-
-      if (currentWeek.length == 7) {
-        // Adicionar linha com 7 dias
-        tableRows.add(
-          pw.TableRow(
-            children: currentWeek.map((dayStr) {
-              if (dayStr.isEmpty) {
-                return pw.Container(
-                  padding: const pw.EdgeInsets.all(2),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.white,
-                    border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-                  ),
-                  child: pw.Text(''),
-                );
-              }
-
-              final day = int.parse(dayStr);
-              final dateStr = '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
-              final holiday = holidayMap[dateStr];
-              final isHoliday = holiday != null;
-              final date = DateTime(year, month, day);
-              final isWeekend = date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
-
-              return pw.Container(
-                padding: const pw.EdgeInsets.all(2),
-                decoration: pw.BoxDecoration(
-                  color: isHoliday ? PdfColors.green : (isWeekend ? PdfColors.red100 : PdfColors.white),
-                  border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-                ),
-                child: pw.Text(
-                  day.toString(),
-                  style: pw.TextStyle(
-                    fontSize: 8,
-                    fontWeight: pw.FontWeight.bold,
-                    color: isHoliday ? PdfColors.white : (isWeekend ? PdfColors.white : PdfColors.black),
-                  ),
-                  textAlign: pw.TextAlign.center,
-                ),
-              );
-            }).toList(),
-          ),
-        );
-        currentWeek = [];
-      }
-    }
-
-    // Preencher última semana se necessário
-    if (currentWeek.isNotEmpty) {
-      while (currentWeek.length < 7) {
-        currentWeek.add('');
-      }
-
-      tableRows.add(
-        pw.TableRow(
-          children: currentWeek.map((dayStr) {
-            if (dayStr.isEmpty) {
-              return pw.Container(
-                padding: const pw.EdgeInsets.all(2),
-                decoration: pw.BoxDecoration(
-                  color: PdfColors.white,
-                  border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-                ),
-                child: pw.Text(''),
-              );
-            }
-
-            final day = int.parse(dayStr);
-            final dateStr = '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
-            final holiday = holidayMap[dateStr];
-            final isHoliday = holiday != null;
-            final date = DateTime(year, month, day);
-            final isWeekend = date.weekday == DateTime.saturday || date.weekday == DateTime.sunday;
-
-            return pw.Container(
-              padding: const pw.EdgeInsets.all(2),
-              decoration: pw.BoxDecoration(
-                color: isHoliday ? PdfColors.green : (isWeekend ? PdfColors.red100 : PdfColors.white),
-                border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-              ),
-              child: pw.Text(
-                day.toString(),
-                style: pw.TextStyle(
-                  fontSize: 8,
-                  fontWeight: pw.FontWeight.bold,
-                  color: isHoliday ? PdfColors.white : (isWeekend ? PdfColors.white : PdfColors.black),
-                ),
-                textAlign: pw.TextAlign.center,
-              ),
-            );
-          }).toList(),
-        ),
-      );
-    }
-
-    return pw.Table(
-      border: pw.TableBorder.all(color: PdfColors.black, width: 0.5),
-      columnWidths: {
-        for (int i = 0; i < 7; i++) i: const pw.FlexColumnWidth(1),
-      },
-      children: tableRows,
     );
   }
 
@@ -4490,8 +3747,8 @@ class _HolidayScreenState extends State<HolidayScreen> with TickerProviderStateM
                   ),
                 ),
               const Spacer(),
-              IconButton(icon: const Icon(Icons.print, color: Colors.white), iconSize: isMobile ? 22 : 20, tooltip: 'Imprimir Relatório', onPressed: () => _printReport()),
               IconButton(icon: const Icon(Icons.calculate, color: Colors.white), iconSize: isMobile ? 22 : 20, tooltip: 'Calcular Datas', onPressed: () => _showDateCalculator(context)),
+              IconButton(icon: const Icon(Icons.picture_as_pdf_outlined, color: Colors.white), iconSize: isMobile ? 22 : 20, tooltip: 'Exportar PDF', onPressed: exportCurrentViewToPdf),
               _buildThemeToggleButton(iconColor: Colors.white, iconSize: isMobile ? 22 : 20),
               IconButton(icon: const Icon(Icons.settings, color: Colors.white), iconSize: isMobile ? 22 : 20, tooltip: 'Preferências', onPressed: () => showDialog(context: context, builder: (ctx) => Dialog(child: const SettingsScreen()))),
             ],

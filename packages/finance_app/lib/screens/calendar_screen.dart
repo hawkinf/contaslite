@@ -878,101 +878,143 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   /// MODO MENSAL
   Widget _buildMonthlyView(ColorScheme colorScheme, bool isDark) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final cellWidth = (screenWidth - 48) / 7; // 48 = margin + padding
-    final dayFontSize = (cellWidth * 0.32).clamp(12.0, 16.0);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = constraints.maxWidth;
+        final screenHeight = constraints.maxHeight;
 
-    return TableCalendar<Account>(
-      locale: 'pt_BR',
-      firstDay: DateTime.now().subtract(const Duration(days: 365)),
-      lastDay: DateTime.now().add(const Duration(days: 365)),
-      focusedDay: _focusedDay,
-      calendarFormat: CalendarFormat.month,
-      eventLoader: _getEventsForDay,
-      startingDayOfWeek: StartingDayOfWeek.sunday,
-      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-      onDaySelected: (selectedDay, focusedDay) {
-        setState(() {
-          _selectedDay = selectedDay;
-          _focusedDay = focusedDay;
-        });
-        _showDayDetailsModal(selectedDay);
+        // Responsividade: desktop >= 1100px, tablet >= 600px, mobile < 600px
+        final bool isDesktop = screenWidth >= 1100;
+        final bool isTablet = screenWidth >= 600 && screenWidth < 1100;
+
+        // Tamanhos responsivos para o cabeçalho dos dias da semana
+        final double weekdayFontSize = isDesktop ? 15 : (isTablet ? 13 : 11);
+        final double weekdayLetterSpacing = isDesktop ? 0.8 : 0.5;
+
+        // Tamanhos responsivos para o número do dia
+        final double dayFontSize = isDesktop ? 24 : (isTablet ? 20 : 16);
+
+        // Altura das células e do cabeçalho
+        final double daysHeaderHeight = isDesktop ? 48 : (isTablet ? 42 : 36);
+
+        // Calcular altura das células para preencher o espaço disponível
+        // Subtrair header height e calcular para 6 semanas (máximo possível)
+        final double availableHeight = screenHeight - daysHeaderHeight - 16; // 16 para padding
+        final double calculatedRowHeight = (availableHeight / 6).clamp(
+          isDesktop ? 96.0 : 70.0,
+          isDesktop ? 140.0 : 100.0,
+        );
+
+        return TableCalendar<Account>(
+          locale: 'pt_BR',
+          firstDay: DateTime.now().subtract(const Duration(days: 365)),
+          lastDay: DateTime.now().add(const Duration(days: 365)),
+          focusedDay: _focusedDay,
+          calendarFormat: CalendarFormat.month,
+          eventLoader: _getEventsForDay,
+          startingDayOfWeek: StartingDayOfWeek.sunday,
+          selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+          onDaySelected: (selectedDay, focusedDay) {
+            setState(() {
+              _selectedDay = selectedDay;
+              _focusedDay = focusedDay;
+            });
+            _showDayDetailsModal(selectedDay);
+          },
+          onPageChanged: (focusedDay) {
+            setState(() {
+              _focusedDay = focusedDay;
+              _calculateMonthTotals();
+            });
+          },
+          daysOfWeekHeight: daysHeaderHeight,
+          rowHeight: calculatedRowHeight,
+          headerVisible: false,
+          daysOfWeekStyle: DaysOfWeekStyle(
+            weekdayStyle: TextStyle(
+              fontSize: weekdayFontSize,
+              fontWeight: FontWeight.w700,
+              letterSpacing: weekdayLetterSpacing,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            weekendStyle: TextStyle(
+              fontSize: weekdayFontSize,
+              fontWeight: FontWeight.w700,
+              letterSpacing: weekdayLetterSpacing,
+              color: AppColors.error.withValues(alpha: 0.85),
+            ),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                ),
+              ),
+            ),
+          ),
+          calendarStyle: CalendarStyle(
+            markersMaxCount: 0,
+            cellMargin: EdgeInsets.all(isDesktop ? 3 : 2),
+            defaultTextStyle: TextStyle(fontSize: dayFontSize),
+            weekendTextStyle: TextStyle(
+              fontSize: dayFontSize,
+              color: AppColors.error.withValues(alpha: 0.7),
+            ),
+            outsideTextStyle: TextStyle(
+              fontSize: dayFontSize * 0.85,
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+            ),
+            todayDecoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: colorScheme.primary.withValues(alpha: 0.6),
+                width: 2,
+              ),
+            ),
+            todayTextStyle: TextStyle(
+              fontSize: dayFontSize,
+              fontWeight: FontWeight.bold,
+              color: colorScheme.primary,
+            ),
+            selectedDecoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.success.withValues(alpha: 0.6),
+                width: 2,
+              ),
+            ),
+            selectedTextStyle: TextStyle(
+              fontSize: dayFontSize,
+              fontWeight: FontWeight.bold,
+              color: AppColors.successDark,
+            ),
+          ),
+          calendarBuilders: CalendarBuilders(
+            defaultBuilder: (context, day, focusedDay) {
+              return _buildMonthDayCell(day, colorScheme, dayFontSize, false, false, isDesktop: isDesktop);
+            },
+            todayBuilder: (context, day, focusedDay) {
+              return _buildMonthDayCell(day, colorScheme, dayFontSize, true, false, isDesktop: isDesktop);
+            },
+            selectedBuilder: (context, day, focusedDay) {
+              return _buildMonthDayCell(day, colorScheme, dayFontSize, false, true, isDesktop: isDesktop);
+            },
+            outsideBuilder: (context, day, focusedDay) {
+              return _buildMonthDayCell(day, colorScheme, dayFontSize * 0.85, false, false, isOutside: true, isDesktop: isDesktop);
+            },
+          ),
+        );
       },
-      onPageChanged: (focusedDay) {
-        setState(() {
-          _focusedDay = focusedDay;
-          _calculateMonthTotals();
-        });
-      },
-      daysOfWeekHeight: 36,
-      rowHeight: 70,
-      headerVisible: false,
-      daysOfWeekStyle: DaysOfWeekStyle(
-        weekdayStyle: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: colorScheme.onSurfaceVariant,
-        ),
-        weekendStyle: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: AppColors.error.withValues(alpha: 0.8),
-        ),
-      ),
-      calendarStyle: CalendarStyle(
-        markersMaxCount: 0,
-        cellMargin: const EdgeInsets.all(2),
-        defaultTextStyle: TextStyle(fontSize: dayFontSize),
-        weekendTextStyle: TextStyle(
-          fontSize: dayFontSize,
-          color: AppColors.error.withValues(alpha: 0.7),
-        ),
-        outsideTextStyle: TextStyle(
-          fontSize: dayFontSize,
-          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
-        ),
-        todayDecoration: BoxDecoration(
-          color: colorScheme.primary.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: colorScheme.primary.withValues(alpha: 0.5)),
-        ),
-        todayTextStyle: TextStyle(
-          fontSize: dayFontSize,
-          fontWeight: FontWeight.bold,
-          color: colorScheme.primary,
-        ),
-        selectedDecoration: BoxDecoration(
-          color: AppColors.success.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.success.withValues(alpha: 0.5)),
-        ),
-        selectedTextStyle: TextStyle(
-          fontSize: dayFontSize,
-          fontWeight: FontWeight.bold,
-          color: AppColors.successDark,
-        ),
-      ),
-      calendarBuilders: CalendarBuilders(
-        defaultBuilder: (context, day, focusedDay) {
-          return _buildMonthDayCell(day, colorScheme, dayFontSize, false, false);
-        },
-        todayBuilder: (context, day, focusedDay) {
-          return _buildMonthDayCell(day, colorScheme, dayFontSize, true, false);
-        },
-        selectedBuilder: (context, day, focusedDay) {
-          return _buildMonthDayCell(day, colorScheme, dayFontSize, false, true);
-        },
-        outsideBuilder: (context, day, focusedDay) {
-          return _buildMonthDayCell(day, colorScheme, dayFontSize * 0.85, false, false, isOutside: true);
-        },
-      ),
     );
   }
 
-  Widget _buildMonthDayCell(DateTime day, ColorScheme colorScheme, double fontSize, bool isToday, bool isSelected, {bool isOutside = false}) {
+  Widget _buildMonthDayCell(DateTime day, ColorScheme colorScheme, double fontSize, bool isToday, bool isSelected, {bool isOutside = false, bool isDesktop = false}) {
     final (totalPagar, totalReceber, countPagar, countReceber) = _getDayTotals(day);
     final hasEvents = countPagar > 0 || countReceber > 0;
     final isWeekend = day.weekday == DateTime.saturday || day.weekday == DateTime.sunday;
+    final city = PrefsService.cityNotifier.value;
+    final isHoliday = HolidayService.isHoliday(day, city);
 
     Color dayTextColor;
     if (isOutside) {
@@ -981,8 +1023,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
       dayTextColor = colorScheme.primary;
     } else if (isSelected) {
       dayTextColor = AppColors.successDark;
+    } else if (isHoliday) {
+      dayTextColor = Colors.purple.shade600;
     } else if (isWeekend) {
-      dayTextColor = AppColors.error.withValues(alpha: 0.7);
+      dayTextColor = AppColors.error.withValues(alpha: 0.8);
     } else {
       dayTextColor = colorScheme.onSurface;
     }
@@ -990,44 +1034,116 @@ class _CalendarScreenState extends State<CalendarScreen> {
     BoxDecoration? dayDecoration;
     if (isToday) {
       dayDecoration = BoxDecoration(
-        color: colorScheme.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.4)),
+        color: colorScheme.primary.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: colorScheme.primary.withValues(alpha: 0.6),
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withValues(alpha: 0.15),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       );
     } else if (isSelected) {
       dayDecoration = BoxDecoration(
-        color: AppColors.success.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.success.withValues(alpha: 0.4)),
+        color: AppColors.success.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.success.withValues(alpha: 0.5),
+          width: 2,
+        ),
       );
     }
 
     return Container(
-      margin: const EdgeInsets.all(2),
+      margin: EdgeInsets.all(isDesktop ? 3 : 2),
       decoration: dayDecoration,
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
+          SizedBox(height: isDesktop ? 8 : 4),
+          // Número do dia com destaque
           Text(
             '${day.day}',
             style: TextStyle(
               fontSize: fontSize,
-              fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.w500,
+              fontWeight: isToday || isSelected ? FontWeight.w800 : FontWeight.w700,
               color: dayTextColor,
+              height: 1.1,
             ),
           ),
-          if (hasEvents && !isOutside) ...[
+          // Chip de HOJE (apenas para desktop)
+          if (isToday && isDesktop && !isOutside) ...[
             const SizedBox(height: 2),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (countPagar > 0)
-                  _buildMiniBadge(totalPagar, AppColors.error, countReceber > 0),
-                if (countPagar > 0 && countReceber > 0)
-                  const SizedBox(width: 2),
-                if (countReceber > 0)
-                  _buildMiniBadge(totalReceber, AppColors.success, countPagar > 0),
-              ],
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: colorScheme.primary,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'HOJE',
+                style: TextStyle(
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ],
+          // Indicador de feriado
+          if (isHoliday && !isOutside) ...[
+            const SizedBox(height: 2),
+            Tooltip(
+              message: 'Feriado',
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isDesktop ? 6 : 4,
+                  vertical: 1,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade100,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  isDesktop ? 'Feriado' : '🎉',
+                  style: TextStyle(
+                    fontSize: isDesktop ? 9 : 8,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.purple.shade700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
+          // Badges de valores
+          if (hasEvents && !isOutside) ...[
+            SizedBox(height: isDesktop ? 6 : 3),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  if (countPagar > 0)
+                    Tooltip(
+                      message: 'A Pagar: ${UtilBrasilFields.obterReal(totalPagar)} ($countPagar ${countPagar == 1 ? 'conta' : 'contas'})',
+                      child: _buildMiniBadge(totalPagar, AppColors.error, countReceber > 0, isDesktop: isDesktop),
+                    ),
+                  if (countPagar > 0 && countReceber > 0)
+                    SizedBox(height: isDesktop ? 3 : 2),
+                  if (countReceber > 0)
+                    Tooltip(
+                      message: 'A Receber: ${UtilBrasilFields.obterReal(totalReceber)} ($countReceber ${countReceber == 1 ? 'conta' : 'contas'})',
+                      child: _buildMiniBadge(totalReceber, AppColors.success, countPagar > 0, isDesktop: isDesktop),
+                    ),
+                ],
+              ),
             ),
           ],
         ],
@@ -1035,31 +1151,46 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildMiniBadge(double value, Color color, bool isCompact) {
+  Widget _buildMiniBadge(double value, Color color, bool isCompact, {bool isDesktop = false}) {
     String formattedValue;
     if (value >= 1000000) {
       formattedValue = '${(value / 1000000).toStringAsFixed(1)}M';
     } else if (value >= 1000) {
-      formattedValue = '${(value / 1000).toStringAsFixed(0)}K';
+      formattedValue = '${(value / 1000).toStringAsFixed(isDesktop ? 1 : 0)}K';
     } else {
-      formattedValue = value.toStringAsFixed(0);
+      formattedValue = isDesktop ? UtilBrasilFields.obterReal(value) : value.toStringAsFixed(0);
     }
+
+    // Tamanhos responsivos
+    final fontSize = isDesktop ? (isCompact ? 10.0 : 11.0) : (isCompact ? 7.0 : 8.0);
+    final hPadding = isDesktop ? (isCompact ? 4.0 : 6.0) : (isCompact ? 2.0 : 3.0);
+    final vPadding = isDesktop ? 2.0 : 1.0;
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isCompact ? 2 : 3,
-        vertical: 1,
+        horizontal: hPadding,
+        vertical: vPadding,
       ),
       decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(4),
+        color: color.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(isDesktop ? 6 : 4),
+        boxShadow: isDesktop
+            ? [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.3),
+                  blurRadius: 2,
+                  offset: const Offset(0, 1),
+                ),
+              ]
+            : null,
       ),
       child: Text(
         formattedValue,
         style: TextStyle(
-          fontSize: isCompact ? 7 : 8,
+          fontSize: fontSize,
           fontWeight: FontWeight.bold,
           color: Colors.white,
+          letterSpacing: isDesktop ? 0.3 : 0,
         ),
       ),
     );

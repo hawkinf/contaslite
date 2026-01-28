@@ -12,6 +12,7 @@ import '../models/account.dart';
 import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
 import '../services/default_account_categories_service.dart';
+import '../models/contas_view_state_snapshot.dart';
 import '../utils/color_contrast.dart';
 import 'card_expenses_screen.dart';
 import '../utils/app_colors.dart';
@@ -156,7 +157,118 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _listScrollController.removeListener(_onScroll);
     _selectedConta.dispose();
     _listScrollController.dispose();
+    // Limpar provider de exportação
+    PrefsService.dashboardExportStateProvider = null;
     super.dispose();
+  }
+
+  ContasViewStateSnapshot _buildContasViewSnapshot() {
+    final range = PrefsService.dateRangeNotifier.value;
+    final periodFilterLabel = _resolvePeriodFilterLabel(_periodFilter);
+    final periodLabel = _resolvePeriodLabel(range, periodFilterLabel);
+    final periodHeaderLabel = _formatMonthYear(_startDate);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isCombined = _isCombinedView;
+    final compactModeEnabled = PrefsService.compactModeNotifier.value;
+    final useCompactSummaryCards = compactModeEnabled || _isHeaderCollapsed;
+    final totalColor = widget.totalLabelOverride != null
+        ? (isDark ? Colors.brown.shade200 : Colors.brown.shade700)
+        : (_isRecebimentosFilter
+            ? (isDark ? AppColors.primaryLight : AppColors.primary)
+            : (isDark ? AppColors.errorLight : AppColors.error));
+    final totalLabel = widget.totalLabelOverride ?? (_isRecebimentosFilter ? 'TOTAL RECEBIDO' : 'TOTAL PAGO');
+
+    String filterLabel;
+    switch (_categoryFilter) {
+      case DashboardFilter.all:
+        filterLabel = 'Todos';
+        break;
+      case DashboardFilter.pagar:
+        filterLabel = 'A Pagar';
+        break;
+      case DashboardFilter.receber:
+        filterLabel = 'A Receber';
+        break;
+      case DashboardFilter.cartoes:
+        filterLabel = 'Cartões';
+        break;
+    }
+
+    final groups = <ContasDayGroupSnapshot>[];
+    DateTime? currentGroupDate;
+    for (final account in _displayList) {
+      final effectiveDate = _resolveEffectiveDate(account, _startDate);
+      if (currentGroupDate == null || !DateUtils.isSameDay(currentGroupDate, effectiveDate)) {
+        groups.add(ContasDayGroupSnapshot(date: effectiveDate, items: []));
+        currentGroupDate = effectiveDate;
+      }
+      groups.last.items.add(account);
+    }
+
+    return ContasViewStateSnapshot(
+      dateRange: range,
+      anchorDate: _startDate,
+      periodLabel: periodLabel,
+      periodHeaderLabel: periodHeaderLabel,
+      periodFilterValue: _periodFilter,
+      filterType: _mapDashboardFilter(_categoryFilter),
+      filterLabel: filterLabel,
+      isCombinedView: isCombined,
+      compactModeEnabled: compactModeEnabled,
+      useCompactSummaryCards: useCompactSummaryCards,
+      hidePaidAccounts: _hidePaidAccounts,
+      groups: groups,
+      totalPeriod: _totalPeriod,
+      totalForecast: _totalForecast,
+      totalLancadoPagar: _totalLancadoPagar,
+      totalLancadoReceber: _totalLancadoReceber,
+      totalPrevistoPagar: _totalPrevistoPagar,
+      totalPrevistoReceber: _totalPrevistoReceber,
+      totalLabel: totalLabel,
+      totalColor: totalColor,
+      typeNames: _typeNames,
+      categoryNames: _categoryNames,
+      categoryParentNames: _categoryParentNames,
+      categoryLogos: _categoryLogos,
+      paymentInfo: _paymentInfo,
+    );
+  }
+
+  String _resolvePeriodFilterLabel(String filter) {
+    switch (filter) {
+      case 'today':
+        return 'Hoje';
+      case 'tomorrow':
+        return 'Amanhã';
+      case 'yesterday':
+        return 'Ontem';
+      case 'currentWeek':
+        return 'Semana atual';
+      case 'nextWeek':
+        return 'Próxima semana';
+      case 'month':
+      default:
+        return 'Mês atual';
+    }
+  }
+
+  String _resolvePeriodLabel(DateTimeRange range, String periodFilterLabel) {
+    final isSingleDay = DateUtils.isSameDay(range.start, range.end);
+    if (isSingleDay) {
+      return '$periodFilterLabel — ${DateFormat('dd/MM/yyyy').format(range.start)}';
+    }
+
+    if (_periodFilter == 'month') {
+      final monthLabel = DateFormat('MMMM/yyyy', 'pt_BR').format(range.start);
+      final formatted = monthLabel.isNotEmpty
+          ? '${monthLabel[0].toUpperCase()}${monthLabel.substring(1)}'
+          : monthLabel;
+      return '$periodFilterLabel — $formatted';
+    }
+
+    final startLabel = DateFormat('dd/MM/yyyy').format(range.start);
+    final endLabel = DateFormat('dd/MM/yyyy').format(range.end);
+    return '$periodFilterLabel — $startLabel a $endLabel';
   }
 
   @override
@@ -191,6 +303,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     PrefsService.dateRangeNotifier.addListener(_dateRangeListener);
     PrefsService.compactModeNotifier.addListener(_compactModeListener);
     _listScrollController.addListener(_onScroll);
+    // Registrar provider de snapshot para exportação
+    PrefsService.dashboardExportStateProvider = _buildContasViewSnapshot;
     _initDates();
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/holiday_service.dart';
+import 'calculate_days_screen.dart';
 
 class HolidaysScreen extends StatefulWidget {
   const HolidaysScreen({super.key});
@@ -29,6 +30,19 @@ class _HolidaysScreenState extends State<HolidaysScreen> {
     final stats = HolidayService.getHolidaysByWeekday(_selectedYear);
 
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const CalculateDaysScreen(),
+            ),
+          );
+        },
+        icon: const Icon(Icons.calculate),
+        label: const Text('Calcular Dias'),
+        backgroundColor: Colors.blue.shade700,
+        foregroundColor: Colors.white,
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

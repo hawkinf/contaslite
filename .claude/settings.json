@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(sshpass:*)"
+      "Bash(sshpass:*)",
+      "Bash(flutter doctor:*)"
     ]
   }
 }

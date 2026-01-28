@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/export_controller.dart';
 import '../services/prefs_service.dart';
 import 'dashboard_screen.dart';
 import 'calendar_screen.dart';
@@ -21,6 +22,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late TabController _tabController;
   late final VoidCallback _tabRequestListener;
+  final ExportController _exportController = ExportController();
 
   // Screens for each tab
   late final List<Widget> _screens;
@@ -73,6 +75,38 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
     setState(() {});
+  }
+
+  /// Retorna o nome da aba atual para exibição
+  String _getCurrentTabName() {
+    switch (_tabController.index) {
+      case 0:
+        return 'Contas';
+      case 1:
+        return 'Calendário';
+      case 2:
+        return 'Feriados';
+      case 3:
+        return 'Tabelas';
+      case 4:
+        return 'Configurações';
+      default:
+        return 'Relatório';
+    }
+  }
+
+  /// Verifica se a aba atual suporta exportação PDF
+  bool _canExportCurrentTab() {
+    // Por enquanto, apenas a aba Contas (0) suporta exportação
+    return _tabController.index == 0;
+  }
+
+  Future<void> exportCurrentViewToPdf() async {
+    await _exportController.exportCurrentViewToPdf(
+      context: context,
+      selectedIndex: _tabController.index,
+      currentTabName: _getCurrentTabName(),
+    );
   }
 
   @override
@@ -252,6 +286,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           // Holiday badge
           if (_buildHolidayBadge(context) != null)
             _buildHolidayBadge(context)!,
+          // Export PDF button (visible on all tabs, but only Contas exports for now)
+          IconButton(
+            icon: Icon(
+              Icons.picture_as_pdf_outlined,
+              color: _canExportCurrentTab()
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.6),
+            ),
+            tooltip: 'Exportar PDF',
+            onPressed: exportCurrentViewToPdf,
+          ),
           // Theme toggle
           IconButton(
             icon: Icon(

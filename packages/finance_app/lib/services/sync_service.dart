@@ -7,8 +7,24 @@ import 'package:http/http.dart' as http;
 
 import '../database/db_helper.dart';
 import '../database/sync_helpers.dart';
+import '../widgets/sync_conflict_dialog.dart';
 import 'auth_service.dart';
 import 'prefs_service.dart';
+
+/// Callback para resolver conflitos - retorna resultado da escolha do usuário
+typedef ConflictResolver = Future<ConflictResolutionResult> Function(List<ConflictItem> conflicts);
+
+/// Modo de resolução de conflitos
+enum ConflictResolutionMode {
+  /// Servidor sempre vence (comportamento padrão)
+  serverWins,
+
+  /// Local sempre vence
+  localWins,
+
+  /// Perguntar ao usuário
+  askUser,
+}
 
 /// Serviço de sincronização bidirecional com o servidor PostgreSQL
 class SyncService {
@@ -34,6 +50,15 @@ class SyncService {
   bool _isSyncing = false;
 
   final _db = DatabaseHelper.instance;
+
+  /// Modo de resolução de conflitos (padrão: servidor vence)
+  ConflictResolutionMode conflictMode = ConflictResolutionMode.serverWins;
+
+  /// Callback para resolver conflitos quando modo é askUser
+  ConflictResolver? onConflictsDetected;
+
+  /// Conflitos coletados durante a última sincronização
+  final List<ConflictItem> _pendingConflicts = [];
 
   /// Inicializa o serviço de sincronização
   Future<void> initialize() async {
@@ -117,6 +142,8 @@ class SyncService {
   }
 
   /// Executa sincronização completa (pull + push)
+  /// IMPORTANTE: Em instalações novas (sem dados sincronizados), faz PULL primeiro
+  /// para evitar sobrescrever dados do servidor com dados locais padrão.
   Future<SyncResult> fullSync() async {
     // Recarregar URL da API se não estiver configurada
     if (_apiBaseUrl == null) {
@@ -126,7 +153,7 @@ class SyncService {
         debugPrint('🔧 SyncService: URL recarregada: $_apiBaseUrl');
       }
     }
-    
+
     if (!_canSync()) {
       return SyncResult.failed('Não é possível sincronizar no momento');
     }
@@ -141,18 +168,47 @@ class SyncService {
     int totalConflicts = 0;
 
     try {
-      // 1. Push local changes first
-      debugPrint('🔄 Iniciando push de mudanças locais...');
-      syncProgressNotifier.value = 0.1;
-      final pushResult = await _pushChanges();
-      totalPushed = pushResult.recordsPushed;
-      totalConflicts = pushResult.conflictsResolved;
+      // Verificar se é uma instalação nova (nunca sincronizou antes)
+      final isFirstSync = await _isFirstSync();
+      debugPrint('🔄 É primeira sincronização: $isFirstSync');
 
-      // 2. Pull server changes
-      debugPrint('🔄 Iniciando pull de mudanças do servidor...');
-      syncProgressNotifier.value = 0.5;
-      final pullResult = await _pullChanges();
-      totalPulled = pullResult.recordsPulled;
+      if (isFirstSync) {
+        // INSTALAÇÃO NOVA: Pull primeiro, depois push
+        // Isso evita que dados padrão locais sobrescrevam dados do servidor
+
+        // 1. Pull server changes FIRST
+        debugPrint('🔄 [NOVA INSTALAÇÃO] Iniciando pull de dados do servidor...');
+        syncProgressNotifier.value = 0.1;
+        final pullResult = await _pullChanges();
+        totalPulled = pullResult.recordsPulled;
+
+        // 2. Limpar registros locais que são apenas "padrão" e já existem no servidor
+        debugPrint('🔄 [NOVA INSTALAÇÃO] Limpando duplicatas locais...');
+        syncProgressNotifier.value = 0.5;
+        await _cleanupLocalDefaultsAfterPull();
+
+        // 3. Push apenas registros realmente novos (não os padrões)
+        debugPrint('🔄 [NOVA INSTALAÇÃO] Enviando apenas dados novos...');
+        syncProgressNotifier.value = 0.7;
+        final pushResult = await _pushChanges();
+        totalPushed = pushResult.recordsPushed;
+        totalConflicts = pushResult.conflictsResolved;
+      } else {
+        // INSTALAÇÃO EXISTENTE: Push primeiro, depois pull (comportamento normal)
+
+        // 1. Push local changes first
+        debugPrint('🔄 Iniciando push de mudanças locais...');
+        syncProgressNotifier.value = 0.1;
+        final pushResult = await _pushChanges();
+        totalPushed = pushResult.recordsPushed;
+        totalConflicts = pushResult.conflictsResolved;
+
+        // 2. Pull server changes
+        debugPrint('🔄 Iniciando pull de mudanças do servidor...');
+        syncProgressNotifier.value = 0.5;
+        final pullResult = await _pullChanges();
+        totalPulled = pullResult.recordsPulled;
+      }
 
       // 3. Cleanup deleted records
       debugPrint('🔄 Limpando registros deletados...');
@@ -178,6 +234,35 @@ class SyncService {
       return SyncResult.failed(e.toString());
     } finally {
       _isSyncing = false;
+    }
+  }
+
+  /// Verifica se é a primeira sincronização (nenhum registro tem server_id)
+  Future<bool> _isFirstSync() async {
+    try {
+      // Verificar se existe algum registro com server_id em qualquer tabela
+      for (final table in SyncTables.all) {
+        final count = await _db.countSyncedRecords(table);
+        if (count > 0) {
+          return false; // Já sincronizou antes
+        }
+      }
+      return true; // Nenhum registro sincronizado = primeira vez
+    } catch (e) {
+      debugPrint('⚠️ Erro ao verificar primeira sync: $e');
+      return false; // Em caso de erro, assume que não é primeira vez (mais seguro)
+    }
+  }
+
+  /// Limpa registros locais "padrão" que são duplicatas após o primeiro pull
+  /// Isso evita enviar dados duplicados ao servidor
+  Future<void> _cleanupLocalDefaultsAfterPull() async {
+    try {
+      // Marcar registros locais sem server_id como "synced" se já existe
+      // um registro equivalente vindo do servidor
+      await _db.markLocalDefaultsAsSyncedIfDuplicate();
+    } catch (e) {
+      debugPrint('⚠️ Erro ao limpar duplicatas locais: $e');
     }
   }
 
@@ -410,12 +495,39 @@ class SyncService {
         }
       }
 
-      // Processar conflitos (server wins)
+      // Processar conflitos
       final conflicts = data['conflicts'] as List<dynamic>? ?? [];
       for (final conflict in conflicts) {
         final serverData = conflict['server_data'] as Map<String, dynamic>?;
-        if (serverData != null) {
-          await _db.applyServerData(table, serverData);
+        final localId = conflict['local_id'] as int?;
+        final serverId = conflict['server_id'] as String?;
+
+        if (serverData != null && localId != null) {
+          // Buscar dados locais para comparação
+          final localData = await _db.getRecordById(table, localId);
+
+          if (conflictMode == ConflictResolutionMode.askUser) {
+            // Coletar conflito para perguntar ao usuário
+            _pendingConflicts.add(ConflictItem(
+              tableName: table,
+              localId: localId,
+              serverId: serverId,
+              localData: localData ?? {},
+              serverData: serverData,
+              localUpdatedAt: localData?['updated_at'] != null
+                  ? DateTime.tryParse(localData!['updated_at'].toString())
+                  : null,
+              serverUpdatedAt: serverData['updated_at'] != null
+                  ? DateTime.tryParse(serverData['updated_at'].toString())
+                  : null,
+            ));
+          } else if (conflictMode == ConflictResolutionMode.localWins) {
+            // Local vence - forçar push do local (será tratado na próxima sync)
+            debugPrint('⚡ Conflito em $table: local vence (local_id=$localId)');
+          } else {
+            // Server wins (padrão)
+            await _db.applyServerData(table, serverData);
+          }
           totalConflicts++;
         }
       }
@@ -526,12 +638,35 @@ class SyncService {
             }
           }
 
-          // Processar conflitos (server wins)
+          // Processar conflitos
           final conflicts = data['conflicts'] as List<dynamic>? ?? [];
           for (final conflict in conflicts) {
             final serverData = conflict['server_data'] as Map<String, dynamic>?;
-            if (serverData != null) {
-              await _db.applyServerData(table, serverData);
+            final localId = conflict['local_id'] as int?;
+            final serverId = conflict['server_id'] as String?;
+
+            if (serverData != null && localId != null) {
+              final localData = await _db.getRecordById(table, localId);
+
+              if (conflictMode == ConflictResolutionMode.askUser) {
+                _pendingConflicts.add(ConflictItem(
+                  tableName: table,
+                  localId: localId,
+                  serverId: serverId,
+                  localData: localData ?? {},
+                  serverData: serverData,
+                  localUpdatedAt: localData?['updated_at'] != null
+                      ? DateTime.tryParse(localData!['updated_at'].toString())
+                      : null,
+                  serverUpdatedAt: serverData['updated_at'] != null
+                      ? DateTime.tryParse(serverData['updated_at'].toString())
+                      : null,
+                ));
+              } else if (conflictMode == ConflictResolutionMode.localWins) {
+                debugPrint('⚡ Conflito em $table: local vence (local_id=$localId)');
+              } else {
+                await _db.applyServerData(table, serverData);
+              }
               totalConflicts++;
             }
           }
@@ -691,7 +826,89 @@ class SyncService {
     syncProgressNotifier.value = 0.0;
     lastErrorNotifier.value = null;
     lastSyncNotifier.value = null;
+    _pendingConflicts.clear();
     debugPrint('🔄 Sync resetado');
+  }
+
+  // ============================================================
+  // Métodos para resolução de conflitos pelo usuário
+  // ============================================================
+
+  /// Retorna se existem conflitos pendentes para resolver
+  bool get hasConflicts => _pendingConflicts.isNotEmpty;
+
+  /// Retorna lista de conflitos pendentes (cópia)
+  List<ConflictItem> get pendingConflicts => List.from(_pendingConflicts);
+
+  /// Limpa a lista de conflitos pendentes
+  void clearConflicts() {
+    _pendingConflicts.clear();
+  }
+
+  /// Aplica as escolhas do usuário para os conflitos
+  Future<void> applyConflictResolutions(ConflictResolutionResult result) async {
+    if (result.cancelled) {
+      debugPrint('⚠️ Resolução de conflitos cancelada pelo usuário');
+      _pendingConflicts.clear();
+      return;
+    }
+
+    // Aplicar escolhas do servidor (sobrescrever local com dados do servidor)
+    for (final conflict in result.useServer) {
+      try {
+        await _db.applyServerData(conflict.tableName, conflict.serverData);
+        debugPrint('✅ Aplicado servidor para ${conflict.tableName} (id: ${conflict.localId})');
+      } catch (e) {
+        debugPrint('❌ Erro ao aplicar dados do servidor: $e');
+      }
+    }
+
+    // Aplicar escolhas locais (marcar para re-push na próxima sync)
+    for (final conflict in result.useLocal) {
+      try {
+        // Forçar re-push marcando como pendingUpdate
+        await _db.markForResync(conflict.tableName, conflict.localId);
+        debugPrint('✅ Marcado para reenvio: ${conflict.tableName} (id: ${conflict.localId})');
+      } catch (e) {
+        debugPrint('❌ Erro ao marcar para reenvio: $e');
+      }
+    }
+
+    _pendingConflicts.clear();
+    debugPrint('✅ Resolução de conflitos aplicada: ${result.useLocal.length} local, ${result.useServer.length} servidor');
+  }
+
+  /// Sincronização completa com resolução de conflitos pelo usuário
+  /// Esta versão permite que um callback seja chamado quando conflitos são detectados
+  Future<SyncResult> fullSyncWithUserResolution({
+    required ConflictResolver conflictResolver,
+  }) async {
+    // Temporariamente mudar para modo askUser
+    final previousMode = conflictMode;
+    conflictMode = ConflictResolutionMode.askUser;
+    _pendingConflicts.clear();
+
+    try {
+      // Executar sincronização normal
+      final result = await fullSync();
+
+      // Se houver conflitos, perguntar ao usuário
+      if (_pendingConflicts.isNotEmpty) {
+        debugPrint('🔄 ${_pendingConflicts.length} conflitos detectados, aguardando resolução...');
+
+        final resolution = await conflictResolver(_pendingConflicts);
+        await applyConflictResolutions(resolution);
+
+        // Se não cancelou, fazer sync incremental para garantir que tudo está atualizado
+        if (!resolution.cancelled) {
+          await incrementalSync();
+        }
+      }
+
+      return result;
+    } finally {
+      conflictMode = previousMode;
+    }
   }
 
   /// Libera recursos

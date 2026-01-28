@@ -3,7 +3,7 @@
  */
 const cron = require('node-cron');
 const { Op } = require('sequelize');
-const { User, Account, AccountType, EmailSchedule } = require('../models');
+const { User, Account, AccountType, EmailSchedule, Payment } = require('../models');
 const emailService = require('./emailService');
 const logger = require('../utils/logger');
 
@@ -183,25 +183,38 @@ class SchedulerService {
       .filter(t => t.name.trim().toLowerCase() === 'recebimentos')
       .map(t => t.id);
 
-    // Busca contas no período
+    // Busca TODAS as contas do usuário (sem filtro de data no SQL)
+    // O filtro de data será feito em JavaScript para maior precisão
     const accounts = await Account.findAll({
       where: {
         user_id: userId,
         deleted_at: null,
         card_brand: null, // Exclui cartões de crédito
-        [Op.and]: [
-          {
-            [Op.or]: [
-              // Contas com data específica no período
-              {
-                month: { [Op.between]: [startDate.getMonth() + 1, endDate.getMonth() + 1] },
-                year: { [Op.between]: [startDate.getFullYear(), endDate.getFullYear()] }
-              }
-            ]
-          }
-        ]
+        month: { [Op.ne]: null },
+        year: { [Op.ne]: null }
       }
     });
+
+    logger.info(`[Email Report] User ${userId}: Found ${accounts.length} accounts total`);
+    logger.info(`[Email Report] Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
+    // Busca pagamentos para verificar status
+    const accountIds = accounts.map(a => a.id);
+    const payments = await Payment.findAll({
+      where: {
+        account_id: { [Op.in]: accountIds },
+        deleted_at: null
+      }
+    });
+
+    // Cria mapa de pagamentos por conta
+    const paymentMap = new Map();
+    for (const payment of payments) {
+      if (!paymentMap.has(payment.account_id)) {
+        paymentMap.set(payment.account_id, []);
+      }
+      paymentMap.get(payment.account_id).push(payment);
+    }
 
     // Filtra e organiza contas
     const contasPagar = [];
@@ -218,11 +231,18 @@ class SchedulerService {
       const isRecebimento = recebimentosTypeIds.includes(account.type_id);
       const value = parseFloat(account.value) || parseFloat(account.estimated_value) || 0;
 
+      // Verifica se está pago baseado nos pagamentos
+      const accountPayments = paymentMap.get(account.id) || [];
+      const isPaid = accountPayments.some(p => {
+        const paymentValue = parseFloat(p.value) || 0;
+        return paymentValue >= value;
+      });
+
       const accountData = {
         description: account.description,
         dueDate: dueDate.toISOString(),
         value,
-        isPaid: value > 0 && account.is_recurrent ? false : true
+        isPaid
       };
 
       if (isRecebimento) {
@@ -233,6 +253,9 @@ class SchedulerService {
         totalPagar += value;
       }
     }
+
+    logger.info(`[Email Report] Filtered: ${contasPagar.length} to pay, ${contasReceber.length} to receive`);
+    logger.info(`[Email Report] Totals: Pay=${totalPagar}, Receive=${totalReceber}`);
 
     // Ordena por data de vencimento
     contasPagar.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));

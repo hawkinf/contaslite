@@ -5,7 +5,7 @@ import '../models/database_config.dart';
 import '../services/prefs_service.dart';
 import '../services/sync_service.dart';
 import '../services/auth_service.dart';
-import '../database/postgresql_impl.dart';
+import '../widgets/sync_conflict_dialog.dart';
 import 'api_data_explorer_screen.dart';
 
 class DatabaseSettingsScreen extends StatefulWidget {
@@ -16,18 +16,11 @@ class DatabaseSettingsScreen extends StatefulWidget {
 }
 
 class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with TickerProviderStateMixin {
-  late TextEditingController _hostController;
-  late TextEditingController _portController;
-  late TextEditingController _databaseController;
-  late TextEditingController _usernameController;
-  late TextEditingController _passwordController;
   late TextEditingController _apiUrlController;
   late TabController _tabController;
 
   bool _isEnabled = false;
   bool _isLoading = true;
-  bool _showPassword = false;
-  bool _rememberCredentials = true;
   bool _isTesting = false;
   bool _isProcessingBackup = false;
   String? _testMessage;
@@ -37,11 +30,6 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
   void initState() {
     super.initState();
     _tabController = TabController(length: 6, vsync: this);
-    _hostController = TextEditingController();
-    _portController = TextEditingController(text: '5432');
-    _databaseController = TextEditingController();
-    _usernameController = TextEditingController();
-    _passwordController = TextEditingController();
     _apiUrlController = TextEditingController();
 
     _loadConfig();
@@ -51,15 +39,8 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
     try {
       final config = await PrefsService.loadDatabaseConfig();
       setState(() {
-        _hostController.text = config.host;
-        _portController.text = config.port.toString();
-        _databaseController.text = config.database;
-        _usernameController.text = config.username;
-        _passwordController.text = config.password;
         _apiUrlController.text = config.apiUrl ?? '';
         _isEnabled = config.enabled;
-        _rememberCredentials =
-            config.username.isNotEmpty || config.password.isNotEmpty;
         _isLoading = false;
       });
     } catch (e) {
@@ -73,17 +54,11 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
   }
 
   Future<void> _saveConfig() async {
-    // Permite salvar se URL da API estiver preenchida OU todos os campos do PostgreSQL
     final hasApiUrl = _apiUrlController.text.trim().isNotEmpty;
-    final hasPostgresData = _hostController.text.isNotEmpty &&
-        _portController.text.isNotEmpty &&
-        _databaseController.text.isNotEmpty &&
-        _usernameController.text.isNotEmpty &&
-        _passwordController.text.isNotEmpty;
-    
-    if (!hasApiUrl && !hasPostgresData) {
+
+    if (!hasApiUrl) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha a URL da API ou os dados do PostgreSQL')),
+        const SnackBar(content: Text('Preencha a URL da API')),
       );
       return;
     }
@@ -91,15 +66,13 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
     try {
       // Se tiver apiUrl, marca como enabled automaticamente
       final shouldEnable = _isEnabled || _apiUrlController.text.trim().isNotEmpty;
-      final usernameToStore = _rememberCredentials ? _usernameController.text.trim() : '';
-      final passwordToStore = _rememberCredentials ? _passwordController.text : '';
       
       final config = DatabaseConfig(
-        host: _hostController.text.trim().isEmpty ? 'localhost' : _hostController.text.trim(),
-        port: _portController.text.isEmpty ? 5432 : int.parse(_portController.text),
-        database: _databaseController.text.trim().isEmpty ? 'default' : _databaseController.text.trim(),
-        username: usernameToStore.isEmpty ? 'user' : usernameToStore,
-        password: passwordToStore,
+        host: 'localhost',
+        port: 5432,
+        database: 'default',
+        username: 'user',
+        password: '',
         enabled: shouldEnable,
         apiUrl: _apiUrlController.text.trim().isEmpty
             ? null
@@ -125,7 +98,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
   Future<void> _testConnection() async {
     if (!_isFormValid()) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, preencha todos os campos')),
+        const SnackBar(content: Text('Por favor, preencha a URL da API')),
       );
       return;
     }
@@ -136,33 +109,19 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
     });
 
     try {
-      // Create a temporary PostgreSQL implementation to test the connection
-      final config = PostgreSQLConfig(
-        host: _hostController.text.trim(),
-        port: int.parse(_portController.text),
-        database: _databaseController.text.trim(),
-        username: _usernameController.text.trim(),
-        password: _passwordController.text,
-        apiUrl: _apiUrlController.text.trim().isEmpty
-            ? null
-            : _apiUrlController.text.trim(),
-      );
-
-      final testPostgres = PostgreSQLImpl();
-      testPostgres.configure(config);
-      await testPostgres.initialize();
-
-      // Test the connection
-      final isConnected = await testPostgres.isConnected();
-      await testPostgres.close();
+      // Testa conexão com a API
+      final apiUrl = _apiUrlController.text.trim();
+      final uri = Uri.parse('$apiUrl/health');
+      final response = await HttpClient().getUrl(uri).then((req) => req.close());
+      final isConnected = response.statusCode == 200;
 
       if (!mounted) return;
 
       setState(() {
         _testSuccess = isConnected;
         _testMessage = isConnected
-            ? '✅ Conexão com PostgreSQL bem-sucedida!'
-            : '❌ Servidor não respondeu. Verifique host, porta e credenciais.';
+            ? '✅ Conexão com a API bem-sucedida!'
+            : '❌ Servidor não respondeu. Verifique a URL.';
         _isTesting = false;
       });
 
@@ -171,7 +130,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
           SnackBar(
             content: Text(isConnected
                 ? '✅ Conexão estabelecida com sucesso!'
-                : '❌ Falha ao conectar ao servidor PostgreSQL'),
+                : '❌ Falha ao conectar ao servidor'),
           ),
         );
       }
@@ -203,17 +162,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
   }
 
   bool _isFormValid() {
-    // Se URL da API estiver preenchida, não precisa dos outros campos
-    if (_apiUrlController.text.trim().isNotEmpty) {
-      return true;
-    }
-    
-    // Caso contrário, todos os campos de PostgreSQL são obrigatórios
-    return _hostController.text.isNotEmpty &&
-        _portController.text.isNotEmpty &&
-        _databaseController.text.isNotEmpty &&
-        _usernameController.text.isNotEmpty &&
-        _passwordController.text.isNotEmpty;
+    return _apiUrlController.text.trim().isNotEmpty;
   }
 
   Future<void> _clearConfig() async {
@@ -235,14 +184,8 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
               try {
                 await PrefsService.clearDatabaseConfig();
                 setState(() {
-                  _hostController.clear();
-                  _portController.text = '5432';
-                  _databaseController.clear();
-                  _usernameController.clear();
-                  _passwordController.clear();
                   _apiUrlController.clear();
                   _isEnabled = false;
-                  _rememberCredentials = false;
                   _testMessage = null;
                 });
                 if (mounted) {
@@ -325,14 +268,68 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
     }
   }
 
+  /// Realiza backup automático silencioso antes de operações críticas.
+  /// Retorna true se o backup foi bem-sucedido, false caso contrário.
+  Future<bool> _performAutoBackup() async {
+    try {
+      // Criar timestamp para o nome do arquivo
+      final now = DateTime.now();
+      final timestamp = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+      final backupFileName = 'contaslite_autobackup_$timestamp.db';
+
+      // Obter pasta de downloads
+      final downloadsDir = await getDownloadsDirectory();
+      if (downloadsDir == null) {
+        throw Exception('Não foi possível acessar a pasta de downloads');
+      }
+
+      final backupPath = '${downloadsDir.path}/$backupFileName';
+
+      // Obter banco de dados SQLite
+      final appDir = await getApplicationDocumentsDirectory();
+      final dbFile = File('${appDir.path}/finance.db');
+
+      // Se o arquivo de banco de dados não existir, copiar do caminho padrão
+      if (!dbFile.existsSync()) {
+        final defaultDbPath = File('/data/data/com.contaslite.app/databases/finance.db');
+        if (defaultDbPath.existsSync()) {
+          await defaultDbPath.copy(backupPath);
+        } else {
+          // Banco não existe ainda, não precisa de backup
+          return true;
+        }
+      } else {
+        // Copiar arquivo para a pasta de downloads
+        await dbFile.copy(backupPath);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('🔄 Backup automático criado: $backupFileName'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
+
+      return true;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('⚠️ Falha no backup automático: $e'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return false;
+    }
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
-    _hostController.dispose();
-    _portController.dispose();
-    _databaseController.dispose();
-    _usernameController.dispose();
-    _passwordController.dispose();
     _apiUrlController.dispose();
     super.dispose();
   }
@@ -351,7 +348,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Configuração do Servidor PostgreSQL',
+                    'Configuração do Servidor',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -359,7 +356,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Configure as credenciais do seu servidor PostgreSQL para sincronização online. '
+                    'Configure a URL da API para sincronização online. '
                     'Quando offline, o app usará SQLite automaticamente.',
                     style: TextStyle(
                       fontSize: 14,
@@ -375,7 +372,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Habilitar PostgreSQL',
+                              'Habilitar Sincronização',
                               style: TextStyle(fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 4),
@@ -409,115 +406,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
 
           // Campos de Configuração
           if (_isEnabled) ...[
-            const Text(
-              'Dados do Servidor',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Host
-            TextField(
-              controller: _hostController,
-              decoration: InputDecoration(
-                labelText: 'Endereço (Host)',
-                hintText: 'exemplo.com ou 192.168.1.100',
-                prefixIcon: const Icon(Icons.dns),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              enabled: !_isTesting,
-            ),
-            const SizedBox(height: 16),
-
-            // Port
-            TextField(
-              controller: _portController,
-              decoration: InputDecoration(
-                labelText: 'Porta',
-                hintText: '5432',
-                prefixIcon: const Icon(Icons.router),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              keyboardType: TextInputType.number,
-              enabled: !_isTesting,
-            ),
-            const SizedBox(height: 16),
-
-            // Database
-            TextField(
-              controller: _databaseController,
-              decoration: InputDecoration(
-                labelText: 'Nome do Banco',
-                hintText: 'finance_db',
-                prefixIcon: const Icon(Icons.storage),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              enabled: !_isTesting,
-            ),
-            const SizedBox(height: 16),
-
-            // Username
-            TextField(
-              controller: _usernameController,
-              decoration: InputDecoration(
-                labelText: 'Usuário',
-                hintText: 'seu_usuario',
-                prefixIcon: const Icon(Icons.person),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              enabled: !_isTesting,
-            ),
-            const SizedBox(height: 16),
-
-            // Password
-            TextField(
-              controller: _passwordController,
-              decoration: InputDecoration(
-                labelText: 'Senha',
-                hintText: '••••••••',
-                prefixIcon: const Icon(Icons.lock),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _showPassword
-                        ? Icons.visibility
-                        : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() => _showPassword = !_showPassword);
-                  },
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              obscureText: !_showPassword,
-              enabled: !_isTesting,
-            ),
-            const SizedBox(height: 16),
-
-            CheckboxListTile(
-              title: const Text('Guardar login e senha'),
-              subtitle: const Text('Mantém usuário e senha salvos para reabrir depois'),
-              value: _rememberCredentials,
-              onChanged: _isTesting
-                  ? null
-                  : (val) {
-                      setState(() => _rememberCredentials = val ?? true);
-                    },
-            ),
-            const SizedBox(height: 12),
-
-            // API URL (Recomendado)
+            // API URL
             Container(
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
@@ -1164,7 +1053,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
         content: const Text(
           'Isso irá baixar todos os dados do servidor PostgreSQL e '
           'sobrescrever os dados locais do SQLite.\n\n'
-          'Recomenda-se fazer backup antes de continuar.',
+          'Um backup automático será criado antes de continuar.',
         ),
         actions: [
           TextButton(
@@ -1186,6 +1075,9 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
     if (confirmed != true) return;
 
     setState(() => _isProcessingBackup = true);
+
+    // Backup automático antes da operação crítica
+    await _performAutoBackup();
 
     try {
       final syncService = SyncService.instance;
@@ -1220,16 +1112,29 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
   Future<void> _fullSync() async {
     setState(() => _isProcessingBackup = true);
 
+    // Backup automático antes da operação crítica
+    await _performAutoBackup();
+
     try {
       final syncService = SyncService.instance;
-      await syncService.fullSync();
-      
+
+      // Usar sincronização com resolução de conflitos pelo usuário
+      final result = await syncService.fullSyncWithUserResolution(
+        conflictResolver: (conflicts) async {
+          if (!mounted) return ConflictResolutionResult.cancelled();
+          return await SyncConflictDialog.show(context, conflicts);
+        },
+      );
+
       if (mounted) {
+        final message = result.success
+            ? '✅ Sincronização concluída! ${result.recordsPushed} enviados, ${result.recordsPulled} recebidos'
+            : '✅ Sincronização concluída com avisos';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Sincronização completa concluída!'),
+          SnackBar(
+            content: Text(message),
             backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -1368,7 +1273,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
         ),
         content: const Text(
           'Isso removerá as configurações do PostgreSQL mas manterá todos os dados locais.\n\n'
-          'Você pode reconfigurá-lo a qualquer momento.',
+          'Um backup automático será criado antes de continuar.',
         ),
         actions: [
           TextButton(
@@ -1376,8 +1281,10 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
+              // Backup automático antes da operação crítica
+              await _performAutoBackup();
               _clearConfig();
             },
             style: ElevatedButton.styleFrom(
@@ -1457,9 +1364,12 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
 
     setState(() => _isProcessingBackup = true);
 
+    // Backup automático antes da operação crítica
+    await _performAutoBackup();
+
     try {
       final authService = AuthService.instance;
-      
+
       await authService.deleteAllUserData();
       
       if (mounted) {
@@ -1498,7 +1408,7 @@ class _DatabaseSettingsScreenState extends State<DatabaseSettingsScreen> with Ti
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('🗄️ Configuração PostgreSQL'),
+        title: const Text('🔗 Configuração do Servidor'),
         elevation: 0,
         bottom: TabBar(
           controller: _tabController,

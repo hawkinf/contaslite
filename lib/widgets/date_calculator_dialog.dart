@@ -95,153 +95,6 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
     return dayNames[date.weekday % 7];
   }
 
-  String _getDayTypeLabel() {
-    return _dayType == 'uteis' ? 'Úteis' : 'Corridos';
-  }
-
-  Map<String, String> _generatePdfData() {
-    final refDateFormatted = DateFormat('dd/MM/yyyy', 'pt_BR').format(_referenceDate);
-    final calcDateFormatted = DateFormat('dd/MM/yyyy', 'pt_BR').format(_calculatedDate);
-    final refDayOfWeek = _getDayOfWeekName(_referenceDate);
-    final calcDayOfWeek = _getDayOfWeekName(_calculatedDate);
-
-    return {
-      'cidade': _selectedCityName,
-      'dataReferencia': '$refDateFormatted ($refDayOfWeek)',
-      'dias': '$_daysCount ${_getDayTypeLabel()}',
-      'dataCalculada': '$calcDateFormatted ($calcDayOfWeek)',
-    };
-  }
-
-  void _showPdfPreview(BuildContext context, Map<String, String> data) {
-    final isMobile = MediaQuery.of(context).size.width < 800;
-
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        child: Container(
-          constraints: BoxConstraints(
-            maxWidth: isMobile ? 500 : 1000,
-            maxHeight: isMobile ? 600 : 700,
-          ),
-          padding: const EdgeInsets.all(24),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Preview - Exportação em PDF',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Dois calendários lado a lado
-                if (!isMobile)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 350),
-                          child: _buildCalendarPanel(_referenceDate, isReference: true),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 350),
-                          child: _buildCalendarPanel(_calculatedDate, isReference: false),
-                        ),
-                      ),
-                    ],
-                  )
-                else
-                  Column(
-                    children: [
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(minHeight: 350),
-                        child: _buildCalendarPanel(_referenceDate, isReference: true),
-                      ),
-                      const SizedBox(height: 16),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(minHeight: 350),
-                        child: _buildCalendarPanel(_calculatedDate, isReference: false),
-                      ),
-                    ],
-                  ),
-
-                const SizedBox(height: 24),
-
-                // Tabela zebrada com resumo
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[300]!),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildPdfTableRow('Cidade:', data['cidade']!, true),
-                      _buildPdfTableRow('Data Referência:', data['dataReferencia']!, false),
-                      _buildPdfTableRow('Dias:', data['dias']!, true),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Botões
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Fechar'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPdfTableRow(String label, String value, bool isStriped) {
-    return Container(
-      color: isStriped ? Colors.white : Colors.grey[50],
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 1,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 12),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildCalendarPanel(DateTime date, {bool isReference = false}) {
     final firstDay = DateTime(date.year, date.month, 1);
@@ -249,66 +102,45 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
     final firstDayOfWeek = firstDay.weekday % 7; // 0=domingo, 1=segunda, ..., 6=sábado
     final holidays = _getHolidayDays();
 
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     final monthName = DateFormat('MMMM', 'pt_BR').format(date);
     final year = date.year;
+    final monthLabel = toBeginningOfSentenceCase(monthName);
+    final title = isReference ? 'Data Referência' : 'Data Calculada';
 
     return Card(
-      elevation: 2,
-      color: isReference ? Colors.white : Colors.grey[400],
+      elevation: 1,
+      color: colorScheme.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: Colors.black, width: 1),
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Título Data Referência ou Data Calculada (grande, bold, centralizado)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      isReference ? 'Data Referência' : 'Data Calculada',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ),
-                // Botão Reset (apenas para referência)
-                if (isReference)
-                  IconButton(
-                    padding: EdgeInsets.zero,
-                    iconSize: 16,
-                    icon: const Icon(Icons.refresh),
-                    color: Colors.grey[600],
-                    tooltip: 'Voltar para hoje',
-                    onPressed: () {
-                      setState(() {
-                        final today = DateTime.now();
-                        _referenceDate = DateTime(today.year, today.month, today.day);
-                        _calculateDate();
-                      });
-                    },
-                  ),
-              ],
+            Text(
+              title,
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: colorScheme.onSurface,
+              ),
             ),
             const SizedBox(height: 12),
             // Seletor de Mês apenas (ANO é exibido mas não navegável)
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // Seta esquerda do Mês
                 IconButton(
                   padding: EdgeInsets.zero,
                   iconSize: 16,
-                  icon: const Icon(Icons.arrow_left),
-                  color: Theme.of(context).colorScheme.primary,
+                  icon: const Icon(Icons.chevron_left),
+                  color: colorScheme.onSurfaceVariant,
                   onPressed: () {
                     setState(() {
                       if (isReference) {
@@ -333,19 +165,16 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      monthName.toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
+                      monthLabel,
+                      style: textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                     Text(
                       year.toString(),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.normal,
-                        color: Colors.black,
+                      style: textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -354,8 +183,8 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
                 IconButton(
                   padding: EdgeInsets.zero,
                   iconSize: 16,
-                  icon: const Icon(Icons.arrow_right),
-                  color: Theme.of(context).colorScheme.primary,
+                  icon: const Icon(Icons.chevron_right),
+                  color: colorScheme.onSurfaceVariant,
                   onPressed: () {
                     setState(() {
                       if (isReference) {
@@ -385,9 +214,9 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
                         child: Center(
                           child: Text(
                             day,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                            style: textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -430,48 +259,33 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
                 final holidayKey = '${currentDate.year}-${currentDate.month.toString().padLeft(2, '0')}-${currentDate.day.toString().padLeft(2, '0')}';
                 final isHoliday = holidays.contains(holidayKey);
 
-                Color bgColor = Colors.white;
-                Color textColor = Colors.black;
-                double borderWidth = 1;
-                BoxShape shape = BoxShape.rectangle;
-                BorderRadius? borderRadius = BorderRadius.circular(4);
+                final isWeekend = currentDate.weekday == DateTime.saturday ||
+                    currentDate.weekday == DateTime.sunday;
 
-                if (isReferenceSelected && isToday) {
-                  // Data de referência = hoje: círculo azul com borda preta
-                  bgColor = Colors.blue;
-                  textColor = Colors.white;
-                  borderWidth = 2;
-                  shape = BoxShape.circle;
-                  borderRadius = null;
-                } else if (isReferenceSelected) {
-                  // Data de referência selecionada (não é hoje): azul com letras brancas
-                  bgColor = Colors.blue;
-                  textColor = Colors.white;
-                } else if (isToday) {
-                  // Dia de hoje (não é data de referência): círculo azul com borda preta
-                  bgColor = Colors.blue;
-                  textColor = Colors.white;
-                  borderWidth = 2;
-                  shape = BoxShape.circle;
-                  borderRadius = null;
-                } else if (isCalculated) {
-                  // Data calculada destacada com círculo amarelo e borda preta grossa
-                  bgColor = const Color(0xFFFFEB3B);
-                  textColor = Colors.black;
-                  borderWidth = 3;
-                  shape = BoxShape.circle;
-                  borderRadius = null;
-                } else if (isHoliday) {
-                  // Feriados sempre verde com letras brancas
-                  bgColor = Colors.green;
-                  textColor = Colors.white;
-                } else if (currentDate.weekday == 7) { // Domingo
-                  bgColor = Colors.red;
-                  textColor = Colors.white;
-                } else if (currentDate.weekday == 6) { // Sábado
-                  bgColor = const Color(0xFFEF9A9A);
-                  textColor = Colors.white;
+                Color bgColor = colorScheme.surface;
+                Color textColor = colorScheme.onSurface;
+                Color borderColor = colorScheme.outlineVariant.withValues(alpha: 0.55);
+                double borderWidth = 1;
+
+                if (isWeekend) {
+                  bgColor = colorScheme.surfaceContainerLow;
                 }
+
+                if (isReferenceSelected) {
+                  bgColor = colorScheme.primary;
+                  textColor = colorScheme.onPrimary;
+                  borderColor = colorScheme.primary;
+                } else if (isCalculated) {
+                  bgColor = colorScheme.secondaryContainer;
+                  textColor = colorScheme.onSecondaryContainer;
+                  borderColor = colorScheme.secondaryContainer;
+                } else if (isToday) {
+                  borderColor = colorScheme.primary;
+                  borderWidth = 1.5;
+                }
+
+                final showTodayDot = isToday && !isReferenceSelected && !isCalculated;
+                final showHolidayDot = isHoliday && !isReferenceSelected && !isCalculated;
 
                 return GestureDetector(
                   onTap: isReference ? () {
@@ -484,21 +298,62 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
                     decoration: BoxDecoration(
                       color: bgColor,
                       border: Border.all(
-                        color: Colors.black,
+                        color: borderColor,
                         width: borderWidth,
                       ),
-                      shape: shape,
-                      borderRadius: borderRadius,
-                    ),
-                    child: Center(
-                      child: Text(
-                        day.toString(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: textColor,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colorScheme.shadow.withValues(alpha: 0.06),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
                         ),
-                      ),
+                      ],
+                    ),
+                    child: Stack(
+                      children: [
+                        Center(
+                          child: Text(
+                            day.toString(),
+                            style: textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: textColor,
+                            ),
+                          ),
+                        ),
+                        if (showTodayDot || showHolidayDot)
+                          Align(
+                            alignment: Alignment.bottomCenter,
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (showTodayDot)
+                                    Container(
+                                      width: 4,
+                                      height: 4,
+                                      decoration: BoxDecoration(
+                                        color: colorScheme.primary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  if (showTodayDot && showHolidayDot)
+                                    const SizedBox(width: 4),
+                                  if (showHolidayDot)
+                                    Container(
+                                      width: 4,
+                                      height: 4,
+                                      decoration: BoxDecoration(
+                                        color: colorScheme.error,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 );
@@ -506,41 +361,86 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
             ),
             if (!isReference) ...[
               const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                decoration: BoxDecoration(
-                  color: Colors.yellow[100],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.black54, width: 1.5),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      DateFormat('dd/MM/yyyy', 'pt_BR').format(date),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _getDayOfWeekName(date),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _buildResultCard(date),
             ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildResultCard(DateTime date) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final formattedDate = DateFormat('dd/MM/yyyy', 'pt_BR').format(date);
+
+    return Card(
+      elevation: 0,
+      color: colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    formattedDate,
+                    style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _getDayOfWeekName(date),
+                    style: textTheme.labelMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Copiar',
+              icon: const Icon(Icons.copy),
+              iconSize: 18,
+              color: colorScheme.onSurfaceVariant,
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: formattedDate));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Copiado')),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _buildInputDecoration(String labelText, {String? hintText}) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return InputDecoration(
+      labelText: labelText,
+      hintText: hintText,
+      isDense: true,
+      filled: true,
+      fillColor: colorScheme.surfaceContainerLow,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: colorScheme.primary, width: 1.2),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
     );
   }
 
@@ -550,107 +450,137 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 800;
     final isSmallMobile = screenWidth < 600;
+    final isWide = screenWidth >= 1100;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final spacing = isSmallMobile ? 12.0 : 20.0;
+
+    final headerSection = Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Cidade',
+                style: textTheme.labelSmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _selectedCityName,
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Row(
+          children: [
+            IconButton(
+              tooltip: 'Reiniciar para hoje',
+              icon: const Icon(Icons.refresh),
+              iconSize: 20,
+              color: colorScheme.onSurfaceVariant,
+              onPressed: () {
+                setState(() {
+                  final today = DateTime.now();
+                  _referenceDate = DateTime(today.year, today.month, today.day);
+                  _calculateDate();
+                });
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final calendarsSection = !isMobile
+        ? Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 400),
+                  child: _buildCalendarPanel(_referenceDate, isReference: true),
+                ),
+              ),
+              SizedBox(width: spacing),
+              Expanded(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 400),
+                  child: _buildCalendarPanel(_calculatedDate, isReference: false),
+                ),
+              ),
+            ],
+          )
+        : Column(
+            children: [
+              ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 400),
+                child: _buildCalendarPanel(_referenceDate, isReference: true),
+              ),
+              SizedBox(height: spacing),
+              ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 400),
+                child: _buildCalendarPanel(_calculatedDate, isReference: false),
+              ),
+            ],
+          );
 
     return Container(
       constraints: BoxConstraints(
-        maxWidth: isSmallMobile ? 400 : (isMobile ? 500 : 900),
+        maxWidth: isSmallMobile ? 420 : (isMobile ? 560 : 1200),
         maxHeight: isSmallMobile ? 1000 : (isMobile ? 800 : 700),
       ),
       padding: EdgeInsets.all(isSmallMobile ? 16 : 24),
+      color: colorScheme.surface,
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cabeçalho com cidade fixa (definida nas preferências) e botão de PDF
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'Cidade',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _selectedCityName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.picture_as_pdf),
-                  color: Colors.grey[600],
-                  iconSize: 20,
-                  tooltip: 'Exportar PDF',
-                  onPressed: () {
-                    final pdfData = _generatePdfData();
-                    _showPdfPreview(context, pdfData);
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Dois painéis de calendário (referência esquerda, calculado direita)
-            if (!isMobile)
+            if (isWide)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 400),
-                      child: _buildCalendarPanel(_referenceDate, isReference: true),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 400),
-                      child: _buildCalendarPanel(_calculatedDate, isReference: false),
-                    ),
-                  ),
+                  Expanded(child: headerSection),
+                  SizedBox(width: spacing),
+                  Expanded(flex: 2, child: calendarsSection),
                 ],
               )
-            else
-              Column(
-                children: [
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: 400),
-                    child: _buildCalendarPanel(_referenceDate, isReference: true),
-                  ),
-                  const SizedBox(height: 16),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: 400),
-                    child: _buildCalendarPanel(_calculatedDate, isReference: false),
-                  ),
-                ],
-              ),
+            else ...[
+              headerSection,
+              SizedBox(height: spacing),
+              calendarsSection,
+            ],
 
+            SizedBox(height: spacing),
 
             // Seção de cálculo
             Card(
+              elevation: 0,
+              color: colorScheme.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+                side: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.6)),
+              ),
               child: Padding(
-                padding: EdgeInsets.all(isSmallMobile ? 12 : 16),
+                padding: EdgeInsets.all(isSmallMobile ? 16 : 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Calcular Dias',
-                      style: TextStyle(
-                        fontSize: isSmallMobile ? 12 : 14,
-                        fontWeight: FontWeight.bold,
+                      'Calcular dias',
+                      style: textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     SizedBox(height: isSmallMobile ? 12 : 16),
@@ -661,15 +591,7 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
                           // Input de quantidade de dias
                           TextField(
                             keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              labelText: 'Quantos dias?',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              hintText: '0',
-                              isDense: true,
-                            ),
+                            decoration: _buildInputDecoration('Quantos dias?', hintText: '0'),
                             controller: _daysController,
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
@@ -687,14 +609,7 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
                           DropdownButtonFormField<String>(
                             initialValue: _dayType,
                             isExpanded: true,
-                            decoration: InputDecoration(
-                              labelText: 'Tipo de dias',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              isDense: true,
-                            ),
+                            decoration: _buildInputDecoration('Tipo de dias'),
                             items: const [
                               DropdownMenuItem(
                                 value: 'uteis',
@@ -717,14 +632,7 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
                           DropdownButtonFormField<String>(
                             initialValue: _direction,
                             isExpanded: true,
-                            decoration: InputDecoration(
-                              labelText: 'Direção',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              isDense: true,
-                            ),
+                            decoration: _buildInputDecoration('Direção'),
                             items: const [
                               DropdownMenuItem(
                                 value: 'frente',
@@ -752,14 +660,7 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
                             flex: 2,
                             child: TextField(
                               keyboardType: TextInputType.number,
-                              decoration: InputDecoration(
-                                labelText: 'Quantos dias?',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                hintText: '0',
-                              ),
+                              decoration: _buildInputDecoration('Quantos dias?', hintText: '0'),
                               controller: _daysController,
                               inputFormatters: [
                                 FilteringTextInputFormatter.digitsOnly,
@@ -781,12 +682,7 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
                             flex: 1,
                             child: DropdownButtonFormField<String>(
                               initialValue: _dayType,
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              ),
+                              decoration: _buildInputDecoration('Tipo de dias'),
                               items: const [
                                 DropdownMenuItem(
                                   value: 'uteis',
@@ -812,12 +708,7 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
                             flex: 1,
                             child: DropdownButtonFormField<String>(
                               initialValue: _direction,
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              ),
+                              decoration: _buildInputDecoration('Direção'),
                               items: const [
                                 DropdownMenuItem(
                                   value: 'frente',
@@ -843,7 +734,7 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
               ),
             ),
 
-            const SizedBox(height: 24),
+            SizedBox(height: spacing),
 
             // Botão fechar
             Row(

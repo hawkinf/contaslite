@@ -33,6 +33,9 @@ dependencies:
   fl_chart: ^1.1.1
   window_manager: ^0.5.1
 
+  # FILE PICKER
+  file_picker: ^10.3.8
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

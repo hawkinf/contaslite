@@ -1,14 +1,20 @@
+import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import '../database/db_helper.dart';
+import '../models/database_config.dart';
 import '../services/auth_service.dart';
 import '../services/database_initialization_service.dart';
 import '../services/pdf_export_service.dart';
+import '../services/prefs_service.dart';
+import '../services/sync_service.dart';
 import '../widgets/app_input_decoration.dart';
 import '../widgets/database_backups_section.dart';
+import '../widgets/sync_conflict_dialog.dart';
 import 'data_explorer_screen.dart';
 
 class DatabaseScreen extends StatefulWidget {
@@ -20,8 +26,13 @@ class DatabaseScreen extends StatefulWidget {
 
 class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStateMixin {
   late TabController _tabController;
+  late TextEditingController _apiUrlController;
   bool _isProcessingBackup = false;
   bool _isRepairing = false;
+  bool _isTesting = false;
+  bool _serverEnabled = false;
+  String? _testMessage;
+  bool _testSuccess = false;
  
   Color _tileBackgroundColor(BuildContext context, Color lightColor) {
     final brightness = Theme.of(context).brightness;
@@ -57,13 +68,28 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
+    _apiUrlController = TextEditingController();
+    _loadServerConfig();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _apiUrlController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadServerConfig() async {
+    try {
+      final config = await PrefsService.loadDatabaseConfig();
+      setState(() {
+        _apiUrlController.text = config.apiUrl ?? '';
+        _serverEnabled = config.enabled;
+      });
+    } catch (e) {
+      // Ignore errors loading config
+    }
   }
 
   Widget _buildBackupTab() {
@@ -212,30 +238,372 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
     );
   }
 
+  Widget _buildServerTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Info Card
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.cloud, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Sincronização com Servidor',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Configure a URL da API para sincronizar seus dados online.',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                // Toggle
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Habilitar Sincronização', style: TextStyle(fontWeight: FontWeight.w600)),
+                          Text(
+                            _serverEnabled ? 'Habilitado' : 'Desabilitado',
+                            style: TextStyle(
+                              color: _serverEnabled ? Colors.green : Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: _serverEnabled,
+                      onChanged: (value) => setState(() => _serverEnabled = value),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        if (_serverEnabled) ...[
+          // API URL field
+          TextField(
+            controller: _apiUrlController,
+            decoration: InputDecoration(
+              labelText: 'URL da API',
+              hintText: 'http://192.227.184.162:3000',
+              prefixIcon: const Icon(Icons.link),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              helperText: 'URL completa do servidor de sincronização',
+            ),
+            enabled: !_isTesting,
+            keyboardType: TextInputType.url,
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: _isTesting ? null : () {
+              setState(() {
+                _apiUrlController.text = 'http://192.227.184.162:3000';
+              });
+            },
+            icon: const Icon(Icons.auto_fix_high, size: 18),
+            label: const Text('Usar URL Padrão'),
+          ),
+          const SizedBox(height: 16),
+
+          // Test message
+          if (_testMessage != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _testSuccess ? Colors.green.shade50 : Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _testSuccess ? Colors.green : Colors.red),
+              ),
+              child: Text(
+                _testMessage!,
+                style: TextStyle(color: _testSuccess ? Colors.green.shade700 : Colors.red.shade700),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Action buttons
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _isTesting ? null : _testServerConnection,
+                  icon: _isTesting
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.check_circle_outline),
+                  label: Text(_isTesting ? 'Testando...' : 'Testar'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _isTesting ? null : _saveServerConfig,
+                  icon: const Icon(Icons.save),
+                  label: const Text('Salvar'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Sync operations
+          const Divider(),
+          const SizedBox(height: 8),
+          Text('Operações de Sincronização', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[700])),
+          const SizedBox(height: 12),
+
+          ListTile(
+            enabled: !_isProcessingBackup,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            tileColor: _tileBackgroundColor(context, Colors.green.shade50),
+            leading: Icon(Icons.cloud_download, color: _tileIconColor(context, Colors.green), size: 30),
+            title: Text('Restaurar do Servidor', style: _tileTitleStyle(context)),
+            subtitle: Text('Baixa dados do servidor para o dispositivo', style: _tileSubtitleStyle(context)),
+            trailing: _isProcessingBackup
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: _restoreFromServer,
+          ),
+          const SizedBox(height: 10),
+          ListTile(
+            enabled: !_isProcessingBackup,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            tileColor: _tileBackgroundColor(context, Colors.purple.shade50),
+            leading: Icon(Icons.sync, color: _tileIconColor(context, Colors.purple), size: 30),
+            title: Text('Sincronização Completa', style: _tileTitleStyle(context)),
+            subtitle: Text('Sincroniza dados entre dispositivo e servidor', style: _tileSubtitleStyle(context)),
+            trailing: _isProcessingBackup
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: _fullSync,
+          ),
+        ] else ...[
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                children: [
+                  Icon(Icons.cloud_off, size: 64, color: Colors.grey[400]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Sincronização Desabilitada',
+                    style: TextStyle(fontSize: 18, color: Colors.grey[600], fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Ative o toggle acima para configurar\na sincronização com o servidor',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _testServerConnection() async {
+    if (_apiUrlController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preencha a URL da API')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isTesting = true;
+      _testMessage = null;
+    });
+
+    try {
+      final apiUrl = _apiUrlController.text.trim();
+      final uri = Uri.parse('$apiUrl/health');
+      final response = await HttpClient().getUrl(uri).then((req) => req.close());
+      final isConnected = response.statusCode == 200;
+
+      if (!mounted) return;
+      setState(() {
+        _testSuccess = isConnected;
+        _testMessage = isConnected ? 'Conexão bem-sucedida!' : 'Servidor não respondeu';
+        _isTesting = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _testSuccess = false;
+        _testMessage = 'Erro: ${e.toString()}';
+        _isTesting = false;
+      });
+    }
+  }
+
+  Future<void> _saveServerConfig() async {
+    try {
+      final config = DatabaseConfig(
+        host: 'localhost',
+        port: 5432,
+        database: 'default',
+        username: 'user',
+        password: '',
+        enabled: _serverEnabled,
+        apiUrl: _apiUrlController.text.trim().isEmpty ? null : _apiUrlController.text.trim(),
+      );
+
+      await PrefsService.saveDatabaseConfig(config);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Configurações salvas com sucesso'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao salvar: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _performAutoBackup() async {
+    try {
+      final now = DateTime.now();
+      final timestamp = '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+      final backupFileName = 'contaslite_autobackup_$timestamp.db';
+
+      final downloadsDir = await getDownloadsDirectory();
+      if (downloadsDir == null) return;
+
+      final backupPath = '${downloadsDir.path}/$backupFileName';
+      final appDir = await getApplicationDocumentsDirectory();
+      final dbFile = File('${appDir.path}/finance.db');
+
+      if (dbFile.existsSync()) {
+        await dbFile.copy(backupPath);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Backup automático criado: $backupFileName'),
+              duration: const Duration(seconds: 2),
+              backgroundColor: Colors.blue,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Ignore backup errors
+    }
+  }
+
+  Future<void> _restoreFromServer() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.cloud_download, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Restaurar do Servidor?'),
+          ],
+        ),
+        content: const Text(
+          'Isso irá baixar todos os dados do servidor e sobrescrever os dados locais.\n\n'
+          'Um backup automático será criado antes de continuar.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Restaurar')),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isProcessingBackup = true);
+    await _performAutoBackup();
+
+    try {
+      await SyncService.instance.fullSync();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Dados restaurados com sucesso!'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessingBackup = false);
+    }
+  }
+
+  Future<void> _fullSync() async {
+    setState(() => _isProcessingBackup = true);
+    await _performAutoBackup();
+
+    try {
+      // Usar sincronização com resolução de conflitos pelo usuário
+      final result = await SyncService.instance.fullSyncWithUserResolution(
+        conflictResolver: (conflicts) async {
+          if (!mounted) return ConflictResolutionResult.cancelled();
+          return await SyncConflictDialog.show(context, conflicts);
+        },
+      );
+
+      if (mounted) {
+        final message = result.success
+            ? 'Sincronização concluída! ${result.recordsPushed} enviados, ${result.recordsPulled} recebidos'
+            : 'Sincronização concluída com avisos';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isProcessingBackup = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Banco de dados'),
+        title: const Text('Banco de Dados'),
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
           tabs: const [
-            Tab(
-              icon: Icon(Icons.backup),
-              text: 'Backup/Restauração',
-            ),
-            Tab(
-              icon: Icon(Icons.table_chart),
-              text: 'Gerenciamento',
-            ),
-            Tab(
-              icon: Icon(Icons.schedule),
-              text: 'Backups Automáticos',
-            ),
-            Tab(
-              icon: Icon(Icons.warning),
-              text: 'Opção Crítica',
-            ),
+            Tab(icon: Icon(Icons.backup), text: 'Local'),
+            Tab(icon: Icon(Icons.cloud), text: 'Servidor'),
+            Tab(icon: Icon(Icons.table_chart), text: 'Gerenciamento'),
+            Tab(icon: Icon(Icons.schedule), text: 'Automático'),
+            Tab(icon: Icon(Icons.warning), text: 'Crítico'),
           ],
         ),
       ),
@@ -243,6 +611,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
         controller: _tabController,
         children: [
           _buildBackupTab(),
+          _buildServerTab(),
           _buildManagementTab(),
           _buildAutomaticBackupsTab(),
           _buildDangerZoneTab(),
@@ -689,7 +1058,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
     if (_isProcessingBackup) return;
     setState(() => _isProcessingBackup = true);
     try {
-      final directory = await FilePicker.platform.getDirectoryPath(
+      final directory = await FilePicker.getDirectoryPath(
         dialogTitle: 'Selecione a pasta para salvar o backup',
       );
       if (directory == null) return;
@@ -740,7 +1109,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
 
     setState(() => _isProcessingBackup = true);
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         dialogTitle: 'Selecione o arquivo de backup (.db)',
         type: FileType.custom,
         allowedExtensions: ['db'],
