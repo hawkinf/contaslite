@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
+import '../database/sync_helpers.dart';
 import '../services/holiday_service.dart';
 import '../services/prefs_service.dart';
 import '../ui/components/app_modal_header.dart';
+import '../ui/components/ff_design_system.dart';
 import '../ui/theme/app_colors.dart';
 import '../ui/theme/app_radius.dart';
-import '../ui/theme/app_shadows.dart';
+import '../ui/theme/app_spacing.dart';
 import '../services/auth_service.dart';
 import '../services/google_auth_service.dart';
 import '../services/sync_service.dart';
 import '../models/user.dart';
-import '../database/sync_helpers.dart';
 import 'database_screen.dart';
 import 'email_settings_screen.dart';
 import 'login_screen.dart';
@@ -61,138 +62,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // ============================================================
-  // Premium Card Builder
-  // ============================================================
-
-  Widget _buildPremiumCard({
-    required Widget child,
-    EdgeInsetsGeometry? padding,
-    VoidCallback? onTap,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark
-        ? Theme.of(context).colorScheme.surfaceContainerHighest
-        : Colors.white;
-    final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.1)
-        : AppColors.border;
-
-    Widget card = Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: borderColor, width: 1),
-        boxShadow: isDark ? null : AppShadows.soft,
-      ),
-      padding: padding ?? const EdgeInsets.all(16),
-      child: child,
-    );
-
-    if (onTap != null) {
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          child: card,
-        ),
-      );
-    }
-
-    return card;
-  }
-
-  // ============================================================
-  // Section Title Builder
-  // ============================================================
-
-  Widget _buildSectionTitle(String title, {IconData? icon}) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 12),
-      child: Row(
-        children: [
-          if (icon != null) ...[
-            Icon(
-              icon,
-              size: 18,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(width: 8),
-          ],
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.primary,
-              letterSpacing: 0.8,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ============================================================
-  // About Card (Compacto)
+  // About Card (usando FFInfoCard.about)
   // ============================================================
 
   Widget _buildAboutCard() {
-    return _buildPremiumCard(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          // Logo
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              child: Image.asset(
-                'assets/logo.png',
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'FácilFin',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'v1.00 · Build 20251208',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Desenvolvido por Aguinaldo Liesack Baptistini',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+    return FFInfoCard.about(
+      logo: FFInfoCardLeading(
+        child: Image.asset(
+          'assets/logo.png',
+          fit: BoxFit.contain,
+        ),
       ),
+      appName: 'FácilFin',
+      version: 'v1.00 · Build 20251208',
+      developer: 'Aguinaldo Liesack Baptistini',
     );
   }
 
@@ -213,55 +96,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildLoginPrompt() {
-    return _buildPremiumCard(
-      padding: const EdgeInsets.all(24),
+    final theme = Theme.of(context);
+
+    return FFCard(
+      padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
         children: [
+          // Icon container
           Container(
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              color: theme.colorScheme.surfaceContainerHighest,
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.cloud_off_outlined,
               size: 32,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
           Text(
             'Modo Offline',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.onSurface,
+              color: theme.colorScheme.onSurface,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             'Faça login para sincronizar seus dados entre dispositivos',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _goToLogin,
-              icon: const Icon(Icons.login, size: 18),
-              label: const Text('Fazer Login'),
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-              ),
-            ),
+          const SizedBox(height: AppSpacing.xl),
+          FFPrimaryButton(
+            label: 'Fazer Login',
+            icon: Icons.login,
+            onPressed: _goToLogin,
           ),
         ],
       ),
@@ -269,22 +146,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildUserCard(User user) {
-    return _buildPremiumCard(
-      padding: const EdgeInsets.all(16),
+    final theme = Theme.of(context);
+
+    return FFCard(
       child: Column(
         children: [
           // User info row
           Row(
             children: [
-              // Avatar
+              // Avatar com gradiente
               Container(
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      Theme.of(context).colorScheme.primary,
-                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                      theme.colorScheme.primary,
+                      theme.colorScheme.primary.withValues(alpha: 0.8),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -313,7 +191,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurface,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -321,7 +199,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       user.email,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -329,119 +207,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               // Logout button
-              Tooltip(
-                message: 'Sair da conta',
-                child: IconButton(
-                  onPressed: _confirmLogout,
-                  icon: Icon(
-                    Icons.logout,
-                    size: 20,
-                    color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
-                  ),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
-                  ),
-                ),
+              FFIconActionButton.danger(
+                icon: Icons.logout,
+                tooltip: 'Sair da conta',
+                onPressed: _confirmLogout,
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          // Sync status
+          const SizedBox(height: AppSpacing.lg),
+          // Sync status badge
           ValueListenableBuilder<SyncState>(
             valueListenable: SyncService.instance.syncStateNotifier,
             builder: (context, syncState, _) {
-              return _buildSyncStatusRow(syncState);
+              return _buildSyncStatusBadge(syncState);
             },
           ),
           const SizedBox(height: 14),
           // Sync button
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _manualSync,
-              icon: const Icon(Icons.sync, size: 18),
-              label: const Text('Sincronizar Agora'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                side: BorderSide(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
-                ),
-              ),
-            ),
+          FFSecondaryButton(
+            label: 'Sincronizar Agora',
+            icon: Icons.sync,
+            onPressed: _manualSync,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSyncStatusRow(SyncState state) {
-    IconData icon;
-    Color color;
-    String text;
-    Color bgColor;
+  Widget _buildSyncStatusBadge(SyncState state) {
+    String label = '';
+    bool isSynced = false;
+    bool isOffline = false;
+    bool isError = false;
 
     switch (state) {
       case SyncState.idle:
-        icon = Icons.cloud_done;
-        color = AppColors.success;
-        text = 'Sincronizado';
-        bgColor = AppColors.success.withValues(alpha: 0.1);
-        break;
+        label = 'Sincronizado';
+        isSynced = true;
       case SyncState.syncing:
-        icon = Icons.sync;
-        color = Theme.of(context).colorScheme.primary;
-        text = 'Sincronizando...';
-        bgColor = Theme.of(context).colorScheme.primary.withValues(alpha: 0.1);
-        break;
+        label = 'Sincronizando...';
       case SyncState.error:
-        icon = Icons.cloud_off;
-        color = AppColors.error;
-        text = 'Erro na sincronização';
-        bgColor = AppColors.error.withValues(alpha: 0.1);
-        break;
+        label = 'Erro na sincronização';
+        isError = true;
       case SyncState.offline:
-        icon = Icons.cloud_off_outlined;
-        color = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
-        text = 'Offline';
-        bgColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05);
-        break;
+        label = 'Offline';
+        isOffline = true;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w500,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
+    return FFBadge.syncStatus(
+      label: label,
+      isSynced: isSynced,
+      isOffline: isOffline,
+      isError: isError,
     );
   }
 
   // ============================================================
-  // Location Section
+  // Location Section (usando FFActionCard)
   // ============================================================
 
   Widget _buildLocationCard() {
-    return _buildPremiumCard(
+    return FFCard(
       onTap: _showCitySelector,
-      padding: const EdgeInsets.all(16),
       child: Row(
         children: [
           // Icon container
@@ -496,77 +323,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // ============================================================
-  // Settings Tile Premium
-  // ============================================================
-
-  Widget _buildSettingsTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    Color? iconColor,
-  }) {
-    final effectiveIconColor = iconColor ?? Theme.of(context).colorScheme.primary;
-
-    return _buildPremiumCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          // Icon container
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: effectiveIconColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Icon(
-              icon,
-              color: effectiveIconColor,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 14),
-          // Text
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Chevron
-          Icon(
-            Icons.chevron_right,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
-            size: 24,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ============================================================
   // City Selector Dialog
   // ============================================================
 
@@ -596,7 +352,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 maxWidth: isMobile ? 400 : 600,
                 maxHeight: isMobile ? 600 : 500,
               ),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -609,7 +365,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     showDivider: false,
                     padding: EdgeInsets.zero,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                   TextField(
                     controller: searchController,
                     decoration: InputDecoration(
@@ -632,7 +388,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     onChanged: (_) => setDialogState(() {}),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                   Expanded(
                     child: filteredCities.isEmpty
                         ? Center(
@@ -641,7 +397,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               children: [
                                 Icon(Icons.location_off,
                                     size: 48, color: Colors.grey[400]),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: AppSpacing.md),
                                 Text(
                                   'Nenhuma cidade encontrada',
                                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -656,29 +412,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             itemBuilder: (context, index) {
                               final city = filteredCities[index];
                               final isSelected = city == _selectedCity;
-                              return ListTile(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                                ),
-                                leading: Icon(
-                                  Icons.location_on,
-                                  color: isSelected
-                                      ? Theme.of(context).colorScheme.primary
-                                      : Colors.grey,
-                                ),
-                                title: Text(city),
-                                subtitle: Text(_regionForCity(city)),
-                                trailing: isSelected
-                                    ? Icon(
-                                        Icons.check_circle,
-                                        color: Theme.of(context).colorScheme.primary,
-                                      )
-                                    : null,
-                                selected: isSelected,
-                                selectedTileColor: Theme.of(context)
-                                    .colorScheme
-                                    .primaryContainer
-                                    .withValues(alpha: 0.3),
+                              final theme = Theme.of(context);
+
+                              return InkWell(
                                 onTap: () {
                                   setState(() {
                                     _selectedCity = city;
@@ -687,6 +423,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   searchController.dispose();
                                   Navigator.pop(context);
                                 },
+                                borderRadius: BorderRadius.circular(AppRadius.sm),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpacing.md,
+                                    vertical: AppSpacing.md,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
+                                        : null,
+                                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.location_on,
+                                        color: isSelected
+                                            ? theme.colorScheme.primary
+                                            : Colors.grey,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: AppSpacing.md),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              city,
+                                              style: TextStyle(
+                                                fontWeight: isSelected
+                                                    ? FontWeight.w600
+                                                    : FontWeight.normal,
+                                                color: theme.colorScheme.onSurface,
+                                              ),
+                                            ),
+                                            Text(
+                                              _regionForCity(city),
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: theme.colorScheme.onSurface
+                                                    .withValues(alpha: 0.6),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (isSelected)
+                                        Icon(
+                                          Icons.check_circle,
+                                          color: theme.colorScheme.primary,
+                                          size: 20,
+                                        ),
+                                    ],
+                                  ),
+                                ),
                               );
                             },
                           ),
@@ -718,11 +509,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
-        title: Row(
+        title: const Row(
           children: [
-            Icon(Icons.logout, color: Theme.of(context).colorScheme.error),
-            const SizedBox(width: 12),
-            const Text('Sair da conta'),
+            Icon(Icons.logout, color: AppColors.error),
+            SizedBox(width: AppSpacing.md),
+            Text('Sair da conta'),
           ],
         ),
         content: const Text(
@@ -734,12 +525,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancelar'),
           ),
-          FilledButton(
+          FFPrimaryButton.danger(
+            label: 'Sair',
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: const Text('Sair'),
+            expanded: false,
           ),
         ],
       ),
@@ -783,56 +572,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Preferências'),
-        centerTitle: true,
-        elevation: 0,
-        scrolledUnderElevation: 1,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+    return FFScreenScaffold(
+      title: 'Preferências',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Sobre o App
           _buildAboutCard(),
-          const SizedBox(height: 32),
+          const SizedBox(height: AppSpacing.xxl),
 
           // Seção: Conta
-          _buildSectionTitle('CONTA', icon: Icons.person_outline),
-          _buildAccountSection(),
-          const SizedBox(height: 32),
+          FFSection(
+            title: 'Conta',
+            icon: Icons.person_outline,
+            bottomSpacing: 0,
+            child: _buildAccountSection(),
+          ),
+          const SizedBox(height: AppSpacing.xxl),
 
           // Seção: Localização
-          _buildSectionTitle('LOCALIZAÇÃO', icon: Icons.location_on_outlined),
-          _buildLocationCard(),
-          const SizedBox(height: 32),
+          FFSection(
+            title: 'Localização',
+            icon: Icons.location_on_outlined,
+            bottomSpacing: 0,
+            child: _buildLocationCard(),
+          ),
+          const SizedBox(height: AppSpacing.xxl),
 
-          // Seção: Configurações Avançadas
-          _buildSectionTitle('CONFIGURAÇÕES', icon: Icons.settings_outlined),
-          _buildSettingsTile(
-            icon: Icons.storage_outlined,
-            title: 'Banco de Dados',
-            subtitle: 'Backup, sincronização e configurações',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const DatabaseScreen()),
-              );
-            },
+          // Seção: Configurações
+          FFSection(
+            title: 'Configurações',
+            icon: Icons.settings_outlined,
+            bottomSpacing: 0,
+            child: Column(
+              children: [
+                FFActionCard(
+                  icon: Icons.storage_outlined,
+                  title: 'Banco de Dados',
+                  subtitle: 'Backup, sincronização e configurações',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const DatabaseScreen()),
+                    );
+                  },
+                ),
+                const SizedBox(height: AppSpacing.md),
+                FFActionCard(
+                  icon: Icons.email_outlined,
+                  title: 'Notificações por Email',
+                  subtitle: 'Configurar envio automático de relatórios',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const EmailSettingsScreen()),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
-          _buildSettingsTile(
-            icon: Icons.email_outlined,
-            title: 'Notificações por Email',
-            subtitle: 'Configurar envio automático de relatórios',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const EmailSettingsScreen()),
-              );
-            },
-          ),
-          const SizedBox(height: 32),
+          const SizedBox(height: AppSpacing.xxl),
         ],
       ),
     );

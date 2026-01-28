@@ -1058,6 +1058,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
     if (_isProcessingBackup) return;
     setState(() => _isProcessingBackup = true);
     try {
+      // ignore: static_access_to_instance_member
       final directory = await FilePicker.getDirectoryPath(
         dialogTitle: 'Selecione a pasta para salvar o backup',
       );
@@ -1109,6 +1110,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> with TickerProviderStat
 
     setState(() => _isProcessingBackup = true);
     try {
+      // ignore: static_access_to_instance_member
       final result = await FilePicker.pickFiles(
         dialogTitle: 'Selecione o arquivo de backup (.db)',
         type: FileType.custom,
