@@ -1143,4 +1143,821 @@ void main() {
       expect(find.text('Compact Item'), findsOneWidget);
     });
   });
+
+  // =============================================
+  // CALENDAR COMPONENTS TESTS
+  // =============================================
+
+  group('FFWeekdayRow', () {
+    testWidgets('exibe 7 dias da semana', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FFWeekdayRow(),
+          ),
+        ),
+      );
+
+      expect(find.text('DOM'), findsOneWidget);
+      expect(find.text('SEG'), findsOneWidget);
+      expect(find.text('TER'), findsOneWidget);
+      expect(find.text('QUA'), findsOneWidget);
+      expect(find.text('QUI'), findsOneWidget);
+      expect(find.text('SEX'), findsOneWidget);
+      expect(find.text('SAB'), findsOneWidget);
+    });
+
+    testWidgets('.compact() exibe labels curtos', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FFWeekdayRow.compact(),
+          ),
+        ),
+      );
+
+      // Compact mode shows single letters
+      expect(find.text('D'), findsOneWidget);
+      expect(find.text('S'), findsAtLeast(2)); // SAB and SEG are both 'S'
+    });
+
+    testWidgets('.desktop() usa tamanhos maiores', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FFWeekdayRow.desktop(),
+          ),
+        ),
+      );
+
+      expect(find.text('DOM'), findsOneWidget);
+    });
+
+    testWidgets('aceita labels customizados', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FFWeekdayRow(
+              weekdayLabels: const ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Sun'), findsOneWidget);
+      expect(find.text('Mon'), findsOneWidget);
+    });
+  });
+
+  group('FFDayTile', () {
+    testWidgets('exibe número do dia', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 100,
+              height: 100,
+              child: FFDayTile(day: 15),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('15'), findsOneWidget);
+    });
+
+    testWidgets('mostra chip HOJE quando isToday = true', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 100,
+              height: 150,
+              child: FFDayTile(
+                day: 10,
+                isToday: true,
+                isDesktop: true,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('HOJE'), findsOneWidget);
+    });
+
+    testWidgets('mostra indicador de feriado', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 100,
+              height: 150,
+              child: FFDayTile(
+                day: 25,
+                isHoliday: true,
+                isDesktop: true,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Feriado'), findsOneWidget);
+    });
+
+    testWidgets('exibe badges de valores quando tem eventos', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 100,
+              height: 150,
+              child: FFDayTile(
+                day: 5,
+                totals: FFDayTotals(
+                  totalPagar: 1500,
+                  countPagar: 2,
+                ),
+                isDesktop: true,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Should show value badge (1.5K format)
+      expect(find.textContaining('1'), findsAtLeast(1));
+    });
+  });
+
+  group('FFCalendarModeSelector', () {
+    testWidgets('exibe todos os modos', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FFCalendarModeSelector(
+              currentMode: FFCalendarViewMode.monthly,
+              onModeChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Semanal'), findsOneWidget);
+      expect(find.text('Mensal'), findsOneWidget);
+      expect(find.text('Anual'), findsOneWidget);
+    });
+
+    testWidgets('responde a mudança de modo', (tester) async {
+      FFCalendarViewMode? selectedMode;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FFCalendarModeSelector(
+              currentMode: FFCalendarViewMode.monthly,
+              onModeChanged: (mode) => selectedMode = mode,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Semanal'));
+      await tester.pump();
+
+      expect(selectedMode, FFCalendarViewMode.weekly);
+    });
+
+    testWidgets('.compact() usa labels curtos', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FFCalendarModeSelector.compact(
+              currentMode: FFCalendarViewMode.monthly,
+              onModeChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Sem'), findsOneWidget);
+      expect(find.text('Mês'), findsOneWidget);
+      expect(find.text('Ano'), findsOneWidget);
+    });
+  });
+
+  group('FFCalendarTotalsBar', () {
+    testWidgets('exibe totais de pagar e receber', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: FFCalendarTotalsBar(
+              totals: FFPeriodTotals(
+                totalPagar: 5000,
+                totalReceber: 8000,
+                countPagar: 10,
+                countReceber: 5,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Pagar'), findsOneWidget);
+      expect(find.text('Receber'), findsOneWidget);
+    });
+
+    testWidgets('exibe contadores quando maiores que zero', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: FFCalendarTotalsBar(
+              totals: FFPeriodTotals(
+                totalPagar: 1000,
+                totalReceber: 2000,
+                countPagar: 3,
+                countReceber: 2,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('3'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
+    });
+
+    testWidgets('aceita formatador de moeda customizado', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FFCalendarTotalsBar(
+              totals: const FFPeriodTotals(
+                totalPagar: 1000,
+                countPagar: 1,
+              ),
+              currencyFormatter: (value) => '\$${value.toStringAsFixed(0)}',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('\$1000'), findsOneWidget);
+    });
+  });
+
+  group('FFMiniMonthCard', () {
+    testWidgets('exibe nome do mês', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 100,
+              height: 100,
+              child: FFMiniMonthCard(monthName: 'Jan'),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('JAN'), findsOneWidget);
+    });
+
+    testWidgets('mostra chip ATUAL para mês atual', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 100,
+              height: 100,
+              child: FFMiniMonthCard(
+                monthName: 'Fev',
+                isCurrentMonth: true,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('ATUAL'), findsOneWidget);
+    });
+
+    testWidgets('exibe totais quando hasData', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 100,
+              height: 100,
+              child: FFMiniMonthCard(
+                monthName: 'Mar',
+                totals: FFPeriodTotals(
+                  totalPagar: 5000,
+                  countPagar: 3,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Should find the arrow icon for pagar
+      expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);
+    });
+
+    testWidgets('exibe mensagem quando sem lançamentos', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 150,
+              height: 100,
+              child: FFMiniMonthCard(
+                monthName: 'Abr',
+                totals: FFPeriodTotals(),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Sem lançamentos'), findsOneWidget);
+    });
+
+    testWidgets('responde a onTap', (tester) async {
+      bool tapped = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 100,
+              height: 100,
+              child: FFMiniMonthCard(
+                monthName: 'Mai',
+                onTap: () => tapped = true,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('MAI'));
+      await tester.pump();
+
+      expect(tapped, isTrue);
+    });
+  });
+
+  group('FFWeekDayCard', () {
+    testWidgets('exibe dia e nome do dia', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: FFWeekDayCard(
+              day: 15,
+              dayName: 'SEG',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('15'), findsOneWidget);
+      expect(find.text('SEG'), findsOneWidget);
+    });
+
+    testWidgets('mostra chip HOJE quando isToday = true', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: FFWeekDayCard(
+              day: 10,
+              dayName: 'TER',
+              isToday: true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('HOJE'), findsOneWidget);
+    });
+
+    testWidgets('exibe badges de valores quando tem eventos', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: FFWeekDayCard(
+              day: 5,
+              dayName: 'QUA',
+              totals: FFDayTotals(
+                totalPagar: 1500,
+                countPagar: 2,
+                totalReceber: 3000,
+                countReceber: 1,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_downward_rounded), findsOneWidget);
+    });
+
+    testWidgets('exibe mensagem quando sem lançamentos', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: FFWeekDayCard(
+              day: 20,
+              dayName: 'QUI',
+              totals: FFDayTotals(),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Sem lançamentos'), findsOneWidget);
+    });
+
+    testWidgets('responde a onTap quando tem eventos', (tester) async {
+      bool tapped = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FFWeekDayCard(
+              day: 25,
+              dayName: 'SEX',
+              totals: const FFDayTotals(
+                totalPagar: 100,
+                countPagar: 1,
+              ),
+              onTap: () => tapped = true,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byType(FFWeekDayCard));
+      await tester.pump();
+
+      expect(tapped, isTrue);
+    });
+  });
+
+  group('FFDayDetailsModal', () {
+    testWidgets('exibe data formatada e dia da semana', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => FFDayDetailsModal(
+                      date: DateTime(2024, 3, 15),
+                      dateFormatted: '15 de março de 2024',
+                      weekdayName: 'Sexta-feira',
+                      totals: const FFDayTotals(
+                        totalPagar: 1000,
+                        countPagar: 2,
+                      ),
+                      eventsBuilder: (controller) => const SizedBox(),
+                    ),
+                  );
+                },
+                child: const Text('Open Modal'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Modal'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('15 de março de 2024'), findsOneWidget);
+      expect(find.text('Sexta-feira'), findsOneWidget);
+    });
+
+    testWidgets('exibe totais de A Pagar e A Receber', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => FFDayDetailsModal(
+                      date: DateTime(2024, 3, 15),
+                      dateFormatted: '15/03/2024',
+                      weekdayName: 'Sexta',
+                      totals: const FFDayTotals(
+                        totalPagar: 500,
+                        countPagar: 1,
+                        totalReceber: 1000,
+                        countReceber: 2,
+                      ),
+                      eventsBuilder: (controller) => const SizedBox(),
+                    ),
+                  );
+                },
+                child: const Text('Show'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Show'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('A Pagar'), findsOneWidget);
+      expect(find.text('A Receber'), findsOneWidget);
+    });
+  });
+
+  group('FFDayTotals', () {
+    test('hasEvents retorna true quando tem eventos', () {
+      const totals = FFDayTotals(countPagar: 1);
+      expect(totals.hasEvents, isTrue);
+    });
+
+    test('hasEvents retorna false quando sem eventos', () {
+      const totals = FFDayTotals();
+      expect(totals.hasEvents, isFalse);
+    });
+
+    test('empty é constante estática', () {
+      expect(FFDayTotals.empty.hasEvents, isFalse);
+    });
+  });
+
+  group('FFPeriodTotals', () {
+    test('saldo calcula diferença correta', () {
+      const totals = FFPeriodTotals(
+        totalPagar: 3000,
+        totalReceber: 5000,
+      );
+      expect(totals.saldo, 2000);
+    });
+
+    test('hasData retorna true quando tem dados', () {
+      const totals = FFPeriodTotals(countPagar: 1);
+      expect(totals.hasData, isTrue);
+    });
+
+    test('hasData retorna false quando vazio', () {
+      const totals = FFPeriodTotals();
+      expect(totals.hasData, isFalse);
+    });
+
+    test('empty é constante estática', () {
+      expect(FFPeriodTotals.empty.hasData, isFalse);
+    });
+  });
+
+  group('FFCalendarViewMode', () {
+    test('label retorna texto correto', () {
+      expect(FFCalendarViewMode.weekly.label, 'Semanal');
+      expect(FFCalendarViewMode.monthly.label, 'Mensal');
+      expect(FFCalendarViewMode.yearly.label, 'Anual');
+    });
+
+    test('shortLabel retorna texto curto', () {
+      expect(FFCalendarViewMode.weekly.shortLabel, 'Sem');
+      expect(FFCalendarViewMode.monthly.shortLabel, 'Mês');
+      expect(FFCalendarViewMode.yearly.shortLabel, 'Ano');
+    });
+  });
+
+  // =============================================
+  // CALENDAR DENSITY TESTS
+  // =============================================
+
+  group('FFCalendarDensity', () {
+    test('compact tem valores menores', () {
+      const density = FFCalendarDensity.compact;
+      expect(density.weekdayRowHeight, 32);
+      expect(density.weekdayFontSize, 10);
+      expect(density.dayFontSize, 14);
+      expect(density.useShortLabels, isTrue);
+    });
+
+    test('regular tem valores médios', () {
+      const density = FFCalendarDensity.regular;
+      expect(density.weekdayRowHeight, 36);
+      expect(density.weekdayFontSize, 11);
+      expect(density.dayFontSize, 16);
+      expect(density.useShortLabels, isFalse);
+    });
+
+    test('desktop tem valores maiores', () {
+      const density = FFCalendarDensity.desktop;
+      expect(density.weekdayRowHeight, 48);
+      expect(density.weekdayFontSize, 15);
+      expect(density.dayFontSize, 24);
+      expect(density.useShortLabels, isFalse);
+    });
+
+    test('fromWidth detecta densidade correta', () {
+      expect(FFCalendarDensitySpecs.fromWidth(500), FFCalendarDensity.compact);
+      expect(FFCalendarDensitySpecs.fromWidth(800), FFCalendarDensity.regular);
+      expect(FFCalendarDensitySpecs.fromWidth(1200), FFCalendarDensity.desktop);
+    });
+
+    test('weekdayLabels retorna labels corretos por densidade', () {
+      expect(FFCalendarDensity.compact.weekdayLabels, ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']);
+      expect(FFCalendarDensity.regular.weekdayLabels.first, 'DOM');
+      expect(FFCalendarDensity.desktop.weekdayLabels.first, 'DOM');
+    });
+  });
+
+  group('FFDayTotals extended', () {
+    test('totalCount soma countPagar e countReceber', () {
+      const totals = FFDayTotals(countPagar: 3, countReceber: 2);
+      expect(totals.totalCount, 5);
+    });
+
+    test('copyWith cria cópia com alterações', () {
+      const original = FFDayTotals(totalPagar: 100, countPagar: 1);
+      final copy = original.copyWith(totalReceber: 200, countReceber: 2);
+
+      expect(copy.totalPagar, 100);
+      expect(copy.countPagar, 1);
+      expect(copy.totalReceber, 200);
+      expect(copy.countReceber, 2);
+    });
+
+    test('copyWith mantém valores originais quando não especificado', () {
+      const original = FFDayTotals(
+        totalPagar: 100,
+        totalReceber: 200,
+        countPagar: 1,
+        countReceber: 2,
+      );
+      final copy = original.copyWith();
+
+      expect(copy.totalPagar, original.totalPagar);
+      expect(copy.totalReceber, original.totalReceber);
+      expect(copy.countPagar, original.countPagar);
+      expect(copy.countReceber, original.countReceber);
+    });
+  });
+
+  group('FFDayTile with density', () {
+    testWidgets('aceita density parameter', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 100,
+              height: 100,
+              child: FFDayTile(
+                day: 15,
+                density: FFCalendarDensity.desktop,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('15'), findsOneWidget);
+    });
+
+    testWidgets('renderiza corretamente no dark mode', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.dark(),
+          home: const Scaffold(
+            body: SizedBox(
+              width: 100,
+              height: 100,
+              child: FFDayTile(
+                day: 20,
+                isToday: true,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('20'), findsOneWidget);
+    });
+
+    testWidgets('mostra feriado no dark mode', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.dark(),
+          home: const Scaffold(
+            body: SizedBox(
+              width: 100,
+              height: 150,
+              child: FFDayTile(
+                day: 25,
+                isHoliday: true,
+                isDesktop: true,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Feriado'), findsOneWidget);
+    });
+  });
+
+  group('FFDayDetailsModal enhanced', () {
+    testWidgets('mostra botão de fechar', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => FFDayDetailsModal(
+                      date: DateTime(2024, 3, 15),
+                      dateFormatted: '15/03/2024',
+                      weekdayName: 'Sexta',
+                      totals: const FFDayTotals(),
+                      eventsBuilder: (controller) => const SizedBox(),
+                      config: const FFDayDetailsConfig(showCloseButton: true),
+                    ),
+                  );
+                },
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      // Verifica se o botão de fechar está presente
+      expect(find.byIcon(Icons.close), findsOneWidget);
+    });
+
+    testWidgets('renderiza corretamente no dark mode', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.dark(),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  FFDayDetailsModal.show(
+                    context: context,
+                    date: DateTime(2024, 3, 15),
+                    dateFormatted: '15/03/2024',
+                    weekdayName: 'Sexta',
+                    totals: const FFDayTotals(totalPagar: 100, countPagar: 1),
+                    eventsBuilder: (controller) => const SizedBox(),
+                  );
+                },
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('15/03/2024'), findsOneWidget);
+      expect(find.text('A Pagar'), findsOneWidget);
+    });
+  });
+
+  group('FFCollapsibleHeaderConfig', () {
+    test('defaultConfig tem valores corretos', () {
+      const config = FFCollapsibleHeaderConfig.defaultConfig;
+      expect(config.expandedHeight, 180);
+      expect(config.collapsedHeight, 88);
+      expect(config.collapseThreshold, 70);
+      expect(config.expandThreshold, 30);
+    });
+
+    test('compactConfig tem valores menores', () {
+      const config = FFCollapsibleHeaderConfig.compactConfig;
+      expect(config.expandedHeight, 160);
+      expect(config.collapsedHeight, 80);
+      expect(config.collapseThreshold, 50);
+      expect(config.expandThreshold, 20);
+    });
+  });
 }

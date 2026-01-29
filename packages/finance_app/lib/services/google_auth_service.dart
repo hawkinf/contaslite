@@ -425,36 +425,47 @@ class GoogleAuthService {
         apiBaseUrl = 'http://192.227.184.162:3000';
       }
 
-      debugPrint('🔐 Enviando token Google para: $apiBaseUrl/api/auth/google');
+      // Normalizar URL: preferir HTTPS se não for localhost
+      apiBaseUrl = _normalizeApiUrl(apiBaseUrl);
 
-      final response = await http
-          .post(
-            Uri.parse('$apiBaseUrl/api/auth/google'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({
-              'idToken': idToken,
-              'accessToken': accessToken,
-              'email': email,
-              'name': name,
-              'photoUrl': photoUrl,
-            }),
-          )
-          .timeout(const Duration(seconds: 30));
+      final endpoint = '$apiBaseUrl/api/auth/google';
+      debugPrint('🔐 Enviando token Google para: $endpoint');
 
-      debugPrint('🔐 Resposta do backend: ${response.statusCode}');
+      // Usar cliente que segue redirects
+      final client = http.Client();
+      try {
+        final request = http.Request('POST', Uri.parse(endpoint));
+        request.headers['Content-Type'] = 'application/json';
+        request.body = jsonEncode({
+          'idToken': idToken,
+          'accessToken': accessToken,
+          'email': email,
+          'name': name,
+          'photoUrl': photoUrl,
+        });
+        request.followRedirects = true;
+        request.maxRedirects = 5;
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        await _handleAuthSuccess(data, apiBaseUrl);
-        return AuthResult.successful();
-      } else if (response.statusCode == 401) {
-        return AuthResult.failed(
-          'Token do Google inválido',
-          errorCode: 'INVALID_GOOGLE_TOKEN',
-        );
-      } else {
-        final error = _parseError(response.body);
-        return AuthResult.failed(error, errorCode: 'SERVER_ERROR');
+        final streamedResponse = await client.send(request).timeout(const Duration(seconds: 30));
+        final response = await http.Response.fromStream(streamedResponse);
+
+        debugPrint('🔐 Resposta do backend: ${response.statusCode}');
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          await _handleAuthSuccess(data, apiBaseUrl);
+          return AuthResult.successful();
+        } else if (response.statusCode == 401) {
+          return AuthResult.failed(
+            'Token do Google inválido',
+            errorCode: 'INVALID_GOOGLE_TOKEN',
+          );
+        } else {
+          final error = _parseError(response.body);
+          return AuthResult.failed(error, errorCode: 'SERVER_ERROR');
+        }
+      } finally {
+        client.close();
       }
     } on TimeoutException {
       return AuthResult.failed(
@@ -535,6 +546,32 @@ class GoogleAuthService {
     } catch (e) {
       return 'Erro desconhecido';
     }
+  }
+
+  /// Normaliza a URL da API, preferindo HTTPS para URLs não-localhost
+  String _normalizeApiUrl(String url) {
+    // Remover trailing slash
+    url = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+
+    // Se não tem protocolo, adicionar https para produção
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://$url';
+    }
+
+    // Para URLs de produção (não localhost), preferir HTTPS
+    final uri = Uri.parse(url);
+    final isLocalhost = uri.host == 'localhost' ||
+        uri.host == '127.0.0.1' ||
+        uri.host.startsWith('192.168.') ||
+        uri.host.startsWith('10.');
+
+    if (!isLocalhost && uri.scheme == 'http') {
+      // Tentar HTTPS para URLs de produção
+      debugPrint('⚠️ Convertendo HTTP para HTTPS: $url');
+      url = url.replaceFirst('http://', 'https://');
+    }
+
+    return url;
   }
 
   /// Faz logout do Google

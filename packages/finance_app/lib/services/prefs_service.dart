@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'holiday_service.dart';
+import '../models/calendar_export_snapshot.dart';
 import '../models/contas_view_state_snapshot.dart';
 import '../models/database_config.dart';
 
@@ -23,6 +24,10 @@ class PrefsService {
   /// Provider para capturar o estado atual da dashboard (Contas)
   /// O dashboard registra sua função de snapshot aqui
   static ContasViewStateSnapshot? Function()? dashboardExportStateProvider;
+
+  /// Provider para capturar o estado atual do calendário
+  /// O CalendarScreen registra sua função de snapshot aqui
+  static CalendarExportSnapshot? Function()? calendarExportStateProvider;
 
   static bool _embeddedMode = false;
 
@@ -132,6 +137,12 @@ static Future<void> saveDateRange(DateTime start, DateTime end) async {
 
   static void setTabReturnIndex(int index) {
     tabReturnNotifier.value = index;
+  }
+
+  /// Reseta o dateRange para o mês atual (útil no startup)
+  static Future<void> jumpToCurrentMonth() async {
+    final range = _defaultDateRange();
+    await saveDateRange(range.start, range.end);
   }
 
   static Future<({DateTime start, DateTime end})> loadDateRange() async {

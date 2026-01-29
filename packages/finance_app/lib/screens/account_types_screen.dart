@@ -7,6 +7,9 @@ import '../widgets/icon_picker_dialog.dart';
 import '../services/prefs_service.dart';
 import '../services/credit_card_brand_service.dart';
 import '../services/default_account_categories_service.dart';
+import '../ui/components/ff_design_system.dart';
+import '../ui/theme/app_spacing.dart';
+import '../ui/theme/app_radius.dart';
 
 /// Opções de tipo de pessoa para seleção
 const List<String> tipoPessoaOptions = [
@@ -25,6 +28,7 @@ class AccountTypesScreen extends StatefulWidget {
 class _AccountTypesScreenState extends State<AccountTypesScreen> {
   List<AccountType> types = [];
   bool isLoading = false;
+  bool _isPopulating = false;
 
   @override
   void initState() {
@@ -39,76 +43,57 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
   }
 
   /// Atribui ícones inteligentes baseados na descrição de cada categoria
-  /// Garantindo que não haja repetição dentro do mesmo tipo pai
   Future<void> _assignIntelligentLogos() async {
     try {
       int updatedTypes = 0;
       int updatedCategories = 0;
-      
-      debugPrint('🎨 [ATRIBUIR LOGOS INTELIGENTES] Iniciando...');
-      
-      // Para cada tipo de conta
+
       for (final type in types) {
-        // 1. Atribuir logo ao tipo pai
         final parentLogo = DefaultAccountCategoriesService.getLogoForCategory(type.name);
         if (parentLogo != null && (type.logo == null || type.logo!.isEmpty)) {
           final updatedType = AccountType(id: type.id, name: type.name, logo: parentLogo);
           await DatabaseHelper.instance.updateType(updatedType);
           updatedTypes++;
-          debugPrint('🎨 [TIPO] ${type.name} → logo=$parentLogo');
         }
-        
-        // 2. Buscar as categorias filhas deste tipo
+
         if (type.id != null) {
           final categories = await DatabaseHelper.instance.readAccountCategories(type.id!);
-          final Set<String> usedLogos = {parentLogo ?? ''}; // Já usa o logo do pai
-          
-          debugPrint('  📋 ${categories.length} categorias para ${type.name}');
-          
-          // Para cada categoria filha
+          final Set<String> usedLogos = {parentLogo ?? ''};
+
           for (final category in categories) {
-            // Buscar um ícone baseado na descrição da categoria
             String? childLogo = DefaultAccountCategoriesService.getLogoForSubcategory(category.categoria);
-            
-            // Se o ícone já foi usado, tentar outro
+
             if (childLogo != null && usedLogos.contains(childLogo)) {
-              debugPrint('    ⚠️  Logo $childLogo já usado, procurando alternativa...');
-              // Tentar usar um logo genérico diferente
               childLogo = _findAlternativeLogo(category.categoria, usedLogos);
             }
-            
-            // SEMPRE atualizar o logo da categoria filha (mesmo que já tenha um)
+
             if (childLogo != null) {
               usedLogos.add(childLogo);
               final updatedCategory = category.copyWith(logo: childLogo);
               await DatabaseHelper.instance.updateAccountCategory(updatedCategory);
               updatedCategories++;
-              debugPrint('    ✅ ${category.categoria} → logo=$childLogo');
             }
           }
         }
       }
-      
+
       final total = updatedTypes + updatedCategories;
-      debugPrint('🎨 [RESULTADO] $updatedTypes tipos, $updatedCategories categorias = $total total');
-      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              total > 0 
-                ? '$updatedCategories categorias com ícones atribuídos!'
-                : 'Todas as categorias já têm ícones!'
+              total > 0
+                  ? '$updatedCategories categorias com ícones atribuídos!'
+                  : 'Todas as categorias já têm ícones!',
             ),
             backgroundColor: total > 0 ? Colors.green : Colors.orange,
             duration: const Duration(seconds: 2),
           ),
         );
       }
-      
+
       await refreshData();
     } catch (e) {
-      debugPrint('❌ [ERRO] Erro ao atribuir logos inteligentes: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -120,132 +105,126 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
     }
   }
 
-  /// Encontra um ícone alternativo para uma categoria, garantindo que não se repita
   String? _findAlternativeLogo(String categoryName, Set<String> usedLogos) {
-    // Lista de ícones alternativos em ordem de preferência
     final alternativeLogos = [
       '🏷️', '📌', '🎯', '✨', '💫', '🌟', '⭐', '✅', '📍', '🔖',
       '📊', '📈', '📉', '💹', '📐', '📏', '⏱️', '⏰', '🕐', '🕑',
       '🎪', '🎨', '🎭', '🎬', '🎤', '🎧', '🎵', '🎶', '🎸', '🎹',
     ];
-    
+
     for (final logo in alternativeLogos) {
       if (!usedLogos.contains(logo)) {
         return logo;
       }
     }
-    
-    return null; // Se todos os ícones foram usados
-  }
-  
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<DateTimeRange>(
-      valueListenable: PrefsService.dateRangeNotifier,
-      builder: (context, range, _) {
-        return SafeArea(
-          child: isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : types.isEmpty
-                  ? _buildEmptyState()
-                  : _buildTable(),
-        );
-      },
-    );
+
+    return null;
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.folder_open, size: 80, color: Colors.grey.shade400),
-          const SizedBox(height: 16),
-          Text('Nenhuma tabela/categoria cadastrada.', style: TextStyle(color: Colors.grey.shade600)),
-        ],
+  @override
+  Widget build(BuildContext context) {
+    return FFScreenScaffold(
+      title: 'Categorias',
+      useScrollView: false,
+      verticalPadding: 0,
+      child: ValueListenableBuilder<DateTimeRange>(
+        valueListenable: PrefsService.dateRangeNotifier,
+        builder: (context, range, _) {
+          if (isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          return Column(
+            children: [
+              // Actions bar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, AppSpacing.md, 0, AppSpacing.md),
+                child: FFEntityActionsBar(
+                  primaryAction: FFEntityAction(
+                    label: 'Nova Categoria',
+                    icon: Icons.add,
+                    onPressed: () => _showTypeDialog(),
+                  ),
+                  secondaryAction: FFEntityAction(
+                    label: 'Popular',
+                    icon: Icons.auto_awesome,
+                    onPressed: _isPopulating ? null : _populateDefaults,
+                    isLoading: _isPopulating,
+                  ),
+                ),
+              ),
+              // Content
+              Expanded(
+                child: types.isEmpty
+                    ? FFEmptyState.categorias(
+                        onAction: () => _showTypeDialog(),
+                      )
+                    : _buildList(),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildTable() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Wrap(
-          spacing: 12,
-          runSpacing: 8,
-          alignment: WrapAlignment.end,
-          children: [
-            FilledButton.icon(
-              onPressed: () => _showTypeDialog(),
-              icon: const Icon(Icons.add),
-              label: const Text('Nova Categoria'),
+  Widget _buildList() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return FFCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
             ),
-            FilledButton.icon(
-              onPressed: _populateDefaults,
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text('Popular'),
-              style: FilledButton.styleFrom(backgroundColor: Colors.amber.shade700),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Descrição',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                Text(
+                  'Ações',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300, width: 1),
-            borderRadius: BorderRadius.circular(8),
-            color: Theme.of(context).cardColor,
           ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: const Row(
-                  children: [
-                    Expanded(
-                      child: Text('Descrição', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                    SizedBox(width: 8),
-                    Text('Ações', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              ...types.map((type) => Container(
-                decoration: const BoxDecoration(
-                  border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1)),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                height: 56,
-                child: Row(
-                  children: [
-                    if (type.logo != null && type.logo!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 14.0),
-                        child: Text(type.logo!, style: const TextStyle(fontSize: 26)),
-                      ),
-                    Expanded(
-                      child: Text(type.name, style: const TextStyle(fontSize: 16)),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.edit, color: Colors.blue),
-                      onPressed: () => _showTypeDialog(typeToEdit: type),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.list, color: Colors.green),
-                      onPressed: () => _showCategoriesDialog(type),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _confirmDelete(type),
-                    ),
-                  ],
-                ),
-              )),
-            ],
+          // List
+          Expanded(
+            child: ListView.builder(
+              itemCount: types.length,
+              itemBuilder: (context, index) {
+                final type = types[index];
+                return FFEntityListItem.category(
+                  emoji: type.logo,
+                  name: type.name,
+                  onEdit: () => _showTypeDialog(typeToEdit: type),
+                  onTap: () => _showCategoriesDialog(type),
+                  onDelete: () => _confirmDelete(type),
+                  showDivider: index < types.length - 1,
+                );
+              },
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -257,48 +236,47 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
     await showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
         child: Container(
           width: 400,
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(AppSpacing.xl),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                isEditing ? 'Editar Item' : 'Adicionar na Tabela',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                isEditing ? 'Editar Categoria' : 'Nova Categoria',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 24),
-
+              const SizedBox(height: AppSpacing.xl),
               TextField(
                 controller: controller,
                 textCapitalization: TextCapitalization.sentences,
                 autofocus: true,
                 decoration: buildOutlinedInputDecoration(
-                  label: 'Nome do Tipo',
+                  label: 'Nome da Categoria',
                   icon: Icons.label,
                   hintText: 'Ex: Energia, Internet',
                 ),
               ),
-
-              const SizedBox(height: 16),
-
-              // Campo de Logo com botão para abrir picker
+              const SizedBox(height: AppSpacing.lg),
               Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: logoController,
                       decoration: buildOutlinedInputDecoration(
-                        label: 'Logo (emoji ou texto)',
+                        label: 'Logo (emoji)',
                         icon: Icons.image,
                         hintText: 'Ex: 🍔 ou 💳',
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  FilledButton.icon(
+                  const SizedBox(width: AppSpacing.md),
+                  FFSecondaryButton(
+                    label: 'Picker',
+                    icon: Icons.palette,
+                    expanded: false,
                     onPressed: () async {
                       final selectedIcon = await showIconPickerDialog(
                         ctx,
@@ -308,36 +286,36 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
                         logoController.text = selectedIcon;
                       }
                     },
-                    icon: const Icon(Icons.palette),
-                    label: const Text('Picker'),
                   ),
                 ],
               ),
-
-              const SizedBox(height: 24),
-
-              // Botões
+              const SizedBox(height: AppSpacing.xl),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(
+                  FFSecondaryButton(
+                    label: 'Cancelar',
+                    expanded: false,
                     onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Cancelar'),
                   ),
-                  const SizedBox(width: 12),
-                  FilledButton(
+                  const SizedBox(width: AppSpacing.sm),
+                  FFPrimaryButton(
+                    label: 'Salvar',
+                    expanded: false,
                     onPressed: () async {
                       String name = controller.text.trim();
                       String logo = logoController.text.trim();
                       if (name.isNotEmpty) {
                         if (!isEditing || (isEditing && name.toUpperCase() != typeToEdit.name.toUpperCase())) {
-                           bool exists = await DatabaseHelper.instance.checkAccountTypeExists(name);
-                           if (exists) {
-                             if (ctx.mounted) {
-                               ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Erro: Este nome já existe!'), backgroundColor: Colors.red));
-                             }
-                             return;
-                           }
+                          bool exists = await DatabaseHelper.instance.checkAccountTypeExists(name);
+                          if (exists) {
+                            if (ctx.mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                const SnackBar(content: Text('Erro: Este nome já existe!'), backgroundColor: Colors.red),
+                              );
+                            }
+                            return;
+                          }
                         }
 
                         if (isEditing) {
@@ -351,7 +329,6 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
                         refreshData();
                       }
                     },
-                    child: const Text('Salvar'),
                   ),
                 ],
               ),
@@ -380,30 +357,29 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
   }
 
   Future<void> _confirmDelete(AccountType type) async {
-    final confirm = await showDialog<bool>(
+    final confirm = await FFConfirmDialog.show(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Confirma exclusão?'),
-        content: Text('Isso apagará todas as contas vinculadas a "${type.name}".'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Não')),
-          FilledButton(style: FilledButton.styleFrom(backgroundColor: Colors.red), onPressed: () => Navigator.pop(ctx, true), child: const Text('Sim, Excluir')),
-        ],
-      ),
+      title: 'Excluir "${type.name}"?',
+      message: 'Isso apagará todas as contas vinculadas a esta categoria.',
+      confirmLabel: 'Excluir',
+      isDanger: true,
+      icon: Icons.delete_outline,
     );
 
-    if (confirm == true) {
+    if (confirm) {
       await DatabaseHelper.instance.deleteType(type.id!);
       refreshData();
     }
   }
 
   Future<void> _populateDefaults() async {
-    // Mostrar diálogo de seleção de tipo de pessoa
+    if (_isPopulating) return;
+    setState(() => _isPopulating = true);
+
     final tipoPessoa = await showDialog<String>(
       context: context,
       builder: (ctx) {
-        String selected = tipoPessoaOptions[2]; // Ambos (PF e PJ) como padrão
+        String selected = tipoPessoaOptions[2];
         return StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
             title: const Text('Popular Categorias'),
@@ -443,102 +419,101 @@ class _AccountTypesScreenState extends State<AccountTypesScreen> {
       },
     );
 
-    if (tipoPessoa == null || !mounted) return;
+    if (tipoPessoa == null || !mounted) {
+      setState(() => _isPopulating = false);
+      return;
+    }
 
-    // Obter categorias do serviço com base no tipo selecionado
-    final defaultService = DefaultAccountCategoriesService.instance;
-    final categoriesMap = defaultService.getCategoriesAsMap(tipoPessoa: tipoPessoa);
+    try {
+      final defaultService = DefaultAccountCategoriesService.instance;
+      final categoriesMap = defaultService.getCategoriesAsMap(tipoPessoa: tipoPessoa);
 
-    int typesCreated = 0;
-    int categoriesCreated = 0;
+      int typesCreated = 0;
+      int categoriesCreated = 0;
 
-    // Carregar todos os tipos existentes
-    final existingTypes = await DatabaseHelper.instance.readAllTypes();
-    final typeIdByName = <String, int>{
-      for (final type in existingTypes) type.name.trim().toUpperCase(): type.id!,
-    };
+      final existingTypes = await DatabaseHelper.instance.readAllTypes();
+      final typeIdByName = <String, int>{
+        for (final type in existingTypes) type.name.trim().toUpperCase(): type.id!,
+      };
 
-    // Criar tipos e subcategorias
-    for (final typeName in categoriesMap.keys) {
-      final normalizedName = typeName.trim().toUpperCase();
-      int typeId;
+      for (final typeName in categoriesMap.keys) {
+        final normalizedName = typeName.trim().toUpperCase();
+        int typeId;
 
-      if (typeIdByName.containsKey(normalizedName)) {
-        typeId = typeIdByName[normalizedName]!;
-      } else {
-        // Obter o ícone apropriado para esta categoria
-        final logo = DefaultAccountCategoriesService.getLogoForCategory(typeName);
-        typeId = await DatabaseHelper.instance.createType(
-          AccountType(name: typeName, logo: logo),
-        );
-        typeIdByName[normalizedName] = typeId;
-        typesCreated++;
-      }
+        if (typeIdByName.containsKey(normalizedName)) {
+          typeId = typeIdByName[normalizedName]!;
+        } else {
+          final logo = DefaultAccountCategoriesService.getLogoForCategory(typeName);
+          typeId = await DatabaseHelper.instance.createType(
+            AccountType(name: typeName, logo: logo),
+          );
+          typeIdByName[normalizedName] = typeId;
+          typesCreated++;
+        }
 
-      // Criar subcategorias
-      final subcategories = categoriesMap[typeName]!;
-      final existingCategories = await DatabaseHelper.instance.readAccountCategories(typeId);
-      final existingNames = existingCategories.map((c) => c.categoria.trim().toUpperCase()).toSet();
+        final subcategories = categoriesMap[typeName]!;
+        final existingCategories = await DatabaseHelper.instance.readAccountCategories(typeId);
+        final existingNames = existingCategories.map((c) => c.categoria.trim().toUpperCase()).toSet();
 
-      for (final subcategory in subcategories) {
-        final normalizedSub = subcategory.trim().toUpperCase();
-        if (existingNames.contains(normalizedSub)) continue;
+        for (final subcategory in subcategories) {
+          final normalizedSub = subcategory.trim().toUpperCase();
+          if (existingNames.contains(normalizedSub)) continue;
 
-        await DatabaseHelper.instance.createAccountCategory(
-          AccountCategory(accountId: typeId, categoria: subcategory),
-        );
-        existingNames.add(normalizedSub);
-        categoriesCreated++;
-      }
+          await DatabaseHelper.instance.createAccountCategory(
+            AccountCategory(accountId: typeId, categoria: subcategory),
+          );
+          existingNames.add(normalizedSub);
+          categoriesCreated++;
+        }
 
-      // Se for Recebimentos, adicionar subcategorias filhas
-      if (normalizedName == DefaultAccountCategoriesService.recebimentosName.toUpperCase()) {
-        final recebimentosChildren = defaultService.getRecebimentosChildDefaults(tipoPessoa: tipoPessoa);
-        for (final entry in recebimentosChildren.entries) {
-          final parentName = entry.key;
-          final parentNormalized = parentName.trim().toUpperCase();
+        if (normalizedName == DefaultAccountCategoriesService.recebimentosName.toUpperCase()) {
+          final recebimentosChildren = defaultService.getRecebimentosChildDefaults(tipoPessoa: tipoPessoa);
+          for (final entry in recebimentosChildren.entries) {
+            final parentName = entry.key;
+            final parentNormalized = parentName.trim().toUpperCase();
 
-          if (!existingNames.contains(parentNormalized)) {
-            await DatabaseHelper.instance.createAccountCategory(
-              AccountCategory(accountId: typeId, categoria: parentName),
-            );
-            existingNames.add(parentNormalized);
-            categoriesCreated++;
-          }
+            if (!existingNames.contains(parentNormalized)) {
+              await DatabaseHelper.instance.createAccountCategory(
+                AccountCategory(accountId: typeId, categoria: parentName),
+              );
+              existingNames.add(parentNormalized);
+              categoriesCreated++;
+            }
 
-          for (final child in entry.value) {
-            final fullName = defaultService.buildRecebimentosChildName(parentName, child);
-            final fullNormalized = fullName.trim().toUpperCase();
-            if (existingNames.contains(fullNormalized)) continue;
+            for (final child in entry.value) {
+              final fullName = defaultService.buildRecebimentosChildName(parentName, child);
+              final fullNormalized = fullName.trim().toUpperCase();
+              if (existingNames.contains(fullNormalized)) continue;
 
-            await DatabaseHelper.instance.createAccountCategory(
-              AccountCategory(accountId: typeId, categoria: fullName),
-            );
-            existingNames.add(fullNormalized);
-            categoriesCreated++;
+              await DatabaseHelper.instance.createAccountCategory(
+                AccountCategory(accountId: typeId, categoria: fullName),
+              );
+              existingNames.add(fullNormalized);
+              categoriesCreated++;
+            }
           }
         }
       }
-    }
 
-    if (mounted) {
-      final total = typesCreated + categoriesCreated;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            total > 0
-                ? '$typesCreated tipos e $categoriesCreated categorias adicionados!'
-                : 'Todas as categorias padrão já existem!',
+      if (mounted) {
+        final total = typesCreated + categoriesCreated;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              total > 0
+                  ? '$typesCreated tipos e $categoriesCreated categorias adicionados!'
+                  : 'Todas as categorias padrão já existem!',
+            ),
+            backgroundColor: total > 0 ? Colors.green : Colors.orange,
           ),
-          backgroundColor: total > 0 ? Colors.green : Colors.orange,
-        ),
-      );
-    }
+        );
+      }
 
-    // SEMPRE atualizar ícones de TODOS os tipos e categorias (novos E existentes)
-    await _assignIntelligentLogos();
-    
-    refreshData();
+      await _assignIntelligentLogos();
+      refreshData();
+    } finally {
+      if (mounted) setState(() => _isPopulating = false);
+    }
   }
 }
 
@@ -569,7 +544,6 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
   void initState() {
     super.initState();
     _categorias = List.from(widget.categorias);
-    // Carregar bandeiras se for cartão
     _loadCreditCardBrandsIfNeeded();
   }
 
@@ -587,8 +561,7 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
     if (isCardType) {
       setState(() => _isLoadingBrands = true);
       try {
-        final brands =
-            await CreditCardBrandService.instance.fetchBrands();
+        final brands = await CreditCardBrandService.instance.fetchBrands();
         if (mounted) {
           setState(() {
             _creditCardBrands = brands;
@@ -627,47 +600,38 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
 
     final subcategories = defaultCategories[widget.typeName]!;
     final parentLogo = DefaultAccountCategoriesService.getLogoForCategory(widget.typeName);
-    final Set<String> usedLogos = {parentLogo ?? ''}; // Evitar repetir o logo do pai
-    
-    debugPrint('🎨 _loadDefaultCategories: tipo=${widget.typeName}, parentLogo=$parentLogo');
+    final Set<String> usedLogos = {parentLogo ?? ''};
+
     int addedCount = 0;
     int updatedCount = 0;
 
     for (final subcategory in subcategories) {
-      // Buscar logo inteligente baseado na descrição da subcategoria
       String? childLogo = DefaultAccountCategoriesService.getLogoForSubcategory(subcategory);
-      
-      // Se o logo já foi usado, procurar alternativa
+
       if (childLogo != null && usedLogos.contains(childLogo)) {
         childLogo = _findAlternativeLogo(subcategory, usedLogos);
       }
-      
-      // Adicionar à lista de logos usados
+
       if (childLogo != null) {
         usedLogos.add(childLogo);
       }
-      
-      // Buscar categoria no BANCO (não apenas na lista em memória)
+
       final categoriesFromDb = await DatabaseHelper.instance.readAccountCategories(widget.typeId);
       final existingCategory = categoriesFromDb.firstWhere(
         (cat) => cat.categoria.toLowerCase().trim() == subcategory.toLowerCase().trim(),
         orElse: () => AccountCategory(accountId: widget.typeId, categoria: ''),
       );
-      
+
       if (existingCategory.id != null) {
-        // Categoria existe - ATUALIZAR o logo
         final updated = existingCategory.copyWith(logo: childLogo);
         await DatabaseHelper.instance.updateAccountCategory(updated);
-        debugPrint('🎨 Atualizando categoria: $subcategory com logo=$childLogo');
         updatedCount++;
       } else {
-        // Categoria NÃO existe - CRIAR
         final categoria = AccountCategory(
           accountId: widget.typeId,
           categoria: subcategory,
           logo: childLogo,
         );
-        debugPrint('🎨 Criando categoria: $subcategory com logo=$childLogo');
         await DatabaseHelper.instance.createAccountCategory(categoria);
         addedCount++;
       }
@@ -690,20 +654,19 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
     widget.onCategoriasUpdated();
   }
 
-  /// Encontra um ícone alternativo garantindo que não se repita
   String? _findAlternativeLogo(String categoryName, Set<String> usedLogos) {
     final alternativeLogos = [
       '🏷️', '📌', '🎯', '✨', '💫', '🌟', '⭐', '✅', '📍', '🔖',
       '📊', '📈', '📉', '💹', '📐', '📏', '⏱️', '⏰', '🕐', '🕑',
       '🎪', '🎨', '🎭', '🎬', '🎤', '🎧', '🎵', '🎶', '🎸', '🎹',
     ];
-    
+
     for (final logo in alternativeLogos) {
       if (!usedLogos.contains(logo)) {
         return logo;
       }
     }
-    
+
     return null;
   }
 
@@ -726,9 +689,8 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
       return;
     }
 
-    // Obter logo do tipo/categoria pai
     final logo = DefaultAccountCategoriesService.getLogoForCategory(widget.typeName);
-    
+
     final categoria = AccountCategory(
       accountId: widget.typeId,
       categoria: text,
@@ -808,25 +770,19 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
     if (result != null && result['name']!.isNotEmpty) {
       final newName = result['name']!;
       final newLogo = result['logo']!.isEmpty ? null : result['logo'];
-      
-      // Só atualizar se houve mudança no nome OU no logo
+
       final nameChanged = newName != category.categoria;
       final logoChanged = newLogo != category.logo;
-      
+
       if (!nameChanged && !logoChanged) {
-        debugPrint('[EDIT] Nenhuma mudança detectada, pulando update');
         controller.dispose();
         logoController.dispose();
         return;
       }
-      
-      debugPrint('[EDIT] Editando categoria: ID=${category.id}, de "${category.categoria}" para "$newName", logo: $newLogo');
 
-      // Verificar se o novo nome já existe (excluindo o registro atual)
       if (nameChanged) {
         final exists = await DatabaseHelper.instance.checkAccountCategoryExists(widget.typeId, newName);
         if (exists) {
-          debugPrint('[EDIT] Nome "$newName" já existe!');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Uma categoria com este nome já existe'), backgroundColor: Colors.red),
@@ -839,13 +795,9 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
       }
 
       final updated = category.copyWith(categoria: newName, logo: newLogo);
-      debugPrint('[EDIT] Chamando updateAccountCategory com ID=${updated.id}');
-      final rowsAffected = await DatabaseHelper.instance.updateAccountCategory(updated);
-      debugPrint('[EDIT] Resultado do update: $rowsAffected linhas');
+      await DatabaseHelper.instance.updateAccountCategory(updated);
 
-      // Recarregar dados do banco para garantir sincronização
       final refreshed = await DatabaseHelper.instance.readAccountCategories(widget.typeId);
-      debugPrint('[EDIT] Recarregado ${refreshed.length} categorias do banco');
       setState(() {
         _categorias.clear();
         _categorias.addAll(refreshed);
@@ -857,23 +809,12 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
   }
 
   Future<void> _deleteCategory(int id) async {
-    final confirm = await showDialog<bool>(
+    final confirm = await FFConfirmDialog.showDelete(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Deletar Categoria?'),
-        content: const Text('Deseja remover esta categoria?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Deletar'),
-          ),
-        ],
-      ),
+      itemName: 'esta categoria',
     );
 
-    if (confirm == true) {
+    if (confirm) {
       await DatabaseHelper.instance.deleteAccountCategory(id);
       await _reloadCategories();
       widget.onCategoriasUpdated();
@@ -885,15 +826,13 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
 
     int addedCount = 0;
     for (final brand in _creditCardBrands!) {
-      final exists = await DatabaseHelper.instance
-          .checkAccountCategoryExists(widget.typeId, brand.name);
+      final exists = await DatabaseHelper.instance.checkAccountCategoryExists(widget.typeId, brand.name);
       if (!exists) {
         final categoria = AccountCategory(
           accountId: widget.typeId,
           categoria: brand.name,
         );
-        final id =
-            await DatabaseHelper.instance.createAccountCategory(categoria);
+        final id = await DatabaseHelper.instance.createAccountCategory(categoria);
         setState(() {
           _categorias.add(
             AccountCategory(
@@ -923,211 +862,132 @@ class _CategoriasManagementDialogState extends State<_CategoriasManagementDialog
     widget.onCategoriasUpdated();
   }
 
-  // ignore: unused_element
-  Future<void> _removeDuplicates() async {
-    final Map<String, List<AccountCategory>> grouped = {};
-    
-    // Agrupar por nome
-    for (final cat in _categorias) {
-      final key = cat.categoria.toLowerCase().trim();
-      if (!grouped.containsKey(key)) {
-        grouped[key] = [];
-      }
-      grouped[key]!.add(cat);
-    }
-    
-    int deletedCount = 0;
-    
-    // Para cada grupo, manter apenas o primeiro e deletar os demais
-    for (final entry in grouped.entries) {
-      if (entry.value.length > 1) {
-        // Ordenar por ID (manter o mais antigo)
-        entry.value.sort((a, b) => (a.id ?? 0).compareTo(b.id ?? 0));
-        
-        // Deletar duplicatas (todos exceto o primeiro)
-        for (int i = 1; i < entry.value.length; i++) {
-          if (entry.value[i].id != null) {
-            await DatabaseHelper.instance.deleteAccountCategory(entry.value[i].id!);
-            deletedCount++;
-            debugPrint('🗑️ Deletada duplicata: ${entry.value[i].categoria} (id=${entry.value[i].id})');
-          }
-        }
-      }
-    }
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            deletedCount > 0
-                ? '$deletedCount duplicatas removidas!'
-                : 'Nenhuma duplicata encontrada!',
-          ),
-          backgroundColor: deletedCount > 0 ? Colors.green : Colors.orange,
-        ),
-      );
-    }
-    
-    await _reloadCategories();
-    widget.onCategoriasUpdated();
-  }
-
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      backgroundColor: const Color(0xFFF5F5F5),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+      backgroundColor: isDark ? colorScheme.surface : Colors.white,
       child: Container(
-        width: 400,
+        width: 450,
         constraints: const BoxConstraints(maxHeight: 600),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Categorias: ${widget.typeName}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87),
-            ),
-            const SizedBox(height: 16),
-
-            // Campo de entrada
-            TextField(
-              controller: _newCategoriaController,
-            decoration: buildOutlinedInputDecoration(
-              label: 'Nova Categoria',
-              icon: Icons.add_circle,
-              suffixIcon: _newCategoriaController.text.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: const Icon(Icons.clear, size: 20),
-                      onPressed: () => setState(() => _newCategoriaController.clear()),
-                    ),
-              dense: true,
-            ),
-            onChanged: (val) => setState(() {}),
-            onSubmitted: (val) => _addCategory(),
-            ),
-            const SizedBox(height: 12),
-
+            // Header
             Row(
               children: [
+                Icon(Icons.category_outlined, color: colorScheme.primary),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.add),
-                    label: const Text('Adicionar'),
-                    onPressed: _addCategory,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade700,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Text(
+                    'Categorias: ${widget.typeName}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface,
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            // Add field
+            Row(
+              children: [
                 Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.auto_awesome, size: 18),
-                    label: const Text('Popular'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber.shade600,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: TextField(
+                    controller: _newCategoriaController,
+                    decoration: buildOutlinedInputDecoration(
+                      label: 'Nova Subcategoria',
+                      icon: Icons.add_circle,
+                      dense: true,
                     ),
-                    onPressed: _loadDefaultCategories,
+                    onSubmitted: (_) => _addCategory(),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: AppSpacing.md),
 
-            const SizedBox(height: 16),
-            
-            // Botão para popular com bandeiras (se for cartão)
-            if (_creditCardBrands != null && _creditCardBrands!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.cloud_download, size: 18),
-                  label: const Text('Carregar Bandeiras'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade600,
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: _isLoadingBrands ? null : _loadBrandsAsCategories,
-                ),
+            // Action buttons
+            FFEntityActionsBar(
+              primaryAction: FFEntityAction(
+                label: 'Adicionar',
+                icon: Icons.add,
+                onPressed: _addCategory,
               ),
-                        // Lista de categorias
+              secondaryAction: FFEntityAction(
+                label: 'Popular',
+                icon: Icons.auto_awesome,
+                onPressed: _loadDefaultCategories,
+              ),
+            ),
+
+            if (_creditCardBrands != null && _creditCardBrands!.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              FFSecondaryButton(
+                label: 'Carregar Bandeiras',
+                icon: Icons.cloud_download,
+                onPressed: _isLoadingBrands ? null : _loadBrandsAsCategories,
+                tonal: true,
+              ),
+            ],
+
+            const SizedBox(height: AppSpacing.lg),
+
+            // List
             Flexible(
               child: _categorias.isEmpty
                   ? Center(
                       child: Text(
-                        'Nenhuma categoria cadastrada',
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                        'Nenhuma subcategoria cadastrada',
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 14,
+                        ),
                       ),
                     )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: _categorias.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (ctx, idx) {
-                        final cat = _categorias[idx];
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    if (cat.logo != null && cat.logo!.isNotEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(right: 8.0),
-                                        child: Text(cat.logo!, style: const TextStyle(fontSize: 16)),
-                                      ),
-                                    Expanded(
-                                      child: Text(
-                                        cat.categoria,
-                                        style: const TextStyle(fontSize: 14, color: Colors.black87),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
-                                onPressed: () => _editCategory(cat),
-                                tooltip: 'Editar',
-                                splashRadius: 20,
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                                onPressed: () => _deleteCategory(cat.id!),
-                                tooltip: 'Deletar',
-                                splashRadius: 20,
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+                  : FFCard(
+                      padding: EdgeInsets.zero,
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: _categorias.length,
+                        itemBuilder: (context, index) {
+                          final cat = _categorias[index];
+                          return FFEntityListItem.category(
+                            emoji: cat.logo,
+                            name: cat.categoria,
+                            onEdit: () => _editCategory(cat),
+                            onDelete: () => _deleteCategory(cat.id!),
+                            showDivider: index < _categorias.length - 1,
+                            density: FFEntityDensity.compact,
+                          );
+                        },
+                      ),
                     ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
 
-            // Botão de fechar
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Fechar', style: TextStyle(fontSize: 14)),
-                ),
-              ],
+            // Close button
+            Align(
+              alignment: Alignment.centerRight,
+              child: FFSecondaryButton(
+                label: 'Fechar',
+                expanded: false,
+                onPressed: () => Navigator.pop(context),
+              ),
             ),
           ],
         ),

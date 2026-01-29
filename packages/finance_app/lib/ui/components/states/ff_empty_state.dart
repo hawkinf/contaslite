@@ -134,6 +134,70 @@ class FFEmptyState extends StatelessWidget {
     );
   }
 
+  /// Factory para lista de categorias vazia
+  factory FFEmptyState.categorias({
+    Key? key,
+    String? description,
+    VoidCallback? onAction,
+  }) {
+    return FFEmptyState(
+      key: key,
+      icon: Icons.category_outlined,
+      title: 'Nenhuma categoria',
+      description: description ?? 'Adicione categorias para organizar suas contas.',
+      actionLabel: onAction != null ? 'Nova Categoria' : null,
+      onAction: onAction,
+    );
+  }
+
+  /// Factory para lista de bancos vazia
+  factory FFEmptyState.bancos({
+    Key? key,
+    String? description,
+    VoidCallback? onAction,
+  }) {
+    return FFEmptyState(
+      key: key,
+      icon: Icons.account_balance_outlined,
+      title: 'Nenhum banco cadastrado',
+      description: description ?? 'Adicione suas contas bancárias para facilitar o controle.',
+      actionLabel: onAction != null ? 'Novo Banco' : null,
+      onAction: onAction,
+    );
+  }
+
+  /// Factory para lista de formas de pagamento vazia
+  factory FFEmptyState.formasPagamento({
+    Key? key,
+    String? description,
+    VoidCallback? onAction,
+  }) {
+    return FFEmptyState(
+      key: key,
+      icon: Icons.payment_outlined,
+      title: 'Nenhuma forma de pagamento',
+      description: description ?? 'Adicione formas de pagamento e recebimento.',
+      actionLabel: onAction != null ? 'Novo Item' : null,
+      onAction: onAction,
+    );
+  }
+
+  /// Factory para tabelas/cadastros vazios
+  factory FFEmptyState.tabelas({
+    Key? key,
+    String? description,
+    VoidCallback? onAction,
+  }) {
+    return FFEmptyState(
+      key: key,
+      icon: Icons.table_chart_outlined,
+      title: 'Nenhum cadastro',
+      description: description ?? 'Gerencie suas tabelas e cadastros aqui.',
+      actionLabel: onAction != null ? 'Começar' : null,
+      onAction: onAction,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;

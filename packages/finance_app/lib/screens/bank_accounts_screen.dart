@@ -6,7 +6,9 @@ import '../services/bank_service.dart';
 import '../widgets/app_input_decoration.dart';
 import '../services/prefs_service.dart';
 import '../utils/color_contrast.dart';
-import '../ui/components/app_modal_header.dart';
+import '../ui/components/ff_design_system.dart';
+import '../ui/theme/app_spacing.dart';
+import '../ui/theme/app_radius.dart';
 
 class BankAccountsScreen extends StatefulWidget {
   const BankAccountsScreen({super.key});
@@ -48,8 +50,7 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
       try {
         fetched = await BankService.instance.fetchBanks();
       } catch (_) {}
-      fetched
-          .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      fetched.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
       if (!mounted) return;
       setState(() {
         _items = saved;
@@ -77,13 +78,11 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
   }) {
     return StatefulBuilder(
       builder: (context, setState) {
-        final searchCtrl = TextEditingController();
         List<BankInfo> filteredBanks = [...allBanks];
         if (fallbackBank != null && !filteredBanks.contains(fallbackBank)) {
           filteredBanks.add(fallbackBank);
         }
-        filteredBanks.sort(
-            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        filteredBanks.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
         return Autocomplete<BankInfo>(
           displayStringForOption: (BankInfo option) =>
@@ -100,16 +99,12 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
             }).toList();
           },
           onSelected: (BankInfo selection) {
-            searchCtrl.text =
-                '${_formatBankCode(selection.code)} - ${selection.name}';
             onChanged(selection);
-            // Atualizar descrição com o nome do banco
             if (descriptionController.text.isEmpty) {
               descriptionController.text = selection.name;
             }
           },
-          fieldViewBuilder: (context, textEditingController, focusNode,
-              onFieldSubmitted) {
+          fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
             if (initialBank != null && textEditingController.text.isEmpty) {
               textEditingController.text =
                   '${_formatBankCode(initialBank.code)} - ${initialBank.name}';
@@ -118,14 +113,13 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
               controller: textEditingController,
               focusNode: focusNode,
               decoration: buildOutlinedInputDecoration(
-                label: 'Banco (codigo + nome)',
+                label: 'Banco (código + nome)',
                 icon: Icons.account_balance,
               ),
               onChanged: (value) {
                 setState(() {});
               },
-              validator: (v) =>
-                  (v == null || v.isEmpty) ? 'Selecione o banco' : null,
+              validator: (v) => (v == null || v.isEmpty) ? 'Selecione o banco' : null,
             );
           },
           optionsViewBuilder: (context, onSelected, options) {
@@ -133,7 +127,7 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
               alignment: Alignment.topLeft,
               child: Material(
                 elevation: 4,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
                 child: SizedBox(
                   width: 300,
                   child: ListView.builder(
@@ -145,8 +139,7 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
                       return InkWell(
                         onTap: () => onSelected(option),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           child: Text(
                             '${_formatBankCode(option.code)} - ${option.name}',
                             overflow: TextOverflow.ellipsis,
@@ -173,8 +166,7 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
 
   Future<void> _openForm({BankAccount? bank}) async {
     final formKey = GlobalKey<FormState>();
-    final descriptionCtrl =
-        TextEditingController(text: bank?.description ?? '');
+    final descriptionCtrl = TextEditingController(text: bank?.description ?? '');
     final agencyCtrl = TextEditingController(text: bank?.agency ?? '');
     final accountCtrl = TextEditingController(text: bank?.account ?? '');
     int selectedColorValue = bank?.color ?? _defaultBankColor;
@@ -186,7 +178,6 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
       selectedBank = fallbackBank;
     }
 
-    // Se é novo banco e não há descrição, usar o nome do banco como padrão
     if (bank == null && descriptionCtrl.text.isEmpty && selectedBank != null) {
       descriptionCtrl.text = selectedBank.name;
     }
@@ -197,9 +188,8 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
       builder: (ctx) {
         final media = MediaQuery.of(ctx);
         final viewInsets = media.viewInsets.bottom;
-        final maxWidth =
-            media.size.width <= 520 ? media.size.width * 0.95 : 420.0;
-        final maxHeight = media.size.height * 0.7;
+        final maxWidth = media.size.width <= 520 ? media.size.width * 0.95 : 420.0;
+        final maxHeight = media.size.height * 0.75;
 
         return StatefulBuilder(
           builder: (modalCtx, setModalState) {
@@ -215,22 +205,39 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
                   child: Material(
                     color: Theme.of(ctx).colorScheme.surface,
                     elevation: 10,
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(AppSpacing.xl),
                       child: Form(
                         key: formKey,
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            AppModalHeader(
-                              title: bank == null ? 'Adicionar Banco' : 'Editar Banco',
-                              onClose: () => Navigator.of(ctx).pop(),
-                              showDivider: false,
-                              padding: EdgeInsets.zero,
+                            // Header
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.account_balance,
+                                  color: Theme.of(ctx).colorScheme.primary,
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Expanded(
+                                  child: Text(
+                                    bank == null ? 'Adicionar Banco' : 'Editar Banco',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () => Navigator.of(ctx).pop(),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: AppSpacing.lg),
                             TextFormField(
                               controller: descriptionCtrl,
                               textCapitalization: TextCapitalization.sentences,
@@ -238,28 +245,23 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
                                 label: 'Descrição / Tipo da Conta',
                                 icon: Icons.badge_outlined,
                               ),
-                              validator: (v) => v == null || v.trim().isEmpty
-                                  ? 'Informe a descrição'
-                                  : null,
+                              validator: (v) =>
+                                  v == null || v.trim().isEmpty ? 'Informe a descrição' : null,
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppSpacing.lg),
                             Text(
                               'Escolha uma cor',
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
-                                color: Theme.of(ctx)
-                                    .colorScheme
-                                    .onSurface
-                                    .withValues(alpha: 0.7),
+                                color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.7),
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: AppSpacing.md),
                             Wrap(
                               spacing: 12,
                               runSpacing: 12,
                               children: _bankColors.map((color) {
-                                final isSelected =
-                                    selectedColorValue == color.toARGB32();
+                                final isSelected = selectedColorValue == color.toARGB32();
                                 return Material(
                                   color: Colors.transparent,
                                   child: InkWell(
@@ -292,7 +294,7 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
                                 );
                               }).toList(),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppSpacing.lg),
                             _buildBankSearchField(
                               initialBank: selectedBank,
                               onChanged: (val) => setModalState(() => selectedBank = val),
@@ -300,38 +302,35 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
                               fallbackBank: fallbackBank,
                               descriptionController: descriptionCtrl,
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: AppSpacing.md),
                             TextFormField(
                               controller: agencyCtrl,
                               decoration: buildOutlinedInputDecoration(
-                                  label: 'Agencia', icon: Icons.home_work),
+                                label: 'Agência',
+                                icon: Icons.home_work,
+                              ),
                               inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                    RegExp(r'[0-9-]'))
+                                FilteringTextInputFormatter.allow(RegExp(r'[0-9-]'))
                               ],
-                              validator: (v) => v == null || v.isEmpty
-                                  ? 'Informe a agencia'
-                                  : null,
+                              validator: (v) =>
+                                  v == null || v.isEmpty ? 'Informe a agência' : null,
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: AppSpacing.md),
                             TextFormField(
                               controller: accountCtrl,
                               decoration: buildOutlinedInputDecoration(
-                                  label: 'C/C',
-                                  icon: Icons.account_balance_wallet),
+                                label: 'C/C',
+                                icon: Icons.account_balance_wallet,
+                              ),
                               inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                    RegExp(r'[0-9-]'))
+                                FilteringTextInputFormatter.allow(RegExp(r'[0-9-]'))
                               ],
-                              validator: (v) => v == null || v.isEmpty
-                                  ? 'Informe a conta'
-                                  : null,
+                              validator: (v) => v == null || v.isEmpty ? 'Informe a conta' : null,
                             ),
-                            const SizedBox(height: 18),
-                            FilledButton.icon(
-                              icon: const Icon(Icons.save),
-                              label:
-                                  Text(bank == null ? 'Salvar' : 'Atualizar'),
+                            const SizedBox(height: AppSpacing.xl),
+                            FFPrimaryButton(
+                              label: bank == null ? 'Salvar' : 'Atualizar',
+                              icon: Icons.save,
                               onPressed: () async {
                                 if (!formKey.currentState!.validate()) return;
                                 final newBank = BankAccount(
@@ -344,11 +343,9 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
                                   color: selectedColorValue,
                                 );
                                 if (bank == null) {
-                                  await DatabaseHelper.instance
-                                      .createBankAccount(newBank);
+                                  await DatabaseHelper.instance.createBankAccount(newBank);
                                 } else {
-                                  await DatabaseHelper.instance
-                                      .updateBankAccount(newBank);
+                                  await DatabaseHelper.instance.updateBankAccount(newBank);
                                 }
                                 if (!mounted) return;
                                 Navigator.of(context).pop();
@@ -356,10 +353,9 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
                               },
                             ),
                             if (bank != null) ...[
-                              const SizedBox(height: 8),
+                              const SizedBox(height: AppSpacing.sm),
                               TextButton.icon(
-                                style: TextButton.styleFrom(
-                                    foregroundColor: Colors.red),
+                                style: TextButton.styleFrom(foregroundColor: Colors.red),
                                 icon: const Icon(Icons.delete_forever),
                                 label: const Text('Excluir banco'),
                                 onPressed: () {
@@ -385,203 +381,206 @@ class _BankAccountsScreenState extends State<BankAccountsScreen> {
   }
 
   Future<void> _deleteBank(int id) async {
-    final confirm = await showDialog<bool>(
+    final confirm = await FFConfirmDialog.show(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Excluir banco?'),
-        content: const Text('Essa conta bancaria sera removida.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Excluir'),
-          ),
-        ],
-      ),
+      title: 'Excluir banco?',
+      message: 'Esta conta bancária será removida permanentemente.',
+      confirmLabel: 'Excluir',
+      isDanger: true,
+      icon: Icons.delete_outline,
     );
-    if (confirm == true) {
+
+    if (confirm) {
       await DatabaseHelper.instance.deleteBankAccount(id);
       _loadData();
     }
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return FFScreenScaffold(
+      title: 'Contas Bancárias',
+      useScrollView: false,
+      verticalPadding: 0,
+      child: ValueListenableBuilder<DateTimeRange>(
+        valueListenable: PrefsService.dateRangeNotifier,
+        builder: (context, range, _) {
+          if (_loading) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
+          return Column(
+            children: [
+              // Actions bar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, AppSpacing.md, 0, AppSpacing.md),
+                child: FFEntityActionsBar(
+                  primaryAction: FFEntityAction(
+                    label: 'Novo Banco',
+                    icon: Icons.add,
+                    onPressed: (_banks.isEmpty && !_loading)
+                        ? () => ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Carregando lista de bancos, tente novamente.'),
+                              ),
+                            )
+                        : _openForm,
+                  ),
+                ),
+              ),
+              // Content
+              Expanded(
+                child: _items.isEmpty
+                    ? FFEmptyState.bancos(
+                        onAction: _banks.isNotEmpty ? _openForm : null,
+                      )
+                    : _buildList(),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildList() {
+    return ListView.separated(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+      itemCount: _items.length,
+      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+      itemBuilder: (context, index) {
+        final bank = _items[index];
+        return _BankAccountCard(
+          bank: bank,
+          onTap: () => _openForm(bank: bank),
+          onEdit: () => _openForm(bank: bank),
+          onDelete: bank.id != null ? () => _deleteBank(bank.id!) : null,
+        );
+      },
+    );
+  }
+}
+
+/// Card de conta bancária no estilo FF*
+class _BankAccountCard extends StatelessWidget {
+  final BankAccount bank;
+  final VoidCallback? onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+
+  const _BankAccountCard({
+    required this.bank,
+    this.onTap,
+    this.onEdit,
+    this.onDelete,
+  });
+
+  String _formatBankCode(int code) => code.toString().padLeft(3, '0');
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<DateTimeRange>(
-      valueListenable: PrefsService.dateRangeNotifier,
-      builder: (context, range, _) {
-        return Scaffold(
-          appBar: AppBar(
-            // Título removido para evitar duplicidade
-          ),
-          body: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                      child: Row(
-                        children: [
-                          const Spacer(),
-                          FilledButton.icon(
-                            onPressed: (_banks.isEmpty && !_loading)
-                                ? () => ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text(
-                                              'Carregando lista de bancos, tente novamente.',
-                                            ),
-                                          ),
-                                        )
-                                : _openForm,
-                            icon: const Icon(Icons.add),
-                            label: const Text('Novo Banco'),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: Colors.blue.shade800,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 18, vertical: 14),
-                              shape: const StadiumBorder(),
-                            ),
-                          ),
-                        ],
+    final Color cardColor = Color(bank.color);
+    final Color textColor = foregroundColorFor(cardColor);
+    final Color subtleTextColor = textColor.withValues(alpha: 0.78);
+
+    return FFCard(
+      padding: EdgeInsets.zero,
+      backgroundColor: cardColor,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Color bar
+            Container(
+              width: 6,
+              height: 50,
+              decoration: BoxDecoration(
+                color: cardColor.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${_formatBankCode(bank.code)} - ${bank.name}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      color: textColor,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    bank.description,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: subtleTextColor,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Icon(Icons.account_balance, size: 14, color: subtleTextColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Ag: ',
+                        style: TextStyle(fontSize: 11, color: subtleTextColor),
                       ),
-                    ),
-                    Expanded(
-                      child: _items.isEmpty
-                          ? Center(
-                              child: Text(
-                                'Nenhum banco salvo.\nUse "Novo Banco" para adicionar.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.grey.shade700),
-                              ),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                              itemCount: _items.length,
-                              itemBuilder: (context, index) {
-                                final bank = _items[index];
-                                final Color cardColor = Color(bank.color);
-                                final Color borderColor = cardColor.withValues(alpha: 0.85);
-                                final Color textColor = foregroundColorFor(cardColor);
-                                final Color subtleTextColor = textColor.withValues(alpha: 0.78);
-                                return Card(
-                                  clipBehavior: Clip.antiAlias,
-                                  elevation: 2,
-                                  margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    side: BorderSide(color: borderColor, width: 2),
-                                  ),
-                                  color: cardColor,
-                                  child: InkWell(
-                                    onTap: () => _openForm(bank: bank),
-                                    borderRadius: BorderRadius.circular(14),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Container(
-                                            width: 6,
-                                            height: 44,
-                                            decoration: BoxDecoration(
-                                              color: borderColor,
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                              Text(
-                                                '${_formatBankCode(bank.code)} - ${bank.name}',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 16.8,
-                                                  color: textColor,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                bank.description,
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  color: subtleTextColor,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Row(
-                                                children: [
-                                                  Icon(Icons.account_balance, size: 16, color: subtleTextColor),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    'Agência: ',
-                                                    style: TextStyle(fontSize: 11, color: subtleTextColor),
-                                                  ),
-                                                  Text(
-                                                    bank.agency,
-                                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColor),
-                                                  ),
-                                                  const SizedBox(width: 12),
-                                                  Icon(Icons.numbers, size: 16, color: subtleTextColor),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    'Conta: ',
-                                                    style: TextStyle(fontSize: 11, color: subtleTextColor),
-                                                  ),
-                                                  Text(
-                                                    bank.account,
-                                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textColor),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Column(
-                                            crossAxisAlignment: CrossAxisAlignment.end,
-                                            children: [
-                                              Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Tooltip(
-                                                    message: 'Editar',
-                                                    child: IconButton(
-                                                      icon: const Icon(Icons.edit, color: Colors.blue, size: 22),
-                                                      onPressed: () => _openForm(bank: bank),
-                                                    ),
-                                                  ),
-                                                  Tooltip(
-                                                    message: 'Excluir',
-                                                    child: IconButton(
-                                                      icon: const Icon(Icons.delete, color: Colors.red, size: 22),
-                                                      onPressed: bank.id != null ? () => _deleteBank(bank.id!) : null,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
+                      Text(
+                        bank.agency,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Icon(Icons.numbers, size: 14, color: subtleTextColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        'C/C: ',
+                        style: TextStyle(fontSize: 11, color: subtleTextColor),
+                      ),
+                      Text(
+                        bank.account,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // Actions
+            Column(
+              children: [
+                FFIconActionButton(
+                  icon: Icons.edit_outlined,
+                  onPressed: onEdit ?? () {},
+                  iconColor: textColor.withValues(alpha: 0.8),
+                  tooltip: 'Editar',
                 ),
-        );
-      },
+                FFIconActionButton.danger(
+                  icon: Icons.delete_outline,
+                  onPressed: onDelete ?? () {},
+                  tooltip: 'Excluir',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

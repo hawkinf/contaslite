@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import '../database/db_helper.dart';
 import '../models/payment_method.dart';
@@ -6,7 +5,9 @@ import '../services/database_initialization_service.dart';
 import '../services/default_account_categories_service.dart';
 import '../widgets/app_input_decoration.dart';
 import '../services/prefs_service.dart';
-import '../widgets/dialog_close_button.dart';
+import '../ui/components/ff_design_system.dart';
+import '../ui/theme/app_spacing.dart';
+import '../ui/theme/app_radius.dart';
 
 class PaymentMethodsScreen extends StatefulWidget {
   const PaymentMethodsScreen({super.key});
@@ -16,7 +17,8 @@ class PaymentMethodsScreen extends StatefulWidget {
 }
 
 class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
-  late Future<List<PaymentMethod>> _futurePaymentMethods;
+  List<PaymentMethod> _methods = [];
+  bool _isLoading = true;
   bool _isPopulating = false;
 
   static const int _fallbackIconCode = 0xe25a; // payments
@@ -63,25 +65,32 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     _loadPaymentMethods();
   }
 
-  void _loadPaymentMethods() {
-    _futurePaymentMethods = DatabaseHelper.instance.readPaymentMethods(onlyActive: false);
-  }
-
-  void _refresh() {
-    setState(() {
-      _loadPaymentMethods();
-    });
+  Future<void> _loadPaymentMethods() async {
+    setState(() => _isLoading = true);
+    try {
+      final methods = await DatabaseHelper.instance.readPaymentMethods(onlyActive: false);
+      if (mounted) {
+        setState(() {
+          _methods = methods;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _methods = [];
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _populateDefaults() async {
     if (_isPopulating) return;
     setState(() => _isPopulating = true);
     try {
-      // Primeiro popula os métodos padrão
       await DatabaseInitializationService.instance
           .populatePaymentMethods(DatabaseHelper.instance);
-
-      // Depois atribui logos inteligentes aos métodos existentes sem logo
       await _assignIntelligentLogos();
 
       if (!mounted) return;
@@ -91,7 +100,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           backgroundColor: Colors.green,
         ),
       );
-      _refresh();
+      _loadPaymentMethods();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -105,14 +114,11 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     }
   }
 
-  /// Atribui logos (emojis) inteligentes a todos os métodos de pagamento
-  /// que ainda não têm logo definido.
   Future<void> _assignIntelligentLogos() async {
     final db = DatabaseHelper.instance;
     final methods = await db.readPaymentMethods(onlyActive: false);
 
     for (final method in methods) {
-      // Atribui logo se estiver vazio ou nulo
       if (method.logo == null || method.logo!.isEmpty) {
         final logo = DefaultAccountCategoriesService.getLogoForPaymentMethod(method.name);
         if (logo.isNotEmpty) {
@@ -132,247 +138,241 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
         final usageNotifier = ValueNotifier<PaymentMethodUsage>(
           method?.usage ?? PaymentMethodUsage.pagamentosRecebimentos,
         );
-        int selectedIconCode = method?.iconCode ?? _inferIcon(nameController.text, typeController.text).codePoint;
-        // Tipos disponíveis (pode ser ajustado conforme necessidade)
+        int selectedIconCode =
+            method?.iconCode ?? _inferIcon(nameController.text, typeController.text).codePoint;
         const paymentTypes = ['CASH', 'PIX', 'BANK_DEBIT', 'CREDIT_CARD'];
 
-        // Se é novo e nome está vazio, usar o tipo como padrão
         if (!isEditing && nameController.text.isEmpty && typeController.text.isNotEmpty) {
           nameController.text = typeController.text;
         }
 
         return Dialog(
-          insetPadding: EdgeInsets.zero,
-          backgroundColor: Colors.transparent,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Stack(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          blurRadius: 16,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.all(24),
-                    child: StatefulBuilder(
-                      builder: (context, setStateDialog) {
-                        return Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isEditing
-                              ? 'Editar Forma de Pagamento/Recebimento'
-                              : 'Nova Forma de Pagamento/Recebimento',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: StatefulBuilder(
+                builder: (context, setStateDialog) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.payment,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        TextField(
-                          controller: nameController,
-                          decoration: buildOutlinedInputDecoration(
-                            label: 'Nome',
-                            icon: Icons.payment,
-                          ),
-                        ),
-	                        const SizedBox(height: 16),
-	                        ValueListenableBuilder<PaymentMethodUsage>(
-	                          valueListenable: usageNotifier,
-	                          builder: (context, usage, _) {
-	                            return DropdownButtonFormField<PaymentMethodUsage>(
-	                              key: ValueKey(usage),
-	                              initialValue: usage,
-	                              decoration: buildOutlinedInputDecoration(
-	                                label: 'Uso:',
-	                                icon: Icons.swap_horiz,
-	                              ),
-	                              items: PaymentMethodUsage.values
-	                                  .map((u) => DropdownMenuItem(
-	                                        value: u,
-	                                        child: Text(u.label),
-	                                      ))
-	                                  .toList(),
-	                              onChanged: (value) {
-	                                if (value == null) return;
-	                                usageNotifier.value = value;
-	                              },
-	                            );
-	                          },
-	                        ),
-	                        const SizedBox(height: 16),
-	                        DropdownButtonFormField<String>(
-                          initialValue: typeController.text.isNotEmpty ? typeController.text : null,
-                          decoration: buildOutlinedInputDecoration(
-                            label: 'Tipo',
-                            icon: Icons.category,
-                          ),
-                          items: paymentTypes
-                              .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                              .toList(),
-                          onChanged: (value) {
-                            if (value == null) return;
-                            // Atualiza controller para manter compatibilidade na gravação
-                            typeController.text = value;
-                            if (nameController.text.isEmpty) {
-                              nameController.text = value;
-                            }
-                          },
-                        ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade200,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Icon(
-                                  IconData(selectedIconCode, fontFamily: 'MaterialIcons'),
-                                  color: Colors.grey.shade800,
-                                ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              isEditing
+                                  ? 'Editar Forma de Pagamento'
+                                  : 'Nova Forma de Pagamento',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  icon: const Icon(Icons.edit),
-                                  label: const Text('Alterar ícone'),
-                                  onPressed: () async {
-                                    final picked = await showModalBottomSheet<int>(
-                                      context: context,
-                                      builder: (ctx) => SafeArea(
-                                        child: GridView.builder(
-                                          padding: const EdgeInsets.all(16),
-                                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                            crossAxisCount: 4,
-                                            mainAxisSpacing: 12,
-                                            crossAxisSpacing: 12,
-                                            childAspectRatio: 1,
-                                          ),
-                                          itemCount: _iconPalette.length,
-                                          itemBuilder: (_, index) {
-                                            final icon = _iconPalette[index];
-                                            return InkWell(
-                                              onTap: () => Navigator.pop(ctx, icon.codePoint),
-                                              borderRadius: BorderRadius.circular(12),
-                                              child: Container(
-                                                decoration: BoxDecoration(
-                                                  color: Colors.grey.shade100,
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                                child: Icon(icon, size: 28, color: Colors.grey.shade800),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    );
-                                    if (picked != null) {
-                                      setStateDialog(() => selectedIconCode = picked);
-                                    }
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        const SizedBox(height: 24),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Cancelar'),
                             ),
-                            const SizedBox(width: 8),
-                            FilledButton(
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      TextField(
+                        controller: nameController,
+                        decoration: buildOutlinedInputDecoration(
+                          label: 'Nome',
+                          icon: Icons.payment,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      ValueListenableBuilder<PaymentMethodUsage>(
+                        valueListenable: usageNotifier,
+                        builder: (context, usage, _) {
+                          return DropdownButtonFormField<PaymentMethodUsage>(
+                            key: ValueKey(usage),
+                            initialValue: usage,
+                            decoration: buildOutlinedInputDecoration(
+                              label: 'Uso:',
+                              icon: Icons.swap_horiz,
+                            ),
+                            items: PaymentMethodUsage.values
+                                .map((u) => DropdownMenuItem(
+                                      value: u,
+                                      child: Text(u.label),
+                                    ))
+                                .toList(),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              usageNotifier.value = value;
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      DropdownButtonFormField<String>(
+                        initialValue: typeController.text.isNotEmpty ? typeController.text : null,
+                        decoration: buildOutlinedInputDecoration(
+                          label: 'Tipo',
+                          icon: Icons.category,
+                        ),
+                        items: paymentTypes
+                            .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          typeController.text = value;
+                          if (nameController.text.isEmpty) {
+                            nameController.text = value;
+                          }
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
+                            ),
+                            child: Icon(
+                              IconData(selectedIconCode, fontFamily: 'MaterialIcons'),
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: FFSecondaryButton(
+                              label: 'Alterar ícone',
+                              icon: Icons.edit,
                               onPressed: () async {
-                                final name = nameController.text.trim();
-                                final type = typeController.text.trim();
-                                final usage = usageNotifier.value;
-                                final iconCode = selectedIconCode != 0
+                                final picked = await showModalBottomSheet<int>(
+                                  context: context,
+                                  builder: (ctx) => SafeArea(
+                                    child: GridView.builder(
+                                      padding: const EdgeInsets.all(AppSpacing.lg),
+                                      gridDelegate:
+                                          const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 4,
+                                        mainAxisSpacing: 12,
+                                        crossAxisSpacing: 12,
+                                        childAspectRatio: 1,
+                                      ),
+                                      itemCount: _iconPalette.length,
+                                      itemBuilder: (_, index) {
+                                        final icon = _iconPalette[index];
+                                        return InkWell(
+                                          onTap: () => Navigator.pop(ctx, icon.codePoint),
+                                          borderRadius: BorderRadius.circular(AppRadius.md),
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey.shade100,
+                                              borderRadius:
+                                                  BorderRadius.circular(AppRadius.md),
+                                            ),
+                                            child: Icon(icon,
+                                                size: 28, color: Colors.grey.shade800),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                );
+                                if (picked != null) {
+                                  setStateDialog(() => selectedIconCode = picked);
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          FFSecondaryButton(
+                            label: 'Cancelar',
+                            expanded: false,
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          FFPrimaryButton(
+                            label: isEditing ? 'Salvar' : 'Criar',
+                            expanded: false,
+                            onPressed: () async {
+                              final name = nameController.text.trim();
+                              final type = typeController.text.trim();
+                              final usage = usageNotifier.value;
+                              final iconCode = selectedIconCode != 0
                                   ? selectedIconCode
                                   : _inferIcon(name, type).codePoint;
 
-                                if (name.isEmpty) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Nome é obrigatório')),
-                                  );
-                                  return;
-                                }
+                              if (name.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Nome é obrigatório')),
+                                );
+                                return;
+                              }
 
-                                if (type.isEmpty) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Tipo é obrigatório')),
-                                  );
-                                  return;
-                                }
+                              if (type.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Tipo é obrigatório')),
+                                );
+                                return;
+                              }
 
-                                // Verificar duplicidade
-                                final exists = await DatabaseHelper.instance
-                                    .checkPaymentMethodExists(name, excludeId: method?.id);
-                                if (!context.mounted) return;
+                              final exists = await DatabaseHelper.instance
+                                  .checkPaymentMethodExists(name, excludeId: method?.id);
+                              if (!context.mounted) return;
 
-                                if (exists) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Já existe uma forma de pagamento/recebimento com este nome')),
-                                  );
-                                  return;
-                                }
+                              if (exists) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          'Já existe uma forma de pagamento com este nome')),
+                                );
+                                return;
+                              }
 
-                                // Salvar
-                                if (isEditing) {
-                                  await DatabaseHelper.instance.updatePaymentMethod(
-	                                    method.copyWith(
-	                                      name: name,
-	                                      type: type,
-	                                      usage: usage,
-	                                    ),
-                                  );
-                                } else {
-                                  await DatabaseHelper.instance.createPaymentMethod(
-                                    PaymentMethod(
-                                      name: name,
-                                      type: type,
-                                      iconCode: iconCode,
-                                      requiresBank: false,
-                                      isActive: true,
-                                      usage: usage,
-                                    ),
-                                  );
-                                }
+                              if (isEditing) {
+                                await DatabaseHelper.instance.updatePaymentMethod(
+                                  method.copyWith(
+                                    name: name,
+                                    type: type,
+                                    usage: usage,
+                                  ),
+                                );
+                              } else {
+                                await DatabaseHelper.instance.createPaymentMethod(
+                                  PaymentMethod(
+                                    name: name,
+                                    type: type,
+                                    iconCode: iconCode,
+                                    requiresBank: false,
+                                    isActive: true,
+                                    usage: usage,
+                                  ),
+                                );
+                              }
 
-                                if (!context.mounted) return;
-                                Navigator.pop(context);
-                                _refresh();
-                              },
-                              child: Text(isEditing ? 'Salvar' : 'Criar'),
-                            ),
-                          ],
-                        ),
-                      ],
-                        );
-                      },
-                    ),
-                  ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: DialogCloseButton(
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ),
-                ],
+                              if (!context.mounted) return;
+                              Navigator.pop(context);
+                              _loadPaymentMethods();
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -381,141 +381,123 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     );
   }
 
-  void _deletePaymentMethod(PaymentMethod method) {
-    showDialog(
+  Future<void> _deletePaymentMethod(PaymentMethod method) async {
+    final confirm = await FFConfirmDialog.showDelete(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Deletar Forma de Pagamento/Recebimento?'),
-        content: Text('Tem certeza que deseja deletar "${method.name}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () async {
-              await DatabaseHelper.instance.deletePaymentMethod(method.id!);
-              if (!context.mounted) return;
-              Navigator.pop(context);
-              _refresh();
-            },
-            child: const Text('Deletar', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+      itemName: method.name,
     );
+
+    if (confirm) {
+      await DatabaseHelper.instance.deletePaymentMethod(method.id!);
+      _loadPaymentMethods();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<DateTimeRange>(
-      valueListenable: PrefsService.dateRangeNotifier,
-      builder: (context, range, _) {
-        return SafeArea(
-          child: FutureBuilder<List<PaymentMethod>>(
-            future: _futurePaymentMethods,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+    return FFScreenScaffold(
+      title: 'Formas de Pagamento',
+      useScrollView: false,
+      verticalPadding: 0,
+      child: ValueListenableBuilder<DateTimeRange>(
+        valueListenable: PrefsService.dateRangeNotifier,
+        builder: (context, range, _) {
+          if (_isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-              if (snapshot.hasError) {
-                return Center(child: Text('Erro: ${snapshot.error}'));
-              }
-
-              final methods = snapshot.data ?? [];
-
-              return ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  // Botões de ação
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.end,
-                    children: [
-                      FilledButton.icon(
-                        onPressed: () => _showPaymentMethodDialog(),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Novo Item'),
-                      ),
-                      FilledButton.icon(
-                        onPressed: _isPopulating ? null : _populateDefaults,
-                        icon: const Icon(Icons.auto_awesome),
-                        label: const Text('Popular'),
-                        style: FilledButton.styleFrom(backgroundColor: Colors.amber.shade700),
-                      ),
-                    ],
+          return Column(
+            children: [
+              // Actions bar
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, AppSpacing.md, 0, AppSpacing.md),
+                child: FFEntityActionsBar(
+                  primaryAction: FFEntityAction(
+                    label: 'Novo Item',
+                    icon: Icons.add,
+                    onPressed: () => _showPaymentMethodDialog(),
                   ),
-                  const SizedBox(height: 12),
-                  // Tabela
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300, width: 1),
-                      borderRadius: BorderRadius.circular(8),
-                      color: Theme.of(context).cardColor,
-                    ),
-                    child: Column(
-                      children: [
-                        // Cabeçalho
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          child: const Row(
-                            children: [
-                              Expanded(
-                                child: Text('Descrição', style: TextStyle(fontWeight: FontWeight.bold)),
-                              ),
-                              SizedBox(width: 8),
-                              Text('Ações', style: TextStyle(fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                        ),
-                        const Divider(height: 1),
-                        // Lista vazia
-                        if (methods.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.all(32),
-                            child: Center(
-                              child: Text('Nenhuma forma de pagamento/recebimento cadastrada'),
-                            ),
-                          ),
-                        // Itens da lista
-                        ...methods.map((method) => Container(
-                          decoration: const BoxDecoration(
-                            border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0), width: 1)),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          height: 56,
-                          child: Row(
-                            children: [
-                              if (method.logo != null && method.logo!.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(right: 14.0),
-                                  child: Text(method.logo!, style: const TextStyle(fontSize: 26)),
-                                ),
-                              Expanded(
-                                child: Text(method.name, style: const TextStyle(fontSize: 16)),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.edit, color: Colors.blue),
-                                onPressed: () => _showPaymentMethodDialog(method: method),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _deletePaymentMethod(method),
-                              ),
-                            ],
-                          ),
-                        )),
-                      ],
+                  secondaryAction: FFEntityAction(
+                    label: 'Popular',
+                    icon: Icons.auto_awesome,
+                    onPressed: _isPopulating ? null : _populateDefaults,
+                    isLoading: _isPopulating,
+                  ),
+                ),
+              ),
+              // Content
+              Expanded(
+                child: _methods.isEmpty
+                    ? FFEmptyState.formasPagamento(
+                        onAction: () => _showPaymentMethodDialog(),
+                      )
+                    : _buildList(),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildList() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return FFCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Descrição',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
-                ],
-              );
-            },
+                ),
+                Text(
+                  'Ações',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
           ),
-        );
-      },
+          // List
+          Expanded(
+            child: ListView.builder(
+              itemCount: _methods.length,
+              itemBuilder: (context, index) {
+                final method = _methods[index];
+                return FFEntityListItem.paymentMethod(
+                  emoji: method.logo,
+                  icon: IconData(method.iconCode, fontFamily: 'MaterialIcons'),
+                  name: method.name,
+                  type: method.type,
+                  onEdit: () => _showPaymentMethodDialog(method: method),
+                  onDelete: () => _deletePaymentMethod(method),
+                  showDivider: index < _methods.length - 1,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

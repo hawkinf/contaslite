@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const { modelsByTableName } = require('../models');
 const logger = require('../utils/logger');
+const { validateFKs } = require('../utils/fkValidator');
 
 /**
  * Tabelas suportadas para sincronização
@@ -63,11 +64,42 @@ const push = async (req, res) => {
       serverTimestamp: serverTimestamp.toISOString()
     };
 
+    // LOG DIAGNÓSTICO: Verificar FKs recebidas do Flutter
+    if (table === 'account_descriptions') {
+      if (creates && creates.length > 0) {
+        logger.info(`[FK DIAG] account_descriptions creates[0]: accountId=${creates[0].accountId}, description="${creates[0].description}"`);
+      }
+      if (updates && updates.length > 0) {
+        logger.info(`[FK DIAG] account_descriptions updates[0]: accountId=${updates[0].accountId}, server_id=${updates[0].server_id}`);
+      }
+    } else if (table === 'accounts') {
+      if (creates && creates.length > 0) {
+        logger.info(`[FK DIAG] accounts creates[0]: typeId=${creates[0].typeId}, categoryId=${creates[0].categoryId}, description="${creates[0].description}"`);
+      }
+      if (updates && updates.length > 0) {
+        logger.info(`[FK DIAG] accounts updates[0]: typeId=${updates[0].typeId}, categoryId=${updates[0].categoryId}, server_id=${updates[0].server_id}`);
+      }
+    }
+
     // Processar criações
     if (creates && Array.isArray(creates)) {
       for (const data of creates) {
         try {
           const localId = data.id || data.local_id;
+
+          // TRAVA DE SEGURANÇA: Validar FKs pertencem ao mesmo usuário
+          const fkValidation = await validateFKs(table, data, userId);
+          if (!fkValidation.valid) {
+            logger.warn(`[${table}] FK REJEITADA (create): local_id=${localId}, erros: ${fkValidation.errors.join(', ')}`);
+            result.rejected = result.rejected || [];
+            result.rejected.push({
+              local_id: localId,
+              reason: 'FK_VALIDATION_FAILED',
+              errors: fkValidation.errors
+            });
+            continue;
+          }
+
           const modelData = Model.fromFlutterData ? Model.fromFlutterData(data, userId) : { ...data, user_id: userId };
 
           // Remover id local para não conflitar
@@ -97,6 +129,20 @@ const push = async (req, res) => {
 
           if (!serverId) {
             logger.warn(`[${table}] Update sem server_id ignorado: local_id=${localId}`);
+            continue;
+          }
+
+          // TRAVA DE SEGURANÇA: Validar FKs pertencem ao mesmo usuário
+          const fkValidation = await validateFKs(table, data, userId);
+          if (!fkValidation.valid) {
+            logger.warn(`[${table}] FK REJEITADA (update): server_id=${serverId}, erros: ${fkValidation.errors.join(', ')}`);
+            result.rejected = result.rejected || [];
+            result.rejected.push({
+              local_id: localId,
+              server_id: serverId,
+              reason: 'FK_VALIDATION_FAILED',
+              errors: fkValidation.errors
+            });
             continue;
           }
 
@@ -168,7 +214,7 @@ const push = async (req, res) => {
       }
     }
 
-    logger.info(`[SYNC PUSH] ${table}: ${result.created.length} criados, ${result.updated.length} atualizados, ${deletes?.length || 0} deletados, ${result.conflicts.length} conflitos`);
+    logger.info(`[SYNC PUSH] ${table}: ${result.created.length} criados, ${result.updated.length} atualizados, ${deletes?.length || 0} deletados, ${result.conflicts.length} conflitos, ${result.rejected?.length || 0} rejeitados por FK`);
 
     return res.status(200).json(result);
 

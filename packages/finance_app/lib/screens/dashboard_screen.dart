@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:brasil_fields/brasil_fields.dart';
 import '../database/db_helper.dart';
 import '../models/account.dart';
+import '../services/app_startup_controller.dart';
 import '../services/prefs_service.dart';
 import '../services/holiday_service.dart';
 import '../services/default_account_categories_service.dart';
@@ -97,6 +98,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _currentLoadStage = '';
 
   late final VoidCallback _dateRangeListener;
+  late final VoidCallback _jumpToTodayListener;
   // ... (Variáveis de estado mantidas)
   late DateTime _startDate;
   late DateTime _endDate;
@@ -154,6 +156,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void dispose() {
     PrefsService.dateRangeNotifier.removeListener(_dateRangeListener);
     PrefsService.compactModeNotifier.removeListener(_compactModeListener);
+    AppStartupController.jumpToTodayNotifier.removeListener(_jumpToTodayListener);
     _listScrollController.removeListener(_onScroll);
     _selectedConta.dispose();
     _listScrollController.dispose();
@@ -305,6 +308,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _listScrollController.addListener(_onScroll);
     // Registrar provider de snapshot para exportação
     PrefsService.dashboardExportStateProvider = _buildContasViewSnapshot;
+
+    // Listener para jump to today (vindo do AppStartupController)
+    _jumpToTodayListener = () {
+      if (AppStartupController.jumpToTodayNotifier.value) {
+        _jumpToToday();
+      }
+    };
+    AppStartupController.jumpToTodayNotifier.addListener(_jumpToTodayListener);
+
     _initDates();
   }
 
@@ -325,6 +337,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _datesInitialized = true;
     });
     _loadData();
+  }
+
+  /// Navega para o mês atual (hoje)
+  void _jumpToToday() {
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, 1);
+    final end = DateTime(now.year, now.month + 1, 0);
+    _clearSelection();
+    PrefsService.saveDateRange(start, end);
   }
 
   void _changeMonth(int offset) {

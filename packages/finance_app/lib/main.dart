@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+import 'services/app_startup_controller.dart';
 import 'services/prefs_service.dart';
 import 'services/database_initialization_service.dart';
 import 'services/auth_service.dart';
@@ -36,6 +37,10 @@ void main() async {
     debugPrint('⚙️  Inicializando PrefsService...');
     await PrefsService.init();
     debugPrint('✓ PrefsService inicializado');
+
+    debugPrint('🚀 Inicializando AppStartupController...');
+    await AppStartupController.init();
+    debugPrint('✓ AppStartupController inicializado');
 
     debugPrint('🌍 Inicializando formatação de data...');
     await initializeDateFormatting('pt_BR', null);

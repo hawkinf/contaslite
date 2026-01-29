@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../database/sync_helpers.dart';
+import '../services/app_startup_controller.dart';
 import '../services/holiday_service.dart';
 import '../services/prefs_service.dart';
 import '../ui/components/app_modal_header.dart';
@@ -26,12 +27,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late List<String> _cities;
   late String _selectedCity;
   bool _citiesInitialized = false;
+  bool _useLastSession = false;
 
   @override
   void initState() {
     super.initState();
     _selectedCity = PrefsService.cityNotifier.value;
     _initializeCities();
+    _loadStartupPreference();
+  }
+
+  Future<void> _loadStartupPreference() async {
+    final useLastSession = await AppStartupController.getUseLastSession();
+    if (mounted) {
+      setState(() => _useLastSession = useLastSession);
+    }
   }
 
   void _initializeCities() {
@@ -606,6 +616,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
             bottomSpacing: 0,
             child: Column(
               children: [
+                // Toggle de inicialização
+                FFCard(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                        ),
+                        child: Icon(
+                          Icons.open_in_new,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Lembrar última aba',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _useLastSession
+                                  ? 'Restaurar última aba ao abrir'
+                                  : 'Sempre abrir na aba Contas',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: _useLastSession,
+                        onChanged: (value) async {
+                          setState(() => _useLastSession = value);
+                          await AppStartupController.saveUseLastSession(value);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
                 FFActionCard(
                   icon: Icons.storage_outlined,
                   title: 'Banco de Dados',

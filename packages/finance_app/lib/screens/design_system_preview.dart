@@ -18,6 +18,7 @@ class DesignSystemPreview extends StatefulWidget {
 class _DesignSystemPreviewState extends State<DesignSystemPreview> {
   bool _switchValue = true;
   String _dropdownValue = 'Opção 1';
+  FFCalendarViewMode _calendarMode = FFCalendarViewMode.monthly;
 
   @override
   Widget build(BuildContext context) {
@@ -468,6 +469,207 @@ class _DesignSystemPreviewState extends State<DesignSystemPreview> {
                       color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
+                ),
+              ],
+            ),
+          ),
+
+          // ========================================
+          // CALENDAR
+          // ========================================
+          FFSection(
+            title: 'Calendar',
+            icon: Icons.calendar_month,
+            subtitle: 'Componentes de calendário',
+            child: Column(
+              children: [
+                _buildSubsection('FFWeekdayRow'),
+                FFCard(
+                  child: Column(
+                    children: [
+                      const Text('Default (regular)'),
+                      const SizedBox(height: AppSpacing.sm),
+                      FFWeekdayRow(),
+                      const SizedBox(height: AppSpacing.md),
+                      const Text('Compact (mobile)'),
+                      const SizedBox(height: AppSpacing.sm),
+                      FFWeekdayRow.compact(),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+
+                _buildSubsection('FFCalendarModeSelector'),
+                FFCalendarModeSelector(
+                  currentMode: _calendarMode,
+                  onModeChanged: (mode) {
+                    setState(() => _calendarMode = mode);
+                    _showSnackBar('Modo: ${mode.label}');
+                  },
+                ),
+                const SizedBox(height: AppSpacing.md),
+                FFCalendarModeSelector.compact(
+                  currentMode: _calendarMode,
+                  onModeChanged: (mode) => setState(() => _calendarMode = mode),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+
+                _buildSubsection('FFCalendarTotalsBar'),
+                const FFCalendarTotalsBar(
+                  totals: FFPeriodTotals(
+                    totalPagar: 5250.00,
+                    totalReceber: 8750.00,
+                    countPagar: 12,
+                    countReceber: 5,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+
+                _buildSubsection('FFDayTile (variações)'),
+                const FFCard(
+                  child: SizedBox(
+                    height: 120,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            children: [
+                              Text('Normal', style: TextStyle(fontSize: 10)),
+                              Expanded(
+                                child: FFDayTile(day: 15),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              Text('Hoje', style: TextStyle(fontSize: 10)),
+                              Expanded(
+                                child: FFDayTile(day: 20, isToday: true),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              Text('Selecionado', style: TextStyle(fontSize: 10)),
+                              Expanded(
+                                child: FFDayTile(day: 10, isSelected: true),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              Text('Feriado', style: TextStyle(fontSize: 10)),
+                              Expanded(
+                                child: FFDayTile(day: 25, isHoliday: true),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              Text('Fora', style: TextStyle(fontSize: 10)),
+                              Expanded(
+                                child: FFDayTile(day: 5, isOutsideMonth: true),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+
+                _buildSubsection('FFWeekDayCard'),
+                const FFWeekDayCard(
+                  day: 15,
+                  dayName: 'SEG',
+                  totals: FFDayTotals(
+                    totalPagar: 1500,
+                    countPagar: 2,
+                    totalReceber: 3000,
+                    countReceber: 1,
+                  ),
+                ),
+                const FFWeekDayCard(
+                  day: 16,
+                  dayName: 'TER',
+                  isToday: true,
+                  totals: FFDayTotals(
+                    totalPagar: 500,
+                    countPagar: 1,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+
+                _buildSubsection('FFMiniMonthCard'),
+                const SizedBox(
+                  height: 100,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: FFMiniMonthCard(
+                          monthName: 'Jan',
+                          totals: FFPeriodTotals(
+                            totalPagar: 5000,
+                            countPagar: 10,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: FFMiniMonthCard(
+                          monthName: 'Fev',
+                          isCurrentMonth: true,
+                          totals: FFPeriodTotals(
+                            totalPagar: 3000,
+                            totalReceber: 5000,
+                            countPagar: 5,
+                            countReceber: 3,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: FFMiniMonthCard(monthName: 'Mar'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+
+                _buildSubsection('FFDayDetailsModal'),
+                FFSecondaryButton(
+                  label: 'Abrir Modal de Detalhes',
+                  icon: Icons.open_in_new,
+                  onPressed: () {
+                    FFDayDetailsModal.show(
+                      context: context,
+                      date: DateTime.now(),
+                      dateFormatted: '15 de Janeiro de 2024',
+                      weekdayName: 'Segunda-feira',
+                      totals: const FFDayTotals(
+                        totalPagar: 1500,
+                        countPagar: 3,
+                        totalReceber: 2500,
+                        countReceber: 2,
+                      ),
+                      eventsBuilder: (controller) => ListView(
+                        controller: controller,
+                        padding: const EdgeInsets.all(16),
+                        children: const [
+                          Text('Lista de eventos do dia apareceria aqui...'),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

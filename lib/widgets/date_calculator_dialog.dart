@@ -682,6 +682,7 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
                             flex: 1,
                             child: DropdownButtonFormField<String>(
                               initialValue: _dayType,
+                              isExpanded: true,
                               decoration: _buildInputDecoration('Tipo de dias'),
                               items: const [
                                 DropdownMenuItem(
@@ -708,6 +709,7 @@ class _DateCalculatorDialogState extends State<DateCalculatorDialog> {
                             flex: 1,
                             child: DropdownButtonFormField<String>(
                               initialValue: _direction,
+                              isExpanded: true,
                               decoration: _buildInputDecoration('Direção'),
                               items: const [
                                 DropdownMenuItem(

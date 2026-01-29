@@ -4128,9 +4128,9 @@ class _FeriadosHeaderDelegate extends SliverPersistentHeaderDelegate {
   });
 
   @override
-  double get minExtent => 185; // Altura mínima do header (cidade + 3 cards resumo)
+  double get minExtent => 195; // Altura mínima do header (cidade + 3 cards resumo)
   @override
-  double get maxExtent => 185; // Altura máxima (igual à mínima = não colapsa)
+  double get maxExtent => 195; // Altura máxima (igual à mínima = não colapsa)
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {

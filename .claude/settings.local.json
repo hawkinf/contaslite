@@ -83,7 +83,8 @@
       "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"cd /var/www/contaslite-backend/backend && node scripts/send_test_report.js hawkinf@gmail.com monthly > /tmp/email_test2.log 2>&1 &\")",
       "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -pw \"VVEAW1pJm6xy9sp805\" -hostkey \"ssh-ed25519 255 SHA256:jIVQ86dpuPcjT83sOsAgyoLcick/8xrCWR+zJcUqWB4\" root@contaslite.hawk.com.br \"cd /var/www/contaslite-backend/backend && node -e \"\"\nconst { Account } = require\\(''./src/models''\\);\n\\(async \\(\\) => {\n  const count = await Account.count\\({ where: { user_id: 3, deleted_at: null } }\\);\n  console.log\\(''Total de contas no servidor:'', count\\);\n  const sample = await Account.findAll\\({ where: { user_id: 3, deleted_at: null }, limit: 5 }\\);\n  sample.forEach\\(a => console.log\\(a.id, a.description, a.value, a.month + ''/'' + a.year\\)\\);\n  process.exit\\(0\\);\n}\\)\\(\\);\n\"\"\")",
       "Bash(flutter test:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Read(//c/**)"
     ]
   }
 }

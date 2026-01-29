@@ -11,6 +11,38 @@ import '../models/payment.dart';
 import '../services/database_protection_service.dart';
 import 'sync_helpers.dart';
 
+/// Resultado da resolução de FKs do servidor para IDs locais
+class FkResolutionResult {
+  final Map<String, dynamic> data;
+  final bool allRequiredResolved;
+  final List<String> missingFks;
+
+  FkResolutionResult({
+    required this.data,
+    required this.allRequiredResolved,
+    this.missingFks = const [],
+  });
+}
+
+/// Resultado da aplicação de dados do servidor
+/// Indica se o registro foi aplicado com sucesso ou se foi pulado por FK faltante
+class ApplyServerDataResult {
+  final bool success;
+  final bool skipped;
+  final String? skipReason;
+  final int? localId;
+
+  ApplyServerDataResult.success({this.localId})
+      : success = true,
+        skipped = false,
+        skipReason = null;
+
+  ApplyServerDataResult.skipped(this.skipReason)
+      : success = false,
+        skipped = true,
+        localId = null;
+}
+
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
@@ -1748,6 +1780,99 @@ class DatabaseHelper {
     );
   }
 
+  // ========== FK MAPPING CACHES PARA SYNC ==========
+
+  /// Caches de mapeamento server_id → local_id para resolver FKs durante pull
+  /// Chave: server_id (String), Valor: local_id (int)
+  final Map<String, int> _accountTypeServerIdToLocalId = {};
+  final Map<String, int> _accountDescriptionServerIdToLocalId = {};
+  final Map<String, int> _paymentMethodServerIdToLocalId = {};
+  final Map<String, int> _bankServerIdToLocalId = {};
+  final Map<String, int> _accountServerIdToLocalId = {};
+
+  /// Limpa todos os caches de FK (chamar no início de um full sync)
+  void clearFkCaches() {
+    _accountTypeServerIdToLocalId.clear();
+    _accountDescriptionServerIdToLocalId.clear();
+    _paymentMethodServerIdToLocalId.clear();
+    _bankServerIdToLocalId.clear();
+    _accountServerIdToLocalId.clear();
+    debugPrint('🗑️ Caches de FK limpos');
+  }
+
+  /// Constrói cache de FK para uma tabela específica (chamar após pull da tabela)
+  /// NOTA: NÃO limpa o cache existente - apenas adiciona mapeamentos do DB que não existem
+  /// Isso preserva mapeamentos de serverPk adicionados durante applyServerData
+  Future<void> buildFkCacheForTable(String table) async {
+    final db = await database;
+    final records = await db.query(
+      table,
+      columns: ['id', 'server_id'],
+      where: 'server_id IS NOT NULL',
+    );
+
+    final cache = _getCacheForTable(table);
+    final existingCount = cache.length;
+    int addedCount = 0;
+
+    for (final record in records) {
+      final localId = record['id'] as int?;
+      final serverId = record['server_id'] as String?;
+      if (localId != null && serverId != null && serverId.isNotEmpty) {
+        // Não sobrescrever entradas existentes (podem ter sido adicionadas com serverPk correto)
+        if (!cache.containsKey(serverId)) {
+          cache[serverId] = localId;
+          addedCount++;
+        }
+      }
+    }
+
+    debugPrint('📦 Cache FK $table: $existingCount existentes + $addedCount novos = ${cache.length} mapeamentos');
+  }
+
+  /// Obtém o cache apropriado para uma tabela
+  Map<String, int> _getCacheForTable(String table) {
+    switch (table) {
+      case 'account_types':
+        return _accountTypeServerIdToLocalId;
+      case 'account_descriptions':
+        return _accountDescriptionServerIdToLocalId;
+      case 'payment_methods':
+        return _paymentMethodServerIdToLocalId;
+      case 'banks':
+        return _bankServerIdToLocalId;
+      case 'accounts':
+        return _accountServerIdToLocalId;
+      default:
+        return {};
+    }
+  }
+
+  /// Busca local_id a partir de server_id, usando cache primeiro, depois DB
+  Future<int?> getLocalIdFromServerIdCached(String table, String serverId) async {
+    // 1. Tentar cache primeiro
+    final cache = _getCacheForTable(table);
+    if (cache.containsKey(serverId)) {
+      return cache[serverId];
+    }
+
+    // 2. Fallback: buscar no DB
+    final localId = await getLocalIdFromServerId(table, serverId);
+
+    // 3. Atualizar cache se encontrou
+    if (localId != null) {
+      cache[serverId] = localId;
+    }
+
+    return localId;
+  }
+
+  /// Adiciona um mapeamento ao cache (chamar após MERGE/INSERT bem-sucedido)
+  void addToFkCache(String table, String serverId, int localId) {
+    final cache = _getCacheForTable(table);
+    cache[serverId] = localId;
+  }
+
   // ========== MÉTODOS COM SYNC TRACKING ==========
 
   /// Cria uma conta com tracking de sincronização
@@ -1896,127 +2021,380 @@ class DatabaseHelper {
   }
 
   /// Resolve referências FK do servidor para IDs locais (usado no pull)
-  /// O servidor retorna IDs como integers, então precisamos converter para string
-  /// para buscar o registro local pelo server_id
-  Future<Map<String, dynamic>> resolveServerReferencesToLocal(
+  /// Usa caches para performance e retorna status de resolução
+  ///
+  /// NOTA: Se FK não for encontrada, provavelmente é um problema de contrato da API.
+  /// O servidor pode estar retornando IDs inconsistentes entre tabelas pai e filho.
+  Future<FkResolutionResult> resolveServerReferencesToLocal(
     String table,
     Map<String, dynamic> serverData,
   ) async {
     final resolved = Map<String, dynamic>.from(serverData);
+    final missingFks = <String>[];
+    bool allRequiredResolved = true;
 
     if (table == 'account_descriptions') {
-      // Resolver accountId (FK para account_types)
+      // Resolver accountId (FK OBRIGATÓRIA para account_types)
       final accountIdStr = _toServerIdString(serverData['accountId']);
       if (accountIdStr != null) {
-        final localAccountTypeId = await getLocalIdFromServerId('account_types', accountIdStr);
+        final localAccountTypeId = await getLocalIdFromServerIdCached('account_types', accountIdStr);
         if (localAccountTypeId != null) {
           resolved['accountId'] = localAccountTypeId;
         } else {
-          debugPrint('⚠️ [PULL] accountId (account_type) $accountIdStr não encontrado localmente');
+          // FK MISMATCH: Log diagnóstico detalhado
+          final availableIds = _getCacheForTable('account_types').keys.toList()..sort();
+          debugPrint('❌ [FK MISMATCH] account_descriptions.accountId=$accountIdStr não encontrado');
+          debugPrint('   → IDs disponíveis em account_types: $availableIds');
+          debugPrint('   → PROBLEMA NO BACKEND: API retorna IDs inconsistentes');
+          missingFks.add('accountId=$accountIdStr (disponíveis: ${availableIds.take(10).join(", ")}...)');
+          allRequiredResolved = false;
         }
+      } else {
+        missingFks.add('accountId (null)');
+        allRequiredResolved = false;
       }
     } else if (table == 'accounts') {
-      // Resolver typeId (server_id → local id)
+      // Resolver typeId (FK OBRIGATÓRIA para account_types)
       final typeIdStr = _toServerIdString(serverData['typeId']);
       if (typeIdStr != null) {
-        final localTypeId = await getLocalIdFromServerId('account_types', typeIdStr);
+        final localTypeId = await getLocalIdFromServerIdCached('account_types', typeIdStr);
         if (localTypeId != null) {
           resolved['typeId'] = localTypeId;
         } else {
-          debugPrint('⚠️ [PULL] typeId $typeIdStr não encontrado localmente');
+          // FK MISMATCH: Log diagnóstico detalhado
+          final availableIds = _getCacheForTable('account_types').keys.toList()..sort();
+          debugPrint('❌ [FK MISMATCH] accounts.typeId=$typeIdStr não encontrado');
+          debugPrint('   → IDs disponíveis em account_types: $availableIds');
+          debugPrint('   → PROBLEMA NO BACKEND: API retorna IDs inconsistentes');
+          missingFks.add('typeId=$typeIdStr (disponíveis: ${availableIds.take(10).join(", ")}...)');
+          allRequiredResolved = false;
         }
+      } else {
+        missingFks.add('typeId (null)');
+        allRequiredResolved = false;
       }
 
-      // Resolver categoryId
+      // Resolver categoryId (FK OPCIONAL para account_descriptions)
       final categoryIdStr = _toServerIdString(serverData['categoryId']);
       if (categoryIdStr != null) {
-        final localCategoryId = await getLocalIdFromServerId('account_descriptions', categoryIdStr);
-        resolved['categoryId'] = localCategoryId; // pode ser null
+        final localCategoryId = await getLocalIdFromServerIdCached('account_descriptions', categoryIdStr);
+        resolved['categoryId'] = localCategoryId; // pode ser null - opcional
       }
 
-      // Resolver cardId (self-reference)
+      // Resolver cardId (FK OPCIONAL - self-reference)
       final cardIdStr = _toServerIdString(serverData['cardId']);
       if (cardIdStr != null) {
-        final localCardId = await getLocalIdFromServerId('accounts', cardIdStr);
-        resolved['cardId'] = localCardId; // pode ser null se cartão ainda não sincronizado
+        final localCardId = await getLocalIdFromServerIdCached('accounts', cardIdStr);
+        resolved['cardId'] = localCardId; // pode ser null - será resolvido em retry
       }
     } else if (table == 'payments') {
-      // Resolver account_id
+      // Resolver account_id (FK OBRIGATÓRIA para accounts)
       final accountIdStr = _toServerIdString(serverData['account_id']);
       if (accountIdStr != null) {
-        final localAccountId = await getLocalIdFromServerId('accounts', accountIdStr);
+        final localAccountId = await getLocalIdFromServerIdCached('accounts', accountIdStr);
         if (localAccountId != null) {
           resolved['account_id'] = localAccountId;
         } else {
-          debugPrint('⚠️ [PULL] account_id $accountIdStr não encontrado localmente');
+          final availableIds = _getCacheForTable('accounts').keys.toList()..sort();
+          debugPrint('❌ [FK MISMATCH] payments.account_id=$accountIdStr não encontrado');
+          debugPrint('   → IDs disponíveis em accounts: ${availableIds.take(20).join(", ")}...');
+          missingFks.add('account_id=$accountIdStr');
+          allRequiredResolved = false;
         }
+      } else {
+        missingFks.add('account_id (null)');
+        allRequiredResolved = false;
       }
 
-      // Resolver payment_method_id
+      // Resolver payment_method_id (FK OBRIGATÓRIA para payment_methods)
       final paymentMethodIdStr = _toServerIdString(serverData['payment_method_id']);
       if (paymentMethodIdStr != null) {
-        final localMethodId = await getLocalIdFromServerId('payment_methods', paymentMethodIdStr);
+        final localMethodId = await getLocalIdFromServerIdCached('payment_methods', paymentMethodIdStr);
         if (localMethodId != null) {
           resolved['payment_method_id'] = localMethodId;
         } else {
-          debugPrint('⚠️ [PULL] payment_method_id $paymentMethodIdStr não encontrado localmente');
+          final availableIds = _getCacheForTable('payment_methods').keys.toList()..sort();
+          debugPrint('❌ [FK MISMATCH] payments.payment_method_id=$paymentMethodIdStr não encontrado');
+          debugPrint('   → IDs disponíveis em payment_methods: $availableIds');
+          missingFks.add('payment_method_id=$paymentMethodIdStr');
+          allRequiredResolved = false;
         }
+      } else {
+        missingFks.add('payment_method_id (null)');
+        allRequiredResolved = false;
       }
 
-      // Resolver bank_account_id
+      // Resolver bank_account_id (FK OPCIONAL para banks)
       final bankAccountIdStr = _toServerIdString(serverData['bank_account_id']);
       if (bankAccountIdStr != null) {
-        final localBankId = await getLocalIdFromServerId('banks', bankAccountIdStr);
-        resolved['bank_account_id'] = localBankId; // pode ser null
+        final localBankId = await getLocalIdFromServerIdCached('banks', bankAccountIdStr);
+        resolved['bank_account_id'] = localBankId; // pode ser null - opcional
       }
 
-      // Resolver credit_card_id
+      // Resolver credit_card_id (FK OPCIONAL para accounts)
       final creditCardIdStr = _toServerIdString(serverData['credit_card_id']);
       if (creditCardIdStr != null) {
-        final localCardId = await getLocalIdFromServerId('accounts', creditCardIdStr);
-        resolved['credit_card_id'] = localCardId; // pode ser null
+        final localCardId = await getLocalIdFromServerIdCached('accounts', creditCardIdStr);
+        resolved['credit_card_id'] = localCardId; // pode ser null - opcional
       }
     }
 
-    return resolved;
+    return FkResolutionResult(
+      data: resolved,
+      allRequiredResolved: allRequiredResolved,
+      missingFks: missingFks,
+    );
   }
 
-  /// Aplica dados do servidor (server wins)
-  Future<void> applyServerData(String table, Map<String, dynamic> serverData) async {
+  // ========== HELPERS PARA SYNC UPSERT ==========
+
+  /// Mapeamento de caracteres acentuados para não-acentuados (para normalização de nomes)
+  static const _accentMap = {
+    'á': 'a', 'à': 'a', 'ã': 'a', 'â': 'a', 'ä': 'a',
+    'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+    'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
+    'ó': 'o', 'ò': 'o', 'õ': 'o', 'ô': 'o', 'ö': 'o',
+    'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+    'ç': 'c', 'ñ': 'n',
+    'Á': 'A', 'À': 'A', 'Ã': 'A', 'Â': 'A', 'Ä': 'A',
+    'É': 'E', 'È': 'E', 'Ê': 'E', 'Ë': 'E',
+    'Í': 'I', 'Ì': 'I', 'Î': 'I', 'Ï': 'I',
+    'Ó': 'O', 'Ò': 'O', 'Õ': 'O', 'Ô': 'O', 'Ö': 'O',
+    'Ú': 'U', 'Ù': 'U', 'Û': 'U', 'Ü': 'U',
+    'Ç': 'C', 'Ñ': 'N',
+  };
+
+  /// Normaliza um nome para comparação (trim, lowercase, remove acentos, colapsa espaços)
+  /// Usado para fazer match de nomes em tabelas com UNIQUE(name)
+  String _normalizeName(String? name) {
+    if (name == null || name.isEmpty) return '';
+
+    // 1. Trim
+    var normalized = name.trim();
+
+    // 2. Lowercase
+    normalized = normalized.toLowerCase();
+
+    // 3. Remover acentos
+    final buffer = StringBuffer();
+    for (final char in normalized.runes) {
+      final c = String.fromCharCode(char);
+      buffer.write(_accentMap[c] ?? c);
+    }
+    normalized = buffer.toString();
+
+    // 4. Colapsar espaços duplos
+    normalized = normalized.replaceAll(RegExp(r'\s+'), ' ');
+
+    return normalized;
+  }
+
+  /// Tabelas que possuem coluna 'name' com constraint UNIQUE
+  static const _tablesWithUniqueName = {
+    'account_types': 'name',
+    'payment_methods': 'name',
+  };
+
+  /// Tabelas que possuem coluna 'description' com lógica de match por nome
+  static const _tablesWithUniqueDescription = {
+    'account_descriptions': 'description',
+  };
+
+  /// Busca registro local por nome normalizado (para MERGE em tabelas com UNIQUE name)
+  /// Retorna o registro local se encontrado, null caso contrário
+  Future<Map<String, dynamic>?> _findLocalByNormalizedName(
+    String table,
+    String nameColumn,
+    String serverName,
+  ) async {
     final db = await database;
-    // Converter id para String (servidor pode retornar int ou String)
+    final normalizedServerName = _normalizeName(serverName);
+
+    // Buscar todos os registros da tabela e comparar nome normalizado
+    final records = await db.query(table);
+    for (final record in records) {
+      final localName = record[nameColumn] as String?;
+      if (_normalizeName(localName) == normalizedServerName) {
+        return record;
+      }
+    }
+    return null;
+  }
+
+  /// Converte nomes de campos do servidor (camelCase) para o banco local (snake_case)
+  /// Tabela-específico para evitar conflitos de nomes entre tabelas
+  Map<String, dynamic> _convertServerFieldNames(String table, Map<String, dynamic> serverData) {
+    final converted = <String, dynamic>{};
+
+    // Mapeamento comum (usado em todas as tabelas)
+    const commonMapping = {
+      'updatedAt': 'updated_at',
+      'deletedAt': 'deleted_at',
+      'createdAt': 'created_at',
+      'lastSyncedAt': 'last_synced_at',
+      'syncStatus': 'sync_status',
+      'serverId': 'server_id',
+    };
+
+    // Mapeamento específico para payment_methods
+    const paymentMethodsMapping = {
+      'iconCode': 'icon_code',
+      'requiresBank': 'requires_bank',
+      'isActive': 'is_active',
+    };
+
+    // Mapeamento específico para payments
+    const paymentsMapping = {
+      'accountId': 'account_id',
+      'paymentMethodId': 'payment_method_id',
+      'bankAccountId': 'bank_account_id',
+      'creditCardId': 'credit_card_id',
+      'paymentDate': 'payment_date',
+      'createdAt': 'created_at',
+    };
+
+    // Selecionar mapeamento baseado na tabela
+    Map<String, String> tableMapping;
+    switch (table) {
+      case 'payment_methods':
+        tableMapping = {...commonMapping, ...paymentMethodsMapping};
+        break;
+      case 'payments':
+        tableMapping = {...commonMapping, ...paymentsMapping};
+        break;
+      default:
+        tableMapping = commonMapping;
+    }
+
+    for (final entry in serverData.entries) {
+      final key = entry.key;
+      final value = entry.value;
+
+      // Verificar se há mapeamento específico
+      if (tableMapping.containsKey(key)) {
+        converted[tableMapping[key]!] = value;
+      } else {
+        // Manter o nome original (para campos que já estão corretos)
+        converted[key] = value;
+      }
+    }
+
+    return converted;
+  }
+
+  /// Aplica dados do servidor (server wins) com estratégia UPSERT/MERGE
+  ///
+  /// Estratégia para evitar UNIQUE constraint violations:
+  /// 1. Buscar por server_id → se existir, UPDATE
+  /// 2. Se não existir por server_id, buscar por nome normalizado (para tabelas com UNIQUE name)
+  ///    → se existir, MERGE (update + set server_id)
+  /// 3. Se não existir → INSERT
+  ///
+  /// Retorna resultado indicando se foi aplicado ou pulado (por FK faltante)
+  ///
+  /// NOTA IMPORTANTE - BUG NO BACKEND:
+  /// O servidor retorna account_types com id=98..114, mas account_descriptions
+  /// e accounts referenciam accountId/typeId=7..12. Esses IDs não correspondem!
+  /// Este é um problema de contrato da API que precisa ser corrigido no backend.
+  /// Enquanto não for corrigido, registros dependentes serão SKIPPED.
+  Future<ApplyServerDataResult> applyServerData(String table, Map<String, dynamic> serverData) async {
+    final db = await database;
+
     final rawId = serverData['id'];
     final serverId = rawId?.toString();
-    if (serverId == null || serverId.isEmpty) return;
+    if (serverId == null || serverId.isEmpty) {
+      return ApplyServerDataResult.skipped('server_id inválido');
+    }
+
+    // Converter nomes de campos do servidor para o formato local
+    final convertedData = _convertServerFieldNames(table, serverData);
 
     // Resolver referências FK do servidor para IDs locais
-    final resolvedData = await resolveServerReferencesToLocal(table, serverData);
+    final fkResult = await resolveServerReferencesToLocal(table, convertedData);
 
-    // Buscar registro local pelo server_id
-    final local = await db.query(
+    // Se FKs obrigatórias não foram resolvidas, pular registro
+    if (!fkResult.allRequiredResolved) {
+      debugPrint('⏭️ [SKIP] $table server_id=$serverId: FKs não resolvidas: ${fkResult.missingFks}');
+      return ApplyServerDataResult.skipped('FKs não resolvidas: ${fkResult.missingFks.join(", ")}');
+    }
+
+    // Usar dados com FKs resolvidas
+    final resolvedData = fkResult.data;
+
+    // Preparar dados para inserção/atualização
+    resolvedData['sync_status'] = SyncStatus.synced.value;
+    resolvedData['server_id'] = serverId;
+    resolvedData.remove('id'); // Remover ID do servidor
+    resolvedData.remove('pk'); // Remover PK do servidor (usado apenas para FK mapping)
+    resolvedData.remove('deleted_at'); // Coluna não existe no schema local (soft delete usa sync_status)
+
+    // last_synced_at só existe na tabela accounts (ver migração v13)
+    if (table == 'accounts') {
+      resolvedData['last_synced_at'] = DateTime.now().toIso8601String();
+    } else {
+      resolvedData.remove('last_synced_at');
+    }
+
+    // 1. Buscar registro local pelo server_id
+    final localByServerId = await db.query(
       table,
       where: 'server_id = ?',
       whereArgs: [serverId],
       limit: 1,
     );
 
-    resolvedData['sync_status'] = SyncStatus.synced.value;
-    resolvedData['last_synced_at'] = DateTime.now().toIso8601String();
-    resolvedData['server_id'] = serverId;
-    resolvedData.remove('id'); // Remover ID do servidor
-
-    if (local.isEmpty) {
-      // Novo registro do servidor
-      await db.insert(table, resolvedData);
-    } else {
-      // Atualizar registro existente (server wins)
+    if (localByServerId.isNotEmpty) {
+      // Encontrado por server_id → UPDATE
+      final localId = localByServerId.first['id'] as int;
       await db.update(
         table,
         resolvedData,
         where: 'server_id = ?',
         whereArgs: [serverId],
       );
+      // Atualizar cache (server_id → localId)
+      addToFkCache(table, serverId, localId);
+      return ApplyServerDataResult.success(localId: localId);
     }
+
+    // 2. Se não encontrou por server_id, tentar encontrar por nome normalizado
+    //    (para tabelas com UNIQUE constraint em name/description)
+    String? nameColumn;
+    String? serverName;
+
+    if (_tablesWithUniqueName.containsKey(table)) {
+      nameColumn = _tablesWithUniqueName[table];
+      serverName = convertedData[nameColumn] as String?;
+    } else if (_tablesWithUniqueDescription.containsKey(table)) {
+      nameColumn = _tablesWithUniqueDescription[table];
+      serverName = convertedData[nameColumn] as String?;
+    }
+
+    if (nameColumn != null && serverName != null && serverName.isNotEmpty) {
+      final localByName = await _findLocalByNormalizedName(table, nameColumn, serverName);
+
+      if (localByName != null) {
+        // Encontrado por nome → MERGE (update + set server_id)
+        final localId = localByName['id'] as int;
+        debugPrint('🔀 [MERGE] $table: "$serverName" já existe localmente (id: $localId), vinculando server_id: $serverId');
+
+        await db.update(
+          table,
+          resolvedData,
+          where: 'id = ?',
+          whereArgs: [localId],
+        );
+        // Atualizar cache (server_id → localId)
+        addToFkCache(table, serverId, localId);
+        return ApplyServerDataResult.success(localId: localId);
+      }
+    }
+
+    // 3. Não encontrou nem por server_id nem por nome → INSERT
+    final localId = await db.insert(table, resolvedData);
+    // Atualizar cache (server_id → localId)
+    addToFkCache(table, serverId, localId);
+    return ApplyServerDataResult.success(localId: localId);
   }
 
   /// Deleta registro que foi deletado no servidor
@@ -2311,20 +2689,30 @@ class DatabaseHelper {
 
   /// Resolve referências FK de account_descriptions para server_id
   /// Converte accountId local para server_id do account_type
-  Future<Map<String, dynamic>> resolveAccountDescriptionReferences(
+  ///
+  /// Retorna null se a FK obrigatória não puder ser resolvida
+  /// (evita enviar ID local que criaria FK órfã no servidor)
+  Future<Map<String, dynamic>?> resolveAccountDescriptionReferences(
     Map<String, dynamic> descData,
   ) async {
     final resolved = Map<String, dynamic>.from(descData);
 
-    // Resolver accountId (referência ao tipo de conta)
+    // Resolver accountId (referência ao tipo de conta) - OBRIGATÓRIO
     final accountId = descData['accountId'];
     if (accountId != null && accountId is int) {
       final accountTypeServerId = await getServerIdFromLocalId('account_types', accountId);
       if (accountTypeServerId != null) {
         resolved['accountId'] = accountTypeServerId;
+        debugPrint('✅ [FK RESOLVE] account_descriptions: accountId $accountId → server_id $accountTypeServerId');
       } else {
-        debugPrint('⚠️ accountId (account_type) $accountId não tem server_id ainda');
+        // FK OBRIGATÓRIA não resolvida - NÃO enviar para o servidor
+        // Evita criar FK órfã no banco remoto
+        debugPrint('⏭️ [SKIP PUSH] account_descriptions: accountId=$accountId não tem server_id (account_type não sincronizado)');
+        return null; // Sinaliza para pular este registro
       }
+    } else {
+      debugPrint('⏭️ [SKIP PUSH] account_descriptions: accountId é null ou inválido (valor: $accountId)');
+      return null;
     }
 
     return resolved;
@@ -2332,23 +2720,32 @@ class DatabaseHelper {
 
   /// Resolve referências FK de accounts para server_id
   /// Converte IDs locais para server_id das tabelas relacionadas
-  Future<Map<String, dynamic>> resolveAccountReferences(
+  ///
+  /// Retorna null se a FK obrigatória (typeId) não puder ser resolvida
+  /// FKs opcionais (categoryId, cardId) são removidas se não resolvidas
+  Future<Map<String, dynamic>?> resolveAccountReferences(
     Map<String, dynamic> accountData,
   ) async {
     final resolved = Map<String, dynamic>.from(accountData);
 
-    // Resolver typeId (referência ao tipo de conta)
+    // Resolver typeId (referência ao tipo de conta) - OBRIGATÓRIO
     final typeId = accountData['typeId'];
     if (typeId != null && typeId is int) {
       final typeServerId = await getServerIdFromLocalId('account_types', typeId);
       if (typeServerId != null) {
         resolved['typeId'] = typeServerId;
+        debugPrint('✅ [FK RESOLVE] accounts: typeId $typeId → server_id $typeServerId');
       } else {
-        debugPrint('⚠️ typeId $typeId não tem server_id ainda');
+        // FK OBRIGATÓRIA não resolvida - NÃO enviar para o servidor
+        debugPrint('⏭️ [SKIP PUSH] accounts: typeId=$typeId não tem server_id (account_type não sincronizado)');
+        return null; // Sinaliza para pular este registro
       }
+    } else {
+      debugPrint('⏭️ [SKIP PUSH] accounts: typeId é null ou inválido (valor: $typeId)');
+      return null;
     }
 
-    // Resolver categoryId (referência à descrição/categoria)
+    // Resolver categoryId (referência à descrição/categoria) - OPCIONAL
     final categoryId = accountData['categoryId'];
     if (categoryId != null && categoryId is int) {
       final categoryServerId = await getServerIdFromLocalId('account_descriptions', categoryId);

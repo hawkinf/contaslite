@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import '../services/app_startup_controller.dart';
 import '../services/export_controller.dart';
 import '../services/prefs_service.dart';
 import 'dashboard_screen.dart';
 import 'calendar_screen.dart';
 import 'settings_screen.dart';
-import 'database_screen.dart';
+import 'tables_home_screen.dart';
 import 'holidays_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -46,15 +47,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       const CalendarScreen(),
       // Feriados
       const HolidaysScreen(),
-      // Tabelas (Database)
-      const DatabaseScreen(),
+      // Tabelas (Menu)
+      const TablesHomeScreen(),
       // Configurações
       const SettingsScreen(),
     ];
 
     _tabController = TabController(length: _tabs.length, vsync: this);
 
-    final requestedIndex = widget.initialTabIndex;
+    // Usar AppStartupController para determinar a aba inicial
+    // Prioriza: 1) widget.initialTabIndex se especificado, 2) AppStartupController
+    final requestedIndex = widget.initialTabIndex != 0
+        ? widget.initialTabIndex
+        : AppStartupController.initialTabIndex;
     if (requestedIndex >= 0 && requestedIndex < _screens.length) {
       _tabController.index = requestedIndex;
     }
@@ -70,10 +75,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       PrefsService.tabRequestNotifier.value = null;
     };
     PrefsService.tabRequestNotifier.addListener(_tabRequestListener);
+
+    // Disparar jumpToToday no primeiro frame se estiver na aba Contas
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_tabController.index == 0) {
+        AppStartupController.triggerJumpToToday();
+      }
+    });
   }
 
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
+    // Persistir aba atual para restauração futura
+    AppStartupController.saveCurrentTab(_tabController.index);
     setState(() {});
   }
 
@@ -97,8 +111,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// Verifica se a aba atual suporta exportação PDF
   bool _canExportCurrentTab() {
-    // Por enquanto, apenas a aba Contas (0) suporta exportação
-    return _tabController.index == 0;
+    // Abas que suportam exportação: Contas (0) e Calendário (1)
+    return _tabController.index == 0 || _tabController.index == 1;
   }
 
   Future<void> exportCurrentViewToPdf() async {

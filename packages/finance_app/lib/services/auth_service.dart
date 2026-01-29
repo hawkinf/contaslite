@@ -502,14 +502,48 @@ class AuthService {
     try {
       // Garantir que httpClient existe
       _httpClient ??= http.Client();
-      
-      final response = await _httpClient!
-          .post(
-            Uri.parse('$_apiBaseUrl/api/auth/refresh'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'refreshToken': refreshToken}),
-          )
-          .timeout(const Duration(seconds: 15));
+
+      var url = Uri.parse('$_apiBaseUrl/api/auth/refresh');
+      final body = jsonEncode({'refreshToken': refreshToken});
+      final headers = {'Content-Type': 'application/json'};
+
+      // Tentar até 3 vezes seguindo redirects
+      http.Response response;
+      int redirectCount = 0;
+      const maxRedirects = 3;
+      const originalPath = '/api/auth/refresh';
+
+      do {
+        response = await _httpClient!
+            .post(url, headers: headers, body: body)
+            .timeout(const Duration(seconds: 15));
+
+        // Seguir redirects (301, 302, 307, 308)
+        if ([301, 302, 307, 308].contains(response.statusCode)) {
+          final location = response.headers['location'];
+          if (location != null) {
+            final newUrl = Uri.parse(location);
+            debugPrint('🔄 Seguindo redirect para: $newUrl');
+
+            // Atualizar URL base se o host mudou (ex: HTTP → HTTPS)
+            final newUrlStr = newUrl.toString();
+            if (newUrlStr.contains(originalPath)) {
+              final newBaseUrl = newUrlStr.substring(0, newUrlStr.indexOf(originalPath));
+              if (newBaseUrl != _apiBaseUrl) {
+                debugPrint('🔧 Auth: Atualizando URL base de $_apiBaseUrl para $newBaseUrl');
+                _apiBaseUrl = newBaseUrl;
+              }
+            }
+
+            url = newUrl;
+            redirectCount++;
+          } else {
+            break;
+          }
+        } else {
+          break;
+        }
+      } while (redirectCount < maxRedirects);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -521,6 +555,10 @@ class AuthService {
         return true;
       } else {
         debugPrint('❌ Falha ao renovar token: ${response.statusCode}');
+        // Log do body para debug
+        if (response.body.isNotEmpty) {
+          debugPrint('   Response body: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}');
+        }
         return false;
       }
     } catch (e) {

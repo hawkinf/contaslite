@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 
 import '../database/db_helper.dart';
 import '../database/sync_helpers.dart';
@@ -60,9 +62,122 @@ class SyncService {
   /// Conflitos coletados durante a última sincronização
   final List<ConflictItem> _pendingConflicts = [];
 
+  /// Helper para POST com suporte a redirects (preservando headers)
+  Future<http.Response> _postWithRedirects(
+    String path, {
+    required Map<String, String> headers,
+    required String body,
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    var url = Uri.parse('$_apiBaseUrl$path');
+    http.Response response;
+    int redirectCount = 0;
+    const maxRedirects = 3;
+
+    do {
+      // Usar Request diretamente para controlar followRedirects
+      final request = http.Request('POST', url);
+      request.headers.addAll(headers);
+      request.body = body;
+      request.followRedirects = false; // Não seguir automaticamente
+
+      final streamedResponse = await _httpClient!.send(request).timeout(timeout);
+      response = await http.Response.fromStream(streamedResponse);
+
+      // Seguir redirects manualmente (301, 302, 307, 308)
+      if ([301, 302, 307, 308].contains(response.statusCode)) {
+        final location = response.headers['location'];
+        if (location != null) {
+          final newUrl = Uri.parse(location);
+          debugPrint('🔄 Sync POST: Seguindo redirect para: $newUrl');
+
+          // Atualizar URL base se o host mudou (ex: HTTP → HTTPS)
+          _updateApiBaseUrlIfNeeded(newUrl, path);
+
+          url = newUrl;
+          redirectCount++;
+        } else {
+          break;
+        }
+      } else {
+        break;
+      }
+    } while (redirectCount < maxRedirects);
+
+    return response;
+  }
+
+  /// Helper para GET com suporte a redirects (preservando headers)
+  Future<http.Response> _getWithRedirects(
+    String path, {
+    required Map<String, String> headers,
+    Map<String, String>? queryParameters,
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    var url = Uri.parse('$_apiBaseUrl$path');
+    if (queryParameters != null && queryParameters.isNotEmpty) {
+      url = url.replace(queryParameters: queryParameters);
+    }
+
+    http.Response response;
+    int redirectCount = 0;
+    const maxRedirects = 3;
+
+    do {
+      // Usar Request diretamente para controlar followRedirects
+      final request = http.Request('GET', url);
+      request.headers.addAll(headers);
+      request.followRedirects = false; // Não seguir automaticamente
+
+      final streamedResponse = await _httpClient!.send(request).timeout(timeout);
+      response = await http.Response.fromStream(streamedResponse);
+
+      // Seguir redirects manualmente (301, 302, 307, 308)
+      if ([301, 302, 307, 308].contains(response.statusCode)) {
+        final location = response.headers['location'];
+        if (location != null) {
+          final newUrl = Uri.parse(location);
+          debugPrint('🔄 Sync GET: Seguindo redirect para: $newUrl');
+
+          // Atualizar URL base se o host mudou (ex: HTTP → HTTPS)
+          _updateApiBaseUrlIfNeeded(newUrl, path);
+
+          url = newUrl;
+          redirectCount++;
+        } else {
+          break;
+        }
+      } else {
+        break;
+      }
+    } while (redirectCount < maxRedirects);
+
+    return response;
+  }
+
+  /// Atualiza a URL base da API se um redirect permanente for detectado
+  void _updateApiBaseUrlIfNeeded(Uri newUrl, String originalPath) {
+    // Extrair a nova base URL removendo o path original
+    final newUrlStr = newUrl.toString();
+    if (newUrlStr.contains(originalPath)) {
+      final newBaseUrl = newUrlStr.substring(0, newUrlStr.indexOf(originalPath));
+      if (newBaseUrl != _apiBaseUrl) {
+        debugPrint('🔧 Sync: Atualizando URL base de $_apiBaseUrl para $newBaseUrl');
+        _apiBaseUrl = newBaseUrl;
+
+        // Atualizar também no AuthService para manter consistência
+        AuthService.instance.setApiUrl(newBaseUrl);
+      }
+    }
+  }
+
   /// Inicializa o serviço de sincronização
   Future<void> initialize() async {
-    _httpClient = http.Client();
+    // Usar HttpClient que NÃO segue redirects automaticamente
+    // Isso permite preservar o header Authorization ao redirecionar
+    final innerClient = HttpClient()..autoUncompress = true;
+    innerClient.findProxy = HttpClient.findProxyFromEnvironment;
+    _httpClient = IOClient(innerClient);
 
     // Carregar URL da API das configurações
     final config = await PrefsService.loadDatabaseConfig();
@@ -162,6 +277,22 @@ class SyncService {
     syncStateNotifier.value = SyncState.syncing;
     syncProgressNotifier.value = 0.0;
     lastErrorNotifier.value = null;
+
+    // Timeout global de 2 minutos para toda a sincronização
+    return _fullSyncInternal().timeout(
+      const Duration(minutes: 2),
+      onTimeout: () {
+        debugPrint('⏱️ Timeout global da sincronização (2 min)');
+        _isSyncing = false;
+        syncStateNotifier.value = SyncState.error;
+        lastErrorNotifier.value = 'Timeout: servidor demorou muito para responder';
+        return SyncResult.failed('Timeout: servidor demorou muito para responder');
+      },
+    );
+  }
+
+  /// Execução interna do fullSync (separada para aplicar timeout global)
+  Future<SyncResult> _fullSyncInternal() async {
 
     int totalPushed = 0;
     int totalPulled = 0;
@@ -276,7 +407,7 @@ class SyncService {
         debugPrint('🔧 SyncService: URL recarregada: $_apiBaseUrl');
       }
     }
-    
+
     if (!_canSync()) {
       return SyncResult.failed('Não é possível sincronizar no momento');
     }
@@ -284,6 +415,21 @@ class SyncService {
     _isSyncing = true;
     syncStateNotifier.value = SyncState.syncing;
 
+    // Timeout de 1 minuto para sync incremental
+    return _incrementalSyncInternal().timeout(
+      const Duration(minutes: 1),
+      onTimeout: () {
+        debugPrint('⏱️ Timeout do sync incremental (1 min)');
+        _isSyncing = false;
+        syncStateNotifier.value = SyncState.error;
+        lastErrorNotifier.value = 'Timeout: servidor demorou muito para responder';
+        return SyncResult.failed('Timeout: servidor demorou muito para responder');
+      },
+    );
+  }
+
+  /// Execução interna do incrementalSync (separada para aplicar timeout)
+  Future<SyncResult> _incrementalSyncInternal() async {
     try {
       // Push pending changes
       final pushResult = await _pushChanges();
@@ -403,12 +549,21 @@ class SyncService {
 
     if (phase1Creates.isNotEmpty || phase1Updates.isNotEmpty || deletes.isNotEmpty) {
       // Resolver referências FK (typeId, categoryId)
-      final resolvedCreates = await Future.wait(
+      // Filtrar nulls (registros com FKs não resolvidas)
+      final maybeCreates = await Future.wait(
         phase1Creates.map((r) => _db.resolveAccountReferences(r)),
       );
-      final resolvedUpdates = await Future.wait(
+      final maybeUpdates = await Future.wait(
         phase1Updates.map((r) => _db.resolveAccountReferences(r)),
       );
+      final resolvedCreates = maybeCreates.whereType<Map<String, dynamic>>().toList();
+      final resolvedUpdates = maybeUpdates.whereType<Map<String, dynamic>>().toList();
+
+      final skippedCreates = phase1Creates.length - resolvedCreates.length;
+      final skippedUpdates = phase1Updates.length - resolvedUpdates.length;
+      if (skippedCreates > 0 || skippedUpdates > 0) {
+        debugPrint('⏭️ accounts (Fase 1): $skippedCreates creates e $skippedUpdates updates pulados (FKs não resolvidas)');
+      }
 
       debugPrint('📤 Push accounts (Fase 1 - cartões e normais): ${resolvedCreates.length} creates, ${resolvedUpdates.length} updates, ${deletes.length} deletes');
 
@@ -425,12 +580,21 @@ class SyncService {
     // FASE 2: Sincronizar despesas de cartão (agora os cartões já têm server_id)
     if (cardExpenseCreates.isNotEmpty || cardExpenseUpdates.isNotEmpty) {
       // Resolver referências FK incluindo cardId agora que cartões foram sincronizados
-      final resolvedCreates = await Future.wait(
+      // Filtrar nulls (registros com FKs não resolvidas)
+      final maybeCreates = await Future.wait(
         cardExpenseCreates.map((r) => _db.resolveAccountReferences(r)),
       );
-      final resolvedUpdates = await Future.wait(
+      final maybeUpdates = await Future.wait(
         cardExpenseUpdates.map((r) => _db.resolveAccountReferences(r)),
       );
+      final resolvedCreates = maybeCreates.whereType<Map<String, dynamic>>().toList();
+      final resolvedUpdates = maybeUpdates.whereType<Map<String, dynamic>>().toList();
+
+      final skippedCreates = cardExpenseCreates.length - resolvedCreates.length;
+      final skippedUpdates = cardExpenseUpdates.length - resolvedUpdates.length;
+      if (skippedCreates > 0 || skippedUpdates > 0) {
+        debugPrint('⏭️ accounts (Fase 2): $skippedCreates creates e $skippedUpdates updates pulados (FKs não resolvidas)');
+      }
 
       debugPrint('📤 Push accounts (Fase 2 - despesas cartão): ${resolvedCreates.length} creates, ${resolvedUpdates.length} updates');
 
@@ -457,18 +621,16 @@ class SyncService {
     int totalPushed = 0;
     int totalConflicts = 0;
 
-    final response = await _httpClient!
-        .post(
-          Uri.parse('$_apiBaseUrl/api/sync/push'),
-          headers: AuthService.instance.getAuthHeaders(),
-          body: jsonEncode({
-            'table': table,
-            'creates': creates,
-            'updates': updates,
-            'deletes': deletes.map((d) => d['server_id']).where((id) => id != null).toList(),
-          }),
-        )
-        .timeout(const Duration(seconds: 60));
+    final response = await _postWithRedirects(
+      '/api/sync/push',
+      headers: AuthService.instance.getAuthHeaders(),
+      body: jsonEncode({
+        'table': table,
+        'creates': creates,
+        'updates': updates,
+        'deletes': deletes.map((d) => d['server_id']).where((id) => id != null).toList(),
+      }),
+    );
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -578,12 +740,21 @@ class SyncService {
 
         if (table == 'account_descriptions') {
           // Resolver accountId para server_id do account_type
-          creates = await Future.wait(
+          // Filtrar nulls (registros com FKs não resolvidas)
+          final resolvedCreates = await Future.wait(
             rawCreates.map((r) => _db.resolveAccountDescriptionReferences(r)),
           );
-          updates = await Future.wait(
+          final resolvedUpdates = await Future.wait(
             rawUpdates.map((r) => _db.resolveAccountDescriptionReferences(r)),
           );
+          creates = resolvedCreates.whereType<Map<String, dynamic>>().toList();
+          updates = resolvedUpdates.whereType<Map<String, dynamic>>().toList();
+
+          final skippedCreates = rawCreates.length - creates.length;
+          final skippedUpdates = rawUpdates.length - updates.length;
+          if (skippedCreates > 0 || skippedUpdates > 0) {
+            debugPrint('⏭️ $table: $skippedCreates creates e $skippedUpdates updates pulados (FKs não resolvidas)');
+          }
         } else if (table == 'payments') {
           // Resolver accountId para server_id da conta
           creates = await Future.wait(
@@ -600,18 +771,16 @@ class SyncService {
         debugPrint('📤 Push $table: ${creates.length} creates, ${updates.length} updates, ${deletes.length} deletes');
 
         // Enviar para o servidor
-        final response = await _httpClient!
-            .post(
-              Uri.parse('$_apiBaseUrl/api/sync/push'),
-              headers: AuthService.instance.getAuthHeaders(),
-              body: jsonEncode({
-                'table': table,
-                'creates': creates,
-                'updates': updates,
-                'deletes': deletes.map((d) => d['server_id']).where((id) => id != null).toList(),
-              }),
-            )
-            .timeout(const Duration(seconds: 60));
+        final response = await _postWithRedirects(
+          '/api/sync/push',
+          headers: AuthService.instance.getAuthHeaders(),
+          body: jsonEncode({
+            'table': table,
+            'creates': creates,
+            'updates': updates,
+            'deletes': deletes.map((d) => d['server_id']).where((id) => id != null).toList(),
+          }),
+        );
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -695,11 +864,45 @@ class SyncService {
     return SyncResult.successful(pushed: totalPushed, conflicts: totalConflicts);
   }
 
+  /// Dependências de tabelas para pull (se a base falhar, não tenta as dependentes)
+  static const _tableDependencies = {
+    'account_descriptions': ['account_types'],
+    'accounts': ['account_types', 'account_descriptions', 'payment_methods'],
+    'payments': ['accounts', 'payment_methods', 'banks'],
+  };
+
+  /// Tabelas base que devem ter cache de FK construído após o pull
+  static const _baseTablesToCache = [
+    'account_types',
+    'account_descriptions',
+    'payment_methods',
+    'banks',
+    'accounts',
+  ];
+
   /// Pull de mudanças do servidor
+  /// Se uma tabela base falhar, as tabelas dependentes são ignoradas para evitar
+  /// erros de FK não encontrada.
   Future<SyncResult> _pullChanges({bool incremental = false}) async {
     int totalPulled = 0;
+    int totalSkipped = 0;
+    final failedTables = <String>{};
+
+    // Limpar caches de FK no início do pull (para full sync)
+    if (!incremental) {
+      _db.clearFkCaches();
+    }
 
     for (final table in SyncTables.orderedForPull) {
+      // Verificar se alguma dependência falhou
+      final dependencies = _tableDependencies[table] ?? [];
+      final failedDeps = dependencies.where((dep) => failedTables.contains(dep)).toList();
+      if (failedDeps.isNotEmpty) {
+        debugPrint('⏭️ Pulando pull de $table: dependências falharam: $failedDeps');
+        failedTables.add(table); // Marcar como falha em cascata
+        continue;
+      }
+
       try {
         // Buscar último timestamp de sync
         String? since;
@@ -708,16 +911,14 @@ class SyncService {
           since = metadata?.lastServerTimestamp;
         }
 
-        final uri = Uri.parse('$_apiBaseUrl/api/sync/pull').replace(
+        final response = await _getWithRedirects(
+          '/api/sync/pull',
+          headers: AuthService.instance.getAuthHeaders(),
           queryParameters: {
             'table': table,
             if (since != null) 'since': since,
           },
         );
-
-        final response = await _httpClient!
-            .get(uri, headers: AuthService.instance.getAuthHeaders())
-            .timeout(const Duration(seconds: 60));
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -725,10 +926,35 @@ class SyncService {
           final serverTimestamp = data['server_timestamp'] as String?;
           final deleted = data['deleted'] as List<dynamic>? ?? [];
 
-          // Aplicar registros do servidor (server wins)
+          // Aplicar registros do servidor (server wins com UPSERT)
+          int tableSuccessCount = 0;
+          int tableSkippedCount = 0;
+          int tableErrorCount = 0;
           for (final record in records) {
-            await _db.applyServerData(table, record as Map<String, dynamic>);
-            totalPulled++;
+            try {
+              final result = await _db.applyServerData(table, record as Map<String, dynamic>);
+              if (result.success) {
+                tableSuccessCount++;
+                totalPulled++;
+              } else if (result.skipped) {
+                tableSkippedCount++;
+                totalSkipped++;
+              }
+            } catch (e) {
+              tableErrorCount++;
+              debugPrint('⚠️ Erro ao aplicar registro em $table: $e');
+            }
+          }
+
+          // Se a maioria dos registros falhou (excluindo skipped), marcar tabela como falha
+          if (tableErrorCount > 0 && tableErrorCount > tableSuccessCount) {
+            debugPrint('❌ Tabela $table: muitos erros ($tableErrorCount de ${records.length})');
+            failedTables.add(table);
+          }
+
+          // Construir cache de FK para tabelas base após pull bem-sucedido
+          if (_baseTablesToCache.contains(table) && tableSuccessCount > 0) {
+            await _db.buildFkCacheForTable(table);
           }
 
           // Deletar registros que foram deletados no servidor
@@ -747,7 +973,8 @@ class SyncService {
             );
           }
 
-          debugPrint('📥 Pull $table: ${records.length} registros, ${deleted.length} deletados');
+          final skipInfo = tableSkippedCount > 0 ? ', $tableSkippedCount skipped' : '';
+          debugPrint('📥 Pull $table: $tableSuccessCount ok, $tableErrorCount erros$skipInfo, ${deleted.length} deletados');
         } else if (response.statusCode == 401) {
           final refreshed = await AuthService.instance.refreshToken();
           if (!refreshed) {
@@ -756,10 +983,19 @@ class SyncService {
           return _pullChanges(incremental: incremental);
         } else {
           debugPrint('❌ Erro no pull de $table: ${response.statusCode}');
+          failedTables.add(table);
         }
       } catch (e) {
         debugPrint('❌ Erro ao fazer pull de $table: $e');
+        failedTables.add(table);
       }
+    }
+
+    if (failedTables.isNotEmpty) {
+      debugPrint('⚠️ Tabelas com falha no pull: $failedTables');
+    }
+    if (totalSkipped > 0) {
+      debugPrint('⚠️ Total de registros pulados por FK faltante: $totalSkipped');
     }
 
     return SyncResult.successful(pulled: totalPulled);

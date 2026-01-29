@@ -44,6 +44,7 @@ dependencies:
   # Exportação PDF
   pdf: ^3.11.0
   printing: ^5.12.0
+  image: ^4.1.0  # Para manipulação de imagens (crop/slice)
 
 dev_dependencies:
   flutter_test:
